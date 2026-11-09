@@ -1,0 +1,430 @@
+/* Pasta Gallo · lógica de la carta. No necesitas editar este archivo. */
+(function () {
+  "use strict";
+  var C = window.CARTA;
+  var N = C.negocio;
+  document.documentElement.classList.add("js");
+
+  /* ---------- utilidades ---------- */
+  function h(tag, cls, txt) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+  function q(sel, ctx) { return (ctx || document).querySelector(sel); }
+  function norm(s) {
+    return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "");
+  }
+  function dinero(n) {
+    var v = Number(n);
+    return Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2);
+  }
+  function precioEl(n) {
+    var s = h("span", "precio");
+    s.appendChild(h("small", null, "S/"));
+    s.appendChild(document.createTextNode(dinero(n)));
+    return s;
+  }
+  var ROMANOS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV"];
+  var NS = "http://www.w3.org/2000/svg";
+
+  var WA_PATH = "M12.04 2a9.9 9.9 0 0 0-8.5 14.9L2 22l5.25-1.5A9.9 9.9 0 1 0 12.04 2zm5.8 14.1c-.25.7-1.45 1.35-2 1.4-.5.07-1.1.1-1.8-.12a16 16 0 0 1-1.6-.6c-2.8-1.2-4.6-4-4.75-4.2-.13-.2-1.1-1.5-1.1-2.8s.7-2 .95-2.3a1 1 0 0 1 .72-.34h.5c.17 0 .4-.06.62.48.25.57.8 1.95.87 2.1.07.13.1.3 0 .5-.1.2-.15.32-.3.5l-.45.5c-.15.15-.3.3-.13.6.17.3.75 1.25 1.6 2 1.1.98 2 1.28 2.3 1.43.3.14.47.12.65-.07.17-.2.75-.87.95-1.17.2-.3.4-.25.67-.15.28.1 1.75.83 2.05.98.3.15.5.22.57.35.07.12.07.7-.18 1.4z";
+  function waSvg() {
+    var s = document.createElementNS(NS, "svg");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true");
+    var p = document.createElementNS(NS, "path"); p.setAttribute("d", WA_PATH); s.appendChild(p);
+    return s;
+  }
+  function ornamento() {
+    var d = h("div", "orn");
+    d.setAttribute("aria-hidden", "true");
+    var s = document.createElementNS(NS, "svg");
+    s.setAttribute("viewBox", "0 0 24 24");
+    var p = document.createElementNS(NS, "path");
+    p.setAttribute("d", "M12 1l3 8 8 3-8 3-3 8-3-8-8-3 8-3z");
+    s.appendChild(p); d.appendChild(s);
+    return d;
+  }
+
+  /* ---------- iconos de alérgenos ---------- */
+  var ICONOS = {
+    gluten: "M12 21V9M12 9c-2.2-.8-3.2-2.6-3.2-4.8 2.2 0 3.2 1.6 3.2 3.4M12 9c2.2-.8 3.2-2.6 3.2-4.8-2.2 0-3.2 1.6-3.2 3.4M12 14c-2.2-.8-3.2-2.6-3.2-4.8M12 14c2.2-.8 3.2-2.6 3.2-4.8M12 19c-2.2-.8-3.2-2.6-3.2-4.8M12 19c2.2-.8 3.2-2.6 3.2-4.8",
+    lacteos: "M7 4h10l-1.4 16.2a1 1 0 0 1-1 .8H9.4a1 1 0 0 1-1-.8zM7.6 9.5h8.8",
+    huevo: "M12 3c3.6 0 6 5.2 6 9.4a6 6 0 0 1-12 0C6 8.2 8.4 3 12 3z",
+    pescado: "M3 12c3-5 9-6 13-2l5-3v10l-5-3c-4 4-10 3-13-2zM8 11.6h.01",
+    mariscos: "M5 15c0-5 4-9 9.5-9C17.5 6 19 7.5 19 9.5S17.2 12 15 12c-2 0-3 1-3 3 0 3-2.2 5-5 5M9 6.5l-3-2M7 9l-3.2-.6",
+    frutosSecos: "M12 3c4 2 6.2 6 6.2 10a6.2 6.2 0 0 1-12.4 0C5.8 9 8 5 12 3zM12 3v18",
+    mani: "M9.5 3.5c-3 0-4 3-3 5 .9 1.3.9 2.2 0 3.5-1.2 2 0 5 3 5.8 2.8.8 4-1 4.8-2.8.6-1.2 1.4-1.2 2.4-2 1.6-1.6.6-4.6-2.4-5.6-1.6-.6-3-3.9-4.8-3.9z",
+    soya: "M4 15c0-6.4 6-11 16-11 0 10-5 16-11 16-3 0-5-2-5-5zM9 15l6-6",
+    sulfitos: "M7 3.5h10c0 6-2 9-5 9s-5-3-5-9zM12 12.5V20M8 21h8"
+  };
+  function iconoSvg(clave) {
+    var s = document.createElementNS(NS, "svg");
+    s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true");
+    var p = document.createElementNS(NS, "path"); p.setAttribute("d", ICONOS[clave] || ""); s.appendChild(p);
+    return s;
+  }
+
+  /* ---------- horario ---------- */
+  function minutos(hhmm) { var p = hhmm.split(":"); return (+p[0]) * 60 + (+p[1]); }
+  function fmt12(hhmm) {
+    var p = hhmm.split(":"), hh = +p[0], mm = p[1], suf = hh >= 12 ? "pm" : "am";
+    hh = hh % 12 || 12;
+    return hh + ":" + mm + " " + suf;
+  }
+  var NOMBRES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  var MAPA_DIA = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  function ahoraLugar(fecha) {
+    try {
+      var f = new Intl.DateTimeFormat("en-US", { timeZone: C.horario.zona, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+      var o = {}; f.formatToParts(fecha).forEach(function (x) { o[x.type] = x.value; });
+      return { dia: MAPA_DIA[o.weekday], min: (+o.hour % 24) * 60 + (+o.minute) };
+    } catch (e) {
+      return { dia: fecha.getDay(), min: fecha.getHours() * 60 + fecha.getMinutes() };
+    }
+  }
+  function estadoActual(fecha) {
+    var t = ahoraLugar(fecha || new Date());
+    var hoy = C.horario.dias[t.dia];
+    if (hoy && t.min >= minutos(hoy[0]) && t.min < minutos(hoy[1])) {
+      return { abierto: true, cierra: fmt12(hoy[1]) };
+    }
+    if (hoy && t.min < minutos(hoy[0])) {
+      return { abierto: false, cuando: "hoy a las " + fmt12(hoy[0]) };
+    }
+    for (var i = 1; i <= 7; i++) {
+      var d = (t.dia + i) % 7, r = C.horario.dias[d];
+      if (r) return { abierto: false, cuando: (i === 1 ? "mañana " + NOMBRES[d] : "el " + NOMBRES[d]) + " a las " + fmt12(r[0]) };
+    }
+    return { abierto: false, cuando: "pronto" };
+  }
+
+  var estadoBarra, bienvenida, fab, fabTxt;
+  function waUrl() {
+    return "https://wa.me/" + N.whatsapp + "?text=" + encodeURIComponent(N.mensajeWhatsapp);
+  }
+  function pintarEstado() {
+    var e = estadoActual();
+    estadoBarra.className = "estado " + (e.abierto ? "abierto" : "cerrado");
+    estadoBarra.textContent = "";
+    estadoBarra.appendChild(h("i"));
+    if (e.abierto) {
+      var s = h("span"); s.appendChild(document.createTextNode("Abierto ahora · hasta las ")); s.appendChild(h("b", null, e.cierra));
+      estadoBarra.appendChild(s);
+    } else {
+      var s2 = h("span"); s2.appendChild(document.createTextNode("Cerrado · abrimos ")); s2.appendChild(h("b", null, e.cuando.replace(" a las ", " · ")));
+      estadoBarra.appendChild(s2);
+    }
+    bienvenida.textContent = "";
+    if (e.abierto) {
+      bienvenida.appendChild(h("h1", null, "Bienvenido a Pasta Gallo"));
+      bienvenida.appendChild(h("p", null, "Estamos abiertos hasta las " + e.cierra + ". Elige tu plato favorito y realiza tu pedido ahora."));
+    } else {
+      bienvenida.appendChild(h("h1", null, "Bienvenido a Pasta Gallo"));
+      bienvenida.appendChild(h("p", null, "En este momento estamos descansando. Abrimos " + e.cuando + ". Mientras tanto, recorre nuestra carta con calma."));
+    }
+    var pedir = q("#btn-pedir");
+    if (pedir) pedir.lastChild.textContent = e.abierto ? "Realizar mi pedido" : "Escríbenos por WhatsApp";
+    if (fabTxt) fabTxt.textContent = e.abierto ? "Pedir ahora" : "WhatsApp";
+  }
+
+  /* ---------- portada ---------- */
+  function portada() {
+    var s = h("header", "portada"); s.id = "inicio";
+    s.appendChild(h("div", "marco"));
+    var in_ = h("div", "portada__in");
+    in_.appendChild(h("div", "saludo", "Benvenuti"));
+    var g = h("img", "gallo"); g.src = "gallo-oro.png"; g.alt = ""; g.width = 112; in_.appendChild(g);
+    var m = h("img", "marca"); m.src = "wordmark-crema.png"; m.alt = N.nombre; in_.appendChild(m);
+    in_.appendChild(h("div", "desde", N.desde));
+    var tri = h("div", "tricolor"); tri.setAttribute("aria-hidden", "true");
+    tri.appendChild(h("span")); tri.appendChild(h("span")); tri.appendChild(h("span")); in_.appendChild(tri);
+    bienvenida = h("div", "bienvenida"); in_.appendChild(bienvenida);
+    var ac = h("div", "acciones");
+    var a1 = h("a", "btn btn--oro"); a1.id = "btn-pedir"; a1.href = waUrl(); a1.target = "_blank"; a1.rel = "noopener";
+    a1.appendChild(waSvg()); a1.appendChild(document.createTextNode("Realizar mi pedido"));
+    var a2 = h("a", "btn btn--linea", "Ver la carta"); a2.href = "#carta-inicio";
+    ac.appendChild(a1); ac.appendChild(a2); in_.appendChild(ac);
+    s.appendChild(in_);
+    return s;
+  }
+
+  /* ---------- historia ---------- */
+  function historia() {
+    var s = h("section", "pagina historia rev"); s.id = "historia";
+    s.appendChild(h("div", "marco2"));
+    var i = h("div", "pagina__in");
+    i.appendChild(h("div", "eyebrow", C.historia.eyebrow));
+    i.appendChild(h("h2", null, C.historia.titulo));
+    i.appendChild(ornamento());
+    C.historia.parrafos.forEach(function (p) { i.appendChild(h("p", null, p)); });
+    i.appendChild(h("div", "firma", "La familia Gallo"));
+    s.appendChild(i);
+    return s;
+  }
+
+  /* ---------- diagrama Tris di Pasta ---------- */
+  function diagramaTris() {
+    var w = h("div", "plato"); w.setAttribute("role", "img");
+    w.setAttribute("aria-label", "Plato largo: raviolini a la izquierda, lasagna de carne al centro y fettuccine a la derecha");
+    var s = document.createElementNS(NS, "svg"); s.setAttribute("viewBox", "0 0 300 96");
+    function el(n, a) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); return e; }
+    s.appendChild(el("ellipse", { cx: 150, cy: 48, rx: 146, ry: 44, fill: "#f7f1e3", stroke: "#a9803f", "stroke-width": 1.4 }));
+    s.appendChild(el("ellipse", { cx: 150, cy: 48, rx: 136, ry: 36, fill: "none", stroke: "#a9803f", "stroke-width": .6, opacity: .7 }));
+    s.appendChild(el("line", { x1: 103, y1: 18, x2: 103, y2: 78, stroke: "#a9803f", "stroke-width": .8, "stroke-dasharray": "2 3" }));
+    s.appendChild(el("line", { x1: 197, y1: 18, x2: 197, y2: 78, stroke: "#a9803f", "stroke-width": .8, "stroke-dasharray": "2 3" }));
+    function tx(x, l1, l2) {
+      var t = el("text", { x: x, y: l2 ? 45 : 51 }); t.textContent = l1; s.appendChild(t);
+      if (l2) { var t2 = el("text", { x: x, y: 57 }); t2.textContent = l2; s.appendChild(t2); }
+    }
+    tx(62, "Raviolini"); tx(150, "Lasagna", "di Carne"); tx(238, "Fettuccine");
+    w.appendChild(s);
+    return w;
+  }
+
+  /* ---------- plato ---------- */
+  function plato(it, esSalsa) {
+    var a = h("article", "it rev");
+    if (it.destacado === "tris") a.className += " it--dest";
+    var tieneFoto = !!it.foto;
+    if (tieneFoto) a.className += " fcon";
+    var top = h("div", "it__top");
+    top.appendChild(h("h4", "it__n", it.n));
+    if (it.p != null && !it.t) { top.appendChild(h("span", "it__pts")); top.appendChild(precioEl(it.p)); }
+    a.appendChild(top);
+    if (it.g) a.appendChild(h("p", "it__g", it.g));
+    if (it.d) a.appendChild(h("p", "it__d", it.d));
+    if (it.destacado === "tris") a.appendChild(diagramaTris());
+    if (it.extra) a.appendChild(h("span", "mas", "Adicional + S/ " + dinero(it.extra)));
+    if (it.t) {
+      var t = h("div", "tam");
+      it.t.forEach(function (x) {
+        var c = h("div"); c.appendChild(h("span", null, x[0])); c.appendChild(precioEl(x[1])); t.appendChild(c);
+      });
+      a.appendChild(t);
+    }
+    if (it.al && it.al.length) {
+      var al = h("div", "alg");
+      it.al.forEach(function (k) {
+        if (!ICONOS[k]) return;
+        var sp = h("span"); sp.title = C.alergenos[k] || k; sp.setAttribute("aria-label", "Contiene: " + (C.alergenos[k] || k));
+        sp.appendChild(iconoSvg(k)); al.appendChild(sp);
+      });
+      a.appendChild(al);
+    }
+    if (tieneFoto) {
+      var im = h("img", "foto"); im.src = it.foto; im.alt = it.n; im.loading = "lazy";
+      im.onerror = function () { a.className = a.className.replace(" fcon", ""); im.remove(); };
+      a.appendChild(im);
+    }
+    a.setAttribute("data-q", norm([it.n, it.g, it.d].join(" ")));
+    return a;
+  }
+
+  /* ---------- secciones ---------- */
+  var seccionesVisibles = [];
+  var hayAlergenos = false;
+
+  function seccion(sec, idx) {
+    var grupos = sec.grupos.filter(function (g) {
+      g.items = (g.items || []).filter(function (i) { return !i.oculto; });
+      return g.items.length;
+    });
+    if (!grupos.length) return null;
+    seccionesVisibles.push(sec);
+    var n = seccionesVisibles.length;
+    var s = h("section", "sec " + (n % 2 ? "sec--a" : "sec--b")); s.id = sec.id;
+    var cab = h("header", "sec__cab");
+    cab.appendChild(h("div", "m"));
+    var c = h("div");
+    c.appendChild(h("div", "num", ROMANOS[n - 1] || String(n)));
+    c.appendChild(h("h2", null, sec.titulo));
+    c.appendChild(h("div", "sub", sec.subtitulo));
+    c.appendChild(ornamento());
+    if (sec.intro) c.appendChild(h("p", "intro", sec.intro));
+    cab.appendChild(c); s.appendChild(cab);
+
+    var cuerpo = h("div", "sec__cuerpo");
+    grupos.forEach(function (g) {
+      var gr = h("div", "grupo");
+      if (g.titulo) {
+        var gc = h("div", "grupo__cab");
+        gc.appendChild(h("h3", null, g.titulo));
+        if (g.nota) gc.appendChild(h("p", null, g.nota));
+        gc.appendChild(ornamento());
+        gr.appendChild(gc);
+      }
+      g.items.forEach(function (it) { if (it.al && it.al.length) hayAlergenos = true; gr.appendChild(plato(it)); });
+      cuerpo.appendChild(gr);
+    });
+    if (sec.pie) cuerpo.appendChild(h("div", "pie", sec.pie));
+    if (sec.alcohol) cuerpo.appendChild(h("p", "aviso18", "Venta de bebidas alcohólicas solo a mayores de 18 años."));
+    s.appendChild(cuerpo);
+    return s;
+  }
+
+  function leyenda() {
+    var d = h("div", "leyenda");
+    d.appendChild(h("h3", null, "Alérgenos"));
+    var ul = h("ul");
+    Object.keys(C.alergenos).forEach(function (k) {
+      var li = h("li"); li.appendChild(iconoSvg(k)); li.appendChild(document.createTextNode(C.alergenos[k])); ul.appendChild(li);
+    });
+    d.appendChild(ul);
+    return d;
+  }
+
+  /* ---------- navegación ---------- */
+  function navegacion() {
+    var nav = h("nav", "nav"); nav.id = "nav"; nav.setAttribute("aria-label", "Secciones de la carta");
+    var in_ = h("div", "nav__in");
+    var ch = h("div", "chips"); ch.id = "chips";
+    seccionesVisibles.forEach(function (s) {
+      var a = h("a", "chip", s.titulo); a.href = "#" + s.id; a.setAttribute("data-id", s.id); ch.appendChild(a);
+    });
+    in_.appendChild(ch);
+    var lupa = h("button", "lupa"); lupa.type = "button"; lupa.setAttribute("aria-label", "Buscar en la carta");
+    var sv = document.createElementNS(NS, "svg"); sv.setAttribute("viewBox", "0 0 24 24");
+    var c1 = document.createElementNS(NS, "circle"); c1.setAttribute("cx", 11); c1.setAttribute("cy", 11); c1.setAttribute("r", 6.5);
+    var l1 = document.createElementNS(NS, "path"); l1.setAttribute("d", "M16 16l5 5"); sv.appendChild(c1); sv.appendChild(l1);
+    lupa.appendChild(sv); in_.appendChild(lupa);
+    nav.appendChild(in_);
+    var b = h("div", "busca"); b.id = "busca";
+    var inp = h("input"); inp.type = "search"; inp.id = "q"; inp.placeholder = "Buscar un plato…"; inp.setAttribute("aria-label", "Buscar un plato"); inp.autocomplete = "off";
+    b.appendChild(inp); nav.appendChild(b);
+    lupa.addEventListener("click", function () {
+      b.classList.toggle("abierta");
+      if (b.classList.contains("abierta")) inp.focus(); else { inp.value = ""; filtrar(""); }
+    });
+    inp.addEventListener("input", function () { filtrar(inp.value); });
+    return nav;
+  }
+
+  function coincide(texto, consulta) {
+    var palabras = texto.split(/[^a-z0-9]+/);
+    return consulta.split(/\s+/).filter(Boolean).every(function (t) {
+      return palabras.some(function (w) { return w.indexOf(t) === 0; });
+    });
+  }
+  function filtrar(valor) {
+    var c = norm(valor).trim();
+    document.body.classList.toggle("buscando", !!c);
+    var total = 0;
+    document.querySelectorAll(".sec").forEach(function (sec) {
+      var vis = 0;
+      sec.querySelectorAll(".grupo").forEach(function (g) {
+        var gv = 0;
+        g.querySelectorAll(".it").forEach(function (it) {
+          var ok = !c || coincide(it.getAttribute("data-q"), c);
+          it.classList.toggle("oculto", !ok);
+          if (ok) { gv++; it.classList.add("ya"); }
+        });
+        g.classList.toggle("oculto", !gv); vis += gv;
+      });
+      var pie = sec.querySelector(".pie"); if (pie) pie.classList.toggle("oculto", !!c);
+      var av = sec.querySelector(".aviso18"); if (av) av.classList.toggle("oculto", !!c);
+      sec.classList.toggle("oculto", !vis); total += vis;
+    });
+    var v = q("#vacio"); v.classList.toggle("hay", !!c && total === 0);
+    if (c) window.scrollTo({ top: q("#nav").offsetTop - 34, behavior: "auto" });
+  }
+
+  /* ---------- gracias ---------- */
+  function gracias() {
+    var s = h("footer", "gracias rev"); s.id = "gracias";
+    s.appendChild(h("div", "marco2"));
+    var i = h("div", "pagina__in");
+    i.appendChild(h("div", "gr", "Grazie"));
+    i.appendChild(h("h2", null, "Gracias por visitarnos"));
+    i.appendChild(ornamento());
+    i.appendChild(h("p", null, "Gracias por sentarte a nuestra mesa y ser parte de esta historia que empezó en 1997. Volver a verte es nuestro mejor premio."));
+    var d = h("div", "datos");
+    function dato(t, x) { var b = h("div"); b.appendChild(h("h3", null, t)); b.appendChild(h("p", null, x)); return b; }
+    d.appendChild(dato("Dónde estamos", N.direccion));
+    d.appendChild(dato("Horario", N.horarioTexto + (N.cerradoTexto ? " · " + N.cerradoTexto : "")));
+    d.appendChild(dato("Reservas y pedidos", N.telefono));
+    var rb = h("div"); rb.appendChild(h("h3", null, "Síguenos"));
+    var rd = h("div", "redes");
+    function red(t, u) { var a = h("a", null, t); a.href = u; a.target = "_blank"; a.rel = "noopener"; rd.appendChild(a); }
+    if (N.instagram) red("Instagram", "https://instagram.com/" + N.instagram);
+    if (N.tiktok) red("TikTok", "https://www.tiktok.com/@" + N.tiktok);
+    if (N.facebookUrl) red("Facebook", N.facebookUrl);
+    rb.appendChild(rd); d.appendChild(rb);
+    i.appendChild(d);
+    var a = h("a", "btn btn--oro"); a.href = waUrl(); a.target = "_blank"; a.rel = "noopener";
+    a.appendChild(waSvg()); a.appendChild(document.createTextNode("Escríbenos por WhatsApp")); i.appendChild(a);
+    var lg = h("img", "logo-fin"); lg.src = "wordmark-crema.png"; lg.alt = N.nombre; i.appendChild(lg);
+    i.appendChild(h("div", "copia", N.desde + " · Hecho con cariño en familia"));
+    s.appendChild(i);
+    return s;
+  }
+
+  /* ---------- construcción ---------- */
+  function construir() {
+    var app = q("#app");
+    estadoBarra = h("div", "estado"); estadoBarra.setAttribute("role", "status");
+    document.body.insertBefore(estadoBarra, app);
+
+    var secs = [];
+    C.secciones.forEach(function (s, i) { var e = seccion(s, i); if (e) secs.push(e); });
+
+    app.appendChild(portada());
+    var nav = navegacion(); app.appendChild(nav);
+    app.appendChild(historia());
+    var anc = h("span"); anc.id = "carta-inicio"; anc.style.cssText = "display:block;position:relative;top:-84px"; app.appendChild(anc);
+    secs.forEach(function (s) { app.appendChild(s); });
+    var cuerpoFinal = secs.length ? secs[secs.length - 1].querySelector(".sec__cuerpo") : null;
+    if (hayAlergenos && cuerpoFinal) cuerpoFinal.appendChild(leyenda());
+    var vacio = h("p", "vacio", "No encontramos ese plato. Prueba con otra palabra."); vacio.id = "vacio"; app.appendChild(vacio);
+    app.appendChild(gracias());
+
+    var f = h("a", "fab"); f.href = waUrl(); f.target = "_blank"; f.rel = "noopener";
+    f.appendChild(waSvg()); fabTxt = h("span", null, "Pedir ahora"); f.appendChild(fabTxt);
+    document.body.appendChild(f); fab = f;
+
+    pintarEstado();
+    setInterval(pintarEstado, 60000);
+
+    /* ancla de la carta: salto exacto bajo la barra */
+    document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+      a.addEventListener("click", function (ev) {
+        var id = a.getAttribute("href").slice(1), el = document.getElementById(id);
+        if (!el) return;
+        ev.preventDefault();
+        var off = id === "carta-inicio" ? 0 : 76;
+        var y = el.getBoundingClientRect().top + window.pageYOffset - (id === "carta-inicio" ? 0 : off);
+        window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      });
+    });
+
+    /* chip activo + botón flotante */
+    var chips = document.querySelectorAll(".chip");
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) {
+          if (e.isIntersecting) {
+            chips.forEach(function (c) { c.classList.toggle("on", c.getAttribute("data-id") === e.target.id); });
+            var on = q(".chip.on"); if (on) { var box = q("#chips"); box.scrollTo({ left: on.offsetLeft - box.clientWidth / 2 + on.clientWidth / 2, behavior: "smooth" }); }
+          }
+        });
+      }, { rootMargin: "-40% 0px -55% 0px" });
+      document.querySelectorAll(".sec").forEach(function (s) { io.observe(s); });
+
+      var rv = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("ya"); rv.unobserve(e.target); } });
+      }, { rootMargin: "0px 0px -6% 0px" });
+      document.querySelectorAll(".rev").forEach(function (x) { rv.observe(x); });
+
+      var pt = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { fab.classList.toggle("ver", !e.isIntersecting); });
+      });
+      pt.observe(q("#inicio"));
+    } else {
+      document.querySelectorAll(".rev").forEach(function (x) { x.classList.add("ya"); });
+      fab.classList.add("ver");
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", construir); else construir();
+})();
