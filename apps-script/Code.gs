@@ -1,0 +1,785 @@
+/* =====================================================================
+   PASTA GALLO · Servidor (Google Apps Script, ligado al Google Sheets)
+
+   Qué hace este archivo:
+   1. Recibe los pedidos de la web (doPost) y los guarda en la hoja "Pedidos".
+      El precio SIEMPRE se recalcula aquí con los precios de la hoja: nadie
+      puede cambiar un precio desde su navegador.
+   2. Abre el panel interno (menú "Pasta Gallo" → "Abrir panel"). Solo los
+      editores de este Google Sheets pueden abrirlo.
+   3. Publica la carta en la web (crea menu-data.js en GitHub).
+
+   No compartas este Google Sheets con "Cualquier persona con el enlace".
+   ===================================================================== */
+
+var HOJA = { config: 'Config', secciones: 'Secciones', productos: 'Productos', pedidos: 'Pedidos', mesas: 'Mesas' };
+var COLS = {
+  secciones: ['id', 'orden', 'titulo', 'subtitulo', 'intro', 'pie', 'alcohol', 'delivery', 'mesa', 'visible'],
+  productos: ['id', 'seccion', 'grupo', 'grupo_nota', 'orden', 'nombre', 'glosa', 'descripcion', 'precio', 'tamanos',
+    'tipo', 'recargo', 'requiere_salsa', 'disponible', 'visible', 'destacado', 'alergenos', 'foto'],
+  pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
+    'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial'],
+  mesas: ['mesa', 'codigo', 'activa', 'link']
+};
+var ESTADOS = ['Nuevo', 'Confirmado', 'En preparación', 'Listo', 'En camino', 'Entregado', 'Cancelado'];
+var ALERGENOS = { gluten: 'Gluten', lacteos: 'Lácteos', huevo: 'Huevo', pescado: 'Pescado', mariscos: 'Mariscos',
+  frutosSecos: 'Frutos secos', mani: 'Maní', soya: 'Soya', sulfitos: 'Sulfitos' };
+var DIAS_CFG = ['horario_domingo', 'horario_lunes', 'horario_martes', 'horario_miercoles', 'horario_jueves', 'horario_viernes', 'horario_sabado'];
+
+/* =========================== MENÚ DEL SHEETS =========================== */
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('🍝 Pasta Gallo')
+    .addItem('Abrir panel', 'abrirPanel')
+    .addItem('Publicar carta en la web', 'menuPublicar')
+    .addSeparator()
+    .addItem('Instalar / reparar hojas', 'instalar')
+    .addToUi();
+}
+
+function abrirPanel() {
+  exigirAdmin_();
+  var html = HtmlService.createHtmlOutputFromFile('Panel').setWidth(1360).setHeight(860)
+    .setTitle('Panel · Pasta Gallo');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Panel · Pasta Gallo');
+}
+
+function menuPublicar() {
+  var r = publicarCarta();
+  SpreadsheetApp.getUi().alert('Carta publicada', r.mensaje, SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/* =========================== INSTALADOR =========================== */
+function instalar() {
+  var ss = SpreadsheetApp.getActive();
+  if (ss.getSheetByName(HOJA.config)) exigirAdmin_();
+  var D = DATOS_INICIALES;
+
+  // Config
+  var hc = obtenerHoja_(ss, HOJA.config, ['clave', 'valor', 'ayuda']);
+  var existentes = hc.getLastRow() > 1 ? hc.getRange(2, 1, hc.getLastRow() - 1, 1).getValues().map(function (r) { return r[0]; }) : [];
+  var nuevas = D.config.filter(function (r) { return existentes.indexOf(r[0]) < 0; });
+  if (nuevas.length) hc.getRange(hc.getLastRow() + 1, 1, nuevas.length, 3).setValues(nuevas);
+  hc.setColumnWidth(1, 210).setColumnWidth(2, 420).setColumnWidth(3, 420);
+  hc.getRange('B:B').setWrap(true);
+
+  var hs = obtenerHoja_(ss, HOJA.secciones, COLS.secciones);
+  if (hs.getLastRow() < 2) hs.getRange(2, 1, D.secciones.length, COLS.secciones.length).setValues(D.secciones);
+  var hp = obtenerHoja_(ss, HOJA.productos, COLS.productos);
+  if (hp.getLastRow() < 2) hp.getRange(2, 1, D.productos.length, COLS.productos.length).setValues(D.productos);
+  hp.setColumnWidth(6, 230).setColumnWidth(8, 380);
+
+  var hd = obtenerHoja_(ss, HOJA.pedidos, COLS.pedidos);
+  hd.getRange('B:B').setNumberFormat('dd/mm/yyyy hh:mm');
+  hd.getRange('L:L').setNumberFormat('"S/ "#,##0.00');
+  var regla = SpreadsheetApp.newDataValidation().requireValueInList(ESTADOS, true).build();
+  hd.getRange('M2:M').setDataValidation(regla);
+
+  var hm = obtenerHoja_(ss, HOJA.mesas, COLS.mesas);
+  if (hm.getLastRow() < 2) {
+    var filas = [];
+    for (var i = 1; i <= 10; i++) filas.push([i, codigoMesa_(), 'SI', '']);
+    hm.getRange(2, 1, filas.length, 4).setValues(filas);
+  }
+
+  var si = SpreadsheetApp.newDataValidation().requireValueInList(['SI', 'NO'], true).build();
+  ['G2:J'].forEach(function (a) { hs.getRange(a).setDataValidation(si); });
+  ['M2:O'].forEach(function (a) { hp.getRange(a).setDataValidation(si); });
+  hm.getRange('C2:C').setDataValidation(si);
+
+  // URL de la API (si ya existe una implementación)
+  try {
+    var url = ScriptApp.getService().getUrl();
+    if (url && /\/exec$/.test(url) && !leerConfig_().api_url) guardarClave_('api_url', url);
+  } catch (e) { /* aún no hay implementación */ }
+
+  actualizarLinksMesas_();
+  try {
+    SpreadsheetApp.getUi().alert('Listo', 'Hojas instaladas. Ahora abre el menú "🍝 Pasta Gallo" → "Abrir panel".', SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (e) { /* ejecutado desde el editor */ }
+}
+
+function obtenerHoja_(ss, nombre, cabecera) {
+  var h = ss.getSheetByName(nombre);
+  if (!h) h = ss.insertSheet(nombre);
+  if (h.getLastRow() === 0) {
+    h.getRange(1, 1, 1, cabecera.length).setValues([cabecera]).setFontWeight('bold')
+      .setBackground('#4a1519').setFontColor('#efe6d3');
+    h.setFrozenRows(1);
+  }
+  return h;
+}
+
+/* =========================== LECTURA DE DATOS =========================== */
+function leerConfig_() {
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.config);
+  var o = {};
+  if (!h || h.getLastRow() < 2) return o;
+  h.getRange(2, 1, h.getLastRow() - 1, 2).getValues().forEach(function (r) {
+    if (r[0]) o[String(r[0]).trim()] = typeof r[1] === 'string' ? r[1].trim() : r[1];
+  });
+  return o;
+}
+
+function guardarClave_(clave, valor) {
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.config);
+  var n = h.getLastRow();
+  var claves = n > 1 ? h.getRange(2, 1, n - 1, 1).getValues() : [];
+  for (var i = 0; i < claves.length; i++) {
+    if (claves[i][0] === clave) { h.getRange(i + 2, 2).setValue(valor); return; }
+  }
+  h.appendRow([clave, valor, '']);
+}
+
+function leerTabla_(nombre) {
+  var h = SpreadsheetApp.getActive().getSheetByName(nombre);
+  if (!h || h.getLastRow() < 2) return [];
+  var v = h.getDataRange().getValues();
+  var cab = v.shift().map(function (c) { return String(c).trim(); });
+  return v.filter(function (r) { return r.join('') !== ''; }).map(function (r, i) {
+    var o = { _fila: i + 2 };
+    cab.forEach(function (c, j) { o[c] = r[j]; });
+    return o;
+  });
+}
+
+function leerCatalogo_() {
+  var cache = CacheService.getScriptCache();
+  var c = cache.get('catalogo');
+  if (c) return JSON.parse(c);
+  var cat = {
+    secciones: leerTabla_(HOJA.secciones),
+    productos: leerTabla_(HOJA.productos),
+    mesas: leerTabla_(HOJA.mesas).map(function (m) { return { mesa: String(m.mesa), codigo: String(m.codigo), activa: m.activa }; })
+  };
+  try { cache.put('catalogo', JSON.stringify(cat), 120); } catch (e) { /* demasiado grande: sin caché */ }
+  return cat;
+}
+function limpiarCache_() { CacheService.getScriptCache().remove('catalogo'); }
+
+/* =========================== LÓGICA PURA (sin Google) =========================== */
+function esSi_(v) { return String(v).trim().toUpperCase() === 'SI' || v === true; }
+function num_(v) { var n = Number(String(v).replace(',', '.')); return isFinite(n) && String(v).trim() !== '' ? n : null; }
+function soles_(n) { return 'S/ ' + Number(n).toFixed(2); }
+function texto_(v, max) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max); }
+
+function parsearTamanos_(t) {
+  if (!t) return [];
+  return String(t).split(/[;|\n]/).map(function (x) {
+    var p = x.split('=');
+    if (p.length < 2) return null;
+    var precio = num_(p[1]);
+    return precio == null ? null : [p[0].trim(), precio];
+  }).filter(Boolean);
+}
+
+function horarioDe_(cfg, dia) {
+  var v = String(cfg[DIAS_CFG[dia]] || '').trim().toLowerCase();
+  var m = v.match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  var p = function (a) { return ('0' + a).slice(-2); };
+  return [p(m[1]) + ':' + m[2], p(m[3]) + ':' + m[4]];
+}
+
+function minutos_(hhmm) { var p = hhmm.split(':'); return (+p[0]) * 60 + (+p[1]); }
+
+/** momento = { dia: 0-6 (0 = domingo), min: minutos desde medianoche } */
+function estaAbierto_(cfg, momento) {
+  var r = horarioDe_(cfg, momento.dia);
+  if (!r) return false;
+  var a = minutos_(r[0]), c = minutos_(r[1]);
+  if (c <= a) return momento.min >= a || momento.min < c; // cierra pasada la medianoche
+  return momento.min >= a && momento.min < c;
+}
+
+/**
+ * Valida un pedido y calcula su total con los precios de la hoja.
+ * Devuelve { ok:false, error } o { ok:true, canal, cliente, lineas, total, detalle, ... }
+ */
+function calcularPedido_(body, cat, cfg, momento) {
+  if (!body || typeof body !== 'object') return { ok: false, error: 'Pedido vacío.' };
+  if (!esSi_(cfg.pedidos_activos)) return { ok: false, error: 'Por ahora no estamos recibiendo pedidos por la web. Escríbenos por WhatsApp.' };
+
+  var canal = String(body.canal || '');
+  if (['delivery', 'recojo', 'mesa'].indexOf(canal) < 0) return { ok: false, error: 'Elige delivery, recojo o mesa.' };
+  if (canal === 'recojo' && !esSi_(cfg.recojo_activo)) return { ok: false, error: 'El recojo en local no está disponible.' };
+
+  var abierto = estaAbierto_(cfg, momento);
+  var programado = texto_(body.programado, 20);
+  if (programado && !/^\d{1,2}:\d{2}$/.test(programado)) programado = '';
+
+  var mesa = '';
+  if (canal === 'mesa') {
+    if (!esSi_(cfg.pedidos_mesa_activos)) return { ok: false, error: 'Los pedidos desde la mesa no están activos. Llama a tu mozo.' };
+    if (!abierto) return { ok: false, error: 'El restaurante está cerrado en este momento.' };
+    mesa = texto_(body.mesa, 6);
+    var cod = texto_(body.codigo, 20);
+    var m = (cat.mesas || []).filter(function (x) { return String(x.mesa) === mesa; })[0];
+    if (!m || !esSi_(m.activa) || String(m.codigo) !== cod) return { ok: false, error: 'Este código QR no es válido. Pide ayuda a tu mozo.' };
+    programado = '';
+  } else if (!abierto) {
+    if (!esSi_(cfg.pedidos_fuera_de_horario)) return { ok: false, error: 'En este momento estamos cerrados. Revisa nuestro horario.' };
+    if (!programado) return { ok: false, error: 'Estamos cerrados: indica a qué hora quieres tu pedido.' };
+  }
+
+  var cliente = {
+    nombre: texto_(body.nombre, 60),
+    telefono: String(body.telefono || '').replace(/[^\d+]/g, '').slice(0, 16),
+    direccion: texto_(body.direccion, 200),
+    referencia: texto_(body.referencia, 200),
+    pago: texto_(body.pago, 40),
+    notas: texto_(body.notas, 300)
+  };
+  if (canal !== 'mesa') {
+    if (cliente.nombre.length < 2) return { ok: false, error: 'Escribe tu nombre.' };
+    if (cliente.telefono.replace(/\D/g, '').length < 9) return { ok: false, error: 'Escribe un número de celular válido.' };
+    var pagos = String(cfg.metodos_pago || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (pagos.length && pagos.indexOf(cliente.pago) < 0) return { ok: false, error: 'Elige un método de pago.' };
+  }
+  if (canal === 'delivery' && cliente.direccion.length < 5) return { ok: false, error: 'Escribe la dirección de entrega.' };
+
+  var items = Array.isArray(body.items) ? body.items : [];
+  if (!items.length) return { ok: false, error: 'Tu pedido está vacío.' };
+  if (items.length > 40) return { ok: false, error: 'El pedido tiene demasiadas líneas.' };
+
+  var prod = {}, sec = {};
+  (cat.productos || []).forEach(function (p) { prod[String(p.id)] = p; });
+  (cat.secciones || []).forEach(function (s) { sec[String(s.id)] = s; });
+
+  var lineas = [], total = 0, hayAlcohol = false;
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i] || {};
+    var p = prod[String(it.id)];
+    if (!p || p.tipo === 'salsa' || !esSi_(p.visible)) return { ok: false, error: 'Un producto de tu pedido ya no está en la carta. Actualiza la página.' };
+    var s = sec[String(p.seccion)];
+    if (!s || !esSi_(s.visible)) return { ok: false, error: 'Un producto de tu pedido ya no está en la carta.' };
+    if (!esSi_(p.disponible)) return { ok: false, error: p.nombre + ' está agotado por hoy.' };
+    var canalSec = canal === 'mesa' ? s.mesa : s.delivery;
+    if (!esSi_(canalSec)) return { ok: false, error: p.nombre + ' no está disponible para este tipo de pedido.' };
+
+    var cant = Math.floor(Number(it.cant));
+    if (!(cant >= 1 && cant <= 20)) return { ok: false, error: 'Cantidad no válida.' };
+
+    var precio = null, tam = '';
+    var tams = parsearTamanos_(p.tamanos);
+    if (tams.length) {
+      var t = tams.filter(function (x) { return x[0] === String(it.tam); })[0];
+      if (!t) return { ok: false, error: 'Elige el tamaño de ' + p.nombre + '.' };
+      precio = t[1]; tam = t[0];
+    } else {
+      precio = num_(p.precio);
+    }
+    if (precio == null) return { ok: false, error: p.nombre + ' se consulta con el mozo y no se puede pedir por la web.' };
+
+    var salsa = null, recargo = 0;
+    if (esSi_(p.requiere_salsa)) {
+      var sp = prod[String(it.salsa)];
+      if (!sp || sp.tipo !== 'salsa' || !esSi_(sp.visible)) return { ok: false, error: 'Elige la salsa de ' + p.nombre + '.' };
+      if (!esSi_(sp.disponible)) return { ok: false, error: 'La salsa ' + sp.nombre + ' está agotada por hoy.' };
+      salsa = sp.nombre; recargo = num_(sp.recargo) || 0;
+    }
+    if (esSi_(s.alcohol)) hayAlcohol = true;
+    var unit = precio + recargo;
+    var sub = Math.round(unit * cant * 100) / 100;
+    total += sub;
+    lineas.push({ id: String(p.id), nombre: String(p.nombre), tam: tam, salsa: salsa, recargo: recargo, cant: cant,
+      unit: unit, subtotal: sub, nota: texto_(it.nota, 120), seccion: String(p.seccion) });
+  }
+  if (hayAlcohol && canal !== 'mesa' && body.mayorEdad !== true) {
+    return { ok: false, error: 'Confirma que eres mayor de 18 años para pedir bebidas alcohólicas.' };
+  }
+  total = Math.round(total * 100) / 100;
+
+  var detalle = lineas.map(function (l) {
+    var t = l.cant + ' × ' + l.nombre + (l.tam ? ' (' + l.tam + ')' : '') + ' — ' + soles_(l.subtotal);
+    if (l.salsa) t += '\n    Salsa: ' + l.salsa + (l.recargo ? ' (+' + soles_(l.recargo) + ')' : '');
+    if (l.nota) t += '\n    Nota: ' + l.nota;
+    return t;
+  }).join('\n');
+
+  return { ok: true, canal: canal, mesa: mesa, programado: programado, cliente: cliente, lineas: lineas,
+    total: total, detalle: detalle, abierto: abierto };
+}
+
+/** Construye el objeto CARTA que usa la web (menu-data.js). */
+function construirCarta_(cfg, secciones, productos) {
+  var dias = {};
+  for (var d = 0; d < 7; d++) dias[d] = horarioDe_(cfg, d);
+  var orden = function (a, b) { return (num_(a.orden) || 0) - (num_(b.orden) || 0); };
+  var visibles = productos.filter(function (p) { return esSi_(p.visible) && p.nombre; });
+
+  var salsas = visibles.filter(function (p) { return p.tipo === 'salsa'; }).sort(orden).map(function (p) {
+    return { id: String(p.id), n: String(p.nombre), extra: num_(p.recargo) || 0, agotado: !esSi_(p.disponible) };
+  });
+
+  var secs = secciones.filter(function (s) { return esSi_(s.visible); }).sort(orden).map(function (s) {
+    var grupos = [], idx = {};
+    visibles.filter(function (p) { return String(p.seccion) === String(s.id); }).sort(orden).forEach(function (p) {
+      var g = String(p.grupo || '');
+      if (!(g in idx)) { idx[g] = grupos.length; grupos.push({ titulo: g, nota: String(p.grupo_nota || ''), items: [] }); }
+      var it = { id: String(p.id), n: String(p.nombre) };
+      if (p.glosa) it.g = String(p.glosa);
+      if (p.descripcion) it.d = String(p.descripcion);
+      var tams = parsearTamanos_(p.tamanos);
+      if (tams.length) it.t = tams; else if (num_(p.precio) != null) it.p = num_(p.precio);
+      if (num_(p.recargo)) it.extra = num_(p.recargo);
+      if (p.tipo === 'salsa') it.tipo = 'salsa';
+      if (esSi_(p.requiere_salsa)) it.salsa = true;
+      if (!esSi_(p.disponible)) it.agotado = true;
+      if (p.destacado) it.destacado = String(p.destacado);
+      var al = String(p.alergenos || '').split(',').map(function (x) { return x.trim(); }).filter(function (x) { return ALERGENOS[x]; });
+      if (al.length) it.al = al;
+      if (p.foto) it.foto = String(p.foto);
+      grupos[idx[g]].items.push(it);
+    });
+    return { id: String(s.id), titulo: String(s.titulo), subtitulo: String(s.subtitulo || ''), intro: String(s.intro || ''),
+      pie: String(s.pie || ''), alcohol: esSi_(s.alcohol), delivery: esSi_(s.delivery), mesa: esSi_(s.mesa), grupos: grupos };
+  });
+
+  return {
+    negocio: {
+      nombre: cfg.nombre || 'Pasta Gallo', desde: cfg.desde || '', direccion: cfg.direccion || '',
+      telefono: String(cfg.telefono || ''), whatsapp: String(cfg.whatsapp || ''), mensajeWhatsapp: cfg.mensaje_whatsapp || '',
+      instagram: cfg.instagram || '', tiktok: cfg.tiktok || '', facebookUrl: cfg.facebook_url || '',
+      horarioTexto: cfg.horario_texto || '', cerradoTexto: cfg.cerrado_texto || '',
+      sitioUrl: String(cfg.sitio_url || '').replace(/\/+$/, '')
+    },
+    horario: { zona: cfg.zona_horaria || 'America/Lima', dias: dias },
+    historia: {
+      eyebrow: cfg.historia_eyebrow || '', titulo: cfg.historia_titulo || '',
+      parrafos: String(cfg.historia_texto || '').split(/\n\s*\n/).map(function (x) { return x.trim(); }).filter(Boolean)
+    },
+    alergenos: ALERGENOS,
+    pedidos: {
+      api: cfg.api_url || '', activos: esSi_(cfg.pedidos_activos), fueraHorario: esSi_(cfg.pedidos_fuera_de_horario),
+      mesaActivos: esSi_(cfg.pedidos_mesa_activos), recojo: esSi_(cfg.recojo_activo),
+      metodosPago: String(cfg.metodos_pago || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean),
+      textoDelivery: cfg.texto_delivery || ''
+    },
+    salsas: salsas,
+    secciones: secs
+  };
+}
+
+/** Métricas del dashboard a partir de las filas de Pedidos (objetos). */
+function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
+  var validos = pedidos.filter(function (p) { return p.fecha >= desde && p.fecha < hasta; });
+  var cancel = validos.filter(function (p) { return p.estado === 'Cancelado'; }).length;
+  var ok = validos.filter(function (p) { return p.estado !== 'Cancelado'; });
+  var ventas = 0, porDia = {}, porHora = {}, porCanal = {}, porProd = {};
+  ok.forEach(function (p) {
+    var t = Number(p.total) || 0; ventas += t;
+    var dia = zonaFmt(p.fecha, 'yyyy-MM-dd'), hora = zonaFmt(p.fecha, 'HH');
+    porDia[dia] = (porDia[dia] || 0) + t;
+    porHora[hora] = (porHora[hora] || 0) + 1;
+    var c = p.canal === 'mesa' ? 'Mesa' : p.canal === 'recojo' ? 'Recojo' : 'Delivery';
+    if (!porCanal[c]) porCanal[c] = { pedidos: 0, ventas: 0 };
+    porCanal[c].pedidos++; porCanal[c].ventas += t;
+    var items = []; try { items = JSON.parse(p.items_json || '[]'); } catch (e) { items = []; }
+    items.forEach(function (l) {
+      var k = l.nombre + (l.tam ? ' (' + l.tam + ')' : '');
+      if (!porProd[k]) porProd[k] = { nombre: k, cant: 0, ventas: 0 };
+      porProd[k].cant += l.cant; porProd[k].ventas += l.subtotal;
+    });
+  });
+  var top = Object.keys(porProd).map(function (k) { return porProd[k]; })
+    .sort(function (a, b) { return b.cant - a.cant || b.ventas - a.ventas; }).slice(0, 10);
+  return {
+    ventas: Math.round(ventas * 100) / 100, pedidos: ok.length, cancelados: cancel,
+    ticket: ok.length ? Math.round(ventas / ok.length * 100) / 100 : 0,
+    porDia: porDia, porHora: porHora, porCanal: porCanal, top: top
+  };
+}
+
+/* =========================== API PÚBLICA (web) =========================== */
+function doGet(e) {
+  var cfg = leerConfig_();
+  var momento = momentoActual_(cfg);
+  return json_({ ok: true, servicio: 'Pasta Gallo', abierto: estaAbierto_(cfg, momento), pedidos: esSi_(cfg.pedidos_activos) });
+}
+
+function doPost(e) {
+  var res;
+  try {
+    var body = JSON.parse(e && e.postData && e.postData.contents || '{}');
+    res = registrarPedido_(body);
+  } catch (err) {
+    console.error(err);
+    res = { ok: false, error: 'No pudimos registrar tu pedido. Intenta de nuevo o escríbenos por WhatsApp.' };
+  }
+  return json_(res);
+}
+
+function json_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function momentoActual_(cfg) {
+  var zona = cfg.zona_horaria || 'America/Lima';
+  var ahora = new Date();
+  var u = Number(Utilities.formatDate(ahora, zona, 'u')); // 1 = lunes ... 7 = domingo
+  var hm = Utilities.formatDate(ahora, zona, 'HH:mm');
+  return { dia: u % 7, min: minutos_(hm) };
+}
+
+function registrarPedido_(body) {
+  if (body && body.web) return { ok: true, numero: 0 }; // trampa para robots
+  if (JSON.stringify(body).length > 20000) return { ok: false, error: 'Pedido demasiado grande.' };
+
+  var cache = CacheService.getScriptCache();
+  var minuto = 'min:' + Math.floor(Date.now() / 60000);
+  var cuenta = Number(cache.get(minuto) || 0);
+  if (cuenta >= 25) return { ok: false, error: 'Estamos recibiendo muchos pedidos. Intenta en un minuto.' };
+  cache.put(minuto, String(cuenta + 1), 120);
+
+  var cfg = leerConfig_();
+  var cat = leerCatalogo_();
+  var r = calcularPedido_(body, cat, cfg, momentoActual_(cfg));
+  if (!r.ok) return r;
+
+  if (r.canal !== 'mesa') {
+    var kt = 'tel:' + r.cliente.telefono;
+    var nt = Number(cache.get(kt) || 0);
+    if (nt >= 4) return { ok: false, error: 'Ya recibimos varios pedidos de este número. Escríbenos por WhatsApp.' };
+    cache.put(kt, String(nt + 1), 900);
+  } else {
+    var km = 'mesa:' + r.mesa;
+    var nm = Number(cache.get(km) || 0);
+    if (nm >= 8) return { ok: false, error: 'Tu mesa envió varios pedidos seguidos. Llama a tu mozo.' };
+    cache.put(km, String(nm + 1), 600);
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var numero = Number(props.getProperty('ULTIMO_PEDIDO') || 0) + 1;
+    props.setProperty('ULTIMO_PEDIDO', String(numero));
+    var ahora = new Date();
+    var fila = {
+      numero: numero, fecha: ahora, canal: r.canal, mesa: r.mesa, nombre: r.cliente.nombre,
+      telefono: r.cliente.telefono, direccion: r.cliente.direccion, referencia: r.cliente.referencia,
+      pago: r.cliente.pago, programado: r.programado, detalle: r.detalle, total: r.total, estado: 'Nuevo',
+      notas: r.cliente.notas, items_json: JSON.stringify(r.lineas), actualizado: ahora, historial: 'Nuevo ' + fmt_(ahora, 'HH:mm')
+    };
+    var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
+    h.appendRow(COLS.pedidos.map(function (c) { return protegerCelda_(fila[c]); }));
+    props.setProperty('PEDIDOS_VERSION', String(Date.now()));
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, numero: numero, total: r.total, detalle: r.detalle, lineas: r.lineas };
+}
+
+/** Evita que un texto escrito por el cliente se interprete como fórmula en el Sheets. */
+function protegerCelda_(v) {
+  if (typeof v === 'string' && /^[=+\-@]/.test(v)) return "'" + v;
+  return v;
+}
+
+function fmt_(fecha, patron) {
+  var cfg = leerConfig_();
+  return Utilities.formatDate(fecha, cfg.zona_horaria || 'America/Lima', patron);
+}
+
+/* =========================== SEGURIDAD DEL PANEL =========================== */
+function exigirAdmin_() {
+  var email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
+  if (!email) throw new Error('No pudimos identificar tu cuenta de Google. Abre el panel desde el menú del Google Sheets.');
+  var ss = SpreadsheetApp.getActive();
+  var permitidos = ss.getEditors().map(function (u) { return String(u.getEmail()).toLowerCase(); });
+  try { permitidos.push(String(ss.getOwner().getEmail()).toLowerCase()); } catch (e) { /* sin dueño visible */ }
+  String(leerConfig_().admins || '').split(',').forEach(function (x) { if (x.trim()) permitidos.push(x.trim().toLowerCase()); });
+  if (permitidos.indexOf(email) < 0) throw new Error('Tu cuenta (' + email + ') no tiene permiso para usar el panel.');
+  return email;
+}
+
+/* =========================== FUNCIONES DEL PANEL =========================== */
+function panelInicio() {
+  var email = exigirAdmin_();
+  var cfg = leerConfig_();
+  var props = PropertiesService.getScriptProperties();
+  return {
+    usuario: email, estados: ESTADOS, alergenos: ALERGENOS,
+    sitio: cfg.sitio_url || '', repo: cfg.github_repo || '', rama: cfg.github_rama || 'main',
+    api: cfg.api_url || '', tokenListo: !!props.getProperty('GITHUB_TOKEN'),
+    pendientes: props.getProperty('CAMBIOS_PENDIENTES') === 'SI',
+    ultimaPublicacion: props.getProperty('ULTIMA_PUBLICACION') || '',
+    abierto: estaAbierto_(cfg, momentoActual_(cfg))
+  };
+}
+
+function pedidoAObjeto_(p, zona) {
+  return {
+    numero: p.numero, fecha: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'dd/MM HH:mm') : String(p.fecha),
+    hora: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'HH:mm') : '',
+    dia: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'yyyy-MM-dd') : '',
+    canal: p.canal, mesa: p.mesa, nombre: p.nombre, telefono: String(p.telefono || ''), direccion: p.direccion,
+    referencia: p.referencia, pago: p.pago, programado: p.programado, detalle: p.detalle, total: Number(p.total) || 0,
+    estado: p.estado, notas: p.notas, historial: p.historial
+  };
+}
+
+/** Lista de pedidos para el panel. modo = 'activos' | 'hoy' | 'todos' (últimos 300). */
+function listarPedidos(modo) {
+  exigirAdmin_();
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var hoy = Utilities.formatDate(new Date(), zona, 'yyyy-MM-dd');
+  var filas = leerTabla_(HOJA.pedidos).map(function (p) { return pedidoAObjeto_(p, zona); });
+  var activos = ['Nuevo', 'Confirmado', 'En preparación', 'Listo', 'En camino'];
+  if (modo === 'activos') filas = filas.filter(function (p) { return activos.indexOf(p.estado) >= 0; });
+  else if (modo === 'hoy') filas = filas.filter(function (p) { return p.dia === hoy; });
+  filas = filas.slice(-300).reverse();
+  return { pedidos: filas, version: PropertiesService.getScriptProperties().getProperty('PEDIDOS_VERSION') || '' };
+}
+
+function versionPedidos() {
+  exigirAdmin_();
+  return PropertiesService.getScriptProperties().getProperty('PEDIDOS_VERSION') || '';
+}
+
+function cambiarEstado(numero, estado) {
+  var email = exigirAdmin_();
+  if (ESTADOS.indexOf(estado) < 0) throw new Error('Estado no válido.');
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
+  var n = h.getLastRow();
+  if (n < 2) throw new Error('No hay pedidos.');
+  var nums = h.getRange(2, 1, n - 1, 1).getValues();
+  for (var i = nums.length - 1; i >= 0; i--) {
+    if (String(nums[i][0]) === String(numero)) {
+      var fila = i + 2;
+      var cEst = COLS.pedidos.indexOf('estado') + 1, cAct = COLS.pedidos.indexOf('actualizado') + 1, cHis = COLS.pedidos.indexOf('historial') + 1;
+      var ahora = new Date();
+      h.getRange(fila, cEst).setValue(estado);
+      h.getRange(fila, cAct).setValue(ahora);
+      var his = String(h.getRange(fila, cHis).getValue() || '');
+      h.getRange(fila, cHis).setValue((his ? his + ' · ' : '') + estado + ' ' + fmt_(ahora, 'HH:mm') + ' (' + email.split('@')[0] + ')');
+      PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+      return true;
+    }
+  }
+  throw new Error('No se encontró el pedido #' + numero);
+}
+
+function dashboard(periodo) {
+  exigirAdmin_();
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var ahora = new Date();
+  var hoyStr = Utilities.formatDate(ahora, zona, 'yyyy-MM-dd');
+  var inicioHoy = Utilities.parseDate(hoyStr + ' 00:00', zona, 'yyyy-MM-dd HH:mm');
+  var dias = { hoy: 1, '7': 7, '30': 30, '90': 90 }[periodo] || 7;
+  var desde = new Date(inicioHoy.getTime() - (dias - 1) * 86400000);
+  if (periodo === 'mes') desde = Utilities.parseDate(hoyStr.slice(0, 8) + '01 00:00', zona, 'yyyy-MM-dd HH:mm');
+  var hasta = new Date(inicioHoy.getTime() + 86400000);
+  var pedidos = leerTabla_(HOJA.pedidos).filter(function (p) { return p.fecha instanceof Date; });
+  var r = calcularDashboard_(pedidos, desde, hasta, function (f, pat) { return Utilities.formatDate(f, zona, pat); });
+  var lista = [];
+  for (var t = desde.getTime(); t < hasta.getTime(); t += 86400000) {
+    var k = Utilities.formatDate(new Date(t + 3600000 * 12), zona, 'yyyy-MM-dd');
+    if (lista.indexOf(k) < 0) lista.push(k);
+  }
+  r.dias = lista.map(function (k) { return [k, Math.round((r.porDia[k] || 0) * 100) / 100]; });
+  return r;
+}
+
+/* ---------- carta ---------- */
+function listarCarta() {
+  exigirAdmin_();
+  return { secciones: leerTabla_(HOJA.secciones), productos: leerTabla_(HOJA.productos) };
+}
+
+function guardarProducto(p) {
+  exigirAdmin_();
+  if (!p || !String(p.nombre || '').trim()) throw new Error('El producto necesita un nombre.');
+  var secs = leerTabla_(HOJA.secciones).map(function (s) { return String(s.id); });
+  if (secs.indexOf(String(p.seccion)) < 0) throw new Error('Elige una sección válida.');
+  if (String(p.precio).trim() !== '' && num_(p.precio) == null) throw new Error('El precio debe ser un número (ej.: 32 o 32.50).');
+  if (String(p.recargo || '').trim() !== '' && num_(p.recargo) == null) throw new Error('El recargo debe ser un número.');
+  if (p.tamanos && !parsearTamanos_(p.tamanos).length) throw new Error('Tamaños: usa el formato Personale=22; Media=33; Famiglia=50');
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.productos);
+  var datos = leerTabla_(HOJA.productos);
+  if (!p.id) {
+    var base = String(p.seccion) + '-' + String(p.nombre).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    var id = base, k = 2;
+    while (datos.some(function (d) { return String(d.id) === id; })) id = base + '-' + (k++);
+    p.id = id;
+  }
+  var limpio = {};
+  COLS.productos.forEach(function (c) {
+    var v = p[c] == null ? '' : p[c];
+    if (typeof v === 'string') v = v.trim();
+    if (['requiere_salsa', 'disponible', 'visible'].indexOf(c) >= 0) v = esSi_(v) ? 'SI' : 'NO';
+    if (c === 'precio' || c === 'recargo' || c === 'orden') v = v === '' ? '' : num_(v);
+    limpio[c] = v;
+  });
+  if (!limpio.tipo) limpio.tipo = 'plato';
+  var fila = COLS.productos.map(function (c) { return limpio[c]; });
+  var ex = datos.filter(function (d) { return String(d.id) === String(p.id); })[0];
+  if (ex) h.getRange(ex._fila, 1, 1, fila.length).setValues([fila]);
+  else h.appendRow(fila);
+  marcarPendiente_();
+  return limpio;
+}
+
+function cambiarCampoProducto(id, campo, valor) {
+  exigirAdmin_();
+  if (['disponible', 'visible'].indexOf(campo) < 0) throw new Error('Campo no permitido.');
+  var p = leerTabla_(HOJA.productos).filter(function (d) { return String(d.id) === String(id); })[0];
+  if (!p) throw new Error('Producto no encontrado.');
+  SpreadsheetApp.getActive().getSheetByName(HOJA.productos).getRange(p._fila, COLS.productos.indexOf(campo) + 1).setValue(valor ? 'SI' : 'NO');
+  marcarPendiente_();
+  return true;
+}
+
+function marcarPendiente_() {
+  limpiarCache_();
+  PropertiesService.getScriptProperties().setProperty('CAMBIOS_PENDIENTES', 'SI');
+}
+
+/* ---------- ajustes ---------- */
+var CLAVES_EDITABLES = ['nombre', 'desde', 'direccion', 'telefono', 'whatsapp', 'mensaje_whatsapp', 'instagram', 'tiktok',
+  'facebook_url', 'horario_texto', 'cerrado_texto', 'horario_lunes', 'horario_martes', 'horario_miercoles', 'horario_jueves',
+  'horario_viernes', 'horario_sabado', 'horario_domingo', 'historia_eyebrow', 'historia_titulo', 'historia_texto',
+  'pedidos_activos', 'pedidos_fuera_de_horario', 'pedidos_mesa_activos', 'metodos_pago', 'recojo_activo', 'texto_delivery',
+  'api_url', 'sitio_url', 'github_repo', 'github_rama', 'admins'];
+
+function leerAjustes() {
+  exigirAdmin_();
+  var cfg = leerConfig_(), o = {};
+  CLAVES_EDITABLES.forEach(function (k) { o[k] = cfg[k] == null ? '' : String(cfg[k]); });
+  return o;
+}
+
+function guardarAjustes(o) {
+  exigirAdmin_();
+  Object.keys(o || {}).forEach(function (k) {
+    if (CLAVES_EDITABLES.indexOf(k) < 0) return;
+    var v = String(o[k] == null ? '' : o[k]).trim();
+    if (/^horario_(lunes|martes|miercoles|jueves|viernes|sabado|domingo)$/.test(k) && v && v.toLowerCase() !== 'cerrado'
+      && !/^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/.test(v)) throw new Error('Horario no válido en ' + k + '. Usa 18:00-23:00 o cerrado.');
+    if (k === 'whatsapp') v = v.replace(/\D/g, '');
+    guardarClave_(k, v);
+  });
+  actualizarLinksMesas_();
+  marcarPendiente_();
+  return true;
+}
+
+function guardarTokenGithub(token) {
+  exigirAdmin_();
+  token = String(token || '').trim();
+  if (!token) { PropertiesService.getScriptProperties().deleteProperty('GITHUB_TOKEN'); return { ok: true, mensaje: 'Token borrado.' }; }
+  var cfg = leerConfig_();
+  var r = UrlFetchApp.fetch('https://api.github.com/repos/' + cfg.github_repo, {
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' }, muteHttpExceptions: true
+  });
+  if (r.getResponseCode() !== 200) throw new Error('GitHub rechazó el token (código ' + r.getResponseCode() + '). Revisa que tenga acceso al repositorio ' + cfg.github_repo + '.');
+  var perm = JSON.parse(r.getContentText()).permissions || {};
+  if (perm.push === false) throw new Error('El token puede leer pero no escribir. Dale permiso "Contents: Read and write".');
+  PropertiesService.getScriptProperties().setProperty('GITHUB_TOKEN', token);
+  return { ok: true, mensaje: 'Token guardado y verificado.' };
+}
+
+/* ---------- publicar en GitHub ---------- */
+function githubPut_(ruta, base64, mensaje) {
+  var cfg = leerConfig_();
+  var token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  if (!token) throw new Error('Falta conectar GitHub. Ve a Ajustes → GitHub y pega el token.');
+  var rama = cfg.github_rama || 'main';
+  var url = 'https://api.github.com/repos/' + cfg.github_repo + '/contents/' + ruta.split('/').map(encodeURIComponent).join('/');
+  var h = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  var g = UrlFetchApp.fetch(url + '?ref=' + encodeURIComponent(rama), { headers: h, muteHttpExceptions: true });
+  var cuerpo = { message: mensaje, content: base64, branch: rama };
+  if (g.getResponseCode() === 200) cuerpo.sha = JSON.parse(g.getContentText()).sha;
+  var r = UrlFetchApp.fetch(url, { method: 'put', headers: h, contentType: 'application/json',
+    payload: JSON.stringify(cuerpo), muteHttpExceptions: true });
+  if (r.getResponseCode() >= 300) {
+    var msg = ''; try { msg = JSON.parse(r.getContentText()).message; } catch (e) { msg = r.getContentText().slice(0, 200); }
+    throw new Error('GitHub respondió ' + r.getResponseCode() + ': ' + msg);
+  }
+  return JSON.parse(r.getContentText());
+}
+
+function publicarCarta() {
+  var email = exigirAdmin_();
+  var cfg = leerConfig_();
+  var carta = construirCarta_(cfg, leerTabla_(HOJA.secciones), leerTabla_(HOJA.productos));
+  var zona = cfg.zona_horaria || 'America/Lima';
+  carta.publicado = Utilities.formatDate(new Date(), zona, "yyyy-MM-dd'T'HH:mm:ssXXX");
+  var js = '/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (' + carta.publicado + ').\n' +
+    '   No lo edites a mano: cambia los datos en el panel y pulsa "Publicar". */\n' +
+    'window.CARTA = ' + JSON.stringify(carta, null, 1) + ';\n';
+  githubPut_('menu-data.js', Utilities.base64Encode(js, Utilities.Charset.UTF_8), 'Carta publicada desde el panel por ' + email.split('@')[0]);
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('CAMBIOS_PENDIENTES', 'NO');
+  props.setProperty('ULTIMA_PUBLICACION', Utilities.formatDate(new Date(), zona, 'dd/MM/yyyy HH:mm'));
+  limpiarCache_();
+  return { ok: true, mensaje: 'Listo. La web se actualizará en 1 o 2 minutos.' };
+}
+
+/* ---------- fotos ---------- */
+function subirFoto(id, base64) {
+  exigirAdmin_();
+  base64 = String(base64 || '').replace(/^data:image\/\w+;base64,/, '');
+  if (!base64 || base64.length > 2500000) throw new Error('La foto es demasiado grande.');
+  var p = leerTabla_(HOJA.productos).filter(function (d) { return String(d.id) === String(id); })[0];
+  if (!p) throw new Error('Producto no encontrado.');
+  var ruta = 'fotos/' + String(id).replace(/[^a-z0-9-]/g, '') + '-' + Date.now() + '.jpg';
+  githubPut_(ruta, base64, 'Foto de ' + p.nombre);
+  SpreadsheetApp.getActive().getSheetByName(HOJA.productos).getRange(p._fila, COLS.productos.indexOf('foto') + 1).setValue(ruta);
+  marcarPendiente_();
+  return ruta;
+}
+
+/* ---------- mesas ---------- */
+function codigoMesa_() {
+  var a = 'abcdefghjkmnpqrstuvwxyz23456789', s = '';
+  for (var i = 0; i < 6; i++) s += a.charAt(Math.floor(Math.random() * a.length));
+  return s;
+}
+
+function linkMesa_(cfg, mesa, codigo) {
+  var base = String(cfg.sitio_url || '').replace(/\/+$/, '');
+  return base ? base + '/mesa?m=' + encodeURIComponent(mesa) + '&c=' + encodeURIComponent(codigo) : '';
+}
+
+function actualizarLinksMesas_() {
+  var cfg = leerConfig_();
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.mesas);
+  if (!h || h.getLastRow() < 2) return;
+  var v = h.getRange(2, 1, h.getLastRow() - 1, 4).getValues();
+  v.forEach(function (r) { r[3] = r[0] ? linkMesa_(cfg, r[0], r[1]) : ''; });
+  h.getRange(2, 1, v.length, 4).setValues(v);
+  limpiarCache_();
+}
+
+function listarMesas() {
+  exigirAdmin_();
+  actualizarLinksMesas_();
+  return leerTabla_(HOJA.mesas).map(function (m) { return { mesa: String(m.mesa), codigo: String(m.codigo), activa: esSi_(m.activa), link: m.link }; });
+}
+
+function nuevaMesa(nombre) {
+  exigirAdmin_();
+  nombre = texto_(nombre, 6);
+  if (!nombre) throw new Error('Escribe el número o nombre de la mesa (máx. 6 caracteres).');
+  if (leerTabla_(HOJA.mesas).some(function (m) { return String(m.mesa) === nombre; })) throw new Error('Esa mesa ya existe.');
+  SpreadsheetApp.getActive().getSheetByName(HOJA.mesas).appendRow([nombre, codigoMesa_(), 'SI', '']);
+  return listarMesas();
+}
+
+function cambiarCodigoMesa(nombre) {
+  exigirAdmin_();
+  var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(nombre); })[0];
+  if (!m) throw new Error('Mesa no encontrada.');
+  SpreadsheetApp.getActive().getSheetByName(HOJA.mesas).getRange(m._fila, 2).setValue(codigoMesa_());
+  return listarMesas();
+}
+
+function activarMesa(nombre, activa) {
+  exigirAdmin_();
+  var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(nombre); })[0];
+  if (!m) throw new Error('Mesa no encontrada.');
+  SpreadsheetApp.getActive().getSheetByName(HOJA.mesas).getRange(m._fila, 3).setValue(activa ? 'SI' : 'NO');
+  return listarMesas();
+}

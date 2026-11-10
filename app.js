@@ -3,6 +3,12 @@
   "use strict";
   var C = window.CARTA;
   var N = C.negocio;
+  var PED = window.PG_PEDIDO || null;
+  /* Si la carta ya tiene su link propio, el link viejo de GitHub Pages redirige allí. */
+  if (N.sitioUrl && /\.github\.io$/.test(location.hostname) && N.sitioUrl.indexOf(location.hostname) < 0) {
+    var dest = N.sitioUrl + location.pathname.replace(/^\/[^\/]+/, "").replace(/\.html$/, "") + location.search;
+    location.replace(dest); return;
+  }
   document.documentElement.classList.add("js");
 
   /* ---------- utilidades ---------- */
@@ -109,6 +115,7 @@
     estadoBarra.className = "estado " + (e.abierto ? "abierto" : "cerrado");
     estadoBarra.textContent = "";
     estadoBarra.appendChild(h("i"));
+    if (PED && PED.modo === "mesa" && PED.mesa) estadoBarra.appendChild(h("span", "estado__mesa", "Mesa " + PED.mesa));
     if (e.abierto) {
       var s = h("span"); s.appendChild(document.createTextNode("Abierto ahora · hasta las ")); s.appendChild(h("b", null, e.cierra));
       estadoBarra.appendChild(s);
@@ -117,15 +124,25 @@
       estadoBarra.appendChild(s2);
     }
     bienvenida.textContent = "";
-    if (e.abierto) {
-      bienvenida.appendChild(h("h1", null, "Bienvenido a Pasta Gallo"));
-      bienvenida.appendChild(h("p", null, "Estamos abiertos hasta las " + e.cierra + ". Elige tu plato favorito y realiza tu pedido ahora."));
+    var conCarrito = PED && PED.activo();
+    var titulo = "Bienvenido a Pasta Gallo", texto;
+    if (PED && PED.modo === "mesa") {
+      if (!PED.mesaValida()) texto = "Para pedir desde tu mesa, escanea el código QR que está en ella. Mientras tanto, puedes ver la carta.";
+      else if (!e.abierto) { titulo = "Mesa " + PED.mesa; texto = "En este momento el restaurante está cerrado. Abrimos " + e.cuando + "."; }
+      else if (!conCarrito) { titulo = "Mesa " + PED.mesa; texto = "Bienvenido. Revisa la carta y haz tu pedido a tu mozo."; }
+      else { titulo = "Bienvenido a la Mesa " + PED.mesa; texto = "Elige tus platos y envía tu pedido desde aquí. Tu mozo lo confirmará en unos minutos."; }
+    } else if (e.abierto) {
+      texto = conCarrito
+        ? "Estamos abiertos hasta las " + e.cierra + ". Arma tu pedido aquí mismo: delivery o recojo en el local."
+        : "Estamos abiertos hasta las " + e.cierra + ". Elige tu plato favorito y realiza tu pedido ahora.";
     } else {
-      bienvenida.appendChild(h("h1", null, "Bienvenido a Pasta Gallo"));
-      bienvenida.appendChild(h("p", null, "En este momento estamos descansando. Abrimos " + e.cuando + ". Mientras tanto, recorre nuestra carta con calma."));
+      texto = "En este momento estamos descansando. Abrimos " + e.cuando + ". " +
+        (conCarrito && PED.aceptaAhora() ? "Ya puedes dejar tu pedido programado." : "Mientras tanto, recorre nuestra carta con calma.");
     }
+    bienvenida.appendChild(h("h1", null, titulo));
+    bienvenida.appendChild(h("p", null, texto));
     var pedir = q("#btn-pedir");
-    if (pedir) pedir.lastChild.textContent = e.abierto ? "Realizar mi pedido" : "Escríbenos por WhatsApp";
+    if (pedir && !conCarrito) pedir.lastChild.textContent = e.abierto ? "Realizar mi pedido" : "Escríbenos por WhatsApp";
     if (fabTxt) fabTxt.textContent = e.abierto ? "Pedir ahora" : "WhatsApp";
   }
 
@@ -142,10 +159,20 @@
     tri.appendChild(h("span")); tri.appendChild(h("span")); tri.appendChild(h("span")); in_.appendChild(tri);
     bienvenida = h("div", "bienvenida"); in_.appendChild(bienvenida);
     var ac = h("div", "acciones");
-    var a1 = h("a", "btn btn--oro"); a1.id = "btn-pedir"; a1.href = waUrl(); a1.target = "_blank"; a1.rel = "noopener";
-    a1.appendChild(waSvg()); a1.appendChild(document.createTextNode("Realizar mi pedido"));
-    var a2 = h("a", "btn btn--linea", "Ver la carta"); a2.href = "#carta-inicio";
-    ac.appendChild(a1); ac.appendChild(a2); in_.appendChild(ac);
+    if (PED && PED.activo()) {
+      var b1 = h("a", "btn btn--oro", PED.modo === "mesa" ? "Ver la carta y pedir" : "Hacer mi pedido"); b1.href = "#carta-inicio";
+      ac.appendChild(b1);
+      if (PED.modo !== "mesa") {
+        var b2 = h("a", "btn btn--linea"); b2.href = waUrl(); b2.target = "_blank"; b2.rel = "noopener";
+        b2.appendChild(waSvg()); b2.appendChild(document.createTextNode("Consultas por WhatsApp")); ac.appendChild(b2);
+      }
+    } else {
+      var a1 = h("a", "btn btn--oro"); a1.id = "btn-pedir"; a1.href = waUrl(); a1.target = "_blank"; a1.rel = "noopener";
+      a1.appendChild(waSvg()); a1.appendChild(document.createTextNode("Realizar mi pedido"));
+      var a2 = h("a", "btn btn--linea", "Ver la carta"); a2.href = "#carta-inicio";
+      ac.appendChild(a1); ac.appendChild(a2);
+    }
+    in_.appendChild(ac);
     s.appendChild(in_);
     return s;
   }
@@ -184,7 +211,7 @@
   }
 
   /* ---------- plato ---------- */
-  function plato(it, esSalsa) {
+  function plato(it, sec) {
     var a = h("article", "it rev");
     if (it.destacado === "tris") a.className += " it--dest";
     var tieneFoto = !!it.foto;
@@ -213,6 +240,9 @@
       });
       a.appendChild(al);
     }
+    if (it.agotado && it.tipo !== "salsa") a.appendChild(h("span", "agotado", "Agotado por hoy"));
+    else if (it.agotado) a.appendChild(h("span", "agotado", "No disponible hoy"));
+    if (PED && PED.puedePedir(it, sec)) a.appendChild(PED.boton(it));
     if (tieneFoto) {
       var im = h("img", "foto"); im.src = it.foto; im.alt = it.n; im.loading = "lazy";
       im.onerror = function () { a.className = a.className.replace(" fcon", ""); im.remove(); };
@@ -255,7 +285,7 @@
         gc.appendChild(ornamento());
         gr.appendChild(gc);
       }
-      g.items.forEach(function (it) { if (it.al && it.al.length) hayAlergenos = true; gr.appendChild(plato(it)); });
+      g.items.forEach(function (it) { if (it.al && it.al.length) hayAlergenos = true; gr.appendChild(plato(it, sec)); });
       cuerpo.appendChild(gr);
     });
     if (sec.pie) cuerpo.appendChild(h("div", "pie", sec.pie));
@@ -362,6 +392,8 @@
 
   /* ---------- construcción ---------- */
   function construir() {
+    window.PG = { h: h, estadoActual: estadoActual, dinero: dinero, waUrl: waUrl };
+    if (PED) { PED.iniciar(window.PG); document.body.classList.add("modo-" + PED.modo); }
     var app = q("#app");
     estadoBarra = h("div", "estado"); estadoBarra.setAttribute("role", "status");
     document.body.insertBefore(estadoBarra, app);

@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+:root{--vino:#4a1519;--vino2:#6a2229;--oliva:#3b4128;--crema:#efe6d3;--crema3:#faf6ee;--oro:#a9803f;--oro2:#c9a45c;--tinta:#2a1b17;--gris:#6d625d;--ok:#1f7a45;--mal:#a3241e;--azul:#2d5d8a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--tinta);background:var(--crema3)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--vino);color:var(--crema)}
+header h1{font:600 18px Georgia,serif;letter-spacing:.02em;white-space:nowrap}
+header .yo{font-size:12px;opacity:.75}
+header .esp{flex:1}
+nav{display:flex;gap:2px}
+nav button{background:none;border:0;color:#e6d3b0;padding:8px 12px;border-bottom:2px solid transparent;font-weight:600;letter-spacing:.03em}
+nav button.on{color:#fff;border-bottom-color:var(--oro2)}
+.pub{background:var(--oro2);color:#2b0f10;border:0;padding:8px 14px;font-weight:700;border-radius:3px;position:relative}
+.pub.pend::after{content:"";position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#e04a3f;border:2px solid var(--vino)}
+main{padding:16px}
+.vista{display:none}.vista.on{display:block}
+.barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--oro);border-radius:4px;overflow:hidden}
+.seg button{background:#fff;border:0;padding:7px 12px;font-weight:600;color:var(--gris)}
+.seg button.on{background:var(--vino);color:#fff}
+.btn{background:#fff;border:1px solid #c9b48c;padding:7px 12px;border-radius:4px;font-weight:600;color:var(--tinta)}
+.btn:hover{background:#f6eedd}
+.btn.prim{background:var(--vino);border-color:var(--vino);color:#fff}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.mal{color:var(--mal);border-color:#e3b9b5}
+.btn.peq{padding:4px 9px;font-size:12px}
+.nota{font-size:12px;color:var(--gris)}
+.aviso{padding:10px 12px;border-radius:4px;background:#fff4d6;border:1px solid #ecd28c;margin-bottom:12px}
+.aviso.mal{background:#fde8e6;border-color:#f0b9b3}
+/* pedidos */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.ped{background:#fff;border:1px solid #e4d6bb;border-left:5px solid var(--gris);border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:7px}
+.ped.e-Nuevo{border-left-color:#e04a3f;box-shadow:0 0 0 2px #f6c9c4}
+.ped.e-Confirmado{border-left-color:var(--azul)}.ped.e-En-preparación{border-left-color:#c27c0e}
+.ped.e-Listo{border-left-color:#7a5bb5}.ped.e-Entregado{border-left-color:var(--ok);opacity:.8}.ped.e-Cancelado{opacity:.55}
+.ped.nuevo-flash{animation:flash 1s 3}
+@keyframes flash{50%{background:#ffe9b8}}
+.ped__cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ped__num{font:700 20px Georgia,serif;color:var(--vino)}
+.chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:#efe6d3}
+.chip.delivery{background:#dbe8f5;color:#1f4870}.chip.recojo{background:#e6f0dc;color:#36561b}.chip.mesa{background:#f4dfd0;color:#7a3311}
+.chip.est{background:#f1ece2}
+.ped pre{white-space:pre-wrap;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;background:#faf6ee;padding:8px;border-radius:3px}
+.ped__dato{font-size:13px}.ped__dato b{color:var(--gris);font-weight:600}
+.ped__tot{font:700 18px Georgia,serif;text-align:right}
+.ped__acc{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ped__acc select{padding:4px;border:1px solid #c9b48c;border-radius:4px}
+.vacio{padding:40px;text-align:center;color:var(--gris);background:#fff;border:1px dashed #d8c8a6;border-radius:6px}
+/* dashboard */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid #e4d6bb;border-radius:6px;padding:14px}
+.kpi span{display:block;font-size:12px;color:var(--gris);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.kpi strong{font:700 26px Georgia,serif;color:var(--vino)}
+.paneles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel{background:#fff;border:1px solid #e4d6bb;border-radius:6px;padding:14px}
+.panel h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--gris);margin-bottom:10px}
+.barras{display:flex;align-items:flex-end;gap:3px;height:160px;border-bottom:1px solid #d8c8a6}
+.barras div{flex:1;background:var(--vino2);min-height:1px;position:relative;border-radius:2px 2px 0 0}
+.barras div:hover{background:var(--oro)}
+.ejes{display:flex;gap:3px;font-size:10px;color:var(--gris);margin-top:4px}.ejes span{flex:1;text-align:center;overflow:hidden;white-space:nowrap}
+.filas{display:grid;gap:6px}
+.fila{display:grid;grid-template-columns:minmax(120px,1.2fr) 2fr auto;gap:8px;align-items:center;font-size:13px}
+.fila i{display:block;height:12px;background:var(--oro2);border-radius:2px}
+/* carta */
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e4d6bb}
+th,td{padding:7px 8px;border-bottom:1px solid #efe4cd;text-align:left;vertical-align:middle;font-size:13px}
+th{background:#f6eedd;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--gris);position:sticky;top:52px}
+td.min{width:1%;white-space:nowrap}
+.thumb{width:44px;height:44px;border-radius:4px;object-fit:cover;background:#efe6d3;display:block}
+.sw{position:relative;width:40px;height:22px;border-radius:11px;background:#cfc3ad;border:0;transition:.2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--ok)}.sw.on::after{left:21px}
+tr.oculto td{opacity:.5}
+input.txt,select.txt,textarea.txt{width:100%;padding:7px 9px;border:1px solid #c9b48c;border-radius:4px;background:#fff}
+textarea.txt{min-height:70px;resize:vertical}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 10px}
+.modal.on{display:flex}
+.caja{background:#fff;border-radius:6px;width:100%;max-width:760px;padding:18px;border-top:4px solid var(--vino)}
+.caja h2{font:600 20px Georgia,serif;color:var(--vino);margin-bottom:12px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--gris)}
+.form .ancho{grid-column:1/-1}
+.form .ayuda{font-weight:400}
+.checks{display:flex;flex-wrap:wrap;gap:6px 14px;font-weight:400;color:var(--tinta)}
+.checks label{flex-direction:row;align-items:center;gap:5px;font-weight:400;color:var(--tinta);font-size:13px}
+.pie{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.fotoBox{display:flex;gap:12px;align-items:center}
+.fotoBox img{width:96px;height:96px;object-fit:cover;border-radius:6px;background:#efe6d3}
+/* mesas */
+.mesas{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.mesa{background:#fff;border:1px solid #e4d6bb;border-radius:6px;padding:12px;text-align:center}
+.mesa h3{font:600 18px Georgia,serif;color:var(--vino)}
+.mesa .qr{display:flex;justify-content:center;margin:10px 0}
+.mesa .lnk{font-size:11px;word-break:break-all;color:var(--gris)}
+.mesa.inactiva{opacity:.5}
+/* ajustes */
+.grupo{background:#fff;border:1px solid #e4d6bb;border-radius:6px;padding:14px;margin-bottom:12px}
+.grupo h3{font:600 16px Georgia,serif;color:var(--vino);margin-bottom:10px}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(90px);background:#21100f;color:#fff;padding:10px 16px;border-radius:4px;transition:.3s;z-index:50;max-width:90%}
+.toast.on{transform:translateX(-50%)}
+.toast.mal{background:var(--mal)}
+.cargando{opacity:.55;pointer-events:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Pasta Gallo · Panel</h1>
+  <nav id="tabs">
+    <button data-v="pedidos" class="on">Pedidos</button>
+    <button data-v="dash">Dashboard</button>
+    <button data-v="carta">Carta y precios</button>
+    <button data-v="mesas">Mesas y QR</button>
+    <button data-v="ajustes">Ajustes</button>
+  </nav>
+  <span class="esp"></span>
+  <span class="yo" id="yo"></span>
+  <button class="pub" id="publicar" title="Sube los cambios de la carta a la web">Publicar carta</button>
+</header>
+
+<main>
+  <section class="vista on" id="v-pedidos">
+    <div class="barra">
+      <div class="seg" id="filtroPed">
+        <button data-f="activos" class="on">Activos</button><button data-f="hoy">Hoy</button><button data-f="todos">Últimos 300</button>
+      </div>
+      <button class="btn" id="sonido">🔔 Activar sonido</button>
+      <button class="btn" id="recargar">Actualizar</button>
+      <span class="nota" id="ultimaAct"></span>
+    </div>
+    <div id="avisoApi"></div>
+    <div class="grid" id="listaPed"></div>
+  </section>
+
+  <section class="vista" id="v-dash">
+    <div class="barra">
+      <div class="seg" id="filtroDash">
+        <button data-p="hoy">Hoy</button><button data-p="7" class="on">7 días</button><button data-p="30">30 días</button><button data-p="mes">Este mes</button><button data-p="90">90 días</button>
+      </div>
+      <span class="nota">No cuenta pedidos cancelados. Cancela los pedidos falsos para que no afecten las cifras.</span>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="paneles">
+      <div class="panel" style="grid-column:1/-1"><h3>Ventas por día</h3><div class="barras" id="gDias"></div><div class="ejes" id="eDias"></div></div>
+      <div class="panel"><h3>Productos más vendidos</h3><div class="filas" id="gTop"></div></div>
+      <div class="panel"><h3>Por canal</h3><div class="filas" id="gCanal"></div><h3 style="margin-top:18px">Pedidos por hora</h3><div class="barras" id="gHora" style="height:110px"></div><div class="ejes" id="eHora"></div></div>
+    </div>
+  </section>
+
+  <section class="vista" id="v-carta">
+    <div class="barra">
+      <select class="txt" id="fSec" style="width:auto"></select>
+      <input class="txt" id="fBus" placeholder="Buscar producto…" style="width:240px">
+      <button class="btn prim" id="nuevoProd">+ Nuevo producto</button>
+      <span class="nota">Los cambios se guardan en la hoja al instante. Para que se vean en la web pulsa <b>Publicar carta</b>.</span>
+    </div>
+    <table><thead><tr><th>Foto</th><th>Producto</th><th>Sección</th><th>Precio</th><th>Disponible hoy</th><th>Visible</th><th></th></tr></thead><tbody id="tProd"></tbody></table>
+  </section>
+
+  <section class="vista" id="v-mesas">
+    <div class="barra">
+      <input class="txt" id="nMesa" placeholder="Nº de mesa (ej.: 11)" style="width:180px">
+      <button class="btn prim" id="agregarMesa">+ Agregar mesa</button>
+      <button class="btn" id="imprimirQR">🖨 Imprimir QRs</button>
+      <span class="nota">Cada mesa tiene un código secreto en su QR. Si alguien lo copia y hace pedidos falsos, pulsa "Cambiar código" y reimprime solo ese QR.</span>
+    </div>
+    <div id="avisoSitio"></div>
+    <div class="mesas" id="lMesas"></div>
+  </section>
+
+  <section class="vista" id="v-ajustes">
+    <div id="ajustesForm"></div>
+    <div class="grupo">
+      <h3>Conexión con GitHub (para publicar la carta y las fotos)</h3>
+      <p class="nota" id="estadoToken"></p>
+      <div class="form" style="margin-top:8px">
+        <label class="ancho">Token de GitHub (empieza con github_pat_…)
+          <input class="txt" id="token" type="password" autocomplete="off" placeholder="Pega aquí el token. No se vuelve a mostrar.">
+        </label>
+      </div>
+      <div class="pie" style="justify-content:flex-start"><button class="btn prim" id="guardarToken">Guardar y verificar token</button></div>
+    </div>
+    <div class="pie"><button class="btn prim" id="guardarAjustes">Guardar ajustes</button></div>
+  </section>
+</main>
+
+<div class="modal" id="modal"><div class="caja" id="caja"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function(){
+"use strict";
+var INFO = {}, CARTA = {secciones:[], productos:[]}, PEDIDOS = [], VISTOS = {}, versionPed = '', sonido = false, filtro = 'activos';
+var SIG = { 'Nuevo':['Confirmado'], 'Confirmado':['En preparación'], 'En preparación':['Listo'], 'Listo':['En camino','Entregado'], 'En camino':['Entregado'] };
+
+/* ---------- utilidades ---------- */
+function run(fn){
+  var args = Array.prototype.slice.call(arguments,1);
+  return new Promise(function(ok,ko){ var r = google.script.run.withSuccessHandler(ok).withFailureHandler(ko); r[fn].apply(r,args); });
+}
+function $(s,c){return (c||document).querySelector(s);}
+function el(tag, props, hijos){
+  var e = document.createElement(tag);
+  if (props) Object.keys(props).forEach(function(k){
+    if (k === 'text') e.textContent = props[k];
+    else if (k === 'class') e.className = props[k];
+    else if (k.slice(0,2) === 'on') e.addEventListener(k.slice(2), props[k]);
+    else if (props[k] !== undefined && props[k] !== null && props[k] !== false) e.setAttribute(k, props[k] === true ? '' : props[k]);
+  });
+  (hijos||[]).forEach(function(h){ if (h != null) e.appendChild(typeof h === 'string' ? document.createTextNode(h) : h); });
+  return e;
+}
+function soles(n){ return 'S/ ' + Number(n||0).toFixed(2); }
+var tT; function toast(t, mal){ var x=$('#toast'); x.textContent=t; x.className='toast on'+(mal?' mal':''); clearTimeout(tT); tT=setTimeout(function(){x.className='toast';}, mal?6000:3000); }
+function error(e){ toast(String(e && e.message || e), true); }
+function fotoUrl(f){
+  if (!f) return '';
+  if (/^https?:/.test(f)) return f;
+  if (INFO.repo) return 'https://raw.githubusercontent.com/' + INFO.repo + '/' + (INFO.rama||'main') + '/' + f;
+  return '';
+}
+function telWa(t){ var d = String(t||'').replace(/\D/g,''); if (d.length === 9) d = '51' + d; return d; }
+
+/* ---------- navegación ---------- */
+$('#tabs').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#tabs button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  document.querySelectorAll('.vista').forEach(function(v){ v.classList.toggle('on', v.id === 'v-' + b.dataset.v); });
+  if (b.dataset.v === 'dash') cargarDash();
+  if (b.dataset.v === 'carta') cargarCarta();
+  if (b.dataset.v === 'mesas') cargarMesas();
+  if (b.dataset.v === 'ajustes') cargarAjustes();
+});
+
+/* ---------- publicar ---------- */
+$('#publicar').addEventListener('click', function(){
+  var b = this; b.disabled = true; b.textContent = 'Publicando…';
+  run('publicarCarta').then(function(r){ toast(r.mensaje); INFO.pendientes = false; pintarPub(); })
+    .catch(error).then(function(){ b.disabled = false; b.textContent = 'Publicar carta'; });
+});
+function pintarPub(){
+  var b = $('#publicar');
+  b.classList.toggle('pend', !!INFO.pendientes);
+  b.title = INFO.pendientes ? 'Hay cambios que todavía no se ven en la web' : ('Última publicación: ' + (INFO.ultimaPublicacion || '—'));
+}
+function marcarPendiente(){ INFO.pendientes = true; pintarPub(); }
+
+/* ---------- pedidos ---------- */
+$('#filtroPed').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  filtro = b.dataset.f;
+  this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  cargarPedidos();
+});
+$('#recargar').addEventListener('click', function(){ cargarPedidos(); });
+$('#sonido').addEventListener('click', function(){ sonido = !sonido; this.textContent = sonido ? '🔔 Sonido activado' : '🔔 Activar sonido'; if (sonido) beep(); });
+
+var ctxAudio;
+function beep(){
+  try {
+    ctxAudio = ctxAudio || new (window.AudioContext || window.webkitAudioContext)();
+    [0, .25, .5].forEach(function(t){
+      var o = ctxAudio.createOscillator(), g = ctxAudio.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(ctxAudio.destination);
+      g.gain.setValueAtTime(.25, ctxAudio.currentTime + t); g.gain.exponentialRampToValueAtTime(.001, ctxAudio.currentTime + t + .2);
+      o.start(ctxAudio.currentTime + t); o.stop(ctxAudio.currentTime + t + .22);
+    });
+  } catch(e) {}
+}
+
+function cargarPedidos(){
+  return run('listarPedidos', filtro).then(function(r){
+    var nuevos = r.pedidos.filter(function(p){ return p.estado === 'Nuevo' && !VISTOS[p.numero]; });
+    var primera = !Object.keys(VISTOS).length;
+    r.pedidos.forEach(function(p){ VISTOS[p.numero] = true; });
+    PEDIDOS = r.pedidos; versionPed = r.version;
+    pintarPedidos(primera ? [] : nuevos.map(function(p){ return p.numero; }));
+    if (!primera && nuevos.length) { if (sonido) beep(); document.title = '(' + nuevos.length + ') Nuevo pedido'; toast('Nuevo pedido #' + nuevos[0].numero); }
+    $('#ultimaAct').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
+  }).catch(error);
+}
+
+function pintarPedidos(destacar){
+  var g = $('#listaPed'); g.textContent = '';
+  if (!PEDIDOS.length) { g.appendChild(el('div', {class:'vacio', text: filtro === 'activos' ? 'No hay pedidos pendientes. Los nuevos aparecerán aquí solos.' : 'No hay pedidos en este periodo.'})); return; }
+  PEDIDOS.forEach(function(p){
+    var canalTxt = p.canal === 'mesa' ? 'Mesa ' + p.mesa : (p.canal === 'recojo' ? 'Recojo' : 'Delivery');
+    var card = el('div', {class:'ped e-' + String(p.estado).replace(/ /g,'-') + (destacar.indexOf(p.numero) >= 0 ? ' nuevo-flash' : '')}, [
+      el('div', {class:'ped__cab'}, [
+        el('span', {class:'ped__num', text:'#' + p.numero}),
+        el('span', null, [el('span', {class:'chip ' + p.canal, text: canalTxt}), ' ', el('span', {class:'chip est', text:p.estado})]),
+        el('span', {class:'nota', text:p.fecha})
+      ]),
+      p.programado ? el('div', {class:'aviso', text:'⏰ Programado para las ' + p.programado}) : null,
+      el('pre', {text: p.detalle}),
+      p.notas ? el('div', {class:'ped__dato'}, [el('b', {text:'Comentarios: '}), p.notas]) : null,
+      p.nombre ? el('div', {class:'ped__dato'}, [el('b', {text:'Cliente: '}), p.nombre]) : null,
+      p.telefono ? el('div', {class:'ped__dato'}, [el('b', {text:'Celular: '}), el('a', {href:'https://wa.me/' + telWa(p.telefono), target:'_blank', rel:'noopener', text:p.telefono})]) : null,
+      p.direccion ? el('div', {class:'ped__dato'}, [el('b', {text:'Dirección: '}), p.direccion + (p.referencia ? ' (' + p.referencia + ')' : '')]) : null,
+      p.pago ? el('div', {class:'ped__dato'}, [el('b', {text:'Pago: '}), p.pago]) : null,
+      el('div', {class:'ped__tot', text: soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '')}),
+      acciones(p)
+    ]);
+    g.appendChild(card);
+  });
+}
+
+function acciones(p){
+  var w = el('div', {class:'ped__acc'});
+  (SIG[p.estado] || []).forEach(function(s){
+    if (s === 'En camino' && p.canal !== 'delivery') return;
+    w.appendChild(el('button', {class:'btn ' + (s === 'Confirmado' ? 'ok' : 'prim') + ' peq', text: s === 'Confirmado' ? '✓ Confirmar' : '→ ' + s, onclick: function(){ cambiar(p, s); }}));
+  });
+  if (p.estado !== 'Cancelado' && p.estado !== 'Entregado') w.appendChild(el('button', {class:'btn mal peq', text:'Cancelar', onclick: function(){ if (confirm('¿Cancelar el pedido #' + p.numero + '?')) cambiar(p, 'Cancelado'); }}));
+  w.appendChild(el('button', {class:'btn peq', text:'🖨 Comanda', onclick: function(){ imprimirComanda(p); }}));
+  if (p.telefono && p.estado === 'Nuevo') {
+    var msg = 'Hola ' + (p.nombre||'') + ', somos Pasta Gallo. Confirmamos tu pedido #' + p.numero + ' por ' + soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '') + '. ¡Gracias!';
+    w.appendChild(el('a', {class:'btn peq', href:'https://wa.me/' + telWa(p.telefono) + '?text=' + encodeURIComponent(msg), target:'_blank', rel:'noopener', text:'WhatsApp'}));
+  }
+  var sel = el('select', {title:'Cambiar a cualquier estado', onchange: function(){ if (this.value) cambiar(p, this.value); }}, [el('option', {value:'', text:'Estado…'})]);
+  INFO.estados.forEach(function(s){ sel.appendChild(el('option', {value:s, text:s})); });
+  w.appendChild(sel);
+  return w;
+}
+
+function cambiar(p, estado){
+  run('cambiarEstado', p.numero, estado).then(function(){ toast('Pedido #' + p.numero + ': ' + estado); document.title = 'Panel · Pasta Gallo'; cargarPedidos(); }).catch(error);
+}
+
+function imprimirComanda(p){
+  var f = el('iframe', {style:'position:fixed;width:0;height:0;border:0'}); document.body.appendChild(f);
+  var d = f.contentDocument;
+  d.open(); d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font:13px monospace;width:72mm;margin:0;padding:4mm}h1{font-size:18px;margin:0}pre{white-space:pre-wrap;font:13px monospace}hr{border:0;border-top:1px dashed #000}</style></head><body></body></html>'); d.close();
+  var b = d.body;
+  var add = function(tag, t){ var e = d.createElement(tag); e.textContent = t; b.appendChild(e); };
+  add('h1', 'PEDIDO #' + p.numero);
+  add('div', (p.canal === 'mesa' ? 'MESA ' + p.mesa : p.canal.toUpperCase()) + ' · ' + p.fecha);
+  if (p.programado) add('div', 'PROGRAMADO: ' + p.programado);
+  b.appendChild(d.createElement('hr')); add('pre', p.detalle); b.appendChild(d.createElement('hr'));
+  if (p.notas) add('div', 'COMENTARIOS: ' + p.notas);
+  if (p.nombre) add('div', 'Cliente: ' + p.nombre);
+  if (p.telefono) add('div', 'Cel: ' + p.telefono);
+  if (p.direccion) add('div', 'Dir: ' + p.direccion + (p.referencia ? ' (' + p.referencia + ')' : ''));
+  if (p.pago) add('div', 'Pago: ' + p.pago);
+  add('h1', 'TOTAL ' + soles(p.total));
+  setTimeout(function(){ f.contentWindow.focus(); f.contentWindow.print(); setTimeout(function(){ f.remove(); }, 1500); }, 100);
+}
+
+setInterval(function(){
+  if (!$('#v-pedidos').classList.contains('on')) return;
+  run('versionPedidos').then(function(v){ if (v !== versionPed) cargarPedidos(); }).catch(function(){});
+}, 15000);
+
+/* ---------- dashboard ---------- */
+var periodo = '7';
+$('#filtroDash').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  periodo = b.dataset.p; this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  cargarDash();
+});
+function cargarDash(){
+  $('#v-dash').classList.add('cargando');
+  run('dashboard', periodo).then(pintarDash).catch(error).then(function(){ $('#v-dash').classList.remove('cargando'); });
+}
+function barras(cont, ejes, datos, fmt){
+  cont.textContent = ''; ejes.textContent = '';
+  var max = Math.max.apply(null, datos.map(function(d){ return d[1]; }).concat([1]));
+  var cada = Math.ceil(datos.length / 16);
+  datos.forEach(function(d, i){
+    cont.appendChild(el('div', {style:'height:' + (d[1] / max * 100) + '%', title: d[0] + ': ' + fmt(d[1])}));
+    ejes.appendChild(el('span', {text: i % cada === 0 ? d[0] : ''}));
+  });
+}
+function pintarDash(r){
+  var k = $('#kpis'); k.textContent = '';
+  [['Ventas', soles(r.ventas)], ['Pedidos', r.pedidos], ['Ticket promedio', soles(r.ticket)], ['Cancelados', r.cancelados]].forEach(function(x){
+    k.appendChild(el('div', {class:'kpi'}, [el('span', {text:x[0]}), el('strong', {text:String(x[1])})]));
+  });
+  barras($('#gDias'), $('#eDias'), r.dias.map(function(d){ return [d[0].slice(8) + '/' + d[0].slice(5,7), d[1]]; }), soles);
+  var horas = []; for (var h = 10; h <= 23; h++) { var hh = ('0' + h).slice(-2); horas.push([hh + 'h', r.porHora[hh] || 0]); }
+  barras($('#gHora'), $('#eHora'), horas, function(n){ return n + ' pedidos'; });
+  var t = $('#gTop'); t.textContent = '';
+  if (!r.top.length) t.appendChild(el('p', {class:'nota', text:'Aún no hay ventas en este periodo.'}));
+  var maxT = r.top.length ? r.top[0].cant : 1;
+  r.top.forEach(function(p){ t.appendChild(el('div', {class:'fila'}, [el('span', {text:p.nombre}), el('i', {style:'width:' + (p.cant / maxT * 100) + '%'}), el('span', {text: p.cant + ' u · ' + soles(p.ventas)})])); });
+  var c = $('#gCanal'); c.textContent = '';
+  var maxC = Math.max.apply(null, Object.keys(r.porCanal).map(function(x){ return r.porCanal[x].ventas; }).concat([1]));
+  Object.keys(r.porCanal).forEach(function(x){ var v = r.porCanal[x]; c.appendChild(el('div', {class:'fila'}, [el('span', {text:x}), el('i', {style:'width:' + (v.ventas / maxC * 100) + '%'}), el('span', {text: v.pedidos + ' ped. · ' + soles(v.ventas)})])); });
+  if (!Object.keys(r.porCanal).length) c.appendChild(el('p', {class:'nota', text:'Sin datos.'}));
+}
+
+/* ---------- carta ---------- */
+function cargarCarta(){
+  return run('listarCarta').then(function(r){
+    CARTA = r;
+    var f = $('#fSec'), val = f.value; f.textContent = '';
+    f.appendChild(el('option', {value:'', text:'Todas las secciones'}));
+    r.secciones.forEach(function(s){ f.appendChild(el('option', {value:s.id, text:s.titulo})); });
+    f.value = val; pintarCarta();
+  }).catch(error);
+}
+$('#fSec').addEventListener('change', pintarCarta);
+$('#fBus').addEventListener('input', pintarCarta);
+function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function titSec(id){ var s = CARTA.secciones.filter(function(x){ return String(x.id) === String(id); })[0]; return s ? s.titulo : id; }
+function pintarCarta(){
+  var tb = $('#tProd'); tb.textContent = '';
+  var fs = $('#fSec').value, q = norm($('#fBus').value);
+  CARTA.productos.filter(function(p){ return (!fs || p.seccion === fs) && (!q || norm(p.nombre + ' ' + p.glosa).indexOf(q) >= 0); })
+  .forEach(function(p){
+    var img = p.foto ? el('img', {class:'thumb', src: fotoUrl(p.foto), alt:'', loading:'lazy'}) : el('div', {class:'thumb'});
+    var precio = p.tamanos ? String(p.tamanos).replace(/;\s*/g, ' · ').replace(/=/g, ' S/ ') : (p.precio !== '' ? soles(p.precio) : (p.tipo === 'salsa' ? (p.recargo ? '+ ' + soles(p.recargo) : 'Incluida') : 'Sin precio'));
+    var tr = el('tr', {class: p.visible === 'NO' ? 'oculto' : ''}, [
+      el('td', {class:'min'}, [img]),
+      el('td', null, [el('strong', {text:p.nombre}), p.glosa ? el('div', {class:'nota', text:p.glosa}) : null]),
+      el('td', null, [titSec(p.seccion), p.grupo ? el('div', {class:'nota', text:p.grupo}) : null]),
+      el('td', {text: precio}),
+      el('td', {class:'min'}, [sw(p, 'disponible')]),
+      el('td', {class:'min'}, [sw(p, 'visible')]),
+      el('td', {class:'min'}, [el('button', {class:'btn peq', text:'Editar', onclick: function(){ editar(p); }})])
+    ]);
+    tb.appendChild(tr);
+  });
+}
+function sw(p, campo){
+  var b = el('button', {class:'sw' + (p[campo] === 'SI' ? ' on' : ''), title: campo === 'disponible' ? 'Apágalo cuando se agote' : 'Ocultar de la carta'});
+  b.addEventListener('click', function(){
+    var nuevo = p[campo] !== 'SI';
+    b.disabled = true;
+    run('cambiarCampoProducto', p.id, campo, nuevo).then(function(){ p[campo] = nuevo ? 'SI' : 'NO'; b.classList.toggle('on', nuevo); marcarPendiente(); pintarCarta(); })
+      .catch(error).then(function(){ b.disabled = false; });
+  });
+  return b;
+}
+$('#nuevoProd').addEventListener('click', function(){ editar({ seccion: $('#fSec').value || (CARTA.secciones[0]||{}).id, tipo:'plato', disponible:'SI', visible:'SI', requiere_salsa:'NO', orden: 999 }); });
+
+function campo(lbl, nombre, valor, tipo, extra){
+  var inp;
+  if (tipo === 'area') inp = el('textarea', {class:'txt', name:nombre});
+  else if (tipo === 'select') { inp = el('select', {class:'txt', name:nombre}); extra.opciones.forEach(function(o){ inp.appendChild(el('option', {value:o[0], text:o[1]})); }); }
+  else inp = el('input', {class:'txt', name:nombre, type: tipo || 'text'});
+  inp.value = valor == null ? '' : valor;
+  return el('label', {class: (extra && extra.ancho) ? 'ancho' : ''}, [lbl, inp, extra && extra.ayuda ? el('span', {class:'ayuda', text:extra.ayuda}) : null]);
+}
+function editar(p){
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text: p.id ? 'Editar: ' + p.nombre : 'Nuevo producto'}));
+  var f = el('form', {class:'form'});
+  var si = [['SI','Sí'],['NO','No']];
+  f.appendChild(campo('Nombre (italiano)', 'nombre', p.nombre));
+  f.appendChild(campo('Subtítulo en español (opcional)', 'glosa', p.glosa));
+  f.appendChild(campo('Descripción', 'descripcion', p.descripcion, 'area', {ancho:true}));
+  f.appendChild(campo('Sección', 'seccion', p.seccion, 'select', {opciones: CARTA.secciones.map(function(s){ return [s.id, s.titulo]; })}));
+  f.appendChild(campo('Grupo dentro de la sección (opcional)', 'grupo', p.grupo, 'text', {ayuda:'Ej.: Le Salse, Piatti Grandi'}));
+  f.appendChild(campo('Precio único', 'precio', p.precio, 'text', {ayuda:'Solo el número: 32 o 32.50. Vacío si tiene tamaños o se consulta.'}));
+  f.appendChild(campo('Tamaños (opcional)', 'tamanos', p.tamanos, 'text', {ayuda:'Formato: Personale=22; Media=33; Famiglia=50'}));
+  f.appendChild(campo('Tipo', 'tipo', p.tipo || 'plato', 'select', {opciones:[['plato','Plato o bebida'],['salsa','Salsa (para elegir con la pasta)']]}));
+  f.appendChild(campo('Recargo (salsas con adicional)', 'recargo', p.recargo, 'text', {ayuda:'Ej.: 8. Vacío si no tiene recargo.'}));
+  f.appendChild(campo('¿Debe elegir salsa?', 'requiere_salsa', p.requiere_salsa || 'NO', 'select', {opciones:si}));
+  f.appendChild(campo('Orden', 'orden', p.orden, 'number', {ayuda:'Número más bajo = aparece antes.'}));
+  f.appendChild(campo('Disponible hoy', 'disponible', p.disponible || 'SI', 'select', {opciones:si}));
+  f.appendChild(campo('Visible en la carta', 'visible', p.visible || 'SI', 'select', {opciones:si}));
+  var al = el('div', {class:'checks'});
+  var marcados = String(p.alergenos||'').split(',').map(function(x){ return x.trim(); });
+  Object.keys(INFO.alergenos).forEach(function(k){
+    var c = el('input', {type:'checkbox', value:k}); c.checked = marcados.indexOf(k) >= 0;
+    al.appendChild(el('label', null, [c, INFO.alergenos[k]]));
+  });
+  f.appendChild(el('label', {class:'ancho'}, ['Alérgenos (solo si están confirmados con cocina)', al]));
+  // foto
+  var prev = el('img', {src: fotoUrl(p.foto) || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', alt:''});
+  var archivo = el('input', {type:'file', accept:'image/*'});
+  var fotoEstado = el('span', {class:'nota', text: p.id ? 'JPG o PNG. Se reduce automáticamente.' : 'Guarda el producto primero para poder subir su foto.'});
+  if (!p.id) archivo.disabled = true;
+  archivo.addEventListener('change', function(){
+    var file = archivo.files[0]; if (!file) return;
+    fotoEstado.textContent = 'Subiendo…';
+    reducir(file, 1200, .82).then(function(dataUrl){
+      prev.src = dataUrl;
+      return run('subirFoto', p.id, dataUrl);
+    }).then(function(ruta){ p.foto = ruta; fotoEstado.textContent = 'Foto subida ✓ (publica la carta para verla en la web)'; marcarPendiente(); cargarCarta(); })
+      .catch(function(e){ fotoEstado.textContent = ''; error(e); });
+  });
+  var quitar = el('button', {type:'button', class:'btn peq mal', text:'Quitar foto', onclick: function(){ p.foto = ''; prev.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw='; fotoEstado.textContent = 'Pulsa Guardar para quitarla.'; }});
+  f.appendChild(el('div', {class:'ancho'}, [el('div', {class:'nota', text:'Foto'}), el('div', {class:'fotoBox'}, [prev, el('div', null, [archivo, el('br'), fotoEstado, el('br'), quitar])])]));
+  caja.appendChild(f);
+  var guardar = el('button', {class:'btn prim', text:'Guardar', onclick: function(){
+    var o = { id: p.id || '', grupo_nota: p.grupo_nota || '', destacado: p.destacado || '', foto: p.foto || '' };
+    f.querySelectorAll('[name]').forEach(function(i){ o[i.name] = i.value; });
+    o.alergenos = Array.prototype.slice.call(al.querySelectorAll('input:checked')).map(function(c){ return c.value; }).join(', ');
+    guardar.disabled = true;
+    run('guardarProducto', o).then(function(r){ toast('Guardado'); marcarPendiente(); cerrarModal(); cargarCarta(); if (!p.id) { r.id && editar(r); } })
+      .catch(error).then(function(){ guardar.disabled = false; });
+  }});
+  caja.appendChild(el('div', {class:'pie'}, [el('button', {class:'btn', text:'Cancelar', onclick: cerrarModal}), guardar]));
+  $('#modal').classList.add('on');
+}
+function cerrarModal(){ $('#modal').classList.remove('on'); }
+$('#modal').addEventListener('click', function(e){ if (e.target === this) cerrarModal(); });
+
+function reducir(file, max, calidad){
+  return new Promise(function(ok, ko){
+    var r = new FileReader();
+    r.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var esc = Math.min(1, max / Math.max(img.width, img.height));
+        var c = document.createElement('canvas'); c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        ok(c.toDataURL('image/jpeg', calidad));
+      };
+      img.onerror = function(){ ko('No se pudo leer la imagen.'); };
+      img.src = r.result;
+    };
+    r.onerror = function(){ ko('No se pudo leer el archivo.'); };
+    r.readAsDataURL(file);
+  });
+}
+
+/* ---------- mesas ---------- */
+var MESAS = [];
+function cargarMesas(){
+  return run('listarMesas').then(function(m){ MESAS = m; pintarMesas(); }).catch(error);
+}
+function pintarMesas(){
+  var l = $('#lMesas'); l.textContent = '';
+  $('#avisoSitio').textContent = '';
+  if (!INFO.sitio) $('#avisoSitio').appendChild(el('div', {class:'aviso mal', text:'Falta el "Link público de la carta" en Ajustes. Sin él no se pueden generar los QR.'}));
+  MESAS.forEach(function(m){
+    var qr = el('div', {class:'qr'});
+    if (m.link && window.QRCode) new QRCode(qr, { text: m.link, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.M });
+    l.appendChild(el('div', {class:'mesa' + (m.activa ? '' : ' inactiva')}, [
+      el('h3', {text:'Mesa ' + m.mesa}), qr,
+      el('div', {class:'lnk', text: m.link || '—'}),
+      el('div', {class:'pie', style:'justify-content:center;flex-wrap:wrap'}, [
+        el('button', {class:'btn peq', text:'Copiar link', onclick: function(){ copiar(m.link); }}),
+        el('button', {class:'btn peq', text:'Cambiar código', onclick: function(){ if (confirm('El QR impreso de la mesa ' + m.mesa + ' dejará de funcionar. ¿Continuar?')) run('cambiarCodigoMesa', m.mesa).then(function(x){ MESAS = x; pintarMesas(); toast('Código cambiado: reimprime este QR'); }).catch(error); }}),
+        el('button', {class:'btn peq', text: m.activa ? 'Desactivar' : 'Activar', onclick: function(){ run('activarMesa', m.mesa, !m.activa).then(function(x){ MESAS = x; pintarMesas(); }).catch(error); }})
+      ])
+    ]));
+  });
+}
+function copiar(t){
+  if (!t) return;
+  var a = el('textarea'); a.value = t; document.body.appendChild(a); a.select();
+  try { document.execCommand('copy'); toast('Link copiado'); } catch(e) { prompt('Copia el link:', t); }
+  a.remove();
+}
+$('#agregarMesa').addEventListener('click', function(){
+  run('nuevaMesa', $('#nMesa').value).then(function(m){ MESAS = m; $('#nMesa').value = ''; pintarMesas(); toast('Mesa agregada'); }).catch(error);
+});
+$('#imprimirQR').addEventListener('click', function(){
+  var f = el('iframe', {style:'position:fixed;width:0;height:0;border:0'}); document.body.appendChild(f);
+  var d = f.contentDocument;
+  d.open(); d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>@page{size:A4;margin:10mm}body{font-family:Georgia,serif;margin:0}.g{display:grid;grid-template-columns:1fr 1fr;gap:8mm}.c{border:1px solid #a9803f;padding:8mm;text-align:center;page-break-inside:avoid}.c h2{margin:0 0 4mm;color:#4a1519;font-size:24px}.c p{margin:3mm 0 0;font-size:13px;color:#555}.c img{width:52mm;height:52mm}</style></head><body><div class="g"></div></body></html>'); d.close();
+  var g = d.querySelector('.g');
+  document.querySelectorAll('#lMesas .mesa:not(.inactiva)').forEach(function(card){
+    var img = card.querySelector('.qr img'), canvas = card.querySelector('.qr canvas');
+    var src = img && img.src && img.src.length > 30 ? img.src : (canvas ? canvas.toDataURL() : '');
+    if (!src) return;
+    var c = d.createElement('div'); c.className = 'c';
+    var h = d.createElement('h2'); h.textContent = card.querySelector('h3').textContent; c.appendChild(h);
+    var i = d.createElement('img'); i.src = src; c.appendChild(i);
+    var p = d.createElement('p'); p.textContent = 'Escanea para ver la carta y hacer tu pedido'; c.appendChild(p);
+    g.appendChild(c);
+  });
+  setTimeout(function(){ f.contentWindow.focus(); f.contentWindow.print(); setTimeout(function(){ f.remove(); }, 2000); }, 300);
+});
+
+/* ---------- ajustes ---------- */
+var GRUPOS = [
+  ['Negocio', [['nombre','Nombre'],['desde','Texto bajo el logo'],['direccion','Dirección'],['telefono','Teléfono visible'],['whatsapp','WhatsApp (51 + número, sin espacios)'],['mensaje_whatsapp','Mensaje inicial de WhatsApp'],['instagram','Instagram (sin @)'],['tiktok','TikTok (sin @)'],['facebook_url','Link de Facebook']]],
+  ['Horario', [['horario_texto','Texto del horario para el cliente'],['cerrado_texto','Texto de días cerrados'],['horario_lunes','Lunes'],['horario_martes','Martes'],['horario_miercoles','Miércoles'],['horario_jueves','Jueves'],['horario_viernes','Viernes'],['horario_sabado','Sábado'],['horario_domingo','Domingo']], 'Formato 18:00-23:00 o la palabra cerrado. La web detecta sola si está abierto.'],
+  ['Pedidos', [['pedidos_activos','Recibir pedidos por la web','si'],['pedidos_mesa_activos','Pedidos desde la mesa (QR)','si'],['recojo_activo','Permitir recojo en local','si'],['pedidos_fuera_de_horario','Aceptar pedidos programados estando cerrado','si'],['metodos_pago','Métodos de pago (separados por comas)'],['texto_delivery','Texto sobre el costo de delivery','area']]],
+  ['Nuestra historia', [['historia_eyebrow','Título pequeño'],['historia_titulo','Título'],['historia_texto','Texto (párrafos separados por una línea en blanco)','area']]],
+  ['Conexiones', [['sitio_url','Link público de la carta (ej.: https://pastagallo.pages.dev)'],['api_url','URL de la aplicación web de Apps Script (termina en /exec)'],['github_repo','Repositorio de GitHub (usuario/repositorio)'],['github_rama','Rama de GitHub'],['admins','Correos extra con acceso al panel (separados por comas)']], 'Quien sea editor de este Google Sheets también puede usar el panel.']
+];
+function cargarAjustes(){
+  return run('leerAjustes').then(function(a){
+    var w = $('#ajustesForm'); w.textContent = '';
+    GRUPOS.forEach(function(g){
+      var f = el('div', {class:'form'});
+      g[1].forEach(function(c){
+        if (c[2] === 'si') f.appendChild(campo(c[1], c[0], (a[c[0]]||'').toUpperCase() === 'SI' ? 'SI' : 'NO', 'select', {opciones:[['SI','Sí'],['NO','No']]}));
+        else f.appendChild(campo(c[1], c[0], a[c[0]], c[2] === 'area' ? 'area' : 'text', {ancho: c[2] === 'area'}));
+      });
+      w.appendChild(el('div', {class:'grupo'}, [el('h3', {text:g[0]}), g[2] ? el('p', {class:'nota', text:g[2], style:'margin-bottom:8px'}) : null, f]));
+    });
+    $('#estadoToken').textContent = INFO.tokenListo ? '✓ GitHub está conectado.' : '✗ Falta conectar GitHub: sin esto no se puede publicar la carta ni subir fotos.';
+  }).catch(error);
+}
+$('#guardarAjustes').addEventListener('click', function(){
+  var o = {}; $('#ajustesForm').querySelectorAll('[name]').forEach(function(i){ o[i.name] = i.value; });
+  run('guardarAjustes', o).then(function(){ toast('Ajustes guardados. Pulsa "Publicar carta" para llevarlos a la web.'); marcarPendiente(); INFO.sitio = o.sitio_url; INFO.repo = o.github_repo; INFO.api = o.api_url; avisoApi(); }).catch(error);
+});
+$('#guardarToken').addEventListener('click', function(){
+  var b = this; b.disabled = true;
+  run('guardarTokenGithub', $('#token').value).then(function(r){ toast(r.mensaje); $('#token').value = ''; INFO.tokenListo = true; $('#estadoToken').textContent = '✓ GitHub está conectado.'; })
+    .catch(error).then(function(){ b.disabled = false; });
+});
+
+function avisoApi(){
+  var w = $('#avisoApi'); w.textContent = '';
+  if (!INFO.api) w.appendChild(el('div', {class:'aviso mal', text:'La web todavía no envía pedidos aquí: falta la "URL de la aplicación web" en Ajustes → Conexiones.'}));
+  if (!INFO.tokenListo) w.appendChild(el('div', {class:'aviso', text:'Falta conectar GitHub (Ajustes) para poder publicar la carta.'}));
+}
+
+/* ---------- inicio ---------- */
+run('panelInicio').then(function(i){
+  INFO = i;
+  $('#yo').textContent = i.usuario + (i.abierto ? ' · Abierto' : ' · Cerrado');
+  pintarPub(); avisoApi();
+  cargarPedidos();
+}).catch(function(e){ document.body.textContent = String(e && e.message || e); });
+})();
+</script>
+</body>
+</html>
