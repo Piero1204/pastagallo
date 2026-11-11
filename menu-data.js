@@ -1,5 +1,5 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T01:19:38-05:00).
-   No lo edites a mano: cambia los datos en el panel y pulsa "Publicar". */
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T01:36:31-05:00).
+   No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
   "nombre": "Pasta Gallo",
@@ -479,6 +479,7 @@ window.CARTA = {
        "al": [
         "huevo"
        ],
+       "foto": "https://images.unsplash.com/photo-1587676353811-1708ddf47031?w=700&q=70&auto=format&fit=crop",
        "g_en": "garlic bread",
        "d_en": "Golden, fragrant garlic bread, the perfect companion to any pasta."
       },
@@ -488,6 +489,11 @@ window.CARTA = {
        "g": "pan al ajo con queso",
        "d": "Nuestro pan al ajo, ahora con queso.",
        "p": 6,
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1619535860434-ba1d8fa12536?w=700&q=70&auto=format&fit=crop",
        "g_en": "garlic bread with cheese",
        "d_en": "Our garlic bread, now with cheese."
       },
@@ -497,6 +503,10 @@ window.CARTA = {
        "g": "bruschetta de champiñones",
        "d": "Pan tostado coronado con funghi, rústico y lleno de sabor.",
        "p": 20,
+       "al": [
+        "gluten"
+       ],
+       "foto": "https://images.unsplash.com/photo-1732188356856-b85a4d62dec0?w=700&q=70&auto=format&fit=crop",
        "g_en": "mushroom bruschetta",
        "d_en": "Toasted bread topped with mushrooms, rustic and full of flavour."
       },
@@ -506,6 +516,10 @@ window.CARTA = {
        "g": "bruschetta a la siciliana",
        "d": "Pan tostado al estilo de Sicilia, con el sabor soleado del Mediterráneo.",
        "p": 18,
+       "al": [
+        "gluten"
+       ],
+       "foto": "https://images.unsplash.com/photo-1630230596944-6373069c837d?w=700&q=70&auto=format&fit=crop",
        "g_en": "Sicilian-style bruschetta",
        "d_en": "Toasted bread in the Sicilian style, with the sunny taste of the Mediterranean."
       },
@@ -515,6 +529,7 @@ window.CARTA = {
        "g": "100 gramos",
        "d": "Jamón curado al estilo italiano, servido en finas láminas. Porción de 100 gramos.",
        "p": 30,
+       "foto": "https://images.unsplash.com/photo-1598989519542-077da0f51c09?w=700&q=70&auto=format&fit=crop",
        "g_en": "100 grams",
        "d_en": "Italian-style cured ham, served in thin slices. 100-gram portion."
       },
@@ -524,6 +539,7 @@ window.CARTA = {
        "g": "fiambres mixtos",
        "d": "Una selección de embutidos y fiambres cortados finos, para picar sin apuro.",
        "p": 25,
+       "foto": "https://images.unsplash.com/photo-1781714534211-3236a60d9ce4?w=700&q=70&auto=format&fit=crop",
        "g_en": "mixed cold cuts",
        "d_en": "A selection of thinly sliced cured meats and cold cuts, to enjoy at your own pace."
       },
@@ -533,6 +549,7 @@ window.CARTA = {
        "g": "piqueo a la italiana",
        "d": "Nuestro piqueo de estilo italiano: variedad de bocados para compartir en la mesa.",
        "p": 30,
+       "foto": "https://images.unsplash.com/photo-1637370988123-41bd9a6bcd48?w=700&q=70&auto=format&fit=crop",
        "g_en": "Italian-style sharing platter",
        "d_en": "Our Italian-style platter: a variety of bites to share at the table."
       },
@@ -542,6 +559,7 @@ window.CARTA = {
        "g": "ensalada italiana",
        "d": "Una ensalada fresca para empezar ligero.",
        "p": 20,
+       "foto": "https://images.unsplash.com/photo-1746211108786-ca20c8f80ecd?w=700&q=70&auto=format&fit=crop",
        "g_en": "Italian salad",
        "d_en": "A fresh salad for a light start."
       },
@@ -551,6 +569,10 @@ window.CARTA = {
        "g": "ensalada caprese",
        "d": "Nacida en la isla de Capri, reúne los colores de la bandera italiana.",
        "p": 20,
+       "al": [
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1769458313937-b5ad8f84942e?w=700&q=70&auto=format&fit=crop",
        "g_en": "Caprese salad",
        "d_en": "Born on the island of Capri, it brings together the colours of the Italian flag."
       },
@@ -560,6 +582,10 @@ window.CARTA = {
        "g": "tortilla de cebolla",
        "d": "Tortilla casera de cebolla, sencilla y reconfortante.",
        "p": 15,
+       "al": [
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1668283653825-37b80f055b05?w=700&q=70&auto=format&fit=crop",
        "g_en": "onion omelette",
        "d_en": "Homemade onion omelette, simple and comforting."
       },
@@ -569,6 +595,10 @@ window.CARTA = {
        "g": "tortilla mixta",
        "d": "Una tortilla mixta, más generosa y con más sabores.",
        "p": 22,
+       "al": [
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1510693206972-df098062cb71?w=700&q=70&auto=format&fit=crop",
        "g_en": "mixed omelette",
        "d_en": "A more generous mixed omelette with more flavours."
       },
@@ -578,6 +608,12 @@ window.CARTA = {
        "g": "crepes de espárragos",
        "d": "Delicadas crepes rellenas de espárragos, a la manera italiana.",
        "p": 20,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1777891258086-52a41e4477f6?w=700&q=70&auto=format&fit=crop",
        "g_en": "asparagus crêpes",
        "d_en": "Delicate crêpes filled with asparagus, the Italian way."
       }
@@ -609,10 +645,159 @@ window.CARTA = {
        "g": "Wafer de chocolate con leche y almendras",
        "d": "Una obra maestra de la tradición pastelera milanesa. Cuentan con un equilibrio sublime entre la delicadeza de tres finas láminas de barquillo dorado y la untuosidad de una sedosa crema de chocolate con leche. En su interior, sutiles trocitos de almendras sicilianas aportan una textura crujiente y un aroma tostado inconfundible.",
        "p": 17.9,
+       "al": [
+        "gluten",
+        "lacteos",
+        "frutosSecos",
+        "soya"
+       ],
        "foto": "fotos/italia-wafer-mandorlato-tre-marie-1794377793079.jpg",
        "n_en": "Wafer Mandorlato Tre Marie",
        "g_en": "Milk chocolate and almond wafers",
        "d_en": "A masterpiece of Milanese pastry tradition. They feature a sublime balance between the delicacy of three thin, golden wafer sheets and the richness of a silky milk chocolate cream. Inside, subtle pieces of Sicilian almonds add a crunchy texture and an unmistakable roasted aroma."
+      },
+      {
+       "id": "italia-wafer-nocciolato-tre-marie",
+       "n": "Wafer Nocciolato Tre Marie",
+       "g": "Wafer con crema de avellanas",
+       "d": "De la línea «Ancora Uno» de Tre Marie, antigua marca de la tradición pastelera milanesa: finas láminas de barquillo dorado y crujiente, rellenas de una suave crema de avellanas. El acompañante perfecto para un café.",
+       "p": 17.9,
+       "al": [
+        "gluten",
+        "lacteos",
+        "frutosSecos",
+        "soya"
+       ],
+       "foto": "https://images.unsplash.com/photo-1612739406198-71fc29b3c1c9?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Wafer Nocciolato Tre Marie",
+       "g_en": "Hazelnut cream wafers",
+       "d_en": "From Tre Marie’s «Ancora Uno» line, a historic brand of Milanese pastry tradition: thin, crisp golden wafers filled with a smooth hazelnut cream. The perfect companion for a coffee."
+      },
+      {
+       "id": "italia-wafer-stracciatella-tre-marie",
+       "n": "Wafer Stracciatella Tre Marie",
+       "g": "Wafer con crema de leche y chocolate",
+       "d": "Inspirados en el clásico helado italiano: capas de barquillo crujiente rellenas de crema de leche con trocitos de chocolate extra amargo. Elaborados sin grasas hidrogenadas.",
+       "p": 17.9,
+       "al": [
+        "gluten",
+        "lacteos",
+        "frutosSecos",
+        "soya"
+       ],
+       "foto": "https://images.unsplash.com/photo-1772986234414-ada1a1cef8e4?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Wafer Stracciatella Tre Marie",
+       "g_en": "Milk cream and chocolate wafers",
+       "d_en": "Inspired by the classic Italian gelato: crisp wafer layers filled with milk cream and pieces of extra dark chocolate. Made without hydrogenated fats."
+      },
+      {
+       "id": "italia-wafer-gianduia-nera-tre-marie",
+       "n": "Wafer Gianduia Nera Tre Marie",
+       "g": "Wafer con crema gianduia oscura",
+       "d": "Barquillo crujiente relleno de crema gianduia —la tradicional unión piamontesa de cacao y avellanas— en su versión oscura, de sabor intenso.",
+       "p": 17.9,
+       "al": [
+        "gluten",
+        "lacteos",
+        "frutosSecos",
+        "soya"
+       ],
+       "foto": "https://images.unsplash.com/photo-1772985427174-e140b55944a5?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Wafer Gianduia Nera Tre Marie",
+       "g_en": "Dark gianduia cream wafers",
+       "d_en": "Crisp wafers filled with gianduia cream —the traditional Piedmontese blend of cocoa and hazelnuts— in its dark, intense version."
+      },
+      {
+       "id": "italia-cioccolato-in-pezzi-tre-marie",
+       "n": "Cioccolato in Pezzi Tre Marie",
+       "g": "Galletas con trozos de chocolate",
+       "d": "Frollini, las galletas de masa quebrada de la tradición italiana, con generosos trozos de chocolate. Para el desayuno, la merienda o el café.",
+       "p": 28.9,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos",
+        "soya",
+        "frutosSecos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1583743089695-4b816a340f82?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Cioccolato in Pezzi Tre Marie",
+       "g_en": "Chocolate chunk biscuits",
+       "d_en": "Frollini, the traditional Italian shortbread biscuits, with generous chunks of chocolate. For breakfast, an afternoon snack or with coffee."
+      },
+      {
+       "id": "italia-caramello-salato-tre-marie",
+       "n": "Caramello Salato e Cioccolato Tre Marie",
+       "g": "Galletas con caramelo salado y chocolate",
+       "d": "Galletas de masa quebrada con caramelo salado y chispas de chocolate, hechas con trigo 100 % italiano. Un contraste dulce y salado irresistible.",
+       "p": 28.9,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos",
+        "soya",
+        "frutosSecos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1706167754899-36a714b5dc66?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Caramello Salato e Cioccolato Tre Marie",
+       "g_en": "Salted caramel and chocolate biscuits",
+       "d_en": "Shortbread biscuits with salted caramel and chocolate chips, made with 100% Italian wheat. An irresistible sweet-and-salty contrast."
+      },
+      {
+       "id": "italia-cacao-gocce-tre-marie",
+       "n": "Cacao con Gocce di Cioccolato Tre Marie",
+       "g": "Galletas de cacao con chispas de chocolate",
+       "d": "Galletas de cacao con chispas de chocolate extra amargo, hechas con trigo 100 % italiano, mantequilla y huevos de gallinas criadas en libertad.",
+       "p": 28.9,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos",
+        "soya",
+        "frutosSecos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1590080874088-eec64895b423?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Cacao con Gocce di Cioccolato Tre Marie",
+       "g_en": "Cocoa biscuits with chocolate chips",
+       "d_en": "Cocoa biscuits with extra dark chocolate chips, made with 100% Italian wheat, butter and free-range eggs."
+      }
+     ]
+    },
+    {
+     "titulo": "Caffarel",
+     "nota": "",
+     "items": [
+      {
+       "id": "italia-gianduia-classica-caffarel",
+       "n": "Gianduia Classica Caffarel",
+       "g": "Barra de chocolate gianduia",
+       "d": "De Caffarel, la histórica chocolatería de Turín que creó el gianduiotto en 1865. Chocolate gianduia clásico: cacao y avellanas del Piamonte, cremoso y aterciopelado.",
+       "p": 27.9,
+       "al": [
+        "frutosSecos",
+        "lacteos",
+        "soya"
+       ],
+       "foto": "https://images.unsplash.com/photo-1571091799989-e88304d6aed3?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Gianduia Classica Caffarel",
+       "g_en": "Gianduia chocolate bar",
+       "d_en": "From Caffarel, the historic Turin chocolate maker that created the gianduiotto in 1865. Classic gianduia chocolate: cocoa and Piedmont hazelnuts, creamy and velvety."
+      },
+      {
+       "id": "italia-gianduia-assortito-caffarel",
+       "n": "Gianduia Assortito Caffarel",
+       "g": "Caja surtida de gianduiotti",
+       "d": "Caja surtida de gianduiotti, el célebre bombón turinés de chocolate y avellanas Piemonte IGP, en versiones de chocolate con leche y oscuro. Un regalo a la altura de cualquier ocasión.",
+       "p": 215.9,
+       "al": [
+        "frutosSecos",
+        "lacteos",
+        "soya"
+       ],
+       "foto": "https://images.unsplash.com/photo-1548741487-18d363dc4469?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Gianduia Assortito Caffarel",
+       "g_en": "Assorted gianduiotti box",
+       "d_en": "An assorted box of gianduiotti, the famous Turin chocolate made with Piemonte IGP hazelnuts, in milk and dark chocolate. A gift worthy of any occasion."
       }
      ]
     }
@@ -654,6 +839,11 @@ window.CARTA = {
          50
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1700760933900-320bf1158d71?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -677,6 +867,11 @@ window.CARTA = {
          55
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1717883235373-ef10b2a745a3?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -700,6 +895,11 @@ window.CARTA = {
          60
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1777891257674-36c5532e6654?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -723,6 +923,11 @@ window.CARTA = {
          60
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1677175183792-e6a9b8b14305?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -746,6 +951,11 @@ window.CARTA = {
          60
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1672856398893-2fb52d807874?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -769,6 +979,11 @@ window.CARTA = {
          62
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1778449726826-8b0c92e4624e?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -792,6 +1007,11 @@ window.CARTA = {
          60
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1625401514458-6c8a5e7d55da?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -816,6 +1036,11 @@ window.CARTA = {
          60
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1588014164218-d9ecba01aaff?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -841,6 +1066,11 @@ window.CARTA = {
          62
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1642789736327-14d9c36496d7?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -865,6 +1095,11 @@ window.CARTA = {
          65
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -889,6 +1124,12 @@ window.CARTA = {
          66
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos",
+        "pescado"
+       ],
+       "foto": "https://images.unsplash.com/photo-1573821663912-569905455b1c?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -913,6 +1154,11 @@ window.CARTA = {
          66
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1716237387757-db2149bf02d0?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -937,6 +1183,11 @@ window.CARTA = {
          70
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1655070249064-2556803629b6?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -961,6 +1212,12 @@ window.CARTA = {
          75
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos",
+        "soya"
+       ],
+       "foto": "https://images.unsplash.com/photo-1622880833523-7cf1c0bd4296?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -985,6 +1242,11 @@ window.CARTA = {
          70
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1541745537411-b8046dc6d66c?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -1009,6 +1271,11 @@ window.CARTA = {
          70
         ]
        ],
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1615719413546-198b25453f85?w=700&q=70&auto=format&fit=crop",
        "op": [
         "extras-pizza"
        ],
@@ -1043,6 +1310,12 @@ window.CARTA = {
        "d": "Una fuente generosa de ravioles rellenos de ricotta, servida con la salsa de tu elección.",
        "p": 60,
        "salsa": true,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1659813952313-eb81e5b3fbdd?w=700&q=70&auto=format&fit=crop",
        "g_en": "platter of ricotta ravioli",
        "d_en": "A generous platter of ricotta-filled ravioli, served with the sauce of your choice."
       },
@@ -1053,6 +1326,11 @@ window.CARTA = {
        "d": "Una fuente generosa de ravioles rellenos de carne, servida con la salsa de tu elección.",
        "p": 60,
        "salsa": true,
+       "al": [
+        "gluten",
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1778850620699-79ba3ff60bf0?w=700&q=70&auto=format&fit=crop",
        "g_en": "platter of beef ravioli",
        "d_en": "A generous platter of beef-filled ravioli, served with the sauce of your choice."
       },
@@ -1063,6 +1341,10 @@ window.CARTA = {
        "d": "Una fuente generosa de fettuccine, clásicos o verdes (de espinaca), servida con la salsa de tu elección.",
        "p": 50,
        "salsa": true,
+       "al": [
+        "gluten"
+       ],
+       "foto": "https://images.unsplash.com/photo-1627207644206-a2040d60ecad?w=700&q=70&auto=format&fit=crop",
        "op": [
         "fettuccine-tipo"
        ],
@@ -1077,6 +1359,12 @@ window.CARTA = {
        "p": 34,
        "salsa": true,
        "destacado": "tris",
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1616299915952-04c803388e5f?w=700&q=70&auto=format&fit=crop",
        "g_en": "three pastas on one plate",
        "d_en": "A long plate with our classics: fettuccine, lasagna and raviolini."
       }
@@ -1091,6 +1379,11 @@ window.CARTA = {
        "n": "Fettuccine all’Alfredo con Lomo",
        "d": "Fettuccine bañados en la cremosa salsa Alfredo y coronados con lomo, en el término que prefieras.",
        "p": 65,
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1791202978575-21e01ab3a6e5?w=700&q=70&auto=format&fit=crop",
        "op": [
         "termino"
        ],
@@ -1102,6 +1395,11 @@ window.CARTA = {
        "g": "spaghetti a la huancaína con lomo",
        "d": "Dos mundos en un plato: spaghetti italianos con la cremosa salsa huancaína peruana y lomo. Elige tu nivel de picante.",
        "p": 70,
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1581228258201-fe6e5861d1f6?w=700&q=70&auto=format&fit=crop",
        "op": [
         "picante"
        ],
@@ -1114,6 +1412,11 @@ window.CARTA = {
        "g": "spaghetti con langostinos",
        "d": "Spaghetti con langostinos en salsa roja (de tomate) o blanca (bechamel), a tu elección, con el nivel de picante que prefieras.",
        "p": 70,
+       "al": [
+        "gluten",
+        "mariscos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w=700&q=70&auto=format&fit=crop",
        "op": [
         "salsa-gamberi",
         "picante"
@@ -1133,6 +1436,10 @@ window.CARTA = {
        "d": "Cintas largas y planas, ideales para las salsas cremosas. Clásicos o verdes (de espinaca).",
        "p": 30,
        "salsa": true,
+       "al": [
+        "gluten"
+       ],
+       "foto": "https://images.unsplash.com/photo-1664214649076-7b17006db5b5?w=700&q=70&auto=format&fit=crop",
        "op": [
         "fettuccine-tipo"
        ],
@@ -1144,6 +1451,10 @@ window.CARTA = {
        "d": "Anchas cintas de tradición toscana, hechas para salsas con carácter.",
        "p": 30,
        "salsa": true,
+       "al": [
+        "gluten"
+       ],
+       "foto": "https://images.unsplash.com/photo-1601751911508-fd69ffc08fa2?w=700&q=70&auto=format&fit=crop",
        "d_en": "Wide ribbons from the Tuscan tradition, made for hearty sauces."
       },
       {
@@ -1152,6 +1463,10 @@ window.CARTA = {
        "d": "El clásico entre los clásicos, siempre bienvenido.",
        "p": 30,
        "salsa": true,
+       "al": [
+        "gluten"
+       ],
+       "foto": "https://images.unsplash.com/photo-1627042633145-b780d842ba45?w=700&q=70&auto=format&fit=crop",
        "d_en": "The classic of classics, always welcome."
       },
       {
@@ -1161,6 +1476,10 @@ window.CARTA = {
        "d": "Pasta en forma de concha que guarda la salsa en cada bocado.",
        "p": 30,
        "salsa": true,
+       "al": [
+        "gluten"
+       ],
+       "foto": "https://images.unsplash.com/photo-1606503854923-95e45999ae2f?w=700&q=70&auto=format&fit=crop",
        "g_en": "shells",
        "d_en": "Shell-shaped pasta that holds the sauce in every bite."
       },
@@ -1171,6 +1490,10 @@ window.CARTA = {
        "d": "Pequeños codos de pasta: sencillos, simpáticos y muy queridos.",
        "p": 30,
        "salsa": true,
+       "al": [
+        "gluten"
+       ],
+       "foto": "https://images.unsplash.com/photo-1708184528301-b0dad28dded5?w=700&q=70&auto=format&fit=crop",
        "g_en": "elbows",
        "d_en": "Little pasta elbows: simple, charming and much loved."
       },
@@ -1181,6 +1504,10 @@ window.CARTA = {
        "d": "Tubos cortos de pasta que abrazan la salsa.",
        "p": 30,
        "salsa": true,
+       "al": [
+        "gluten"
+       ],
+       "foto": "https://images.unsplash.com/photo-1707870678076-40ba56a65ece?w=700&q=70&auto=format&fit=crop",
        "g_en": "macaroni",
        "d_en": "Short pasta tubes that embrace the sauce."
       }
@@ -1197,6 +1524,11 @@ window.CARTA = {
        "d": "Ravioles rellenos de carne, con la salsa de tu elección.",
        "p": 32,
        "salsa": true,
+       "al": [
+        "gluten",
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1594610352113-ad218529cfb7?w=700&q=70&auto=format&fit=crop",
        "g_en": "beef ravioli",
        "d_en": "Beef-filled ravioli, with the sauce of your choice."
       },
@@ -1207,6 +1539,12 @@ window.CARTA = {
        "d": "Ravioles rellenos de ricotta, suaves y cremosos.",
        "p": 32,
        "salsa": true,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1628885363743-fbf9c98d4196?w=700&q=70&auto=format&fit=crop",
        "g_en": "ricotta ravioli",
        "d_en": "Ricotta-filled ravioli, soft and creamy."
       },
@@ -1216,6 +1554,11 @@ window.CARTA = {
        "g": "ravioles pequeños",
        "d": "Como nuestros ravioli, pero en tamaño pequeño: más bocados en cada plato.",
        "salsa": true,
+       "al": [
+        "gluten",
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1665761543682-6305ccc5398b?w=700&q=70&auto=format&fit=crop",
        "g_en": "small ravioli",
        "d_en": "Like our ravioli, but smaller: more bites on every plate."
       },
@@ -1226,6 +1569,11 @@ window.CARTA = {
        "d": "Pequeños anillos de pasta rellenos de carne, con el mismo relleno de nuestros ravioli di carne. Tradición de Emilia-Romaña.",
        "p": 32,
        "salsa": true,
+       "al": [
+        "gluten",
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1628885405379-5d58de03edb0?w=700&q=70&auto=format&fit=crop",
        "g_en": "beef tortellini",
        "d_en": "Little rings of pasta filled with beef, the same filling as our beef ravioli. A tradition from Emilia-Romagna."
       },
@@ -1236,6 +1584,9 @@ window.CARTA = {
        "d": "Suaves ñoquis de papa, tiernos como una nube.",
        "p": 30,
        "salsa": true,
+       "al": [
+        "gluten"
+       ],
        "g_en": "potato gnocchi",
        "d_en": "Soft potato gnocchi, light as a cloud."
       }
@@ -1250,6 +1601,9 @@ window.CARTA = {
        "n": "Puttanesca",
        "d": "Salsa de tomate con atún, intensa y con carácter. Por naturaleza es picante: elige tu nivel.",
        "tipo": "salsa",
+       "al": [
+        "pescado"
+       ],
        "op": [
         "picante"
        ],
@@ -1281,6 +1635,9 @@ window.CARTA = {
        "n": "Alfredo",
        "d": "Cremosa y suave, con mantequilla y queso parmesano.",
        "tipo": "salsa",
+       "al": [
+        "lacteos"
+       ],
        "d_en": "Creamy and smooth, with butter and parmesan cheese."
       },
       {
@@ -1288,6 +1645,9 @@ window.CARTA = {
        "n": "Gorgonzola",
        "d": "Salsa cremosa de queso gorgonzola, de sabor intenso y elegante.",
        "tipo": "salsa",
+       "al": [
+        "lacteos"
+       ],
        "d_en": "Creamy gorgonzola cheese sauce, intense and elegant."
       },
       {
@@ -1296,6 +1656,9 @@ window.CARTA = {
        "g": "rosada",
        "d": "Tomate y crema se encuentran en una salsa suave y color de rosa.",
        "tipo": "salsa",
+       "al": [
+        "lacteos"
+       ],
        "g_en": "pink sauce",
        "d_en": "Tomato and cream meet in a smooth, rosy sauce."
       },
@@ -1304,6 +1667,10 @@ window.CARTA = {
        "n": "Pesto",
        "d": "Albahaca, queso y aceite de oliva, al estilo de Génova. Fresca y aromática.",
        "tipo": "salsa",
+       "al": [
+        "lacteos",
+        "frutosSecos"
+       ],
        "d_en": "Basil, cheese and olive oil, Genoa style. Fresh and aromatic."
       },
       {
@@ -1313,6 +1680,9 @@ window.CARTA = {
        "d": "Cuatro quesos fundidos en una salsa cremosa e irresistible.",
        "extra": 8,
        "tipo": "salsa",
+       "al": [
+        "lacteos"
+       ],
        "g_en": "four cheeses",
        "d_en": "Four cheeses melted into a creamy, irresistible sauce."
       },
@@ -1336,6 +1706,9 @@ window.CARTA = {
        "d": "Como un lomo saltado sobre tu pasta: trozos de lomo salteados al sillao (salsa de soya).",
        "extra": 8,
        "tipo": "salsa",
+       "al": [
+        "soya"
+       ],
        "g_en": "Peruvian stir-fried beef",
        "d_en": "Like a Peruvian lomo saltado over your pasta: beef strips stir-fried with soy sauce."
       },
@@ -1346,6 +1719,10 @@ window.CARTA = {
        "d": "Salsa bechamel con champiñones, ajo y perejil.",
        "extra": 8,
        "tipo": "salsa",
+       "al": [
+        "gluten",
+        "lacteos"
+       ],
        "g_en": "mushroom sauce",
        "d_en": "Béchamel sauce with mushrooms, garlic and parsley."
       },
@@ -1355,6 +1732,10 @@ window.CARTA = {
        "d": "La clásica romana, cremosa, a base de yema de huevo y queso parmesano.",
        "extra": 8,
        "tipo": "salsa",
+       "al": [
+        "huevo",
+        "lacteos"
+       ],
        "d_en": "The Roman classic, creamy, made with egg yolk and parmesan cheese."
       }
      ]
@@ -1385,6 +1766,12 @@ window.CARTA = {
        "g": "lasagna de espinaca",
        "d": "Capas de pasta y espinaca, gratinada hasta quedar dorada.",
        "p": 36,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1633436374961-09b92742047b?w=700&q=70&auto=format&fit=crop",
        "g_en": "spinach lasagna",
        "d_en": "Layers of pasta and spinach, baked until golden."
       },
@@ -1394,6 +1781,12 @@ window.CARTA = {
        "g": "lasagna de carne",
        "d": "La clásica de siempre: capas de pasta y carne, gratinada y reconfortante.",
        "p": 34,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1709429790175-b02bb1b19207?w=700&q=70&auto=format&fit=crop",
        "g_en": "beef lasagna",
        "d_en": "The classic: layers of pasta and beef, gratinated and comforting."
       },
@@ -1403,6 +1796,12 @@ window.CARTA = {
        "g": "lasagna de espárragos",
        "d": "Capas de pasta con espárragos, delicada y gratinada.",
        "p": 38,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1762631883229-95cfb6a063ad?w=700&q=70&auto=format&fit=crop",
        "g_en": "asparagus lasagna",
        "d_en": "Layers of pasta with asparagus, delicate and gratinated."
       }
@@ -1434,6 +1833,7 @@ window.CARTA = {
        "g": "Con ensalada y papas fritas",
        "d": "Una selección de churrasco, chuleta, pollo y chorizo, para probar un poco de todo.",
        "p": 60,
+       "foto": "https://images.unsplash.com/photo-1702827487086-9ab8a573d825?w=700&q=70&auto=format&fit=crop",
        "n_en": "Mixed Grill",
        "g_en": "With salad and French fries",
        "d_en": "A selection of steak, pork chop, chicken and chorizo, to try a little of everything."
@@ -1444,6 +1844,7 @@ window.CARTA = {
        "g": "Con ensalada y papas fritas",
        "d": "Lomo fino de 350 gramos, sellado a la plancha y servido en el término que prefieras.",
        "p": 70,
+       "foto": "https://images.unsplash.com/photo-1600891964092-4316c288032e?w=700&q=70&auto=format&fit=crop",
        "op": [
         "termino"
        ],
@@ -1457,6 +1858,7 @@ window.CARTA = {
        "g": "Con ensalada y papas fritas",
        "d": "A tu elección: churrasco o chuleta.",
        "p": 38,
+       "foto": "https://images.unsplash.com/photo-1662499754738-e0d6ac84f308?w=700&q=70&auto=format&fit=crop",
        "n_en": "Steak or Pork Chop",
        "g_en": "With salad and French fries",
        "d_en": "Your choice: steak or pork chop."
@@ -1467,6 +1869,11 @@ window.CARTA = {
        "g": "Con papas fritas",
        "d": "Pollo apanado, dorado y crocante.",
        "p": 30,
+       "al": [
+        "gluten",
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1682970078535-cd0cf994ee96?w=700&q=70&auto=format&fit=crop",
        "n_en": "Chicken Milanese",
        "g_en": "With French fries",
        "d_en": "Breaded chicken, golden and crispy."
@@ -1477,6 +1884,7 @@ window.CARTA = {
        "g": "Con papas fritas",
        "d": "Incluye 3 chorizos.",
        "p": 22,
+       "foto": "https://images.unsplash.com/photo-1750461325551-02b7ea57625a?w=700&q=70&auto=format&fit=crop",
        "n_en": "Chorizo Portion",
        "g_en": "With French fries",
        "d_en": "Includes 3 chorizo sausages."
@@ -1508,6 +1916,12 @@ window.CARTA = {
        "n": "Tiramisù",
        "d": "El postre italiano más célebre: capas de bizcocho, café y suave crema de mascarpone.",
        "p": 12,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1631206753348-db44968fd440?w=700&q=70&auto=format&fit=crop",
        "d_en": "Italy's most famous dessert: layers of sponge, coffee and smooth mascarpone cream."
       },
       {
@@ -1516,6 +1930,12 @@ window.CARTA = {
        "g": "torta de chocolate",
        "d": "Una torta esponjosa para los amantes del chocolate.",
        "p": 12,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1615796701805-2094ac54bbf9?w=700&q=70&auto=format&fit=crop",
        "g_en": "chocolate cake",
        "d_en": "A fluffy cake for chocolate lovers."
       },
@@ -1525,6 +1945,12 @@ window.CARTA = {
        "g": "galleta con chispas de chocolate",
        "d": "Galleta con chispas de chocolate, ideal con un buen café.",
        "p": 6,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1782852232674-64bc7f102866?w=700&q=70&auto=format&fit=crop",
        "g_en": "chocolate chip cookie",
        "d_en": "Chocolate chip cookie, perfect with a good coffee."
       },
@@ -1534,6 +1960,12 @@ window.CARTA = {
        "g": "galleta de chocolate",
        "d": "Una galleta de chocolate intenso, para el antojo del final.",
        "p": 6,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1582623201359-74e936ed48c4?w=700&q=70&auto=format&fit=crop",
        "g_en": "chocolate cookie",
        "d_en": "An intense chocolate cookie for that final craving."
       },
@@ -1543,6 +1975,12 @@ window.CARTA = {
        "g": "galleta red velvet",
        "d": "Color rubí y sabor suave a cacao: elegante hasta el último bocado.",
        "p": 6,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1593675418918-08817c2d8682?w=700&q=70&auto=format&fit=crop",
        "g_en": "red velvet cookie",
        "d_en": "Ruby colour and a soft cocoa taste: elegant to the last bite."
       }
@@ -1555,10 +1993,10 @@ window.CARTA = {
    "pie_en": ""
   },
   {
-   "id": "caffe",
-   "titulo": "Caffè e Bevande",
-   "subtitulo": "Café, infusiones y refrescos",
-   "intro": "",
+   "id": "caffetteria",
+   "titulo": "Caffetteria",
+   "subtitulo": "Café, té y chocolate caliente",
+   "intro": "Se preparan al momento y se sirven solo en el local.",
    "pie": "",
    "alcohol": false,
    "delivery": true,
@@ -1574,6 +2012,8 @@ window.CARTA = {
        "g": "café",
        "d": "Café de la casa, para acompañar la sobremesa.",
        "p": 10,
+       "foto": "https://images.unsplash.com/photo-1497515114629-f71d768fd07c?w=700&q=70&auto=format&fit=crop",
+       "canal": "local",
        "g_en": "coffee",
        "d_en": "House coffee, to go with the after-dinner chat."
       },
@@ -1583,6 +2023,8 @@ window.CARTA = {
        "g": "café express",
        "d": "El clásico italiano: corto, intenso y de un solo trago.",
        "p": 12,
+       "foto": "https://images.unsplash.com/photo-1579992357154-faf4bde95b3d?w=700&q=70&auto=format&fit=crop",
+       "canal": "local",
        "g_en": "espresso",
        "d_en": "The Italian classic: short, intense, in one sip."
       },
@@ -1591,6 +2033,11 @@ window.CARTA = {
        "n": "Cappuccino",
        "d": "Espresso con leche y espuma, el favorito de las mañanas italianas.",
        "p": 18,
+       "al": [
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1506372023823-741c83b836fe?w=700&q=70&auto=format&fit=crop",
+       "canal": "local",
        "d_en": "Espresso with milk and foam, the favourite of Italian mornings."
       },
       {
@@ -1599,6 +2046,11 @@ window.CARTA = {
        "g": "chocolate caliente",
        "d": "Chocolate caliente, espeso y reconfortante.",
        "p": 12,
+       "al": [
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?w=700&q=70&auto=format&fit=crop",
+       "canal": "local",
        "g_en": "hot chocolate",
        "d_en": "Thick, comforting hot chocolate."
       },
@@ -1608,15 +2060,40 @@ window.CARTA = {
        "g": "té",
        "d": "Infusión caliente para cerrar la comida con calma.",
        "p": 4,
+       "foto": "https://images.unsplash.com/photo-1595434091143-b375ced5fe5c?w=700&q=70&auto=format&fit=crop",
+       "canal": "local",
        "g_en": "tea",
        "d_en": "A hot infusion to end the meal calmly."
-      },
+      }
+     ]
+    }
+   ],
+   "titulo_en": "Caffetteria",
+   "subtitulo_en": "Coffee, tea and hot chocolate",
+   "intro_en": "Freshly made and served only at the restaurant.",
+   "pie_en": ""
+  },
+  {
+   "id": "caffe",
+   "titulo": "Bevande",
+   "subtitulo": "Refrescos, gaseosas y agua",
+   "intro": "",
+   "pie": "",
+   "alcohol": false,
+   "delivery": true,
+   "mesa": true,
+   "grupos": [
+    {
+     "titulo": "",
+     "nota": "",
+     "items": [
       {
        "id": "caffe-limonata",
        "n": "Limonata",
        "g": "limonada",
        "d": "Fresca y cítrica. Helada, a temperatura ambiente o frozen.",
        "p": 18,
+       "foto": "https://images.unsplash.com/photo-1575596510825-f748919a2bf7?w=700&q=70&auto=format&fit=crop",
        "op": [
         "temp-limonada"
        ],
@@ -1629,6 +2106,7 @@ window.CARTA = {
        "g": "refresco de maracuyá",
        "d": "El sabor tropical y vibrante del maracuyá. Helada, a temperatura ambiente o frozen.",
        "p": 18,
+       "foto": "https://images.unsplash.com/photo-1546751706-81c567470489?w=700&q=70&auto=format&fit=crop",
        "op": [
         "temp-limonada"
        ],
@@ -1658,6 +2136,7 @@ window.CARTA = {
          15
         ]
        ],
+       "foto": "https://images.unsplash.com/photo-1618183507099-4fa269f9b0ee?w=700&q=70&auto=format&fit=crop",
        "op": [
         "sabor-gaseosa",
         "temp-bebida"
@@ -1671,6 +2150,7 @@ window.CARTA = {
        "g": "agua sin gas",
        "d": "Agua sin gas, helada o sin helar.",
        "p": 3.5,
+       "foto": "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=700&q=70&auto=format&fit=crop",
        "op": [
         "temp-bebida"
        ],
@@ -1682,6 +2162,7 @@ window.CARTA = {
        "n": "Acqua Frizzante",
        "g": "agua con gas",
        "d": "Agua con gas, helada o sin helar.",
+       "foto": "https://images.unsplash.com/photo-1775390722213-2830af4dde60?w=700&q=70&auto=format&fit=crop",
        "op": [
         "temp-bebida"
        ],
@@ -1694,6 +2175,7 @@ window.CARTA = {
        "g": "hielo",
        "d": "Hielo adicional para tu bebida.",
        "p": 3,
+       "foto": "https://images.unsplash.com/photo-1782179186180-357225891bb0?w=700&q=70&auto=format&fit=crop",
        "canal": "local",
        "g_en": "ice",
        "d_en": "Extra ice for your drink."
@@ -1701,8 +2183,8 @@ window.CARTA = {
      ]
     }
    ],
-   "titulo_en": "",
-   "subtitulo_en": "Coffee, tea and soft drinks",
+   "titulo_en": "Drinks",
+   "subtitulo_en": "Soft drinks and water",
    "intro_en": "",
    "pie_en": ""
   },
@@ -1725,6 +2207,7 @@ window.CARTA = {
        "n": "Piña Colada",
        "d": "Tropical y cremosa: ron, crema de coco y jugo de piña.",
        "p": 20,
+       "foto": "https://images.unsplash.com/photo-1617728273800-1e615ab03037?w=700&q=70&auto=format&fit=crop",
        "d_en": "Tropical and creamy: rum, coconut cream and pineapple juice."
       },
       {
@@ -1732,6 +2215,10 @@ window.CARTA = {
        "n": "Pisco Sour",
        "d": "El clásico peruano: pisco, clara de huevo, jugo de limón y jarabe de goma.",
        "p": 20,
+       "al": [
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1632995561510-38616ed64ff6?w=700&q=70&auto=format&fit=crop",
        "d_en": "The Peruvian classic: pisco, egg white, lime juice and simple syrup."
       },
       {
@@ -1739,6 +2226,7 @@ window.CARTA = {
        "n": "Don’t Worry Be Happy",
        "d": "Vodka, crema de coco y jugo de naranja. Con ese nombre, no hay más que decir.",
        "p": 20,
+       "foto": "https://images.unsplash.com/photo-1762883469122-c15463bbce28?w=700&q=70&auto=format&fit=crop",
        "d_en": "Vodka, coconut cream and orange juice. With that name, nothing more to say."
       },
       {
@@ -1746,6 +2234,7 @@ window.CARTA = {
        "n": "Chilcano",
        "d": "Ligero y burbujeante: pisco, jarabe de goma, jugo de limón y ginger ale.",
        "p": 20,
+       "foto": "https://images.unsplash.com/photo-1609951651556-5334e2706168?w=700&q=70&auto=format&fit=crop",
        "d_en": "Light and bubbly: pisco, simple syrup, lime juice and ginger ale."
       },
       {
@@ -1753,6 +2242,7 @@ window.CARTA = {
        "n": "Bob Dylan",
        "d": "Cifrut, Schweppes y Jägermeister.",
        "p": 20,
+       "foto": "https://images.unsplash.com/photo-1500217052183-bc01eee1a74e?w=700&q=70&auto=format&fit=crop",
        "d_en": "Cifrut, Schweppes and Jägermeister."
       },
       {
@@ -1760,6 +2250,10 @@ window.CARTA = {
        "n": "Orgasmo",
        "d": "Baileys y amaretto, suave y dulce.",
        "p": 20,
+       "al": [
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1767065703431-704a051e4c83?w=700&q=70&auto=format&fit=crop",
        "d_en": "Baileys and amaretto, smooth and sweet."
       },
       {
@@ -1767,6 +2261,11 @@ window.CARTA = {
        "n": "Algarrobina",
        "d": "Un clásico norteño: algarrobina, pisco, leche y crema de leche.",
        "p": 20,
+       "al": [
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1696594935685-1ad6ba69e83e?w=700&q=70&auto=format&fit=crop",
        "d_en": "A northern Peruvian classic: algarrobina syrup, pisco, milk and cream."
       },
       {
@@ -1774,6 +2273,10 @@ window.CARTA = {
        "n": "Baileys Colada",
        "d": "Baileys, crema de coco y leche: suave y muy cremoso.",
        "p": 20,
+       "al": [
+        "lacteos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1607446045710-d5a8fd9bc1db?w=700&q=70&auto=format&fit=crop",
        "d_en": "Baileys, coconut cream and milk: smooth and very creamy."
       }
      ]
@@ -1804,6 +2307,10 @@ window.CARTA = {
        "g": "copa de vino",
        "d": "Copa de vino Frontera: Cabernet Sauvignon o Borgoña.",
        "p": 14,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=700&q=70&auto=format&fit=crop",
        "op": [
         "vino-copa"
        ],
@@ -1811,24 +2318,14 @@ window.CARTA = {
        "d_en": "A glass of Frontera wine: Cabernet Sauvignon or Borgoña."
       },
       {
-       "id": "vini-birra-cusquena",
-       "n": "Birra Cusqueña",
-       "g": "cerveza",
-       "p": 14,
-       "g_en": "beer"
-      },
-      {
-       "id": "vini-birra-pilsen",
-       "n": "Birra Pilsen",
-       "g": "cerveza",
-       "p": 14,
-       "g_en": "beer"
-      },
-      {
        "id": "vini-sangria",
        "n": "Sangria",
        "g": "sangría",
        "p": 55,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1682423228933-0e8b8fc4f92a?w=700&q=70&auto=format&fit=crop",
        "g_en": "sangria"
       }
      ]
@@ -1843,6 +2340,10 @@ window.CARTA = {
        "g": "tinto semiseco · Perú",
        "d": "Tinto semiseco peruano de uva Malbec del valle de Chincha: dulce, frutal y muy fácil de beber.",
        "p": 48,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1767510533093-ffb6421a002d?w=700&q=70&auto=format&fit=crop",
        "g_en": "off-dry red · Peru",
        "d_en": "Off-dry Peruvian red from Malbec grapes of the Chincha Valley: sweet, fruity and very easy to drink."
       },
@@ -1852,6 +2353,10 @@ window.CARTA = {
        "g": "tinto semiseco · Perú",
        "d": "Semiseco del valle de Chincha, con aromas de cereza confitada y un toque de regaliz. Taninos muy suaves: ideal para acompañar platos con algo de picante.",
        "p": 45,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1474722883778-792e7990302f?w=700&q=70&auto=format&fit=crop",
        "g_en": "off-dry red · Peru",
        "d_en": "Off-dry red from the Chincha Valley, with candied cherry aromas and a hint of liquorice. Very soft tannins: great with slightly spicy dishes."
       },
@@ -1860,6 +2365,10 @@ window.CARTA = {
        "n": "Gran Blanco",
        "g": "blanco",
        "p": 50,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1585553616435-2dc0a54e271d?w=700&q=70&auto=format&fit=crop",
        "g_en": "white"
       },
       {
@@ -1868,6 +2377,10 @@ window.CARTA = {
        "g": "tinto · Chile",
        "d": "De Viña Concha y Toro. En su versión Cabernet Sauvignon: fruta negra madura con toques de vainilla, café y chocolate; suave y de final largo.",
        "p": 48,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1630369160812-26c7604cbd8c?w=700&q=70&auto=format&fit=crop",
        "g_en": "red · Chile",
        "d_en": "From Concha y Toro. In its Cabernet Sauvignon version: ripe black fruit with hints of vanilla, coffee and chocolate; smooth with a long finish."
       },
@@ -1877,6 +2390,10 @@ window.CARTA = {
        "g": "seco · Perú",
        "d": "De Viña Tacama, en el valle de Ica, una de las bodegas con más historia del Perú.",
        "p": 55,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1786384243745-c6d779c13e7d?w=700&q=70&auto=format&fit=crop",
        "g_en": "dry · Peru",
        "d_en": "From Viña Tacama in the Ica Valley, one of Peru's most historic wineries."
       },
@@ -1886,6 +2403,10 @@ window.CARTA = {
        "g": "semiseco · Perú",
        "d": "De Viña Tacama, en el valle de Ica: un toque más dulce y amable.",
        "p": 55,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1765033670193-be9fc10ccd8a?w=700&q=70&auto=format&fit=crop",
        "g_en": "off-dry · Peru",
        "d_en": "From Viña Tacama in the Ica Valley: a touch sweeter and gentler."
       },
@@ -1895,6 +2416,10 @@ window.CARTA = {
        "g": "tinto · Chile",
        "d": "De Viña Concha y Toro. En Cabernet Sauvignon: cereza, grosella y ciruela negra con un toque de vainilla de barrica; taninos elegantes y final largo.",
        "p": 60,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1764874299343-e55d7af327cd?w=700&q=70&auto=format&fit=crop",
        "g_en": "red · Chile",
        "d_en": "From Concha y Toro. As Cabernet Sauvignon: cherry, redcurrant and black plum with a touch of oak vanilla; elegant tannins and a long finish."
       },
@@ -1904,27 +2429,39 @@ window.CARTA = {
        "g": "espumante brut · Perú",
        "d": "Espumante peruano brut (seco), fresco y burbujeante, ideal para brindar.",
        "p": 65,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1706106591925-8818b8bf7fc0?w=700&q=70&auto=format&fit=crop",
        "g_en": "brut sparkling · Peru",
        "d_en": "Peruvian brut (dry) sparkling wine, fresh and bubbly, perfect for a toast."
       },
       {
        "id": "vini-patrillo",
        "n": "Patrillo",
-       "p": 120
+       "p": 120,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1578911373434-0cb395d2cbfb?w=700&q=70&auto=format&fit=crop"
       },
       {
        "id": "vini-prisionero",
        "n": "Prisionero",
-       "p": 100
+       "p": 100,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1611575189074-9dfbbceb258a?w=700&q=70&auto=format&fit=crop"
       }
      ]
     }
    ],
-   "titulo_en": "",
-   "subtitulo_en": "Wines, beers and spirits",
+   "titulo_en": "Wines",
+   "subtitulo_en": "The perfect pairing",
    "intro_en": "",
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T01:19:38-05:00"
+ "publicado": "2026-11-11T01:36:31-05:00"
 };
