@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T00:50:54-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T00:53:20-05:00).
    No lo edites a mano: cambia los datos en el panel y pulsa "Publicar". */
 window.CARTA = {
  "negocio": {
@@ -346,11 +346,11 @@ window.CARTA = {
    "ops": [
     {
      "n": "Pomodoro",
-     "n_en": "besciamella",
+     "n_en": "Pomodoro",
      "p": 0
     },
     {
-     "n": "besciamella",
+     "n": "Besciamella",
      "n_en": "besciamella",
      "p": 0
     }
@@ -1905,5 +1905,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T00:50:54-05:00"
+ "publicado": "2026-11-11T00:53:20-05:00"
 };
