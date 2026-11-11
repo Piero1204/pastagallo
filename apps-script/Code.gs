@@ -37,21 +37,22 @@ function onOpen() {
 }
 
 function abrirPanel() {
-  exigirAdmin_();
-  var html = HtmlService.createHtmlOutputFromFile('Panel').setWidth(1360).setHeight(860)
-    .setTitle('Panel · Pasta Gallo');
+  exigirAdmin_('');
+  var t = HtmlService.createTemplateFromFile('Panel');
+  t.modoWeb = false;
+  var html = t.evaluate().setWidth(1360).setHeight(860).setTitle('Panel · Pasta Gallo');
   SpreadsheetApp.getUi().showModalDialog(html, 'Panel · Pasta Gallo');
 }
 
 function menuPublicar() {
-  var r = publicarCarta();
+  var r = publicarCarta('');
   SpreadsheetApp.getUi().alert('Carta publicada', r.mensaje, SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
 /* =========================== INSTALADOR =========================== */
 function instalar() {
   var ss = SpreadsheetApp.getActive();
-  if (ss.getSheetByName(HOJA.config)) exigirAdmin_();
+  if (ss.getSheetByName(HOJA.config)) exigirAdmin_('');
   var D = DATOS_INICIALES;
 
   // Config
@@ -392,6 +393,12 @@ function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
 
 /* =========================== API PÚBLICA (web) =========================== */
 function doGet(e) {
+  if (!(e && e.parameter && e.parameter.estado)) {
+    var t = HtmlService.createTemplateFromFile('Panel');
+    t.modoWeb = true;
+    return t.evaluate().setTitle('Panel · Pasta Gallo')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
   var cfg = leerConfig_();
   var momento = momentoActual_(cfg);
   return json_({ ok: true, servicio: 'Pasta Gallo', abierto: estaAbierto_(cfg, momento), pedidos: esSi_(cfg.pedidos_activos) });
@@ -482,7 +489,22 @@ function fmt_(fecha, patron) {
 }
 
 /* =========================== SEGURIDAD DEL PANEL =========================== */
-function exigirAdmin_() {
+/**
+ * Dos formas de entrar al panel:
+ * 1) Desde el Google Sheets (menú): se verifica la cuenta de Google (debe ser editor).
+ * 2) Desde el link de la aplicación web: se necesita la contraseña del panel. Al entrar
+ *    se crea una sesión temporal (6 horas) que se guarda solo en el servidor.
+ */
+function exigirAdmin_(sesion) {
+  if (sesion) {
+    var v = CacheService.getScriptCache().get('ses:' + String(sesion).slice(0, 80));
+    var gen = PropertiesService.getScriptProperties().getProperty('PANEL_GEN') || '0';
+    if (v) {
+      var o = JSON.parse(v);
+      if (o.g === gen) return o.n;
+    }
+    throw new Error('SESION_VENCIDA');
+  }
   var email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
   if (!email) throw new Error('No pudimos identificar tu cuenta de Google. Abre el panel desde el menú del Google Sheets.');
   var ss = SpreadsheetApp.getActive();
@@ -494,15 +516,15 @@ function exigirAdmin_() {
 }
 
 /* =========================== FUNCIONES DEL PANEL =========================== */
-function panelInicio() {
-  var email = exigirAdmin_();
+function panelInicio(sesion) {
+  var email = exigirAdmin_(sesion);
   var cfg = leerConfig_();
   var props = PropertiesService.getScriptProperties();
   return {
     usuario: email, estados: ESTADOS, alergenos: ALERGENOS,
     sitio: cfg.sitio_url || '', repo: cfg.github_repo || '', rama: cfg.github_rama || 'main',
     api: cfg.api_url || '', tokenListo: !!props.getProperty('GITHUB_TOKEN'),
-    pendientes: props.getProperty('CAMBIOS_PENDIENTES') === 'SI',
+    pendientes: props.getProperty('CAMBIOS_PENDIENTES') === 'SI', claveLista: !!props.getProperty('PANEL_CLAVE'),
     ultimaPublicacion: props.getProperty('ULTIMA_PUBLICACION') || '',
     abierto: estaAbierto_(cfg, momentoActual_(cfg))
   };
@@ -520,8 +542,8 @@ function pedidoAObjeto_(p, zona) {
 }
 
 /** Lista de pedidos para el panel. modo = 'activos' | 'hoy' | 'todos' (últimos 300). */
-function listarPedidos(modo) {
-  exigirAdmin_();
+function listarPedidos(sesion, modo) {
+  exigirAdmin_(sesion);
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
   var hoy = Utilities.formatDate(new Date(), zona, 'yyyy-MM-dd');
   var filas = leerTabla_(HOJA.pedidos).map(function (p) { return pedidoAObjeto_(p, zona); });
@@ -532,13 +554,13 @@ function listarPedidos(modo) {
   return { pedidos: filas, version: PropertiesService.getScriptProperties().getProperty('PEDIDOS_VERSION') || '' };
 }
 
-function versionPedidos() {
-  exigirAdmin_();
+function versionPedidos(sesion) {
+  exigirAdmin_(sesion);
   return PropertiesService.getScriptProperties().getProperty('PEDIDOS_VERSION') || '';
 }
 
-function cambiarEstado(numero, estado) {
-  var email = exigirAdmin_();
+function cambiarEstado(sesion, numero, estado) {
+  var email = exigirAdmin_(sesion);
   if (ESTADOS.indexOf(estado) < 0) throw new Error('Estado no válido.');
   var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
   var n = h.getLastRow();
@@ -560,8 +582,8 @@ function cambiarEstado(numero, estado) {
   throw new Error('No se encontró el pedido #' + numero);
 }
 
-function dashboard(periodo) {
-  exigirAdmin_();
+function dashboard(sesion, periodo) {
+  exigirAdmin_(sesion);
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
   var ahora = new Date();
   var hoyStr = Utilities.formatDate(ahora, zona, 'yyyy-MM-dd');
@@ -582,13 +604,13 @@ function dashboard(periodo) {
 }
 
 /* ---------- carta ---------- */
-function listarCarta() {
-  exigirAdmin_();
+function listarCarta(sesion) {
+  exigirAdmin_(sesion);
   return { secciones: leerTabla_(HOJA.secciones), productos: leerTabla_(HOJA.productos) };
 }
 
-function guardarProducto(p) {
-  exigirAdmin_();
+function guardarProducto(sesion, p) {
+  exigirAdmin_(sesion);
   if (!p || !String(p.nombre || '').trim()) throw new Error('El producto necesita un nombre.');
   var secs = leerTabla_(HOJA.secciones).map(function (s) { return String(s.id); });
   if (secs.indexOf(String(p.seccion)) < 0) throw new Error('Elige una sección válida.');
@@ -621,8 +643,8 @@ function guardarProducto(p) {
   return limpio;
 }
 
-function cambiarCampoProducto(id, campo, valor) {
-  exigirAdmin_();
+function cambiarCampoProducto(sesion, id, campo, valor) {
+  exigirAdmin_(sesion);
   if (['disponible', 'visible'].indexOf(campo) < 0) throw new Error('Campo no permitido.');
   var p = leerTabla_(HOJA.productos).filter(function (d) { return String(d.id) === String(id); })[0];
   if (!p) throw new Error('Producto no encontrado.');
@@ -643,15 +665,15 @@ var CLAVES_EDITABLES = ['nombre', 'desde', 'direccion', 'telefono', 'whatsapp', 
   'pedidos_activos', 'pedidos_fuera_de_horario', 'pedidos_mesa_activos', 'metodos_pago', 'recojo_activo', 'texto_delivery',
   'api_url', 'sitio_url', 'github_repo', 'github_rama', 'admins'];
 
-function leerAjustes() {
-  exigirAdmin_();
+function leerAjustes(sesion) {
+  exigirAdmin_(sesion);
   var cfg = leerConfig_(), o = {};
   CLAVES_EDITABLES.forEach(function (k) { o[k] = cfg[k] == null ? '' : String(cfg[k]); });
   return o;
 }
 
-function guardarAjustes(o) {
-  exigirAdmin_();
+function guardarAjustes(sesion, o) {
+  exigirAdmin_(sesion);
   Object.keys(o || {}).forEach(function (k) {
     if (CLAVES_EDITABLES.indexOf(k) < 0) return;
     var v = String(o[k] == null ? '' : o[k]).trim();
@@ -665,8 +687,8 @@ function guardarAjustes(o) {
   return true;
 }
 
-function guardarTokenGithub(token) {
-  exigirAdmin_();
+function guardarTokenGithub(sesion, token) {
+  exigirAdmin_(sesion);
   token = String(token || '').trim();
   if (!token) { PropertiesService.getScriptProperties().deleteProperty('GITHUB_TOKEN'); return { ok: true, mensaje: 'Token borrado.' }; }
   var cfg = leerConfig_();
@@ -700,8 +722,8 @@ function githubPut_(ruta, base64, mensaje) {
   return JSON.parse(r.getContentText());
 }
 
-function publicarCarta() {
-  var email = exigirAdmin_();
+function publicarCarta(sesion) {
+  var email = exigirAdmin_(sesion);
   var cfg = leerConfig_();
   var carta = construirCarta_(cfg, leerTabla_(HOJA.secciones), leerTabla_(HOJA.productos));
   var zona = cfg.zona_horaria || 'America/Lima';
@@ -718,8 +740,8 @@ function publicarCarta() {
 }
 
 /* ---------- fotos ---------- */
-function subirFoto(id, base64) {
-  exigirAdmin_();
+function subirFoto(sesion, id, base64) {
+  exigirAdmin_(sesion);
   base64 = String(base64 || '').replace(/^data:image\/\w+;base64,/, '');
   if (!base64 || base64.length > 2500000) throw new Error('La foto es demasiado grande.');
   var p = leerTabla_(HOJA.productos).filter(function (d) { return String(d.id) === String(id); })[0];
@@ -753,33 +775,84 @@ function actualizarLinksMesas_() {
   limpiarCache_();
 }
 
-function listarMesas() {
-  exigirAdmin_();
+function listarMesas(sesion) {
+  exigirAdmin_(sesion);
   actualizarLinksMesas_();
   return leerTabla_(HOJA.mesas).map(function (m) { return { mesa: String(m.mesa), codigo: String(m.codigo), activa: esSi_(m.activa), link: m.link }; });
 }
 
-function nuevaMesa(nombre) {
-  exigirAdmin_();
+function nuevaMesa(sesion, nombre) {
+  exigirAdmin_(sesion);
   nombre = texto_(nombre, 6);
   if (!nombre) throw new Error('Escribe el número o nombre de la mesa (máx. 6 caracteres).');
   if (leerTabla_(HOJA.mesas).some(function (m) { return String(m.mesa) === nombre; })) throw new Error('Esa mesa ya existe.');
   SpreadsheetApp.getActive().getSheetByName(HOJA.mesas).appendRow([nombre, codigoMesa_(), 'SI', '']);
-  return listarMesas();
+  return listarMesas(sesion);
 }
 
-function cambiarCodigoMesa(nombre) {
-  exigirAdmin_();
+function cambiarCodigoMesa(sesion, nombre) {
+  exigirAdmin_(sesion);
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(nombre); })[0];
   if (!m) throw new Error('Mesa no encontrada.');
   SpreadsheetApp.getActive().getSheetByName(HOJA.mesas).getRange(m._fila, 2).setValue(codigoMesa_());
-  return listarMesas();
+  return listarMesas(sesion);
 }
 
-function activarMesa(nombre, activa) {
-  exigirAdmin_();
+function activarMesa(sesion, nombre, activa) {
+  exigirAdmin_(sesion);
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(nombre); })[0];
   if (!m) throw new Error('Mesa no encontrada.');
   SpreadsheetApp.getActive().getSheetByName(HOJA.mesas).getRange(m._fila, 3).setValue(activa ? 'SI' : 'NO');
-  return listarMesas();
+  return listarMesas(sesion);
+}
+
+/* =========================== ACCESO POR CONTRASEÑA (panel web) =========================== */
+function hashClave_(clave, sal) {
+  var b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, sal + '|' + clave, Utilities.Charset.UTF_8);
+  for (var i = 0; i < 300; i++) b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, b.concat(Utilities.newBlob(sal).getBytes()));
+  return Utilities.base64Encode(b);
+}
+
+function iguales_(a, b) {
+  if (a.length !== b.length) return false;
+  var r = 0;
+  for (var i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+/** Inicia sesión en el panel web. Devuelve un código de sesión válido por 6 horas. */
+function iniciarSesion(clave, nombre) {
+  var cache = CacheService.getScriptCache();
+  var fallos = Number(cache.get('login-fallos') || 0);
+  if (fallos >= 8) throw new Error('Demasiados intentos fallidos. Espera 15 minutos.');
+  var props = PropertiesService.getScriptProperties();
+  var guardada = props.getProperty('PANEL_CLAVE');
+  if (!guardada) throw new Error('Todavía no hay contraseña. Créala desde el Google Sheets: menú Pasta Gallo → Abrir panel → Ajustes.');
+  var partes = guardada.split(':');
+  if (!iguales_(hashClave_(String(clave || ''), partes[0]), partes[1])) {
+    cache.put('login-fallos', String(fallos + 1), 900);
+    Utilities.sleep(1500);
+    throw new Error('Contraseña incorrecta.');
+  }
+  var token = Utilities.getUuid() + Utilities.getUuid().replace(/-/g, '');
+  var n = texto_(nombre, 30) || 'Panel';
+  cache.put('ses:' + token, JSON.stringify({ n: n, g: props.getProperty('PANEL_GEN') || '0' }), 21600);
+  return { sesion: token, nombre: n };
+}
+
+function cerrarSesion(sesion) {
+  if (sesion) CacheService.getScriptCache().remove('ses:' + String(sesion).slice(0, 80));
+  return true;
+}
+
+/** Crea o cambia la contraseña del panel web. Cierra todas las sesiones abiertas. */
+function cambiarClavePanel(sesion, nueva) {
+  exigirAdmin_(sesion);
+  nueva = String(nueva || '');
+  if (nueva.length < 10) throw new Error('La contraseña debe tener al menos 10 caracteres.');
+  var sal = Utilities.getUuid();
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('PANEL_CLAVE', sal + ':' + hashClave_(nueva, sal));
+  props.setProperty('PANEL_GEN', String(Number(props.getProperty('PANEL_GEN') || 0) + 1));
+  return { ok: true, mensaje: 'Contraseña guardada. Las sesiones abiertas se cerraron.' };
 }
