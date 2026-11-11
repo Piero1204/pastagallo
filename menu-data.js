@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T01:36:31-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T01:54:20-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -604,7 +604,7 @@ window.CARTA = {
       },
       {
        "id": "antipasti-crespelle-agli-asparagi",
-       "n": "Crespelle agli Asparagi",
+       "n": "Crepe agli Asparagi",
        "g": "crepes de espárragos",
        "d": "Delicadas crepes rellenas de espárragos, a la manera italiana.",
        "p": 20,
@@ -2463,5 +2463,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T01:36:31-05:00"
+ "publicado": "2026-11-11T01:54:20-05:00"
 };
