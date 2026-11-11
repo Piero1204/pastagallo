@@ -313,3 +313,199 @@ function actualizarV2() {
   PropertiesService.getScriptProperties().setProperty('MIGRACION_V2', new Date().toISOString());
   return 'Actualización v2 aplicada: ' + t.productos.length + ' productos, ' + t.opciones.length + ' opciones.';
 }
+
+/* =====================================================================
+   PASTA GALLO · Actualización v3 (11-nov-2026) — función "actualizarV3"
+   - Alérgenos referenciales de cada producto (según la receta típica; confirmar con cocina)
+   - Fotos referenciales (Unsplash, licencia gratuita) donde aún no hay foto propia
+   - Prodotti d'Italia: 3 wafers y 3 galletas Tre Marie, 2 productos Caffarel
+   - Se eliminan las cervezas; la sección queda como "Vini"
+   - Café, té y chocolate caliente pasan a su propia sección "Caffetteria" (solo en el local)
+   Se puede repetir sin problema. NUNCA reemplaza una foto que ya esté subida.
+   ===================================================================== */
+var U_ = function (id) { return 'https://images.unsplash.com/photo-' + id + '?w=700&q=70&auto=format&fit=crop'; };
+var MIGRACION_V3 = {
+  eliminar: ['vini-birra-cusquena', 'vini-birra-pilsen'],
+  alergenos: {
+    'antipasti-pane-allaglio': 'gluten, lacteos', 'antipasti-pane-allaglio-con-formaggio': 'gluten, lacteos',
+    'antipasti-bruschetta-ai-funghi': 'gluten', 'antipasti-bruschetta-alla-siciliana': 'gluten',
+    'antipasti-insalata-caprese': 'lacteos', 'antipasti-frittata-di-cipolla': 'huevo', 'antipasti-frittata-mista': 'huevo',
+    'antipasti-crespelle-agli-asparagi': 'gluten, huevo, lacteos',
+    'pizze-napoletana': 'gluten, lacteos', 'pizze-americana': 'gluten, lacteos', 'pizze-arrabbiata': 'gluten, lacteos',
+    'pizze-speciale': 'gluten, lacteos', 'pizze-tentazione': 'gluten, lacteos', 'pizze-hawaiana': 'gluten, lacteos',
+    'pizze-vegetariana': 'gluten, lacteos', 'pizze-ghiottona': 'gluten, lacteos', 'pizze-campagnola': 'gluten, lacteos',
+    'pizze-primavera': 'gluten, lacteos', 'pizze-quattro-stagioni': 'gluten, lacteos, pescado', 'pizze-piemontese': 'gluten, lacteos',
+    'pizze-quattro-formaggi': 'gluten, lacteos', 'pizze-la-peruanita': 'gluten, lacteos, soya', 'pizze-abbuffata': 'gluten, lacteos',
+    'pizze-la-chama': 'gluten, lacteos',
+    'pasta-fonte-di-ravioli': 'gluten, huevo, lacteos', 'pasta-fonte-di-ravioli-di-carne': 'gluten, huevo',
+    'pasta-fonte-di-fettuccine': 'gluten', 'pasta-tris-di-pasta': 'gluten, huevo, lacteos',
+    'pasta-fettuccine-allalfredo-con-lomo': 'gluten, lacteos', 'pasta-spaghetti-alla-huancaina-con-lomo': 'gluten, lacteos',
+    'pasta-spaghetti-ai-gamberoni': 'gluten, mariscos', 'pasta-fettuccine': 'gluten', 'pasta-pappardelle': 'gluten',
+    'pasta-spaghetti': 'gluten', 'pasta-conchiglie': 'gluten', 'pasta-gomiti': 'gluten', 'pasta-maccheroni': 'gluten',
+    'pasta-ravioli-di-carne': 'gluten, huevo', 'pasta-ravioli-di-formaggio': 'gluten, huevo, lacteos', 'pasta-raviolini': 'gluten, huevo',
+    'pasta-tortellini': 'gluten, huevo', 'pasta-gnocchi-di-patate': 'gluten',
+    'salsa-puttanesca': 'pescado', 'salsa-alfredo': 'lacteos', 'salsa-gorgonzola': 'lacteos', 'salsa-rosata': 'lacteos',
+    'salsa-pesto': 'lacteos, frutosSecos', 'salsa-quattro-formaggi': 'lacteos', 'salsa-salsa-al-lomo': 'soya',
+    'salsa-funghi-e-cardonada': 'gluten, lacteos', 'salsa-carbonara': 'huevo, lacteos',
+    'lasagne-lasagna-di-spinaci': 'gluten, huevo, lacteos', 'lasagne-lasagna-di-carne': 'gluten, huevo, lacteos',
+    'lasagne-lasagna-agli-asparagi': 'gluten, huevo, lacteos', 'parrillas-milanesa-de-pollo': 'gluten, huevo',
+    'dolci-tiramisu': 'gluten, huevo, lacteos', 'dolci-torta-al-cioccolato': 'gluten, huevo, lacteos',
+    'dolci-biscotti-con-gocce-di-cioccolato': 'gluten, huevo, lacteos', 'dolci-biscotto-al-cioccolato': 'gluten, huevo, lacteos',
+    'dolci-biscotto-red-velvet': 'gluten, huevo, lacteos',
+    'caffe-cappuccino': 'lacteos', 'caffe-cioccolata-calda': 'lacteos',
+    'aperitivi-pisco-sour': 'huevo', 'aperitivi-orgasmo': 'lacteos', 'aperitivi-algarrobina': 'huevo, lacteos', 'aperitivi-baileys-colada': 'lacteos',
+    'vini-calice-di-vino': 'sulfitos', 'vini-sangria': 'sulfitos', 'vini-tabernero-gran-tinto': 'sulfitos', 'vini-tabernero-borgona': 'sulfitos',
+    'vini-gran-blanco': 'sulfitos', 'vini-frontera': 'sulfitos', 'vini-tacama-seco': 'sulfitos', 'vini-tacama-semiseco': 'sulfitos',
+    'vini-casillero-del-diablo': 'sulfitos', 'vini-spumante-brut-tabernero': 'sulfitos', 'vini-patrillo': 'sulfitos', 'vini-prisionero': 'sulfitos',
+    'italia-wafer-mandorlato-tre-marie': 'gluten, lacteos, frutosSecos, soya'
+  },
+  fotos: {
+    'antipasti-pane-allaglio': '1587676353811-1708ddf47031', 'antipasti-pane-allaglio-con-formaggio': '1619535860434-ba1d8fa12536',
+    'antipasti-bruschetta-ai-funghi': '1732188356856-b85a4d62dec0', 'antipasti-bruschetta-alla-siciliana': '1630230596944-6373069c837d',
+    'antipasti-prosciutto-crudo': '1598989519542-077da0f51c09', 'antipasti-affettato-misto': '1781714534211-3236a60d9ce4',
+    'antipasti-piqueo-allitaliana': '1637370988123-41bd9a6bcd48', 'antipasti-insalata-italiana': '1746211108786-ca20c8f80ecd',
+    'antipasti-insalata-caprese': '1769458313937-b5ad8f84942e', 'antipasti-frittata-di-cipolla': '1668283653825-37b80f055b05',
+    'antipasti-frittata-mista': '1510693206972-df098062cb71', 'antipasti-crespelle-agli-asparagi': '1777891258086-52a41e4477f6',
+    'pizze-napoletana': '1700760933900-320bf1158d71', 'pizze-americana': '1717883235373-ef10b2a745a3',
+    'pizze-arrabbiata': '1777891257674-36c5532e6654', 'pizze-speciale': '1677175183792-e6a9b8b14305',
+    'pizze-tentazione': '1672856398893-2fb52d807874', 'pizze-hawaiana': '1778449726826-8b0c92e4624e',
+    'pizze-vegetariana': '1625401514458-6c8a5e7d55da', 'pizze-ghiottona': '1588014164218-d9ecba01aaff',
+    'pizze-campagnola': '1642789736327-14d9c36496d7', 'pizze-primavera': '1565299624946-b28f40a0ae38',
+    'pizze-quattro-stagioni': '1573821663912-569905455b1c', 'pizze-piemontese': '1716237387757-db2149bf02d0',
+    'pizze-quattro-formaggi': '1655070249064-2556803629b6', 'pizze-la-peruanita': '1622880833523-7cf1c0bd4296',
+    'pizze-abbuffata': '1541745537411-b8046dc6d66c', 'pizze-la-chama': '1615719413546-198b25453f85',
+    'pasta-fonte-di-ravioli': '1659813952313-eb81e5b3fbdd', 'pasta-fonte-di-ravioli-di-carne': '1778850620699-79ba3ff60bf0',
+    'pasta-fonte-di-fettuccine': '1627207644206-a2040d60ecad', 'pasta-tris-di-pasta': '1616299915952-04c803388e5f',
+    'pasta-fettuccine-allalfredo-con-lomo': '1791202978575-21e01ab3a6e5', 'pasta-spaghetti-alla-huancaina-con-lomo': '1581228258201-fe6e5861d1f6',
+    'pasta-spaghetti-ai-gamberoni': '1563379926898-05f4575a45d8', 'pasta-fettuccine': '1664214649076-7b17006db5b5',
+    'pasta-pappardelle': '1601751911508-fd69ffc08fa2', 'pasta-spaghetti': '1627042633145-b780d842ba45',
+    'pasta-conchiglie': '1606503854923-95e45999ae2f', 'pasta-gomiti': '1708184528301-b0dad28dded5',
+    'pasta-maccheroni': '1707870678076-40ba56a65ece', 'pasta-ravioli-di-carne': '1594610352113-ad218529cfb7',
+    'pasta-ravioli-di-formaggio': '1628885363743-fbf9c98d4196', 'pasta-raviolini': '1665761543682-6305ccc5398b',
+    'pasta-tortellini': '1628885405379-5d58de03edb0',
+    'lasagne-lasagna-di-spinaci': '1633436374961-09b92742047b', 'lasagne-lasagna-di-carne': '1709429790175-b02bb1b19207',
+    'lasagne-lasagna-agli-asparagi': '1762631883229-95cfb6a063ad',
+    'parrillas-parrilla-mixta': '1702827487086-9ab8a573d825', 'parrillas-lomo-fino-a-la-plancha': '1600891964092-4316c288032e',
+    'parrillas-churrasco-o-chuleta': '1662499754738-e0d6ac84f308', 'parrillas-milanesa-de-pollo': '1682970078535-cd0cf994ee96',
+    'parrillas-porcion-de-chorizo': '1750461325551-02b7ea57625a',
+    'dolci-tiramisu': '1631206753348-db44968fd440', 'dolci-torta-al-cioccolato': '1615796701805-2094ac54bbf9',
+    'dolci-biscotti-con-gocce-di-cioccolato': '1782852232674-64bc7f102866', 'dolci-biscotto-al-cioccolato': '1582623201359-74e936ed48c4',
+    'dolci-biscotto-red-velvet': '1593675418918-08817c2d8682',
+    'caffe-caffe': '1497515114629-f71d768fd07c', 'caffe-espresso': '1579992357154-faf4bde95b3d',
+    'caffe-cappuccino': '1506372023823-741c83b836fe', 'caffe-cioccolata-calda': '1542990253-0d0f5be5f0ed',
+    'caffe-te': '1595434091143-b375ced5fe5c', 'caffe-limonata': '1575596510825-f748919a2bf7',
+    'caffe-maracuya': '1546751706-81c567470489', 'caffe-bibita-gassata': '1618183507099-4fa269f9b0ee',
+    'caffe-acqua': '1548839140-29a749e1cf4d', 'caffe-acqua-frizzante': '1775390722213-2830af4dde60',
+    'caffe-ghiaccio': '1782179186180-357225891bb0',
+    'aperitivi-pina-colada': '1617728273800-1e615ab03037', 'aperitivi-pisco-sour': '1632995561510-38616ed64ff6',
+    'aperitivi-dont-worry-be-happy': '1762883469122-c15463bbce28', 'aperitivi-chilcano': '1609951651556-5334e2706168',
+    'aperitivi-bob-dylan': '1500217052183-bc01eee1a74e', 'aperitivi-orgasmo': '1767065703431-704a051e4c83',
+    'aperitivi-algarrobina': '1696594935685-1ad6ba69e83e', 'aperitivi-baileys-colada': '1607446045710-d5a8fd9bc1db',
+    'vini-calice-di-vino': '1553361371-9b22f78e8b1d', 'vini-sangria': '1682423228933-0e8b8fc4f92a',
+    'vini-tabernero-gran-tinto': '1767510533093-ffb6421a002d', 'vini-tabernero-borgona': '1474722883778-792e7990302f',
+    'vini-gran-blanco': '1585553616435-2dc0a54e271d', 'vini-frontera': '1630369160812-26c7604cbd8c',
+    'vini-tacama-seco': '1786384243745-c6d779c13e7d', 'vini-tacama-semiseco': '1765033670193-be9fc10ccd8a',
+    'vini-casillero-del-diablo': '1764874299343-e55d7af327cd', 'vini-spumante-brut-tabernero': '1706106591925-8818b8bf7fc0',
+    'vini-patrillo': '1578911373434-0cb395d2cbfb', 'vini-prisionero': '1611575189074-9dfbbceb258a',
+    'italia-wafer-nocciolato-tre-marie': '1612739406198-71fc29b3c1c9', 'italia-wafer-stracciatella-tre-marie': '1772986234414-ada1a1cef8e4',
+    'italia-wafer-gianduia-nera-tre-marie': '1772985427174-e140b55944a5', 'italia-gianduia-classica-caffarel': '1571091799989-e88304d6aed3',
+    'italia-gianduia-assortito-caffarel': '1548741487-18d363dc4469', 'italia-cioccolato-in-pezzi-tre-marie': '1583743089695-4b816a340f82',
+    'italia-caramello-salato-tre-marie': '1706167754899-36a714b5dc66', 'italia-cacao-gocce-tre-marie': '1590080874088-eec64895b423'
+  },
+  // café, té y chocolate caliente: nueva sección y solo en el local
+  caffetteria: ['caffe-caffe', 'caffe-espresso', 'caffe-cappuccino', 'caffe-cioccolata-calda', 'caffe-te'],
+  productos: {
+    'italia-wafer-mandorlato-tre-marie': { orden: 10 }
+  },
+  secciones: {
+    vini: { titulo: 'Vini', titulo_en: 'Wines', subtitulo_en: 'The perfect pairing' },
+    caffe: { titulo: 'Bevande', subtitulo: 'Refrescos, gaseosas y agua', intro: '', titulo_en: 'Drinks', subtitulo_en: 'Soft drinks and water', intro_en: '' }
+  },
+  seccionNueva: { id: 'caffetteria', titulo: 'Caffetteria', subtitulo: 'Café, té y chocolate caliente',
+    intro: 'Se preparan al momento y se sirven solo en el local.', pie: '', alcohol: 'NO', delivery: 'SI', mesa: 'SI', visible: 'SI',
+    titulo_en: 'Caffetteria', subtitulo_en: 'Coffee, tea and hot chocolate', intro_en: 'Freshly made and served only at the restaurant.', pie_en: '' },
+  productosNuevos: [
+    { id: 'italia-wafer-nocciolato-tre-marie', seccion: 'italia', grupo: 'Tre Marie', orden: 20, nombre: 'Wafer Nocciolato Tre Marie',
+      glosa: 'Wafer con crema de avellanas', precio: 17.9, tipo: 'plato', alergenos: 'gluten, lacteos, frutosSecos, soya',
+      descripcion: 'De la línea «Ancora Uno» de Tre Marie, antigua marca de la tradición pastelera milanesa: finas láminas de barquillo dorado y crujiente, rellenas de una suave crema de avellanas. El acompañante perfecto para un café.',
+      nombre_en: 'Wafer Nocciolato Tre Marie', glosa_en: 'Hazelnut cream wafers',
+      descripcion_en: 'From Tre Marie’s «Ancora Uno» line, a historic brand of Milanese pastry tradition: thin, crisp golden wafers filled with a smooth hazelnut cream. The perfect companion for a coffee.' },
+    { id: 'italia-wafer-stracciatella-tre-marie', seccion: 'italia', grupo: 'Tre Marie', orden: 30, nombre: 'Wafer Stracciatella Tre Marie',
+      glosa: 'Wafer con crema de leche y chocolate', precio: 17.9, tipo: 'plato', alergenos: 'gluten, lacteos, frutosSecos, soya',
+      descripcion: 'Inspirados en el clásico helado italiano: capas de barquillo crujiente rellenas de crema de leche con trocitos de chocolate extra amargo. Elaborados sin grasas hidrogenadas.',
+      nombre_en: 'Wafer Stracciatella Tre Marie', glosa_en: 'Milk cream and chocolate wafers',
+      descripcion_en: 'Inspired by the classic Italian gelato: crisp wafer layers filled with milk cream and pieces of extra dark chocolate. Made without hydrogenated fats.' },
+    { id: 'italia-wafer-gianduia-nera-tre-marie', seccion: 'italia', grupo: 'Tre Marie', orden: 40, nombre: 'Wafer Gianduia Nera Tre Marie',
+      glosa: 'Wafer con crema gianduia oscura', precio: 17.9, tipo: 'plato', alergenos: 'gluten, lacteos, frutosSecos, soya',
+      descripcion: 'Barquillo crujiente relleno de crema gianduia —la tradicional unión piamontesa de cacao y avellanas— en su versión oscura, de sabor intenso.',
+      nombre_en: 'Wafer Gianduia Nera Tre Marie', glosa_en: 'Dark gianduia cream wafers',
+      descripcion_en: 'Crisp wafers filled with gianduia cream —the traditional Piedmontese blend of cocoa and hazelnuts— in its dark, intense version.' },
+    { id: 'italia-cioccolato-in-pezzi-tre-marie', seccion: 'italia', grupo: 'Tre Marie', orden: 50, nombre: 'Cioccolato in Pezzi Tre Marie',
+      glosa: 'Galletas con trozos de chocolate', precio: 28.9, tipo: 'plato', alergenos: 'gluten, huevo, lacteos, soya, frutosSecos',
+      descripcion: 'Frollini, las galletas de masa quebrada de la tradición italiana, con generosos trozos de chocolate. Para el desayuno, la merienda o el café.',
+      nombre_en: 'Cioccolato in Pezzi Tre Marie', glosa_en: 'Chocolate chunk biscuits',
+      descripcion_en: 'Frollini, the traditional Italian shortbread biscuits, with generous chunks of chocolate. For breakfast, an afternoon snack or with coffee.' },
+    { id: 'italia-caramello-salato-tre-marie', seccion: 'italia', grupo: 'Tre Marie', orden: 60, nombre: 'Caramello Salato e Cioccolato Tre Marie',
+      glosa: 'Galletas con caramelo salado y chocolate', precio: 28.9, tipo: 'plato', alergenos: 'gluten, huevo, lacteos, soya, frutosSecos',
+      descripcion: 'Galletas de masa quebrada con caramelo salado y chispas de chocolate, hechas con trigo 100 % italiano. Un contraste dulce y salado irresistible.',
+      nombre_en: 'Caramello Salato e Cioccolato Tre Marie', glosa_en: 'Salted caramel and chocolate biscuits',
+      descripcion_en: 'Shortbread biscuits with salted caramel and chocolate chips, made with 100% Italian wheat. An irresistible sweet-and-salty contrast.' },
+    { id: 'italia-cacao-gocce-tre-marie', seccion: 'italia', grupo: 'Tre Marie', orden: 70, nombre: 'Cacao con Gocce di Cioccolato Tre Marie',
+      glosa: 'Galletas de cacao con chispas de chocolate', precio: 28.9, tipo: 'plato', alergenos: 'gluten, huevo, lacteos, soya, frutosSecos',
+      descripcion: 'Galletas de cacao con chispas de chocolate extra amargo, hechas con trigo 100 % italiano, mantequilla y huevos de gallinas criadas en libertad.',
+      nombre_en: 'Cacao con Gocce di Cioccolato Tre Marie', glosa_en: 'Cocoa biscuits with chocolate chips',
+      descripcion_en: 'Cocoa biscuits with extra dark chocolate chips, made with 100% Italian wheat, butter and free-range eggs.' },
+    { id: 'italia-gianduia-classica-caffarel', seccion: 'italia', grupo: 'Caffarel', orden: 110, nombre: 'Gianduia Classica Caffarel',
+      glosa: 'Barra de chocolate gianduia', precio: 27.9, tipo: 'plato', alergenos: 'frutosSecos, lacteos, soya',
+      descripcion: 'De Caffarel, la histórica chocolatería de Turín que creó el gianduiotto en 1865. Chocolate gianduia clásico: cacao y avellanas del Piamonte, cremoso y aterciopelado.',
+      nombre_en: 'Gianduia Classica Caffarel', glosa_en: 'Gianduia chocolate bar',
+      descripcion_en: 'From Caffarel, the historic Turin chocolate maker that created the gianduiotto in 1865. Classic gianduia chocolate: cocoa and Piedmont hazelnuts, creamy and velvety.' },
+    { id: 'italia-gianduia-assortito-caffarel', seccion: 'italia', grupo: 'Caffarel', orden: 120, nombre: 'Gianduia Assortito Caffarel',
+      glosa: 'Caja surtida de gianduiotti', precio: 215.9, tipo: 'plato', alergenos: 'frutosSecos, lacteos, soya',
+      descripcion: 'Caja surtida de gianduiotti, el célebre bombón turinés de chocolate y avellanas Piemonte IGP, en versiones de chocolate con leche y oscuro. Un regalo a la altura de cualquier ocasión.',
+      nombre_en: 'Gianduia Assortito Caffarel', glosa_en: 'Assorted gianduiotti box',
+      descripcion_en: 'An assorted box of gianduiotti, the famous Turin chocolate made with Piemonte IGP hazelnuts, in milk and dark chocolate. A gift worthy of any occasion.' }
+  ]
+};
+
+function aplicarMigracionV3_(t, M) {
+  M = M || MIGRACION_V3;
+  var fuera = {}; M.eliminar.forEach(function (id) { fuera[id] = true; });
+  t.productos = t.productos.filter(function (p) { return !fuera[String(p.id)]; });
+  var porId = {}; t.productos.forEach(function (p) { porId[String(p.id)] = p; });
+  M.productosNuevos.forEach(function (n) {
+    if (porId[n.id]) return;
+    var p = { canal: 'todos', disponible: 'SI', visible: 'SI', destacado: '', alergenos: '', foto: '', recargo: '', tamanos: '',
+      precio_antes: '', opciones: '', grupo_nota: '', requiere_salsa: 'NO' };
+    Object.keys(n).forEach(function (k) { p[k] = n[k]; });
+    t.productos.push(p); porId[n.id] = p;
+  });
+  Object.keys(M.productos).forEach(function (id) { var p = porId[id]; if (p) Object.keys(M.productos[id]).forEach(function (k) { p[k] = M.productos[id][k]; }); });
+  Object.keys(M.alergenos).forEach(function (id) { var p = porId[id]; if (p && !String(p.alergenos || '').trim()) p.alergenos = M.alergenos[id]; });
+  Object.keys(M.fotos).forEach(function (id) { var p = porId[id]; if (p && !String(p.foto || '').trim()) p.foto = U_(M.fotos[id]); });
+  M.caffetteria.forEach(function (id) { var p = porId[id]; if (p) { p.seccion = 'caffetteria'; p.canal = 'local'; } });
+
+  var secPorId = {}; t.secciones.forEach(function (s) { secPorId[String(s.id)] = s; });
+  Object.keys(M.secciones).forEach(function (id) { var s = secPorId[id]; if (s) Object.keys(M.secciones[id]).forEach(function (k) { s[k] = M.secciones[id][k]; }); });
+  if (!secPorId[M.seccionNueva.id]) {
+    var base = secPorId.caffe ? Number(secPorId.caffe.orden) || 7 : 7;
+    var s = {}; Object.keys(M.seccionNueva).forEach(function (k) { s[k] = M.seccionNueva[k]; });
+    s.orden = base - 0.5;
+    t.secciones.push(s);
+  }
+  return t;
+}
+
+/** Ejecuta la actualización v3 en este Google Sheets y publica la carta. */
+function actualizarV3() {
+  exigirAdmin_('');
+  var t = { productos: leerTabla_(HOJA.productos), secciones: leerTabla_(HOJA.secciones) };
+  aplicarMigracionV3_(t);
+  escribirTabla_(HOJA.productos, COLS.productos, t.productos);
+  escribirTabla_(HOJA.secciones, COLS.secciones, t.secciones);
+  formatearHojas_();
+  marcarPendiente_();
+  PropertiesService.getScriptProperties().setProperty('MIGRACION_V3', new Date().toISOString());
+  var r = publicarCarta('');
+  return 'Actualización v3 aplicada: ' + t.productos.length + ' productos. ' + r.mensaje;
+}

@@ -746,7 +746,7 @@ function guardarProducto(sesion, p) {
   var fila = cab.map(function (c) { return c in limpio ? limpio[c] : (ex && c in ex ? ex[c] : ''); });
   if (ex) h.getRange(ex._fila, 1, 1, fila.length).setValues([fila]);
   else h.appendRow(fila);
-  marcarPendiente_();
+  autoPublicar_(sesion);
   return limpio;
 }
 
@@ -758,8 +758,20 @@ function cambiarCampoProducto(sesion, id, campo, valor) {
   var h = SpreadsheetApp.getActive().getSheetByName(HOJA.productos);
   var col = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String).indexOf(campo) + 1;
   h.getRange(p._fila, col).setValue(valor ? 'SI' : 'NO');
-  marcarPendiente_();
+  autoPublicar_(sesion);
   return true;
+}
+
+/** Guardar = publicar: tras cada cambio del panel se sube la carta a la web.
+ *  Si GitHub aún no está conectado, el cambio queda pendiente (no da error).
+ *  Si la publicación falla, el cambio YA está guardado en la hoja y se avisa para reintentar. */
+function autoPublicar_(sesion) {
+  marcarPendiente_();
+  if (!PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN')) return false;
+  try { publicarCarta(sesion); return true; }
+  catch (e) {
+    throw new Error('Se guardó en la hoja, pero no se pudo publicar en la web (' + (e && e.message || e) + '). Pulsa "Reintentar publicación".');
+  }
 }
 
 function marcarPendiente_() {
@@ -794,7 +806,7 @@ function guardarAjustes(sesion, o) {
     guardarClave_(k, v);
   });
   actualizarLinksMesas_();
-  marcarPendiente_();
+  autoPublicar_(sesion);
   return true;
 }
 
@@ -838,12 +850,20 @@ function publicarCarta(sesion) {
   var cfg = leerConfig_();
   var carta = construirCarta_(cfg, leerTabla_(HOJA.secciones), leerTabla_(HOJA.productos), leerTabla_(HOJA.opciones));
   var zona = cfg.zona_horaria || 'America/Lima';
+  var props = PropertiesService.getScriptProperties();
+  // Si la carta no cambió desde la última publicación no se sube nada (ahorra despliegues de Cloudflare)
+  var huella = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify(carta), Utilities.Charset.UTF_8));
+  if (huella === props.getProperty('HUELLA_PUBLICADA')) {
+    props.setProperty('CAMBIOS_PENDIENTES', 'NO');
+    limpiarCache_();
+    return { ok: true, sinCambios: true, mensaje: 'La web ya estaba al día.' };
+  }
   carta.publicado = Utilities.formatDate(new Date(), zona, "yyyy-MM-dd'T'HH:mm:ssXXX");
   var js = '/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (' + carta.publicado + ').\n' +
-    '   No lo edites a mano: cambia los datos en el panel y pulsa "Publicar". */\n' +
+    '   No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */\n' +
     'window.CARTA = ' + JSON.stringify(carta, null, 1) + ';\n';
   githubPut_('menu-data.js', Utilities.base64Encode(js, Utilities.Charset.UTF_8), 'Carta publicada desde el panel por ' + email.split('@')[0]);
-  var props = PropertiesService.getScriptProperties();
+  props.setProperty('HUELLA_PUBLICADA', huella);
   props.setProperty('CAMBIOS_PENDIENTES', 'NO');
   props.setProperty('ULTIMA_PUBLICACION', Utilities.formatDate(new Date(), zona, 'dd/MM/yyyy HH:mm'));
   limpiarCache_();
@@ -860,7 +880,7 @@ function subirFoto(sesion, id, base64) {
   var ruta = 'fotos/' + String(id).replace(/[^a-z0-9-]/g, '') + '-' + Date.now() + '.jpg';
   githubPut_(ruta, base64, 'Foto de ' + p.nombre);
   SpreadsheetApp.getActive().getSheetByName(HOJA.productos).getRange(p._fila, COLS.productos.indexOf('foto') + 1).setValue(ruta);
-  marcarPendiente_();
+  autoPublicar_(sesion);
   return ruta;
 }
 
@@ -998,13 +1018,13 @@ function guardarGrupoOpciones(sesion, grupo) {
       precio: String(o.precio).trim() === '' ? '' : num_(o.precio), orden: (i + 1) * 10, activo: o.activo === false ? 'NO' : 'SI' });
   });
   escribirTabla_(HOJA.opciones, COLS.opciones, filas);
-  marcarPendiente_();
+  autoPublicar_(sesion);
   return listarOpciones(sesion);
 }
 
 function eliminarGrupoOpciones(sesion, id) {
   exigirAdmin_(sesion);
   escribirTabla_(HOJA.opciones, COLS.opciones, leerTabla_(HOJA.opciones).filter(function (f) { return String(f.grupo) !== String(id); }));
-  marcarPendiente_();
+  autoPublicar_(sesion);
   return listarOpciones(sesion);
 }

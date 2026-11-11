@@ -164,7 +164,7 @@ tr.oculto td{opacity:.5}
     <span class="esp"></span>
     <span class="yo" id="yo"></span>
     <button class="btn-top" id="salir" style="display:none">Salir</button>
-    <button class="pub" id="publicar" title="Sube los cambios de la carta a la web">Publicar carta</button>
+    <button class="pub" id="publicar" style="display:none" title="El último cambio se guardó pero no llegó a la web">⚠ Reintentar publicación</button>
   </div>
   <nav id="tabs">
     <button data-v="pedidos" data-area="todos" class="on">📋 Todos <span class="cnt" id="cTodos"></span></button>
@@ -223,7 +223,7 @@ tr.oculto td{opacity:.5}
       <input class="txt" id="fBus" placeholder="Buscar producto…" style="width:220px">
       <button class="btn prim" id="nuevoProd">+ Nuevo producto</button>
     </div>
-    <p class="nota" style="margin-bottom:10px">Los cambios se guardan al instante en la hoja. Para verlos en la web pulsa <b>Publicar carta</b>. Para una promoción: crea el producto en la sección <b>Offerte</b> y pon su precio anterior.</p>
+    <p class="nota" style="margin-bottom:10px">Cada cambio se guarda y se publica solo: la web se actualiza en 1 o 2 minutos. Para una promoción: crea el producto en la sección <b>Offerte</b> y pon su precio anterior.</p>
     <table class="tabla"><thead><tr><th>Foto</th><th>Producto</th><th>Sección</th><th>Precio</th><th>Disponible hoy</th><th>Visible</th><th></th></tr></thead><tbody id="tProd"></tbody></table>
   </section>
 
@@ -325,7 +325,7 @@ function el(tag, props, hijos){
 function soles(n){ return 'S/ ' + Number(n||0).toFixed(2); }
 function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
 var tT; function toast(t, mal){ var x=$('#toast'); x.textContent=t; x.className='toast on'+(mal?' mal':''); clearTimeout(tT); tT=setTimeout(function(){x.className='toast';}, mal?6000:3000); }
-function error(e){ if (String(e).indexOf('Sesión vencida') < 0) toast(String(e && e.message || e), true); }
+function error(e){ var m = String(e && e.message || e); if (m.indexOf('Reintentar publicación') >= 0) { INFO.pendientes = true; pintarPub(); } if (m.indexOf('Sesión vencida') < 0) toast(m, true); }
 function fotoUrl(f){
   if (!f) return '';
   if (/^https?:|^data:/.test(f)) return f;
@@ -357,14 +357,16 @@ function marcarSeg(sel, val){ document.querySelectorAll(sel + ' button').forEach
 $('#publicar').addEventListener('click', function(){
   var b = this; b.disabled = true; b.textContent = 'Publicando…';
   run('publicarCarta').then(function(r){ toast(r.mensaje); INFO.pendientes = false; pintarPub(); })
-    .catch(error).then(function(){ b.disabled = false; b.textContent = 'Publicar carta'; });
+    .catch(error).then(function(){ b.disabled = false; b.textContent = '⚠ Reintentar publicación'; });
 });
 function pintarPub(){
   var b = $('#publicar');
+  b.style.display = INFO.pendientes && INFO.tokenListo ? '' : 'none';
   b.classList.toggle('pend', !!INFO.pendientes);
   b.title = INFO.pendientes ? 'Hay cambios que todavía no se ven en la web' : ('Última publicación: ' + (INFO.ultimaPublicacion || '—'));
 }
-function marcarPendiente(){ INFO.pendientes = true; pintarPub(); }
+/* el servidor publica solo al guardar; si falló, error() muestra el botón de reintentar */
+function marcarPendiente(){ INFO.pendientes = false; pintarPub(); }
 
 /* ---------- sonido ---------- */
 var ctxAudio;
@@ -734,7 +736,7 @@ function editar(p){
     var file = archivo.files[0]; if (!file) return;
     fotoEstado.textContent = 'Subiendo…';
     reducir(file, 1200, .82).then(function(dataUrl){ prev.src = dataUrl; return run('subirFoto', p.id, dataUrl); })
-      .then(function(ruta){ p.foto = ruta; fotoEstado.textContent = 'Foto subida ✓ (publica la carta para verla en la web)'; marcarPendiente(); cargarCarta(); })
+      .then(function(ruta){ p.foto = ruta; fotoEstado.textContent = 'Foto subida y publicada ✓ (se verá en la web en 1 o 2 minutos)'; marcarPendiente(); cargarCarta(); })
       .catch(function(e){ fotoEstado.textContent = ''; error(e); });
   });
   var quitar = el('button', {type:'button', class:'btn peq mal', text:'Quitar foto', onclick: function(){ p.foto = ''; prev.src = VACIO; fotoEstado.textContent = 'Pulsa Guardar para quitarla.'; }});
@@ -746,7 +748,7 @@ function editar(p){
     o.alergenos = Array.prototype.slice.call(al.querySelectorAll('input:checked')).map(function(c){ return c.value; }).join(', ');
     o.opciones = Array.prototype.slice.call(ops.querySelectorAll('input:checked')).map(function(c){ return c.value; }).join(', ');
     guardar.disabled = true;
-    run('guardarProducto', o).then(function(r){ toast('Guardado'); marcarPendiente(); cerrarModal(); cargarCarta(); if (!p.id && r && r.id) editar(r); })
+    run('guardarProducto', o).then(function(r){ toast('Guardado y publicado. La web se actualiza en 1 o 2 minutos.'); marcarPendiente(); cerrarModal(); cargarCarta(); if (!p.id && r && r.id) editar(r); })
       .catch(error).then(function(){ guardar.disabled = false; });
   }});
   caja.appendChild(el('div', {class:'pie'}, [el('button', {class:'btn', text:'Cancelar', onclick: cerrarModal}), guardar]));
@@ -818,7 +820,7 @@ function tarjetaGrupo(g, nuevo){
     });
     guardar.disabled = true;
     run('guardarGrupoOpciones', { id: id.value, nombre: nombre.value, nombre_en: nombreEn.value, tipo: tipo.value, obligatorio: oblig.value === 'SI', ops: lista })
-      .then(function(r){ GRUPOS = r; pintarGrupos(); marcarPendiente(); toast('Grupo guardado. Publica la carta para verlo en la web.'); })
+      .then(function(r){ GRUPOS = r; pintarGrupos(); marcarPendiente(); toast('Grupo guardado y publicado.'); })
       .catch(error).then(function(){ guardar.disabled = false; });
   }});
   var pie = el('div', {class:'pie'}, [guardar]);
@@ -906,7 +908,7 @@ function cargarAjustes(){
 $('#guardarAjustes').addEventListener('click', function(){
   var o = {}; $('#ajustesForm').querySelectorAll('[name]').forEach(function(i){ o[i.name] = i.value; });
   run('guardarAjustes', o).then(function(){
-    toast('Ajustes guardados. Pulsa "Publicar carta" para llevarlos a la web.'); marcarPendiente();
+    toast('Ajustes guardados y publicados.'); marcarPendiente();
     INFO.sitio = o.sitio_url; INFO.repo = o.github_repo; INFO.api = o.api_url; INFO.minutosAlerta = Number(o.minutos_alerta) || 45; avisoApi();
   }).catch(error);
 });
