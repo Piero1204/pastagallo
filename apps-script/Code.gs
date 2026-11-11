@@ -563,7 +563,7 @@ function registrarPedido_(body) {
     var fila = {
       numero: numero, fecha: ahora, canal: r.canal, mesa: r.mesa, nombre: r.cliente.nombre,
       telefono: r.cliente.telefono, direccion: r.cliente.direccion, referencia: r.cliente.referencia,
-      pago: r.cliente.pago, programado: r.programado, detalle: r.detalle, total: r.total, estado: 'Nuevo',
+      pago: r.cliente.pago, programado: r.programado ? "'" + r.programado : '', detalle: r.detalle, total: r.total, estado: 'Nuevo',
       notas: r.cliente.notas, items_json: JSON.stringify(r.lineas), actualizado: ahora, historial: 'Nuevo ' + fmt_(ahora, 'HH:mm')
     };
     var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
@@ -629,14 +629,25 @@ function panelInicio(sesion) {
   };
 }
 
+/** Convierte cualquier celda a texto. Sheets transforma "20:30" en una fecha, y google.script.run
+ *  no puede enviar fechas al panel (devuelve null): por eso todo se pasa a texto. */
+function celdaTexto_(v, formato) {
+  if (v instanceof Date) {
+    var tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone() || 'America/Lima';
+    return Utilities.formatDate(v, tz, formato || 'HH:mm');
+  }
+  return v == null ? '' : String(v);
+}
+
 function pedidoAObjeto_(p, zona) {
   return {
     numero: p.numero, fecha: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'dd/MM HH:mm') : String(p.fecha),
     hora: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'HH:mm') : '',
     dia: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'yyyy-MM-dd') : '',
-    canal: p.canal, mesa: p.mesa, nombre: p.nombre, telefono: String(p.telefono || ''), direccion: p.direccion,
-    referencia: p.referencia, pago: p.pago, programado: p.programado, detalle: p.detalle, total: Number(p.total) || 0,
-    estado: p.estado, notas: p.notas, historial: p.historial,
+    canal: celdaTexto_(p.canal), mesa: celdaTexto_(p.mesa), nombre: celdaTexto_(p.nombre), telefono: celdaTexto_(p.telefono),
+    direccion: celdaTexto_(p.direccion), referencia: celdaTexto_(p.referencia), pago: celdaTexto_(p.pago),
+    programado: celdaTexto_(p.programado), detalle: celdaTexto_(p.detalle), total: Number(p.total) || 0,
+    estado: celdaTexto_(p.estado), notas: celdaTexto_(p.notas), historial: celdaTexto_(p.historial),
     ts: p.fecha instanceof Date ? p.fecha.getTime() : 0,
     act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0
   };

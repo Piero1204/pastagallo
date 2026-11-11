@@ -423,6 +423,7 @@ function hace(m){ if (m < 1) return 'recién'; if (m < 60) return 'hace ' + m + 
 
 function cargarPedidos(){
   return run('listarPedidos', filtro).then(function(r){
+    if (!r || !r.pedidos) throw new Error('No se pudieron leer los pedidos. Recarga la página; si sigue, avisa a Piero.');
     var primera = !Object.keys(VISTOS).length;
     var nuevos = r.pedidos.filter(function(p){ return p.estado === 'Nuevo' && !VISTOS[p.numero]; });
     r.pedidos.forEach(function(p){ VISTOS[p.numero] = true; });
