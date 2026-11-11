@@ -107,6 +107,9 @@ textarea.txt{min-height:70px;resize:vertical}
 .toast.on{transform:translateX(-50%)}
 .toast.mal{background:var(--mal)}
 .cargando{opacity:.55;pointer-events:none}
+.cnt{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:10px;background:#e04a3f;color:#fff;font-size:11px;line-height:16px;text-align:center}
+.cnt:empty{display:none}
+.areaTit{font:600 20px Georgia,serif;color:var(--vino);margin-right:6px}
 #login{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:radial-gradient(120% 80% at 50% 20%,#6a2229,#4a1519 60%,#2a0d0e);padding:20px}
 #login.on{display:flex}
 #login form{background:var(--crema3);border-top:4px solid var(--oro2);border-radius:6px;padding:26px;width:100%;max-width:360px;display:grid;gap:12px}
@@ -124,7 +127,8 @@ textarea.txt{min-height:70px;resize:vertical}
 <header>
   <h1>Pasta Gallo · Panel</h1>
   <nav id="tabs">
-    <button data-v="pedidos" class="on">Pedidos</button>
+    <button data-v="pedidos" data-area="llevar" class="on">🛵 Para llevar <span class="cnt" id="cLlevar"></span></button>
+    <button data-v="pedidos" data-area="salon">🍽 Salón <span class="cnt" id="cSalon"></span></button>
     <button data-v="dash">Dashboard</button>
     <button data-v="carta">Carta y precios</button>
     <button data-v="mesas">Mesas y QR</button>
@@ -139,8 +143,12 @@ textarea.txt{min-height:70px;resize:vertical}
 <main>
   <section class="vista on" id="v-pedidos">
     <div class="barra">
+      <span class="areaTit" id="areaTit">Para llevar</span>
       <div class="seg" id="filtroPed">
         <button data-f="activos" class="on">Activos</button><button data-f="hoy">Hoy</button><button data-f="todos">Últimos 300</button>
+      </div>
+      <div class="seg" id="filtroLlevar">
+        <button data-c="" class="on">Todos</button><button data-c="delivery">Delivery</button><button data-c="recojo">Recojo</button>
       </div>
       <button class="btn" id="sonido">🔔 Activar sonido</button>
       <button class="btn" id="recargar">Actualizar</button>
@@ -276,6 +284,7 @@ $('#tabs').addEventListener('click', function(e){
   var b = e.target.closest('button'); if (!b) return;
   document.querySelectorAll('#tabs button').forEach(function(x){ x.classList.toggle('on', x===b); });
   document.querySelectorAll('.vista').forEach(function(v){ v.classList.toggle('on', v.id === 'v-' + b.dataset.v); });
+  if (b.dataset.area) { AREA = b.dataset.area; pintarPedidos([]); }
   if (b.dataset.v === 'dash') cargarDash();
   if (b.dataset.v === 'carta') cargarCarta();
   if (b.dataset.v === 'mesas') cargarMesas();
@@ -296,6 +305,18 @@ function pintarPub(){
 function marcarPendiente(){ INFO.pendientes = true; pintarPub(); }
 
 /* ---------- pedidos ---------- */
+var AREA = 'llevar', SUBCANAL = '';
+function enArea(p, area){ return area === 'salon' ? p.canal === 'mesa' : p.canal !== 'mesa'; }
+$('#filtroLlevar').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  SUBCANAL = b.dataset.c; this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  pintarPedidos([]);
+});
+function contadores(){
+  var n = { llevar: 0, salon: 0 };
+  PEDIDOS.forEach(function(p){ if (p.estado === 'Nuevo') n[p.canal === 'mesa' ? 'salon' : 'llevar']++; });
+  $('#cLlevar').textContent = n.llevar || ''; $('#cSalon').textContent = n.salon || '';
+}
 $('#filtroPed').addEventListener('click', function(e){
   var b = e.target.closest('button'); if (!b) return;
   filtro = b.dataset.f;
@@ -325,15 +346,23 @@ function cargarPedidos(){
     r.pedidos.forEach(function(p){ VISTOS[p.numero] = true; });
     PEDIDOS = r.pedidos; versionPed = r.version;
     pintarPedidos(primera ? [] : nuevos.map(function(p){ return p.numero; }));
-    if (!primera && nuevos.length) { if (sonido) beep(); document.title = '(' + nuevos.length + ') Nuevo pedido'; toast('Nuevo pedido #' + nuevos[0].numero); }
+    if (!primera && nuevos.length) {
+      if (sonido) beep(); document.title = '(' + nuevos.length + ') Nuevo pedido';
+      var n0 = nuevos[0];
+      toast(n0.canal === 'mesa' ? 'Nuevo pedido · Mesa ' + n0.mesa + ' (#' + n0.numero + ')' : 'Nuevo pedido para llevar #' + n0.numero + ' (' + (n0.canal === 'recojo' ? 'recojo' : 'delivery') + ')');
+    }
     $('#ultimaAct').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
   }).catch(error);
 }
 
 function pintarPedidos(destacar){
   var g = $('#listaPed'); g.textContent = '';
-  if (!PEDIDOS.length) { g.appendChild(el('div', {class:'vacio', text: filtro === 'activos' ? 'No hay pedidos pendientes. Los nuevos aparecerán aquí solos.' : 'No hay pedidos en este periodo.'})); return; }
-  PEDIDOS.forEach(function(p){
+  contadores();
+  $('#areaTit').textContent = AREA === 'salon' ? 'Salón (mesas)' : 'Para llevar';
+  $('#filtroLlevar').style.display = AREA === 'salon' ? 'none' : '';
+  var lista = PEDIDOS.filter(function(p){ return enArea(p, AREA) && (AREA === 'salon' || !SUBCANAL || p.canal === SUBCANAL); });
+  if (!lista.length) { g.appendChild(el('div', {class:'vacio', text: filtro === 'activos' ? (AREA === 'salon' ? 'No hay pedidos de mesas pendientes.' : 'No hay pedidos para llevar pendientes.') + ' Los nuevos aparecerán aquí solos.' : 'No hay pedidos en este periodo.'})); return; }
+  lista.forEach(function(p){
     var canalTxt = p.canal === 'mesa' ? 'Mesa ' + p.mesa : (p.canal === 'recojo' ? 'Recojo' : 'Delivery');
     var card = el('div', {class:'ped e-' + String(p.estado).replace(/ /g,'-') + (destacar.indexOf(p.numero) >= 0 ? ' nuevo-flash' : '')}, [
       el('div', {class:'ped__cab'}, [
