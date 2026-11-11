@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-10T21:06:36-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-10T21:07:21-05:00).
    No lo edites a mano: cambia los datos en el panel y pulsa "Publicar". */
 window.CARTA = {
  "negocio": {
@@ -13,7 +13,7 @@ window.CARTA = {
   "facebookUrl": "",
   "horarioTexto": "Martes a domingo · 6:00 pm – 11:00 pm",
   "cerradoTexto": "Lunes cerrado",
-  "sitioUrl": ""
+  "sitioUrl": "https://pastagallo.pages.dev"
  },
  "horario": {
   "zona": "America/Lima",
@@ -1236,5 +1236,5 @@ window.CARTA = {
    "grupos": []
   }
  ],
- "publicado": "2026-11-10T21:06:36-05:00"
+ "publicado": "2026-11-10T21:07:21-05:00"
 };
