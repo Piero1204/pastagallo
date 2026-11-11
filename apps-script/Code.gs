@@ -12,15 +12,19 @@
    No compartas este Google Sheets con "Cualquier persona con el enlace".
    ===================================================================== */
 
-var HOJA = { config: 'Config', secciones: 'Secciones', productos: 'Productos', pedidos: 'Pedidos', mesas: 'Mesas' };
+var HOJA = { config: 'Config', secciones: 'Secciones', productos: 'Productos', pedidos: 'Pedidos', mesas: 'Mesas', opciones: 'Opciones' };
 var COLS = {
-  secciones: ['id', 'orden', 'titulo', 'subtitulo', 'intro', 'pie', 'alcohol', 'delivery', 'mesa', 'visible'],
+  secciones: ['id', 'orden', 'titulo', 'subtitulo', 'intro', 'pie', 'alcohol', 'delivery', 'mesa', 'visible',
+    'titulo_en', 'subtitulo_en', 'intro_en', 'pie_en'],
   productos: ['id', 'seccion', 'grupo', 'grupo_nota', 'orden', 'nombre', 'glosa', 'descripcion', 'precio', 'tamanos',
-    'tipo', 'recargo', 'requiere_salsa', 'disponible', 'visible', 'destacado', 'alergenos', 'foto'],
+    'tipo', 'recargo', 'requiere_salsa', 'disponible', 'visible', 'destacado', 'alergenos', 'foto',
+    'canal', 'precio_antes', 'opciones', 'nombre_en', 'glosa_en', 'descripcion_en'],
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
     'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial'],
-  mesas: ['mesa', 'codigo', 'activa', 'link']
+  mesas: ['mesa', 'codigo', 'activa', 'link'],
+  opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo']
 };
+var CANALES = ['todos', 'local', 'delivery'];
 var ESTADOS = ['Nuevo', 'Confirmado', 'En preparación', 'Listo', 'En camino', 'Entregado', 'Cancelado'];
 var ALERGENOS = { gluten: 'Gluten', lacteos: 'Lácteos', huevo: 'Huevo', pescado: 'Pescado', mariscos: 'Mariscos',
   frutosSecos: 'Frutos secos', mani: 'Maní', soya: 'Soya', sulfitos: 'Sulfitos' };
@@ -75,6 +79,9 @@ function instalar() {
   var regla = SpreadsheetApp.newDataValidation().requireValueInList(ESTADOS, true).build();
   hd.getRange('M2:M').setDataValidation(regla);
 
+  var ho = obtenerHoja_(ss, HOJA.opciones, COLS.opciones);
+  if (ho.getLastRow() < 2 && D.opciones && D.opciones.length) ho.getRange(2, 1, D.opciones.length, COLS.opciones.length).setValues(D.opciones);
+
   var hm = obtenerHoja_(ss, HOJA.mesas, COLS.mesas);
   if (hm.getLastRow() < 2) {
     var filas = [];
@@ -82,10 +89,7 @@ function instalar() {
     hm.getRange(2, 1, filas.length, 4).setValues(filas);
   }
 
-  var si = SpreadsheetApp.newDataValidation().requireValueInList(['SI', 'NO'], true).build();
-  ['G2:J'].forEach(function (a) { hs.getRange(a).setDataValidation(si); });
-  ['M2:O'].forEach(function (a) { hp.getRange(a).setDataValidation(si); });
-  hm.getRange('C2:C').setDataValidation(si);
+  formatearHojas_();
 
   // URL de la API (si ya existe una implementación)
   try {
@@ -97,6 +101,39 @@ function instalar() {
   try {
     SpreadsheetApp.getUi().alert('Listo', 'Hojas instaladas. Ahora abre el menú "🍝 Pasta Gallo" → "Abrir panel".', SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (e) { /* ejecutado desde el editor */ }
+}
+
+/** Validaciones (listas SI/NO, canal, tipo) según las columnas reales de cada hoja. */
+function formatearHojas_() {
+  var ss = SpreadsheetApp.getActive();
+  var si = SpreadsheetApp.newDataValidation().requireValueInList(['SI', 'NO'], true).build();
+  function validar(nombre, cols, regla) {
+    var h = ss.getSheetByName(nombre); if (!h || h.getLastColumn() < 1) return;
+    var cab = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0];
+    cols.forEach(function (c) { var i = cab.indexOf(c); if (i >= 0) h.getRange(2, i + 1, Math.max(h.getMaxRows() - 1, 1), 1).setDataValidation(regla); });
+  }
+  validar(HOJA.secciones, ['alcohol', 'delivery', 'mesa', 'visible'], si);
+  validar(HOJA.productos, ['requiere_salsa', 'disponible', 'visible'], si);
+  validar(HOJA.productos, ['canal'], SpreadsheetApp.newDataValidation().requireValueInList(CANALES, true).build());
+  validar(HOJA.productos, ['tipo'], SpreadsheetApp.newDataValidation().requireValueInList(['plato', 'salsa'], true).build());
+  validar(HOJA.mesas, ['activa'], si);
+  validar(HOJA.opciones, ['obligatorio', 'activo'], si);
+  validar(HOJA.opciones, ['tipo'], SpreadsheetApp.newDataValidation().requireValueInList(['una', 'varias'], true).build());
+}
+
+/** Reescribe una hoja completa a partir de objetos, conservando columnas extra que ya existan. */
+function escribirTabla_(nombre, cols, objs) {
+  var ss = SpreadsheetApp.getActive();
+  var h = obtenerHoja_(ss, nombre, cols);
+  var cab = h.getRange(1, 1, 1, Math.max(h.getLastColumn(), 1)).getValues()[0].map(function (c) { return String(c).trim(); }).filter(Boolean);
+  cols.forEach(function (c) { if (cab.indexOf(c) < 0) cab.push(c); });
+  h.getRange(1, 1, 1, cab.length).setValues([cab]).setFontWeight('bold').setBackground('#4a1519').setFontColor('#efe6d3');
+  if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, Math.max(h.getLastColumn(), cab.length)).clearContent();
+  if (objs.length) {
+    var filas = objs.map(function (o) { return cab.map(function (c) { return o[c] == null ? '' : o[c]; }); });
+    h.getRange(2, 1, filas.length, cab.length).setValues(filas);
+  }
+  limpiarCache_();
 }
 
 function obtenerHoja_(ss, nombre, cabecera) {
@@ -150,6 +187,7 @@ function leerCatalogo_() {
   var cat = {
     secciones: leerTabla_(HOJA.secciones),
     productos: leerTabla_(HOJA.productos),
+    opciones: leerTabla_(HOJA.opciones),
     mesas: leerTabla_(HOJA.mesas).map(function (m) { return { mesa: String(m.mesa), codigo: String(m.codigo), activa: m.activa }; })
   };
   try { cache.put('catalogo', JSON.stringify(cat), 120); } catch (e) { /* demasiado grande: sin caché */ }
@@ -171,6 +209,20 @@ function parsearTamanos_(t) {
     var precio = num_(p[1]);
     return precio == null ? null : [p[0].trim(), precio];
   }).filter(Boolean);
+}
+
+function listaIds_(v) { return String(v || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
+
+/** Agrupa las filas de la hoja Opciones: { grupo: { n, n_en, tipo, req, ops:[{n, n_en, p}] } } (solo activas). */
+function gruposOpciones_(filas) {
+  var g = {};
+  (filas || []).slice().sort(function (a, b) { return (num_(a.orden) || 0) - (num_(b.orden) || 0); }).forEach(function (f) {
+    var id = String(f.grupo || '').trim();
+    if (!id || !esSi_(f.activo) || !String(f.opcion || '').trim()) return;
+    if (!g[id]) g[id] = { n: String(f.nombre || id), n_en: String(f.nombre_en || ''), tipo: f.tipo === 'varias' ? 'varias' : 'una', req: esSi_(f.obligatorio), ops: [] };
+    g[id].ops.push({ n: String(f.opcion).trim(), n_en: String(f.opcion_en || ''), p: num_(f.precio) || 0 });
+  });
+  return g;
 }
 
 function horarioDe_(cfg, dia) {
@@ -256,6 +308,9 @@ function calcularPedido_(body, cat, cfg, momento) {
     if (!esSi_(p.disponible)) return { ok: false, error: p.nombre + ' está agotado por hoy.' };
     var canalSec = canal === 'mesa' ? s.mesa : s.delivery;
     if (!esSi_(canalSec)) return { ok: false, error: p.nombre + ' no está disponible para este tipo de pedido.' };
+    var canalProd = String(p.canal || 'todos').trim().toLowerCase();
+    if (canalProd === 'local' && canal !== 'mesa') return { ok: false, error: p.nombre + ' solo está disponible en el local.' };
+    if (canalProd === 'delivery' && canal === 'mesa') return { ok: false, error: p.nombre + ' solo está disponible para delivery o recojo.' };
 
     var cant = Math.floor(Number(it.cant));
     if (!(cant >= 1 && cant <= 20)) return { ok: false, error: 'Cantidad no válida.' };
@@ -271,19 +326,40 @@ function calcularPedido_(body, cat, cfg, momento) {
     }
     if (precio == null) return { ok: false, error: p.nombre + ' se consulta con el mozo y no se puede pedir por la web.' };
 
-    var salsa = null, recargo = 0;
+    var salsa = null, recargo = 0, sp = null;
     if (esSi_(p.requiere_salsa)) {
-      var sp = prod[String(it.salsa)];
+      sp = prod[String(it.salsa)];
       if (!sp || sp.tipo !== 'salsa' || !esSi_(sp.visible)) return { ok: false, error: 'Elige la salsa de ' + p.nombre + '.' };
       if (!esSi_(sp.disponible)) return { ok: false, error: 'La salsa ' + sp.nombre + ' está agotada por hoy.' };
       salsa = sp.nombre; recargo = num_(sp.recargo) || 0;
     }
     if (esSi_(s.alcohol)) hayAlcohol = true;
-    var unit = precio + recargo;
+
+    // Opciones (término, picante, extras...): del plato y de su salsa
+    var grupos = gruposOpciones_(cat.opciones);
+    var permitidos = listaIds_(p.opciones).concat(sp ? listaIds_(sp.opciones) : []);
+    var elegidas = it.ops && typeof it.ops === 'object' ? it.ops : {};
+    var extraOps = 0, opsTxt = [];
+    for (var gi = 0; gi < permitidos.length; gi++) {
+      var gid = permitidos[gi], grp = grupos[gid];
+      if (!grp || opsTxt.some(function (x) { return x.id === gid; })) continue;
+      var pedidas = Array.isArray(elegidas[gid]) ? elegidas[gid] : (elegidas[gid] ? [elegidas[gid]] : []);
+      var validas = [];
+      pedidas.slice(0, 30).forEach(function (nm) {
+        var o = grp.ops.filter(function (x) { return x.n === String(nm); })[0];
+        if (o && validas.indexOf(o) < 0) validas.push(o);
+      });
+      if (grp.tipo === 'una') validas = validas.slice(0, 1);
+      if (grp.req && !validas.length) return { ok: false, error: 'Elige ' + grp.n.toLowerCase() + ' para ' + p.nombre + '.' };
+      validas.forEach(function (o) { extraOps += o.p; });
+      if (validas.length) opsTxt.push({ id: gid, g: grp.n, v: validas.map(function (o) { return o.n + (o.p ? ' (+' + soles_(o.p) + ')' : ''); }) });
+    }
+    var unit = precio + recargo + extraOps;
     var sub = Math.round(unit * cant * 100) / 100;
     total += sub;
     lineas.push({ id: String(p.id), nombre: String(p.nombre), tam: tam, salsa: salsa, recargo: recargo, cant: cant,
-      unit: unit, subtotal: sub, nota: texto_(it.nota, 120), seccion: String(p.seccion) });
+      unit: unit, subtotal: sub, nota: texto_(it.nota, 120), seccion: String(p.seccion),
+      opciones: opsTxt.map(function (x) { return { g: x.g, v: x.v }; }) });
   }
   if (hayAlcohol && canal !== 'mesa' && body.mayorEdad !== true) {
     return { ok: false, error: 'Confirma que eres mayor de 18 años para pedir bebidas alcohólicas.' };
@@ -293,6 +369,7 @@ function calcularPedido_(body, cat, cfg, momento) {
   var detalle = lineas.map(function (l) {
     var t = l.cant + ' × ' + l.nombre + (l.tam ? ' (' + l.tam + ')' : '') + ' — ' + soles_(l.subtotal);
     if (l.salsa) t += '\n    Salsa: ' + l.salsa + (l.recargo ? ' (+' + soles_(l.recargo) + ')' : '');
+    (l.opciones || []).forEach(function (o) { t += '\n    ' + o.g + ': ' + o.v.join(', '); });
     if (l.nota) t += '\n    Nota: ' + l.nota;
     return t;
   }).join('\n');
@@ -302,21 +379,25 @@ function calcularPedido_(body, cat, cfg, momento) {
 }
 
 /** Construye el objeto CARTA que usa la web (menu-data.js). */
-function construirCarta_(cfg, secciones, productos) {
+function construirCarta_(cfg, secciones, productos, opciones) {
   var dias = {};
   for (var d = 0; d < 7; d++) dias[d] = horarioDe_(cfg, d);
   var orden = function (a, b) { return (num_(a.orden) || 0) - (num_(b.orden) || 0); };
   var visibles = productos.filter(function (p) { return esSi_(p.visible) && p.nombre; });
 
+  var grupos = gruposOpciones_(opciones);
+  var opsDe = function (p) { return listaIds_(p.opciones).filter(function (g) { return grupos[g]; }); };
   var salsas = visibles.filter(function (p) { return p.tipo === 'salsa'; }).sort(orden).map(function (p) {
-    return { id: String(p.id), n: String(p.nombre), extra: num_(p.recargo) || 0, agotado: !esSi_(p.disponible) };
+    var o = { id: String(p.id), n: String(p.nombre), extra: num_(p.recargo) || 0, agotado: !esSi_(p.disponible) };
+    if (opsDe(p).length) o.op = opsDe(p);
+    return o;
   });
 
   var secs = secciones.filter(function (s) { return esSi_(s.visible); }).sort(orden).map(function (s) {
-    var grupos = [], idx = {};
+    var lista = [], idx = {};
     visibles.filter(function (p) { return String(p.seccion) === String(s.id); }).sort(orden).forEach(function (p) {
       var g = String(p.grupo || '');
-      if (!(g in idx)) { idx[g] = grupos.length; grupos.push({ titulo: g, nota: String(p.grupo_nota || ''), items: [] }); }
+      if (!(g in idx)) { idx[g] = lista.length; lista.push({ titulo: g, nota: String(p.grupo_nota || ''), items: [] }); }
       var it = { id: String(p.id), n: String(p.nombre) };
       if (p.glosa) it.g = String(p.glosa);
       if (p.descripcion) it.d = String(p.descripcion);
@@ -330,10 +411,18 @@ function construirCarta_(cfg, secciones, productos) {
       var al = String(p.alergenos || '').split(',').map(function (x) { return x.trim(); }).filter(function (x) { return ALERGENOS[x]; });
       if (al.length) it.al = al;
       if (p.foto) it.foto = String(p.foto);
-      grupos[idx[g]].items.push(it);
+      var cn = String(p.canal || 'todos').trim().toLowerCase();
+      if (cn === 'local' || cn === 'delivery') it.canal = cn;
+      if (num_(p.precio_antes) != null) it.pa = num_(p.precio_antes);
+      if (opsDe(p).length) it.op = opsDe(p);
+      if (p.nombre_en) it.n_en = String(p.nombre_en);
+      if (p.glosa_en) it.g_en = String(p.glosa_en);
+      if (p.descripcion_en) it.d_en = String(p.descripcion_en);
+      lista[idx[g]].items.push(it);
     });
     return { id: String(s.id), titulo: String(s.titulo), subtitulo: String(s.subtitulo || ''), intro: String(s.intro || ''),
-      pie: String(s.pie || ''), alcohol: esSi_(s.alcohol), delivery: esSi_(s.delivery), mesa: esSi_(s.mesa), grupos: grupos };
+      pie: String(s.pie || ''), alcohol: esSi_(s.alcohol), delivery: esSi_(s.delivery), mesa: esSi_(s.mesa), grupos: lista,
+      titulo_en: String(s.titulo_en || ''), subtitulo_en: String(s.subtitulo_en || ''), intro_en: String(s.intro_en || ''), pie_en: String(s.pie_en || '') };
   });
 
   return {
@@ -342,20 +431,24 @@ function construirCarta_(cfg, secciones, productos) {
       telefono: String(cfg.telefono || ''), whatsapp: String(cfg.whatsapp || ''), mensajeWhatsapp: cfg.mensaje_whatsapp || '',
       instagram: cfg.instagram || '', tiktok: cfg.tiktok || '', facebookUrl: cfg.facebook_url || '',
       horarioTexto: cfg.horario_texto || '', cerradoTexto: cfg.cerrado_texto || '',
-      sitioUrl: String(cfg.sitio_url || '').replace(/\/+$/, '')
+      sitioUrl: String(cfg.sitio_url || '').replace(/\/+$/, ''),
+      horarioTexto_en: cfg.horario_texto_en || '', cerradoTexto_en: cfg.cerrado_texto_en || ''
     },
     horario: { zona: cfg.zona_horaria || 'America/Lima', dias: dias },
     historia: {
       eyebrow: cfg.historia_eyebrow || '', titulo: cfg.historia_titulo || '',
-      parrafos: String(cfg.historia_texto || '').split(/\n\s*\n/).map(function (x) { return x.trim(); }).filter(Boolean)
+      parrafos: String(cfg.historia_texto || '').split(/\n\s*\n/).map(function (x) { return x.trim(); }).filter(Boolean),
+      eyebrow_en: cfg.historia_eyebrow_en || '', titulo_en: cfg.historia_titulo_en || '',
+      parrafos_en: String(cfg.historia_texto_en || '').split(/\n\s*\n/).map(function (x) { return x.trim(); }).filter(Boolean)
     },
     alergenos: ALERGENOS,
     pedidos: {
       api: cfg.api_url || '', activos: esSi_(cfg.pedidos_activos), fueraHorario: esSi_(cfg.pedidos_fuera_de_horario),
       mesaActivos: esSi_(cfg.pedidos_mesa_activos), recojo: esSi_(cfg.recojo_activo),
       metodosPago: String(cfg.metodos_pago || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean),
-      textoDelivery: cfg.texto_delivery || ''
+      textoDelivery: cfg.texto_delivery || '', textoDelivery_en: cfg.texto_delivery_en || ''
     },
+    opciones: grupos,
     salsas: salsas,
     secciones: secs
   };
@@ -366,9 +459,13 @@ function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
   var validos = pedidos.filter(function (p) { return p.fecha >= desde && p.fecha < hasta; });
   var cancel = validos.filter(function (p) { return p.estado === 'Cancelado'; }).length;
   var ok = validos.filter(function (p) { return p.estado !== 'Cancelado'; });
-  var ventas = 0, porDia = {}, porHora = {}, porCanal = {}, porProd = {};
+  var ventas = 0, porDia = {}, porHora = {}, porCanal = {}, porProd = {}, tiempos = [];
   ok.forEach(function (p) {
     var t = Number(p.total) || 0; ventas += t;
+    if (p.estado === 'Entregado' && p.actualizado instanceof Date && p.fecha instanceof Date) {
+      var mins = (p.actualizado.getTime() - p.fecha.getTime()) / 60000;
+      if (mins > 0 && mins < 600) tiempos.push(mins);
+    }
     var dia = zonaFmt(p.fecha, 'yyyy-MM-dd'), hora = zonaFmt(p.fecha, 'HH');
     porDia[dia] = (porDia[dia] || 0) + t;
     porHora[hora] = (porHora[hora] || 0) + 1;
@@ -387,7 +484,8 @@ function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
   return {
     ventas: Math.round(ventas * 100) / 100, pedidos: ok.length, cancelados: cancel,
     ticket: ok.length ? Math.round(ventas / ok.length * 100) / 100 : 0,
-    porDia: porDia, porHora: porHora, porCanal: porCanal, top: top
+    porDia: porDia, porHora: porHora, porCanal: porCanal, top: top,
+    tiempoProm: tiempos.length ? Math.round(tiempos.reduce(function (a, b) { return a + b; }, 0) / tiempos.length) : null
   };
 }
 
@@ -526,7 +624,8 @@ function panelInicio(sesion) {
     api: cfg.api_url || '', tokenListo: !!props.getProperty('GITHUB_TOKEN'),
     pendientes: props.getProperty('CAMBIOS_PENDIENTES') === 'SI', claveLista: !!props.getProperty('PANEL_CLAVE'),
     ultimaPublicacion: props.getProperty('ULTIMA_PUBLICACION') || '',
-    abierto: estaAbierto_(cfg, momentoActual_(cfg))
+    abierto: estaAbierto_(cfg, momentoActual_(cfg)),
+    minutosAlerta: num_(cfg.minutos_alerta) || 45, ahora: Date.now()
   };
 }
 
@@ -537,7 +636,9 @@ function pedidoAObjeto_(p, zona) {
     dia: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'yyyy-MM-dd') : '',
     canal: p.canal, mesa: p.mesa, nombre: p.nombre, telefono: String(p.telefono || ''), direccion: p.direccion,
     referencia: p.referencia, pago: p.pago, programado: p.programado, detalle: p.detalle, total: Number(p.total) || 0,
-    estado: p.estado, notas: p.notas, historial: p.historial
+    estado: p.estado, notas: p.notas, historial: p.historial,
+    ts: p.fecha instanceof Date ? p.fecha.getTime() : 0,
+    act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0
   };
 }
 
@@ -617,6 +718,11 @@ function guardarProducto(sesion, p) {
   if (String(p.precio).trim() !== '' && num_(p.precio) == null) throw new Error('El precio debe ser un número (ej.: 32 o 32.50).');
   if (String(p.recargo || '').trim() !== '' && num_(p.recargo) == null) throw new Error('El recargo debe ser un número.');
   if (p.tamanos && !parsearTamanos_(p.tamanos).length) throw new Error('Tamaños: usa el formato Personale=22; Media=33; Famiglia=50');
+  if (String(p.precio_antes || '').trim() !== '' && num_(p.precio_antes) == null) throw new Error('El precio anterior debe ser un número.');
+  p.canal = String(p.canal || 'todos').trim().toLowerCase();
+  if (CANALES.indexOf(p.canal) < 0) throw new Error('Canal no válido.');
+  var gruposValidos = gruposOpciones_(leerTabla_(HOJA.opciones));
+  p.opciones = listaIds_(p.opciones).filter(function (g) { return gruposValidos[g]; }).join(', ');
   var h = SpreadsheetApp.getActive().getSheetByName(HOJA.productos);
   var datos = leerTabla_(HOJA.productos);
   if (!p.id) {
@@ -631,12 +737,13 @@ function guardarProducto(sesion, p) {
     var v = p[c] == null ? '' : p[c];
     if (typeof v === 'string') v = v.trim();
     if (['requiere_salsa', 'disponible', 'visible'].indexOf(c) >= 0) v = esSi_(v) ? 'SI' : 'NO';
-    if (c === 'precio' || c === 'recargo' || c === 'orden') v = v === '' ? '' : num_(v);
+    if (c === 'precio' || c === 'recargo' || c === 'orden' || c === 'precio_antes') v = v === '' ? '' : num_(v);
     limpio[c] = v;
   });
   if (!limpio.tipo) limpio.tipo = 'plato';
-  var fila = COLS.productos.map(function (c) { return limpio[c]; });
+  var cab = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(function (c) { return String(c).trim(); });
   var ex = datos.filter(function (d) { return String(d.id) === String(p.id); })[0];
+  var fila = cab.map(function (c) { return c in limpio ? limpio[c] : (ex && c in ex ? ex[c] : ''); });
   if (ex) h.getRange(ex._fila, 1, 1, fila.length).setValues([fila]);
   else h.appendRow(fila);
   marcarPendiente_();
@@ -648,7 +755,9 @@ function cambiarCampoProducto(sesion, id, campo, valor) {
   if (['disponible', 'visible'].indexOf(campo) < 0) throw new Error('Campo no permitido.');
   var p = leerTabla_(HOJA.productos).filter(function (d) { return String(d.id) === String(id); })[0];
   if (!p) throw new Error('Producto no encontrado.');
-  SpreadsheetApp.getActive().getSheetByName(HOJA.productos).getRange(p._fila, COLS.productos.indexOf(campo) + 1).setValue(valor ? 'SI' : 'NO');
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.productos);
+  var col = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String).indexOf(campo) + 1;
+  h.getRange(p._fila, col).setValue(valor ? 'SI' : 'NO');
   marcarPendiente_();
   return true;
 }
@@ -663,7 +772,8 @@ var CLAVES_EDITABLES = ['nombre', 'desde', 'direccion', 'telefono', 'whatsapp', 
   'facebook_url', 'horario_texto', 'cerrado_texto', 'horario_lunes', 'horario_martes', 'horario_miercoles', 'horario_jueves',
   'horario_viernes', 'horario_sabado', 'horario_domingo', 'historia_eyebrow', 'historia_titulo', 'historia_texto',
   'pedidos_activos', 'pedidos_fuera_de_horario', 'pedidos_mesa_activos', 'metodos_pago', 'recojo_activo', 'texto_delivery',
-  'api_url', 'sitio_url', 'github_repo', 'github_rama', 'admins'];
+  'api_url', 'sitio_url', 'github_repo', 'github_rama', 'admins', 'minutos_alerta',
+  'historia_eyebrow_en', 'historia_titulo_en', 'historia_texto_en', 'texto_delivery_en', 'horario_texto_en', 'cerrado_texto_en'];
 
 function leerAjustes(sesion) {
   exigirAdmin_(sesion);
@@ -680,6 +790,7 @@ function guardarAjustes(sesion, o) {
     if (/^horario_(lunes|martes|miercoles|jueves|viernes|sabado|domingo)$/.test(k) && v && v.toLowerCase() !== 'cerrado'
       && !/^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/.test(v)) throw new Error('Horario no válido en ' + k + '. Usa 18:00-23:00 o cerrado.');
     if (k === 'whatsapp') v = v.replace(/\D/g, '');
+    if (k === 'minutos_alerta' && !(Number(v) >= 5 && Number(v) <= 240)) throw new Error('Los minutos de alerta deben estar entre 5 y 240.');
     guardarClave_(k, v);
   });
   actualizarLinksMesas_();
@@ -725,7 +836,7 @@ function githubPut_(ruta, base64, mensaje) {
 function publicarCarta(sesion) {
   var email = exigirAdmin_(sesion);
   var cfg = leerConfig_();
-  var carta = construirCarta_(cfg, leerTabla_(HOJA.secciones), leerTabla_(HOJA.productos));
+  var carta = construirCarta_(cfg, leerTabla_(HOJA.secciones), leerTabla_(HOJA.productos), leerTabla_(HOJA.opciones));
   var zona = cfg.zona_horaria || 'America/Lima';
   carta.publicado = Utilities.formatDate(new Date(), zona, "yyyy-MM-dd'T'HH:mm:ssXXX");
   var js = '/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (' + carta.publicado + ').\n' +
@@ -855,4 +966,45 @@ function cambiarClavePanel(sesion, nueva) {
   props.setProperty('PANEL_CLAVE', sal + ':' + hashClave_(nueva, sal));
   props.setProperty('PANEL_GEN', String(Number(props.getProperty('PANEL_GEN') || 0) + 1));
   return { ok: true, mensaje: 'Contraseña guardada. Las sesiones abiertas se cerraron.' };
+}
+
+/* ---------- opciones y adicionales ---------- */
+function listarOpciones(sesion) {
+  exigirAdmin_(sesion);
+  var g = {}, orden = [];
+  leerTabla_(HOJA.opciones).forEach(function (f) {
+    var id = String(f.grupo || '').trim(); if (!id) return;
+    if (!g[id]) { g[id] = { id: id, nombre: String(f.nombre || ''), nombre_en: String(f.nombre_en || ''), tipo: f.tipo === 'varias' ? 'varias' : 'una', obligatorio: esSi_(f.obligatorio), ops: [] }; orden.push(id); }
+    g[id].ops.push({ opcion: String(f.opcion || ''), opcion_en: String(f.opcion_en || ''), precio: f.precio === '' ? '' : num_(f.precio), activo: esSi_(f.activo) });
+  });
+  var uso = {};
+  leerTabla_(HOJA.productos).forEach(function (p) { listaIds_(p.opciones).forEach(function (id) { (uso[id] = uso[id] || []).push(String(p.nombre)); }); });
+  return orden.map(function (id) { g[id].usadoEn = uso[id] || []; return g[id]; });
+}
+
+/** Guarda un grupo completo (reemplaza sus filas). grupo = { id, nombre, nombre_en, tipo, obligatorio, ops:[{opcion, opcion_en, precio, activo}] } */
+function guardarGrupoOpciones(sesion, grupo) {
+  exigirAdmin_(sesion);
+  var id = String(grupo && grupo.id || '').toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '');
+  if (!id) throw new Error('El grupo necesita un código (ej.: extras-pizza).');
+  if (!String(grupo.nombre || '').trim()) throw new Error('El grupo necesita un nombre.');
+  var ops = (grupo.ops || []).filter(function (o) { return String(o.opcion || '').trim(); });
+  if (!ops.length) throw new Error('Agrega al menos una opción.');
+  ops.forEach(function (o) { if (String(o.precio).trim() !== '' && num_(o.precio) == null) throw new Error('Precio no válido en "' + o.opcion + '".'); });
+  var filas = leerTabla_(HOJA.opciones).filter(function (f) { return String(f.grupo) !== id; });
+  ops.forEach(function (o, i) {
+    filas.push({ grupo: id, nombre: String(grupo.nombre).trim(), nombre_en: String(grupo.nombre_en || '').trim(), tipo: grupo.tipo === 'varias' ? 'varias' : 'una',
+      obligatorio: grupo.obligatorio ? 'SI' : 'NO', opcion: String(o.opcion).trim(), opcion_en: String(o.opcion_en || '').trim(),
+      precio: String(o.precio).trim() === '' ? '' : num_(o.precio), orden: (i + 1) * 10, activo: o.activo === false ? 'NO' : 'SI' });
+  });
+  escribirTabla_(HOJA.opciones, COLS.opciones, filas);
+  marcarPendiente_();
+  return listarOpciones(sesion);
+}
+
+function eliminarGrupoOpciones(sesion, id) {
+  exigirAdmin_(sesion);
+  escribirTabla_(HOJA.opciones, COLS.opciones, leerTabla_(HOJA.opciones).filter(function (f) { return String(f.grupo) !== String(id); }));
+  marcarPendiente_();
+  return listarOpciones(sesion);
 }

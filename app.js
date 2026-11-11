@@ -4,6 +4,7 @@
   var C = window.CARTA;
   var N = C.negocio;
   var PED = window.PG_PEDIDO || null;
+  var I = window.PG_I18N, t = I.t, tx = I.tx;
   /* Si la carta ya tiene su link propio, el link viejo de GitHub Pages redirige allí. */
   if (N.sitioUrl && /\.github\.io$/.test(location.hostname) && N.sitioUrl.indexOf(location.hostname) < 0) {
     var dest = N.sitioUrl + location.pathname.replace(/^\/[^\/]+/, "").replace(/\.html$/, "") + location.search;
@@ -79,7 +80,6 @@
     hh = hh % 12 || 12;
     return hh + ":" + mm + " " + suf;
   }
-  var NOMBRES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
   var MAPA_DIA = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
   function ahoraLugar(fecha) {
     try {
@@ -91,19 +91,19 @@
     }
   }
   function estadoActual(fecha) {
-    var t = ahoraLugar(fecha || new Date());
-    var hoy = C.horario.dias[t.dia];
-    if (hoy && t.min >= minutos(hoy[0]) && t.min < minutos(hoy[1])) {
+    var ah = ahoraLugar(fecha || new Date());
+    var hoy = C.horario.dias[ah.dia];
+    if (hoy && ah.min >= minutos(hoy[0]) && ah.min < minutos(hoy[1])) {
       return { abierto: true, cierra: fmt12(hoy[1]) };
     }
-    if (hoy && t.min < minutos(hoy[0])) {
-      return { abierto: false, cuando: "hoy a las " + fmt12(hoy[0]) };
+    if (hoy && ah.min < minutos(hoy[0])) {
+      return { abierto: false, cuando: t("hoyA") + fmt12(hoy[0]) };
     }
     for (var i = 1; i <= 7; i++) {
-      var d = (t.dia + i) % 7, r = C.horario.dias[d];
-      if (r) return { abierto: false, cuando: (i === 1 ? "mañana " + NOMBRES[d] : "el " + NOMBRES[d]) + " a las " + fmt12(r[0]) };
+      var d = (ah.dia + i) % 7, r = C.horario.dias[d];
+      if (r) return { abierto: false, cuando: (i === 1 ? t("manana") : t("el")) + t("dias")[d] + t("aLas") + fmt12(r[0]) };
     }
-    return { abierto: false, cuando: "pronto" };
+    return { abierto: false, cuando: t("pronto") };
   }
 
   var estadoBarra, bienvenida, fab, fabTxt;
@@ -115,41 +115,46 @@
     estadoBarra.className = "estado " + (e.abierto ? "abierto" : "cerrado");
     estadoBarra.textContent = "";
     estadoBarra.appendChild(h("i"));
-    if (PED && PED.modo === "mesa" && PED.mesa) estadoBarra.appendChild(h("span", "estado__mesa", "Mesa " + PED.mesa));
+    if (PED && PED.modo === "mesa" && PED.mesa) estadoBarra.appendChild(h("span", "estado__mesa", t("mesa") + PED.mesa));
     if (e.abierto) {
-      var s = h("span"); s.appendChild(document.createTextNode("Abierto ahora · hasta las ")); s.appendChild(h("b", null, e.cierra));
+      var s = h("span"); s.appendChild(document.createTextNode(t("abierto"))); s.appendChild(h("b", null, e.cierra));
       estadoBarra.appendChild(s);
     } else {
-      var s2 = h("span"); s2.appendChild(document.createTextNode("Cerrado · abrimos ")); s2.appendChild(h("b", null, e.cuando.replace(" a las ", " · ")));
+      var s2 = h("span"); s2.appendChild(document.createTextNode(t("cerrado"))); s2.appendChild(h("b", null, e.cuando.replace(t("aLas"), " · ")));
       estadoBarra.appendChild(s2);
     }
     bienvenida.textContent = "";
     var conCarrito = PED && PED.activo();
-    var titulo = "Bienvenido a Pasta Gallo", texto;
+    var titulo = t("bienvenido"), texto;
     if (PED && PED.modo === "mesa") {
-      if (!PED.mesaValida()) texto = "Para pedir desde tu mesa, escanea el código QR que está en ella. Mientras tanto, puedes ver la carta.";
-      else if (!e.abierto) { titulo = "Mesa " + PED.mesa; texto = "En este momento el restaurante está cerrado. Abrimos " + e.cuando + "."; }
-      else if (!conCarrito) { titulo = "Mesa " + PED.mesa; texto = "Bienvenido. Revisa la carta y haz tu pedido a tu mozo."; }
-      else { titulo = "Bienvenido a la Mesa " + PED.mesa; texto = "Elige tus platos y envía tu pedido desde aquí. Tu mozo lo confirmará en unos minutos."; }
+      if (!PED.mesaValida()) texto = t("mesaSinQr");
+      else if (!e.abierto) { titulo = t("mesa") + PED.mesa; texto = t("mesaCerrado", { c: e.cuando }); }
+      else if (!conCarrito) { titulo = t("mesa") + PED.mesa; texto = t("mesaSinPedidos"); }
+      else { titulo = t("bienvenidoMesa") + PED.mesa; texto = t("mesaAbierto"); }
     } else if (e.abierto) {
-      texto = conCarrito
-        ? "Estamos abiertos hasta las " + e.cierra + ". Arma tu pedido aquí mismo: delivery o recojo en el local."
-        : "Estamos abiertos hasta las " + e.cierra + ". Elige tu plato favorito y realiza tu pedido ahora.";
+      texto = conCarrito ? t("abiertoCarrito", { h: e.cierra }) : t("abiertoSin", { h: e.cierra });
     } else {
-      texto = "En este momento estamos descansando. Abrimos " + e.cuando + ". " +
-        (conCarrito && PED.aceptaAhora() ? "Ya puedes dejar tu pedido programado." : "Mientras tanto, recorre nuestra carta con calma.");
+      texto = t("cerradoTxt", { c: e.cuando }) + (conCarrito && PED.aceptaAhora() ? t("programar") : t("recorre"));
     }
     bienvenida.appendChild(h("h1", null, titulo));
     bienvenida.appendChild(h("p", null, texto));
     var pedir = q("#btn-pedir");
-    if (pedir && !conCarrito) pedir.lastChild.textContent = e.abierto ? "Realizar mi pedido" : "Escríbenos por WhatsApp";
-    if (fabTxt) fabTxt.textContent = e.abierto ? "Pedir ahora" : "WhatsApp";
+    if (pedir && !conCarrito) pedir.lastChild.textContent = e.abierto ? t("realizarPedido") : t("escribenos");
+    if (fabTxt) fabTxt.textContent = e.abierto ? t("pedirAhora") : "WhatsApp";
+  }
+
+  function botonIdioma(cls) {
+    var b = h("button", cls, t("idioma")); b.type = "button"; b.setAttribute("aria-label", t("idiomaAria")); b.lang = I.lang === "en" ? "es" : "en";
+    b.addEventListener("click", I.cambiar);
+    return b;
   }
 
   /* ---------- portada ---------- */
   function portada() {
-    var s = h("header", "portada"); s.id = "inicio";
+    var compacta = PED && PED.modo === "mesa";
+    var s = h("header", "portada" + (compacta ? " portada--compacta" : "")); s.id = "inicio";
     s.appendChild(h("div", "marco"));
+    s.appendChild(botonIdioma("idioma idioma--portada"));
     var in_ = h("div", "portada__in");
     in_.appendChild(h("div", "saludo", "Benvenuti"));
     var g = h("img", "gallo"); g.src = "gallo-oro.png"; g.alt = ""; g.width = 112; in_.appendChild(g);
@@ -160,19 +165,22 @@
     bienvenida = h("div", "bienvenida"); in_.appendChild(bienvenida);
     var ac = h("div", "acciones");
     if (PED && PED.activo()) {
-      var b1 = h("a", "btn btn--oro", PED.modo === "mesa" ? "Ver la carta y pedir" : "Hacer mi pedido"); b1.href = "#carta-inicio";
+      var b1 = h("a", "btn btn--oro", PED.modo === "mesa" ? t("verCartaPedir") : t("hacerPedido")); b1.href = "#carta-inicio";
       ac.appendChild(b1);
       if (PED.modo !== "mesa") {
         var b2 = h("a", "btn btn--linea"); b2.href = waUrl(); b2.target = "_blank"; b2.rel = "noopener";
-        b2.appendChild(waSvg()); b2.appendChild(document.createTextNode("Consultas por WhatsApp")); ac.appendChild(b2);
+        b2.appendChild(waSvg()); b2.appendChild(document.createTextNode(t("consultasWa"))); ac.appendChild(b2);
       }
     } else {
       var a1 = h("a", "btn btn--oro"); a1.id = "btn-pedir"; a1.href = waUrl(); a1.target = "_blank"; a1.rel = "noopener";
-      a1.appendChild(waSvg()); a1.appendChild(document.createTextNode("Realizar mi pedido"));
-      var a2 = h("a", "btn btn--linea", "Ver la carta"); a2.href = "#carta-inicio";
+      a1.appendChild(waSvg()); a1.appendChild(document.createTextNode(t("realizarPedido")));
+      var a2 = h("a", "btn btn--linea", t("verCarta")); a2.href = "#carta-inicio";
       ac.appendChild(a1); ac.appendChild(a2);
     }
     in_.appendChild(ac);
+    if (C.historia && C.historia.parrafos && C.historia.parrafos.length) {
+      var lh = h("a", "link-historia", t("nuestraHistoria") + " →"); lh.href = "#historia"; in_.appendChild(lh);
+    }
     s.appendChild(in_);
     return s;
   }
@@ -182,11 +190,12 @@
     var s = h("section", "pagina historia rev"); s.id = "historia";
     s.appendChild(h("div", "marco2"));
     var i = h("div", "pagina__in");
-    i.appendChild(h("div", "eyebrow", C.historia.eyebrow));
-    i.appendChild(h("h2", null, C.historia.titulo));
+    i.appendChild(h("div", "eyebrow", tx(C.historia, "eyebrow")));
+    i.appendChild(h("h2", null, tx(C.historia, "titulo")));
     i.appendChild(ornamento());
-    C.historia.parrafos.forEach(function (p) { i.appendChild(h("p", null, p)); });
-    i.appendChild(h("div", "firma", "La familia Gallo"));
+    var ps = I.lang === "en" && C.historia.parrafos_en && C.historia.parrafos_en.length ? C.historia.parrafos_en : C.historia.parrafos;
+    ps.forEach(function (p) { i.appendChild(h("p", null, p)); });
+    i.appendChild(h("div", "firma", t("familia")));
     s.appendChild(i);
     return s;
   }
@@ -201,54 +210,67 @@
     s.appendChild(el("ellipse", { cx: 150, cy: 48, rx: 136, ry: 36, fill: "none", stroke: "#a9803f", "stroke-width": .6, opacity: .7 }));
     s.appendChild(el("line", { x1: 103, y1: 18, x2: 103, y2: 78, stroke: "#a9803f", "stroke-width": .8, "stroke-dasharray": "2 3" }));
     s.appendChild(el("line", { x1: 197, y1: 18, x2: 197, y2: 78, stroke: "#a9803f", "stroke-width": .8, "stroke-dasharray": "2 3" }));
-    function tx(x, l1, l2) {
-      var t = el("text", { x: x, y: l2 ? 45 : 51 }); t.textContent = l1; s.appendChild(t);
+    function txt(x, l1, l2) {
+      var t1 = el("text", { x: x, y: l2 ? 45 : 51 }); t1.textContent = l1; s.appendChild(t1);
       if (l2) { var t2 = el("text", { x: x, y: 57 }); t2.textContent = l2; s.appendChild(t2); }
     }
-    tx(62, "Raviolini"); tx(150, "Lasagna", "di Carne"); tx(238, "Fettuccine");
+    txt(62, "Raviolini"); txt(150, "Lasagna", "di Carne"); txt(238, "Fettuccine");
     w.appendChild(s);
     return w;
   }
 
   /* ---------- plato ---------- */
   function plato(it, sec) {
-    var a = h("article", "it rev");
+    var a = h("article", "it rev" + (it.agotado ? " it--agotado" : ""));
     if (it.destacado === "tris") a.className += " it--dest";
     var tieneFoto = !!it.foto;
     if (tieneFoto) a.className += " fcon";
     var top = h("div", "it__top");
-    top.appendChild(h("h4", "it__n", it.n));
-    if (it.p != null && !it.t) { top.appendChild(h("span", "it__pts")); top.appendChild(precioEl(it.p)); }
+    top.appendChild(h("h4", "it__n", tx(it, "n")));
+    if (it.p != null && !it.t) {
+      top.appendChild(h("span", "it__pts"));
+      if (it.pa != null && it.pa > it.p) { var pa = precioEl(it.pa); pa.className += " precio--antes"; pa.title = t("antes"); top.appendChild(pa); }
+      top.appendChild(precioEl(it.p));
+    }
     a.appendChild(top);
-    if (it.g) a.appendChild(h("p", "it__g", it.g));
-    if (it.d) a.appendChild(h("p", "it__d", it.d));
+    if (tx(it, "g")) a.appendChild(h("p", "it__g", tx(it, "g")));
+    if (tx(it, "d")) a.appendChild(h("p", "it__d", tx(it, "d")));
+    if (it.canal === "local") a.appendChild(h("span", "etq", t("soloLocal")));
+    if (it.canal === "delivery") a.appendChild(h("span", "etq", t("soloDelivery")));
     if (it.destacado === "tris") a.appendChild(diagramaTris());
-    if (it.extra) a.appendChild(h("span", "mas", "Adicional + S/ " + dinero(it.extra)));
+    if (it.extra) a.appendChild(h("span", "mas", t("adicional") + dinero(it.extra)));
     if (it.t) {
-      var t = h("div", "tam");
+      var tb = h("div", "tam");
       it.t.forEach(function (x) {
-        var c = h("div"); c.appendChild(h("span", null, x[0])); c.appendChild(precioEl(x[1])); t.appendChild(c);
+        var c = h("div"); c.appendChild(h("span", null, x[0])); c.appendChild(precioEl(x[1])); tb.appendChild(c);
       });
-      a.appendChild(t);
+      a.appendChild(tb);
     }
     if (it.al && it.al.length) {
       var al = h("div", "alg");
       it.al.forEach(function (k) {
         if (!ICONOS[k]) return;
-        var sp = h("span"); sp.title = C.alergenos[k] || k; sp.setAttribute("aria-label", "Contiene: " + (C.alergenos[k] || k));
+        var sp = h("span"); sp.title = I.alergeno(k, C); sp.setAttribute("aria-label", t("contiene") + I.alergeno(k, C));
         sp.appendChild(iconoSvg(k)); al.appendChild(sp);
       });
       a.appendChild(al);
     }
-    if (it.agotado && it.tipo !== "salsa") a.appendChild(h("span", "agotado", "Agotado por hoy"));
-    else if (it.agotado) a.appendChild(h("span", "agotado", "No disponible hoy"));
-    if (PED && PED.puedePedir(it, sec)) a.appendChild(PED.boton(it));
+    if (it.agotado && it.tipo !== "salsa") a.appendChild(h("span", "agotado", t("agotado")));
+    else if (it.agotado) a.appendChild(h("span", "agotado", t("noDisponible")));
+    if (PED && PED.puedePedir(it, sec)) a.appendChild(PED.boton(it, sec));
+    if (PED && it.tipo !== "salsa") {
+      a.className += " it--clic"; a.tabIndex = 0; a.setAttribute("role", "button");
+      a.setAttribute("aria-label", t("verDetalle") + tx(it, "n"));
+      var abrir = function (ev) { if (ev.target.closest(".agregar")) return; PED.abrirDetalle(it, sec); };
+      a.addEventListener("click", abrir);
+      a.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && ev.target === a) { ev.preventDefault(); PED.abrirDetalle(it, sec); } });
+    }
     if (tieneFoto) {
-      var im = h("img", "foto"); im.src = it.foto; im.alt = it.n; im.loading = "lazy";
+      var im = h("img", "foto"); im.src = it.foto; im.alt = tx(it, "n"); im.loading = "lazy";
       im.onerror = function () { a.className = a.className.replace(" fcon", ""); im.remove(); };
       a.appendChild(im);
     }
-    a.setAttribute("data-q", norm([it.n, it.g, it.d].join(" ")));
+    a.setAttribute("data-q", norm([it.n, it.g, it.d, it.n_en, it.g_en, it.d_en].join(" ")));
     return a;
   }
 
@@ -257,22 +279,28 @@
   var hayAlergenos = false;
 
   function seccion(sec, idx) {
+    var modo = PED ? PED.modo : "delivery";
     var grupos = sec.grupos.filter(function (g) {
-      g.items = (g.items || []).filter(function (i) { return !i.oculto; });
+      g.items = (g.items || []).filter(function (i) {
+        if (i.oculto) return false;
+        if (i.canal === "local" && modo !== "mesa") return false;
+        if (i.canal === "delivery" && modo === "mesa") return false;
+        return true;
+      });
       return g.items.length;
     });
     if (!grupos.length) return null;
     seccionesVisibles.push(sec);
     var n = seccionesVisibles.length;
-    var s = h("section", "sec " + (n % 2 ? "sec--a" : "sec--b")); s.id = sec.id;
+    var s = h("section", "sec " + (sec.id === "promociones" ? "sec--promo" : (n % 2 ? "sec--a" : "sec--b"))); s.id = sec.id;
     var cab = h("header", "sec__cab");
     cab.appendChild(h("div", "m"));
     var c = h("div");
     c.appendChild(h("div", "num", ROMANOS[n - 1] || String(n)));
-    c.appendChild(h("h2", null, sec.titulo));
-    c.appendChild(h("div", "sub", sec.subtitulo));
+    c.appendChild(h("h2", null, tx(sec, "titulo")));
+    c.appendChild(h("div", "sub", tx(sec, "subtitulo")));
     c.appendChild(ornamento());
-    if (sec.intro) c.appendChild(h("p", "intro", sec.intro));
+    if (tx(sec, "intro")) c.appendChild(h("p", "intro", tx(sec, "intro")));
     cab.appendChild(c); s.appendChild(cab);
 
     var cuerpo = h("div", "sec__cuerpo");
@@ -288,18 +316,18 @@
       g.items.forEach(function (it) { if (it.al && it.al.length) hayAlergenos = true; gr.appendChild(plato(it, sec)); });
       cuerpo.appendChild(gr);
     });
-    if (sec.pie) cuerpo.appendChild(h("div", "pie", sec.pie));
-    if (sec.alcohol) cuerpo.appendChild(h("p", "aviso18", "Venta de bebidas alcohólicas solo a mayores de 18 años."));
+    if (tx(sec, "pie")) cuerpo.appendChild(h("div", "pie", tx(sec, "pie")));
+    if (sec.alcohol) cuerpo.appendChild(h("p", "aviso18", t("alcohol")));
     s.appendChild(cuerpo);
     return s;
   }
 
   function leyenda() {
     var d = h("div", "leyenda");
-    d.appendChild(h("h3", null, "Alérgenos"));
+    d.appendChild(h("h3", null, t("alergenos")));
     var ul = h("ul");
     Object.keys(C.alergenos).forEach(function (k) {
-      var li = h("li"); li.appendChild(iconoSvg(k)); li.appendChild(document.createTextNode(C.alergenos[k])); ul.appendChild(li);
+      var li = h("li"); li.appendChild(iconoSvg(k)); li.appendChild(document.createTextNode(I.alergeno(k, C))); ul.appendChild(li);
     });
     d.appendChild(ul);
     return d;
@@ -307,21 +335,22 @@
 
   /* ---------- navegación ---------- */
   function navegacion() {
-    var nav = h("nav", "nav"); nav.id = "nav"; nav.setAttribute("aria-label", "Secciones de la carta");
+    var nav = h("nav", "nav"); nav.id = "nav"; nav.setAttribute("aria-label", t("seccionesAria"));
     var in_ = h("div", "nav__in");
     var ch = h("div", "chips"); ch.id = "chips";
     seccionesVisibles.forEach(function (s) {
-      var a = h("a", "chip", s.titulo); a.href = "#" + s.id; a.setAttribute("data-id", s.id); ch.appendChild(a);
+      var a = h("a", "chip", tx(s, "titulo")); a.href = "#" + s.id; a.setAttribute("data-id", s.id); ch.appendChild(a);
     });
     in_.appendChild(ch);
-    var lupa = h("button", "lupa"); lupa.type = "button"; lupa.setAttribute("aria-label", "Buscar en la carta");
+    var lupa = h("button", "lupa"); lupa.type = "button"; lupa.setAttribute("aria-label", t("buscarAria"));
     var sv = document.createElementNS(NS, "svg"); sv.setAttribute("viewBox", "0 0 24 24");
     var c1 = document.createElementNS(NS, "circle"); c1.setAttribute("cx", 11); c1.setAttribute("cy", 11); c1.setAttribute("r", 6.5);
     var l1 = document.createElementNS(NS, "path"); l1.setAttribute("d", "M16 16l5 5"); sv.appendChild(c1); sv.appendChild(l1);
     lupa.appendChild(sv); in_.appendChild(lupa);
+    in_.appendChild(botonIdioma("idioma"));
     nav.appendChild(in_);
     var b = h("div", "busca"); b.id = "busca";
-    var inp = h("input"); inp.type = "search"; inp.id = "q"; inp.placeholder = "Buscar un plato…"; inp.setAttribute("aria-label", "Buscar un plato"); inp.autocomplete = "off";
+    var inp = h("input"); inp.type = "search"; inp.id = "q"; inp.placeholder = t("buscar"); inp.setAttribute("aria-label", t("buscar")); inp.autocomplete = "off";
     b.appendChild(inp); nav.appendChild(b);
     lupa.addEventListener("click", function () {
       b.classList.toggle("abierta");
@@ -366,15 +395,15 @@
     s.appendChild(h("div", "marco2"));
     var i = h("div", "pagina__in");
     i.appendChild(h("div", "gr", "Grazie"));
-    i.appendChild(h("h2", null, "Gracias por visitarnos"));
+    i.appendChild(h("h2", null, t("grazie")));
     i.appendChild(ornamento());
-    i.appendChild(h("p", null, "Gracias por sentarte a nuestra mesa y ser parte de esta historia que empezó en 1997. Volver a verte es nuestro mejor premio."));
+    i.appendChild(h("p", null, t("graciasTxt")));
     var d = h("div", "datos");
     function dato(t, x) { var b = h("div"); b.appendChild(h("h3", null, t)); b.appendChild(h("p", null, x)); return b; }
-    d.appendChild(dato("Dónde estamos", N.direccion));
-    d.appendChild(dato("Horario", N.horarioTexto + (N.cerradoTexto ? " · " + N.cerradoTexto : "")));
-    d.appendChild(dato("Reservas y pedidos", N.telefono));
-    var rb = h("div"); rb.appendChild(h("h3", null, "Síguenos"));
+    d.appendChild(dato(t("donde"), N.direccion));
+    d.appendChild(dato(t("horario"), tx(N, "horarioTexto") + (tx(N, "cerradoTexto") ? " · " + tx(N, "cerradoTexto") : "")));
+    d.appendChild(dato(t("reservas"), N.telefono));
+    var rb = h("div"); rb.appendChild(h("h3", null, t("siguenos")));
     var rd = h("div", "redes");
     function red(t, u) { var a = h("a", null, t); a.href = u; a.target = "_blank"; a.rel = "noopener"; rd.appendChild(a); }
     if (N.instagram) red("Instagram", "https://instagram.com/" + N.instagram);
@@ -383,16 +412,16 @@
     rb.appendChild(rd); d.appendChild(rb);
     i.appendChild(d);
     var a = h("a", "btn btn--oro"); a.href = waUrl(); a.target = "_blank"; a.rel = "noopener";
-    a.appendChild(waSvg()); a.appendChild(document.createTextNode("Escríbenos por WhatsApp")); i.appendChild(a);
+    a.appendChild(waSvg()); a.appendChild(document.createTextNode(t("escribenos"))); i.appendChild(a);
     var lg = h("img", "logo-fin"); lg.src = "wordmark-crema.png"; lg.alt = N.nombre; i.appendChild(lg);
-    i.appendChild(h("div", "copia", N.desde + " · Hecho con cariño en familia"));
+    i.appendChild(h("div", "copia", N.desde + t("carino")));
     s.appendChild(i);
     return s;
   }
 
   /* ---------- construcción ---------- */
   function construir() {
-    window.PG = { h: h, estadoActual: estadoActual, dinero: dinero, waUrl: waUrl };
+    window.PG = { h: h, estadoActual: estadoActual, dinero: dinero, waUrl: waUrl, precioEl: precioEl, iconoSvg: iconoSvg, ICONOS: ICONOS, diagramaTris: diagramaTris };
     if (PED) { PED.iniciar(window.PG); document.body.classList.add("modo-" + PED.modo); }
     var app = q("#app");
     estadoBarra = h("div", "estado"); estadoBarra.setAttribute("role", "status");
@@ -403,16 +432,16 @@
 
     app.appendChild(portada());
     var nav = navegacion(); app.appendChild(nav);
-    app.appendChild(historia());
     var anc = h("span"); anc.id = "carta-inicio"; anc.style.cssText = "display:block;position:relative;top:-84px"; app.appendChild(anc);
     secs.forEach(function (s) { app.appendChild(s); });
     var cuerpoFinal = secs.length ? secs[secs.length - 1].querySelector(".sec__cuerpo") : null;
     if (hayAlergenos && cuerpoFinal) cuerpoFinal.appendChild(leyenda());
-    var vacio = h("p", "vacio", "No encontramos ese plato. Prueba con otra palabra."); vacio.id = "vacio"; app.appendChild(vacio);
+    var vacio = h("p", "vacio", t("noEncontrado")); vacio.id = "vacio"; app.appendChild(vacio);
+    if (C.historia && C.historia.parrafos && C.historia.parrafos.length) app.appendChild(historia());
     app.appendChild(gracias());
 
     var f = h("a", "fab"); f.href = waUrl(); f.target = "_blank"; f.rel = "noopener";
-    f.appendChild(waSvg()); fabTxt = h("span", null, "Pedir ahora"); f.appendChild(fabTxt);
+    f.appendChild(waSvg()); fabTxt = h("span", null, t("pedirAhora")); f.appendChild(fabTxt);
     document.body.appendChild(f); fab = f;
 
     pintarEstado();

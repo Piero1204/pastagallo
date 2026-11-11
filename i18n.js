@@ -1,0 +1,144 @@
+/* Pasta Gallo · textos de la interfaz en español e inglés. */
+(function () {
+  "use strict";
+  var lang = "es";
+  try {
+    var p = new URLSearchParams(location.search).get("lang");
+    if (p === "en" || p === "es") { lang = p; localStorage.setItem("pg-lang", p); }
+    else lang = localStorage.getItem("pg-lang") === "en" ? "en" : "es";
+  } catch (e) { lang = "es"; }
+  document.documentElement.lang = lang;
+
+  var T = {
+    es: {
+      abierto: "Abierto ahora · hasta las ", cerrado: "Cerrado · abrimos ", mesa: "Mesa ",
+      hoyA: "hoy a las ", manana: "mañana ", el: "el ", aLas: " a las ", pronto: "pronto",
+      dias: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
+      bienvenido: "Bienvenido a Pasta Gallo", bienvenidoMesa: "Bienvenido a la Mesa ",
+      mesaSinQr: "Para pedir desde tu mesa, escanea el código QR que está en ella. Mientras tanto, puedes ver la carta.",
+      mesaCerrado: "En este momento el restaurante está cerrado. Abrimos {c}.",
+      mesaSinPedidos: "Bienvenido. Revisa la carta y haz tu pedido a tu mozo.",
+      mesaAbierto: "Elige tus platos y envía tu pedido desde aquí. Tu mozo lo confirmará en unos minutos.",
+      abiertoCarrito: "Estamos abiertos hasta las {h}. Arma tu pedido aquí mismo: delivery o recojo en el local.",
+      abiertoSin: "Estamos abiertos hasta las {h}. Elige tu plato favorito y realiza tu pedido ahora.",
+      cerradoTxt: "En este momento estamos descansando. Abrimos {c}. ",
+      programar: "Ya puedes dejar tu pedido programado.", recorre: "Mientras tanto, recorre nuestra carta con calma.",
+      verCartaPedir: "Ver la carta y pedir", hacerPedido: "Hacer mi pedido", consultasWa: "Consultas por WhatsApp",
+      realizarPedido: "Realizar mi pedido", verCarta: "Ver la carta", escribenos: "Escríbenos por WhatsApp",
+      pedirAhora: "Pedir ahora", nuestraHistoria: "Nuestra historia", familia: "La familia Gallo",
+      agotado: "Agotado por hoy", noDisponible: "No disponible hoy", adicional: "Adicional + S/ ",
+      soloLocal: "Solo en el local", soloDelivery: "Solo delivery", antes: "Antes",
+      alcohol: "Venta de bebidas alcohólicas solo a mayores de 18 años.", alergenos: "Alérgenos", contiene: "Contiene: ",
+      buscar: "Buscar un plato…", buscarAria: "Buscar en la carta", noEncontrado: "No encontramos ese plato. Prueba con otra palabra.",
+      grazie: "Gracias por visitarnos",
+      graciasTxt: "Gracias por sentarte a nuestra mesa y ser parte de esta historia que empezó en 1997. Volver a verte es nuestro mejor premio.",
+      donde: "Dónde estamos", horario: "Horario", reservas: "Reservas y pedidos", siguenos: "Síguenos", carino: " · Hecho con cariño en familia",
+      seccionesAria: "Secciones de la carta", idioma: "EN", idiomaAria: "Read the menu in English",
+      verDetalle: "Ver detalle de ",
+      // pedido
+      agregar: "Agregar", agregarA: "Agregar {n} al pedido", agregado: "{n} agregado al pedido", tamano: "Tamaño",
+      eligeSalsa: "Elige tu salsa", salsaTris: "La salsa acompaña al fettuccine y a los raviolini.",
+      indicaciones: "Indicaciones (opcional)", indicacionesPh: "Ej.: sin aceitunas, bien cocida…",
+      eligeAlgo: "Elige {g} para continuar.", eligeSalsaErr: "Elige una salsa para continuar.",
+      opcional: "opcional", masPrecio: "+ S/ ", cerrar: "Cerrar",
+      noPedible: "Este plato no se puede pedir desde aquí.", consulta: "Consulta precio y disponibilidad con tu mozo.",
+      soloLocalTxt: "Disponible solo en el local.", soloDeliveryTxt: "Disponible solo para delivery o recojo.",
+      cerradoAviso: "Estamos cerrados. Vuelve en nuestro horario.", cerradoMesa: "El restaurante está cerrado en este momento.",
+      verPedido: "Ver mi pedido · ", producto: " producto", productos: " productos",
+      tuPedido: "Tu pedido", pedidoMesa: "Pedido · Mesa ", vacio: "Tu pedido está vacío.",
+      total: "Total", totalProd: "Total productos", salsa: "Salsa: ", nota: "Nota: ",
+      aNombre: "¿A nombre de quién? (opcional)", comentCocina: "Comentarios para la cocina (opcional)",
+      comoLoQuieres: "¿Cómo lo quieres?", delivery: "Delivery a domicilio", recojo: "Recojo en el local",
+      nombre: "Nombre", celular: "Celular", comoPagar: "¿Cómo vas a pagar?",
+      paraHora: "¿Para qué hora? (opcional)", paraHoraReq: "¿Para qué hora lo quieres?", comentarios: "Comentarios (opcional)",
+      mayor: "Confirmo que soy mayor de 18 años (tu pedido incluye alcohol).", recogeEn: "Recógelo en ",
+      direccion: "Dirección de entrega", referencia: "Referencia (opcional)", referenciaPh: "Ej.: frente al parque, puerta verde",
+      enviarCocina: "Enviar pedido a cocina", enviar: "Enviar pedido", enviando: "Enviando…",
+      errNombre: "Escribe tu nombre.", errCel: "Escribe un número de celular válido.", errDir: "Escribe la dirección de entrega.",
+      errPago: "Elige cómo vas a pagar.", errHora: "Estamos cerrados: indica a qué hora quieres tu pedido.", errMayor: "Confirma que eres mayor de 18 años.",
+      errEnvio: "No pudimos enviar tu pedido. Intenta de nuevo.", errCocina: "No hay conexión con la cocina. Intenta de nuevo o llama a tu mozo.",
+      enviadoMesa: "¡Pedido #{n} enviado!", mozoConfirma: "Tu mozo lo confirmará en unos minutos. Total: ",
+      volver: "Volver a la carta", ultimoPaso: "Último paso", recibido: "¡Pedido #{n} recibido!",
+      envianosWa: "Envíanos tu pedido por WhatsApp para confirmarlo.",
+      confirmaWa: "Para confirmarlo, envíanos el detalle por WhatsApp. Ya está listo, solo pulsa enviar.",
+      enviarWa: "Enviar por WhatsApp", respondemos: "Te responderemos para confirmar el total{d} y el tiempo de entrega.", conDelivery: " con el delivery",
+      quitarUno: "Quitar uno", agregarUno: "Agregar uno"
+    },
+    en: {
+      abierto: "Open now · until ", cerrado: "Closed · we open ", mesa: "Table ",
+      hoyA: "today at ", manana: "tomorrow, ", el: "on ", aLas: " at ", pronto: "soon",
+      dias: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      bienvenido: "Welcome to Pasta Gallo", bienvenidoMesa: "Welcome to Table ",
+      mesaSinQr: "To order from your table, scan the QR code on it. Meanwhile, feel free to browse the menu.",
+      mesaCerrado: "The restaurant is closed right now. We open {c}.",
+      mesaSinPedidos: "Welcome. Browse the menu and order with your waiter.",
+      mesaAbierto: "Choose your dishes and send your order from here. Your waiter will confirm it in a few minutes.",
+      abiertoCarrito: "We are open until {h}. Build your order right here: delivery or pick-up.",
+      abiertoSin: "We are open until {h}. Choose your favourite dish and order now.",
+      cerradoTxt: "We are resting right now. We open {c}. ",
+      programar: "You can already schedule your order.", recorre: "Meanwhile, take your time with our menu.",
+      verCartaPedir: "See the menu and order", hacerPedido: "Order now", consultasWa: "Questions on WhatsApp",
+      realizarPedido: "Place my order", verCarta: "See the menu", escribenos: "Message us on WhatsApp",
+      pedirAhora: "Order now", nuestraHistoria: "Our story", familia: "The Gallo family",
+      agotado: "Sold out today", noDisponible: "Not available today", adicional: "Extra + S/ ",
+      soloLocal: "Dine-in only", soloDelivery: "Delivery only", antes: "Before",
+      alcohol: "Alcoholic drinks are sold only to people aged 18 or over.", alergenos: "Allergens", contiene: "Contains: ",
+      buscar: "Search a dish…", buscarAria: "Search the menu", noEncontrado: "We couldn't find that dish. Try another word.",
+      grazie: "Thank you for visiting us",
+      graciasTxt: "Thank you for sitting at our table and being part of a story that began in 1997. Seeing you again is our best reward.",
+      donde: "Where we are", horario: "Opening hours", reservas: "Bookings and orders", siguenos: "Follow us", carino: " · Made with love by our family",
+      seccionesAria: "Menu sections", idioma: "ES", idiomaAria: "Ver la carta en español",
+      verDetalle: "See details of ",
+      agregar: "Add", agregarA: "Add {n} to your order", agregado: "{n} added to your order", tamano: "Size",
+      eligeSalsa: "Choose your sauce", salsaTris: "The sauce goes with the fettuccine and the raviolini.",
+      indicaciones: "Special requests (optional)", indicacionesPh: "E.g.: no olives, well done…",
+      eligeAlgo: "Choose {g} to continue.", eligeSalsaErr: "Choose a sauce to continue.",
+      opcional: "optional", masPrecio: "+ S/ ", cerrar: "Close",
+      noPedible: "This dish can't be ordered from here.", consulta: "Ask your waiter for price and availability.",
+      soloLocalTxt: "Available for dine-in only.", soloDeliveryTxt: "Available for delivery or pick-up only.",
+      cerradoAviso: "We are closed. Come back during opening hours.", cerradoMesa: "The restaurant is closed right now.",
+      verPedido: "View my order · ", producto: " item", productos: " items",
+      tuPedido: "Your order", pedidoMesa: "Order · Table ", vacio: "Your order is empty.",
+      total: "Total", totalProd: "Items total", salsa: "Sauce: ", nota: "Note: ",
+      aNombre: "Name for the order (optional)", comentCocina: "Notes for the kitchen (optional)",
+      comoLoQuieres: "How would you like it?", delivery: "Home delivery", recojo: "Pick-up at the restaurant",
+      nombre: "Name", celular: "Mobile number", comoPagar: "How will you pay?",
+      paraHora: "For what time? (optional)", paraHoraReq: "For what time do you want it?", comentarios: "Comments (optional)",
+      mayor: "I confirm I am 18 or older (your order includes alcohol).", recogeEn: "Pick it up at ",
+      direccion: "Delivery address", referencia: "Reference (optional)", referenciaPh: "E.g.: in front of the park, green door",
+      enviarCocina: "Send order to the kitchen", enviar: "Send order", enviando: "Sending…",
+      errNombre: "Please write your name.", errCel: "Please write a valid mobile number.", errDir: "Please write the delivery address.",
+      errPago: "Choose how you will pay.", errHora: "We are closed: tell us what time you want your order.", errMayor: "Please confirm you are 18 or older.",
+      errEnvio: "We couldn't send your order. Please try again.", errCocina: "No connection with the kitchen. Try again or call your waiter.",
+      enviadoMesa: "Order #{n} sent!", mozoConfirma: "Your waiter will confirm it in a few minutes. Total: ",
+      volver: "Back to the menu", ultimoPaso: "Last step", recibido: "Order #{n} received!",
+      envianosWa: "Send us your order on WhatsApp to confirm it.",
+      confirmaWa: "To confirm it, send us the details on WhatsApp. It's ready, just press send.",
+      enviarWa: "Send on WhatsApp", respondemos: "We will reply to confirm the total{d} and the delivery time.", conDelivery: " including delivery",
+      quitarUno: "Remove one", agregarUno: "Add one"
+    }
+  };
+  var AL_EN = { gluten: "Gluten", lacteos: "Dairy", huevo: "Egg", pescado: "Fish", mariscos: "Shellfish", frutosSecos: "Tree nuts", mani: "Peanuts", soya: "Soy", sulfitos: "Sulphites" };
+
+  window.PG_I18N = {
+    lang: lang,
+    t: function (k, vars) {
+      var s = (T[lang] && T[lang][k] != null) ? T[lang][k] : T.es[k];
+      if (s == null) return k;
+      if (vars && typeof s === "string") Object.keys(vars).forEach(function (v) { s = s.split("{" + v + "}").join(vars[v]); });
+      return s;
+    },
+    /** Devuelve el campo traducido (campo_en) si estamos en inglés y existe. */
+    tx: function (o, campo) {
+      if (!o) return "";
+      if (lang === "en" && o[campo + "_en"]) return o[campo + "_en"];
+      return o[campo] || "";
+    },
+    alergeno: function (k, C) { return lang === "en" ? (AL_EN[k] || k) : ((C && C.alergenos && C.alergenos[k]) || k); },
+    cambiar: function () {
+      var nuevo = lang === "en" ? "es" : "en";
+      try { localStorage.setItem("pg-lang", nuevo); } catch (e) {}
+      var u = new URL(location.href); u.searchParams.set("lang", nuevo); location.href = u.toString();
+    }
+  };
+})();

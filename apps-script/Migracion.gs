@@ -1,0 +1,315 @@
+/* =====================================================================
+   PASTA GALLO · Actualización v2 de la carta (11-nov-2026)
+   Se ejecuta UNA vez con la función "actualizarV2" (desde el editor de
+   Apps Script). Se puede repetir sin problema: solo pone los valores de abajo.
+   - Corrige salsas (Amatriciana, Carbonara, Funghi, Lomo Saltado, Puttanesca con atún)
+   - Fuentes de ravioli de ricotta y de carne, Ravioli di Ricotta, Tortellini di Carne, Raviolini
+   - Precios nuevos (especialidades +10, lasagne +2, lomo fino +10, copa de vino +2, postres)
+   - Opciones: término, picante, salsa, temperatura, sabor, vino, ingredientes extra
+   - Productos solo para el local / solo delivery, promociones y textos en inglés
+   ===================================================================== */
+
+var MIGRACION_V2 = {
+  config: [
+    ['minutos_alerta', 45, 'Minutos para marcar un pedido como atrasado en el panel'],
+    ['historia_eyebrow_en', 'Our story', ''],
+    ['historia_titulo_en', 'Welcome to Our Home', ''],
+    ['historia_texto_en', 'Since 1997, in the heart of Trujillo, a pizzeria was born that brought not only authentic Italian flavour but also a story of love and dedication. It all began when Mr. Pietro Gallo, an Italian passionate about his culture and cuisine, met Mrs. Edit Varela. Together they built a family and gave life to this corner full of tradition, flavour and warmth.\n\nOver the years, Pietro\'s expert hand and his family\'s effort turned this place into a true tribute to Italian cooking. Although Mr. Pietro passed away on February 9, 2024, his legacy is more alive than ever in every pizza, every pasta and every sauce we proudly serve.\n\nToday his family carries on this beautiful project, honouring his memory and sharing with you the authentic taste of Italy, keeping intact the essence he left us.', ''],
+    ['texto_delivery_en', 'The delivery fee depends on your area; we will confirm it by WhatsApp.', ''],
+    ['horario_texto_en', 'Tuesday to Sunday · 6:00 pm – 11:00 pm', 'Horario en inglés'],
+    ['cerrado_texto_en', 'Closed on Mondays', '']
+  ],
+
+  seccionesNuevas: [
+    { id: 'promociones', orden: 0, titulo: 'Offerte', subtitulo: 'Promociones de la casa', intro: '', pie: '', alcohol: 'NO',
+      delivery: 'SI', mesa: 'SI', visible: 'SI', titulo_en: 'Offerte', subtitulo_en: 'House offers', intro_en: '', pie_en: '' }
+  ],
+
+  secciones: {
+    antipasti: { subtitulo_en: 'To open the table', intro_en: 'Small beginnings to awaken the appetite.' },
+    pizze: { pie: 'Puedes agregar ingredientes adicionales al pedir · S/ 4.00 c/u', subtitulo_en: 'Our house pizzas',
+      intro_en: 'Every pizza comes in three sizes, for you or for the whole table.', pie_en: 'Add extra toppings when ordering · S/ 4.00 each' },
+    pasta: { subtitulo_en: 'Choose your pasta, choose your sauce',
+      intro_en: 'Every pasta comes with the sauce of your choice. You will find all our sauces at the end of this section.',
+      pie_en: 'Extras for your pasta: ask your waiter for the price' },
+    lasagne: { subtitulo_en: 'Layers to enjoy slowly' },
+    parrillas: { titulo_en: 'Grill', subtitulo_en: 'For meat lovers', intro: 'Todas nuestras parrillas vienen con su porción de papas fritas.',
+      intro_en: 'All our grill dishes come with a portion of French fries.' },
+    dolci: { intro: 'Postres sujetos a disponibilidad. Pregunta a tu mozo cuáles tenemos hoy.', subtitulo_en: 'A sweet ending',
+      intro_en: 'Desserts subject to availability. Ask your waiter what we have today.' },
+    caffe: { subtitulo_en: 'Coffee, tea and soft drinks' },
+    aperitivi: { subtitulo_en: 'House cocktails' },
+    vini: { subtitulo_en: 'Wines, beers and spirits' },
+    italia: { subtitulo_en: 'Original flavours imported from Italy', intro_en: 'Biscuits, sweets and delicacies brought straight from Italy.' }
+  },
+
+  productos: {
+    'antipasti-pane-allaglio': { glosa_en: 'garlic bread', descripcion_en: 'Golden, fragrant garlic bread, the perfect companion to any pasta.' },
+    'antipasti-pane-allaglio-con-formaggio': { glosa_en: 'garlic bread with cheese', descripcion_en: 'Our garlic bread, now with cheese.' },
+    'antipasti-bruschetta-ai-funghi': { glosa_en: 'mushroom bruschetta', descripcion_en: 'Toasted bread topped with mushrooms, rustic and full of flavour.' },
+    'antipasti-bruschetta-alla-siciliana': { glosa_en: 'Sicilian-style bruschetta', descripcion_en: 'Toasted bread in the Sicilian style, with the sunny taste of the Mediterranean.' },
+    'antipasti-prosciutto-crudo': { glosa_en: '100 grams', descripcion_en: 'Italian-style cured ham, served in thin slices. 100-gram portion.' },
+    'antipasti-affettato-misto': { glosa_en: 'mixed cold cuts', descripcion_en: 'A selection of thinly sliced cured meats and cold cuts, to enjoy at your own pace.' },
+    'antipasti-piqueo-allitaliana': { glosa_en: 'Italian-style sharing platter', descripcion_en: 'Our Italian-style platter: a variety of bites to share at the table.' },
+    'antipasti-insalata-italiana': { glosa_en: 'Italian salad', descripcion_en: 'A fresh salad for a light start.' },
+    'antipasti-insalata-caprese': { glosa_en: 'Caprese salad', descripcion_en: 'Born on the island of Capri, it brings together the colours of the Italian flag.' },
+    'antipasti-frittata-di-cipolla': { glosa_en: 'onion omelette', descripcion_en: 'Homemade onion omelette, simple and comforting.' },
+    'antipasti-frittata-mista': { glosa_en: 'mixed omelette', descripcion_en: 'A more generous mixed omelette with more flavours.' },
+    'antipasti-crespelle-agli-asparagi': { glosa_en: 'asparagus crêpes', descripcion_en: 'Delicate crêpes filled with asparagus, the Italian way.' },
+
+    'pizze-napoletana': { opciones: 'extras-pizza', descripcion_en: 'Mozzarella and olives: our house pizza at its purest.' },
+    'pizze-americana': { opciones: 'extras-pizza', descripcion_en: 'Ham and mozzarella, the balance that never fails.' },
+    'pizze-arrabbiata': { opciones: 'extras-pizza', descripcion_en: 'Pepperoni, bell pepper, ham and olives. Bold, just as its name promises.' },
+    'pizze-speciale': { opciones: 'extras-pizza', descripcion_en: 'Beef, bacon, mushrooms and olives, for those who want more flavour in every slice.' },
+    'pizze-tentazione': { opciones: 'extras-pizza', descripcion_en: 'Chorizo, bacon, mushrooms and olives. Hard to resist.' },
+    'pizze-hawaiana': { opciones: 'extras-pizza', descripcion_en: 'Ham, pineapple and peach: sweet and savoury in perfect harmony.' },
+    'pizze-vegetariana': { opciones: 'extras-pizza', descripcion_en: 'Mushrooms, artichoke, bell pepper, onion and olives: a whole garden on the dough.' },
+    'pizze-ghiottona': { opciones: 'extras-pizza', glosa_en: 'the greedy one', descripcion_en: 'Ham, chorizo, bacon and olives, for a hearty appetite.' },
+    'pizze-campagnola': { opciones: 'extras-pizza', glosa_en: 'country style', descripcion_en: 'Beef, ham and olives, with a rustic country flavour.' },
+    'pizze-primavera': { opciones: 'extras-pizza', descripcion_en: 'Pineapple, chicken and olives: fresh and light like the season it is named after.' },
+    'pizze-quattro-stagioni': { opciones: 'extras-pizza', glosa_en: 'four seasons', descripcion_en: 'Ham, mushrooms, artichokes, tomato and tuna: a different season in every bite.' },
+    'pizze-piemontese': { opciones: 'extras-pizza', descripcion_en: 'Prosciutto crudo and parmesan: elegant and with few ingredients.' },
+    'pizze-quattro-formaggi': { opciones: 'extras-pizza', glosa_en: 'four cheeses', descripcion_en: 'A pizza for cheese lovers: blue cheese, mozzarella, parmesan and more.' },
+    'pizze-la-peruanita': { opciones: 'extras-pizza', descripcion_en: 'Our Peruvian twist: lomo saltado on a pizza.' },
+    'pizze-abbuffata': { opciones: 'extras-pizza', glosa_en: 'a feast', descripcion_en: 'Salami, ham, chorizo and bacon. «Abbuffata» means feast: come hungry.' },
+    'pizze-la-chama': { opciones: 'extras-pizza', descripcion_en: 'Bell pepper, Peruvian corn, ham, chorizo and olives: colourful and full of flavour.' },
+
+    'pasta-fonte-di-ravioli': { nombre: 'Fonte di Ravioli di Ricotta', glosa: 'fuente de ravioles de ricotta',
+      descripcion: 'Una fuente generosa de ravioles rellenos de ricotta, servida con la salsa de tu elección.',
+      glosa_en: 'platter of ricotta ravioli', descripcion_en: 'A generous platter of ricotta-filled ravioli, served with the sauce of your choice.' },
+    'pasta-fonte-di-fettuccine': { opciones: 'fettuccine-tipo', descripcion: 'Una fuente generosa de fettuccine, clásicos o verdes (de espinaca), servida con la salsa de tu elección.',
+      glosa_en: 'platter of fettuccine', descripcion_en: 'A generous platter of fettuccine, classic or green (spinach), served with the sauce of your choice.' },
+    'pasta-tris-di-pasta': { glosa_en: 'three pastas on one plate',
+      descripcion_en: 'A long plate with three pastas: fettuccine on the right, beef lasagna in the centre and raviolini on the left. You choose one sauce for the fettuccine and the raviolini; the lasagna does not take it.' },
+    'pasta-fettuccine-allalfredo-con-lomo': { precio: 65, opciones: 'termino',
+      descripcion: 'Fettuccine bañados en la cremosa salsa Alfredo y coronados con lomo, en el término que prefieras.',
+      descripcion_en: 'Fettuccine in creamy Alfredo sauce topped with beef tenderloin, cooked to your liking.' },
+    'pasta-spaghetti-alla-huancaina-con-lomo': { precio: 70, opciones: 'picante',
+      descripcion: 'Dos mundos en un plato: spaghetti italianos con la cremosa salsa huancaína peruana y lomo. Elige tu nivel de picante.',
+      glosa_en: 'spaghetti with huancaína sauce and beef', descripcion_en: 'Two worlds on one plate: Italian spaghetti with creamy Peruvian huancaína sauce and beef tenderloin. Choose your spice level.' },
+    'pasta-spaghetti-ai-gamberoni': { nombre: 'Spaghetti ai Gamberi', precio: 70, opciones: 'salsa-gamberi, picante',
+      descripcion: 'Spaghetti con langostinos en salsa roja (de tomate) o blanca (bechamel), a tu elección, con el nivel de picante que prefieras.',
+      glosa_en: 'spaghetti with prawns', descripcion_en: 'Spaghetti with prawns in red (tomato) or white (béchamel) sauce, your choice, with the spice level you prefer.' },
+    'pasta-fettuccine': { opciones: 'fettuccine-tipo', descripcion: 'Cintas largas y planas, ideales para las salsas cremosas. Clásicos o verdes (de espinaca).',
+      descripcion_en: 'Long, flat ribbons, ideal for creamy sauces. Classic or green (spinach).' },
+    'pasta-pappardelle': { descripcion_en: 'Wide ribbons from the Tuscan tradition, made for hearty sauces.' },
+    'pasta-spaghetti': { descripcion_en: 'The classic of classics, always welcome.' },
+    'pasta-conchiglie': { glosa_en: 'shells', descripcion_en: 'Shell-shaped pasta that holds the sauce in every bite.' },
+    'pasta-gomiti': { glosa_en: 'elbows', descripcion_en: 'Little pasta elbows: simple, charming and much loved.' },
+    'pasta-maccheroni': { glosa_en: 'macaroni', descripcion_en: 'Short pasta tubes that embrace the sauce.' },
+    'pasta-ravioli-di-carne': { glosa_en: 'beef ravioli', descripcion_en: 'Beef-filled ravioli, with the sauce of your choice.' },
+    'pasta-ravioli-di-formaggio': { nombre: 'Ravioli di Ricotta', glosa: 'ravioles de ricotta',
+      descripcion: 'Ravioles rellenos de ricotta, suaves y cremosos.', glosa_en: 'ricotta ravioli', descripcion_en: 'Ricotta-filled ravioli, soft and creamy.' },
+    'pasta-tortellini': { nombre: 'Tortellini di Carne', glosa: 'tortellini de carne', orden: 147,
+      descripcion: 'Pequeños anillos de pasta rellenos de carne, con el mismo relleno de nuestros ravioli di carne. Tradición de Emilia-Romaña.',
+      glosa_en: 'beef tortellini', descripcion_en: 'Little rings of pasta filled with beef, the same filling as our beef ravioli. A tradition from Emilia-Romagna.' },
+    'pasta-gnocchi-di-patate': { glosa_en: 'potato gnocchi', descripcion_en: 'Soft potato gnocchi, light as a cloud.' },
+
+    'salsa-puttanesca': { opciones: 'picante', descripcion: 'Salsa de tomate con atún, intensa y con carácter. Por naturaleza es picante: elige tu nivel.',
+      descripcion_en: 'Tomato sauce with tuna, intense and full of character. Naturally spicy: choose your level.' },
+    'salsa-aglio-olio-e-peperoncino': { opciones: 'picante', descripcion: 'Ajo dorado en aceite con peperoncino. Sencilla y aromática; por naturaleza es picante: elige tu nivel.',
+      glosa_en: 'garlic, oil and chilli', descripcion_en: 'Golden garlic in oil with peperoncino. Simple and aromatic; naturally spicy: choose your level.' },
+    'salsa-ragu-di-carne': { glosa_en: 'meat sauce', descripcion_en: 'Ragù-style meat sauce: rich and hearty.' },
+    'salsa-alfredo': { descripcion_en: 'Creamy and smooth, with butter and parmesan cheese.' },
+    'salsa-gorgonzola': { descripcion_en: 'Creamy gorgonzola cheese sauce, intense and elegant.' },
+    'salsa-rosata': { glosa_en: 'pink sauce', descripcion_en: 'Tomato and cream meet in a smooth, rosy sauce.' },
+    'salsa-pesto': { descripcion_en: 'Basil, cheese and olive oil, Genoa style. Fresh and aromatic.' },
+    'salsa-quattro-formaggi': { glosa_en: 'four cheeses', descripcion_en: 'Four cheeses melted into a creamy, irresistible sauce.' },
+    'salsa-marchigiana-e-pomodoro': { nombre: 'Amatriciana', glosa: 'salsa amatriciana', opciones: 'picante',
+      descripcion: 'La clásica salsa de tomate de Amatrice, sabrosa y de naturaleza picante: elige tu nivel.',
+      glosa_en: 'amatriciana sauce', descripcion_en: 'The classic tomato sauce from Amatrice, flavourful and naturally spicy: choose your level.' },
+    'salsa-salsa-al-lomo': { nombre: 'Lomo Saltado', glosa: 'al estilo lomo saltado',
+      descripcion: 'Como un lomo saltado sobre tu pasta: trozos de lomo salteados al sillao (salsa de soya).',
+      glosa_en: 'Peruvian stir-fried beef', descripcion_en: 'Like a Peruvian lomo saltado over your pasta: beef strips stir-fried with soy sauce.' },
+    'salsa-funghi-e-cardonada': { nombre: 'Funghi', glosa: 'salsa de champiñones', recargo: 8,
+      descripcion: 'Salsa bechamel con champiñones, ajo y perejil.', glosa_en: 'mushroom sauce', descripcion_en: 'Béchamel sauce with mushrooms, garlic and parsley.' },
+
+    'lasagne-lasagna-di-spinaci': { precio: 36, glosa_en: 'spinach lasagna', descripcion_en: 'Layers of pasta and spinach, baked until golden.' },
+    'lasagne-lasagna-di-carne': { precio: 34, glosa_en: 'beef lasagna', descripcion_en: 'The classic: layers of pasta and beef, gratinated and comforting.' },
+    'lasagne-lasagna-agli-asparagi': { precio: 38, glosa_en: 'asparagus lasagna', descripcion_en: 'Layers of pasta with asparagus, delicate and gratinated.' },
+
+    'parrillas-parrilla-mixta': { glosa: 'Con ensalada y papas fritas', descripcion: 'Una selección de churrasco, chuleta, pollo y chorizo, para probar un poco de todo.',
+      nombre_en: 'Mixed Grill', glosa_en: 'With salad and French fries', descripcion_en: 'A selection of steak, pork chop, chicken and chorizo, to try a little of everything.' },
+    'parrillas-lomo-fino-a-la-plancha': { precio: 70, opciones: 'termino', glosa: 'Con ensalada y papas fritas',
+      descripcion: 'Lomo fino de 350 gramos, sellado a la plancha y servido en el término que prefieras.',
+      nombre_en: 'Griddled Beef Tenderloin', glosa_en: 'With salad and French fries', descripcion_en: '350 grams of beef tenderloin, seared on the griddle and cooked to your liking.' },
+    'parrillas-churrasco-o-chuleta': { glosa: 'Con ensalada y papas fritas', descripcion: 'A tu elección: churrasco o chuleta.',
+      nombre_en: 'Steak or Pork Chop', glosa_en: 'With salad and French fries', descripcion_en: 'Your choice: steak or pork chop.' },
+    'parrillas-milanesa-de-pollo': { glosa: 'Con papas fritas', descripcion: 'Pollo apanado, dorado y crocante.',
+      nombre_en: 'Chicken Milanese', glosa_en: 'With French fries', descripcion_en: 'Breaded chicken, golden and crispy.' },
+    'parrillas-porcion-de-chorizo': { glosa: 'Con papas fritas', descripcion: 'Incluye 3 chorizos.',
+      nombre_en: 'Chorizo Portion', glosa_en: 'With French fries', descripcion_en: 'Includes 3 chorizo sausages.' },
+
+    'dolci-tiramisu': { precio: 12, descripcion_en: 'Italy\'s most famous dessert: layers of sponge, coffee and smooth mascarpone cream.' },
+    'dolci-torta-al-cioccolato': { precio: 12, glosa_en: 'chocolate cake', descripcion_en: 'A fluffy cake for chocolate lovers.' },
+    'dolci-biscotti-con-gocce-di-cioccolato': { precio: 6, nombre: 'Biscotto con Gocce di Cioccolato', glosa: 'galleta con chispas de chocolate',
+      descripcion: 'Galleta con chispas de chocolate, ideal con un buen café.', glosa_en: 'chocolate chip cookie', descripcion_en: 'Chocolate chip cookie, perfect with a good coffee.' },
+    'dolci-biscotto-al-cioccolato': { precio: 6, glosa_en: 'chocolate cookie', descripcion_en: 'An intense chocolate cookie for that final craving.' },
+    'dolci-biscotto-red-velvet': { precio: 6, glosa_en: 'red velvet cookie', descripcion_en: 'Ruby colour and a soft cocoa taste: elegant to the last bite.' },
+
+    'caffe-caffe': { glosa_en: 'coffee', descripcion_en: 'House coffee, to go with the after-dinner chat.' },
+    'caffe-espresso': { glosa_en: 'espresso', descripcion_en: 'The Italian classic: short, intense, in one sip.' },
+    'caffe-cappuccino': { descripcion_en: 'Espresso with milk and foam, the favourite of Italian mornings.' },
+    'caffe-cioccolata-calda': { glosa_en: 'hot chocolate', descripcion_en: 'Thick, comforting hot chocolate.' },
+    'caffe-te': { glosa_en: 'tea', descripcion_en: 'A hot infusion to end the meal calmly.' },
+    'caffe-limonata': { opciones: 'temp-limonada', descripcion: 'Fresca y cítrica. Helada, a temperatura ambiente o frozen.',
+      glosa_en: 'lemonade', descripcion_en: 'Fresh and citrusy. Iced, at room temperature or frozen.' },
+    'caffe-maracuya': { opciones: 'temp-limonada', descripcion: 'El sabor tropical y vibrante del maracuyá. Helada, a temperatura ambiente o frozen.',
+      glosa_en: 'passion fruit juice', descripcion_en: 'The vibrant tropical taste of passion fruit. Iced, at room temperature or frozen.' },
+    'caffe-bibita-gassata': { opciones: 'sabor-gaseosa, temp-bebida', descripcion: 'Inca Kola, Coca-Cola, Fanta o Sprite, helada o sin helar. Elige el tamaño.',
+      glosa_en: 'soft drink', descripcion_en: 'Inca Kola, Coca-Cola, Fanta or Sprite, chilled or not. Choose your size.' },
+    'caffe-acqua': { opciones: 'temp-bebida', glosa: 'agua sin gas', descripcion: 'Agua sin gas, helada o sin helar.',
+      glosa_en: 'still water', descripcion_en: 'Still water, chilled or not.' },
+    'caffe-ghiaccio': { canal: 'local', glosa_en: 'ice', descripcion_en: 'Extra ice for your drink.' },
+
+    'aperitivi-pina-colada': { descripcion_en: 'Tropical and creamy: rum, coconut cream and pineapple juice.' },
+    'aperitivi-pisco-sour': { descripcion_en: 'The Peruvian classic: pisco, egg white, lime juice and simple syrup.' },
+    'aperitivi-dont-worry-be-happy': { descripcion_en: 'Vodka, coconut cream and orange juice. With that name, nothing more to say.' },
+    'aperitivi-chilcano': { descripcion_en: 'Light and bubbly: pisco, simple syrup, lime juice and ginger ale.' },
+    'aperitivi-bob-dylan': { descripcion_en: 'Cifrut, Schweppes and Jägermeister.' },
+    'aperitivi-orgasmo': { descripcion_en: 'Baileys and amaretto, smooth and sweet.' },
+    'aperitivi-algarrobina': { descripcion_en: 'A northern Peruvian classic: algarrobina syrup, pisco, milk and cream.' },
+    'aperitivi-baileys-colada': { descripcion_en: 'Baileys, coconut cream and milk: smooth and very creamy.' },
+
+    'vini-calice-di-vino': { precio: 14, opciones: 'vino-copa', descripcion: 'Copa de vino Frontera: Cabernet Sauvignon o Borgoña.',
+      glosa_en: 'glass of wine', descripcion_en: 'A glass of Frontera wine: Cabernet Sauvignon or Borgoña.' },
+    'vini-birra-cusquena': { glosa_en: 'beer' },
+    'vini-birra-pilsen': { glosa_en: 'beer' },
+    'vini-sangria': { glosa_en: 'sangria' },
+    'vini-tabernero-gran-tinto': { glosa: 'tinto semiseco · Perú',
+      descripcion: 'Tinto semiseco peruano de uva Malbec del valle de Chincha: dulce, frutal y muy fácil de beber.',
+      glosa_en: 'off-dry red · Peru', descripcion_en: 'Off-dry Peruvian red from Malbec grapes of the Chincha Valley: sweet, fruity and very easy to drink.' },
+    'vini-tabernero-borgona': { glosa: 'tinto semiseco · Perú',
+      descripcion: 'Semiseco del valle de Chincha, con aromas de cereza confitada y un toque de regaliz. Taninos muy suaves: ideal para acompañar platos con algo de picante.',
+      glosa_en: 'off-dry red · Peru', descripcion_en: 'Off-dry red from the Chincha Valley, with candied cherry aromas and a hint of liquorice. Very soft tannins: great with slightly spicy dishes.' },
+    'vini-gran-blanco': { glosa_en: 'white' },
+    'vini-frontera': { glosa: 'tinto · Chile',
+      descripcion: 'De Viña Concha y Toro. En su versión Cabernet Sauvignon: fruta negra madura con toques de vainilla, café y chocolate; suave y de final largo.',
+      glosa_en: 'red · Chile', descripcion_en: 'From Concha y Toro. In its Cabernet Sauvignon version: ripe black fruit with hints of vanilla, coffee and chocolate; smooth with a long finish.' },
+    'vini-tacama-seco': { glosa: 'seco · Perú', descripcion: 'De Viña Tacama, en el valle de Ica, una de las bodegas con más historia del Perú.',
+      glosa_en: 'dry · Peru', descripcion_en: 'From Viña Tacama in the Ica Valley, one of Peru\'s most historic wineries.' },
+    'vini-tacama-semiseco': { glosa: 'semiseco · Perú', descripcion: 'De Viña Tacama, en el valle de Ica: un toque más dulce y amable.',
+      glosa_en: 'off-dry · Peru', descripcion_en: 'From Viña Tacama in the Ica Valley: a touch sweeter and gentler.' },
+    'vini-casillero-del-diablo': { glosa: 'tinto · Chile',
+      descripcion: 'De Viña Concha y Toro. En Cabernet Sauvignon: cereza, grosella y ciruela negra con un toque de vainilla de barrica; taninos elegantes y final largo.',
+      glosa_en: 'red · Chile', descripcion_en: 'From Concha y Toro. As Cabernet Sauvignon: cherry, redcurrant and black plum with a touch of oak vanilla; elegant tannins and a long finish.' },
+    'vini-spumante-brut-tabernero': { glosa: 'espumante brut · Perú', descripcion: 'Espumante peruano brut (seco), fresco y burbujeante, ideal para brindar.',
+      glosa_en: 'brut sparkling · Peru', descripcion_en: 'Peruvian brut (dry) sparkling wine, fresh and bubbly, perfect for a toast.' }
+  },
+
+  productosNuevos: [
+    { id: 'pasta-fonte-di-ravioli-di-carne', seccion: 'pasta', grupo: 'Piatti Grandi', grupo_nota: 'Platos grandes de la casa', orden: 15,
+      nombre: 'Fonte di Ravioli di Carne', glosa: 'fuente de ravioles de carne', precio: 60, tipo: 'plato', requiere_salsa: 'SI',
+      descripcion: 'Una fuente generosa de ravioles rellenos de carne, servida con la salsa de tu elección.',
+      glosa_en: 'platter of beef ravioli', descripcion_en: 'A generous platter of beef-filled ravioli, served with the sauce of your choice.' },
+    { id: 'pasta-raviolini', seccion: 'pasta', grupo: 'Ripieni e Gnocchi', grupo_nota: 'Pastas rellenas y ñoquis', orden: 145,
+      nombre: 'Raviolini', glosa: 'ravioles pequeños', precio: '', tipo: 'plato', requiere_salsa: 'SI',
+      descripcion: 'Como nuestros ravioli, pero en tamaño pequeño: más bocados en cada plato.',
+      glosa_en: 'small ravioli', descripcion_en: 'Like our ravioli, but smaller: more bites on every plate.' },
+    { id: 'salsa-carbonara', seccion: 'pasta', grupo: 'Le Salse',
+      grupo_nota: 'Cada pasta lleva la salsa de tu elección. Las salsas marcadas tienen un adicional de S/ 8.00.', orden: 275,
+      nombre: 'Carbonara', glosa: '', tipo: 'salsa', recargo: 8, requiere_salsa: 'NO',
+      descripcion: 'La clásica romana, cremosa, a base de yema de huevo y queso parmesano.',
+      glosa_en: '', descripcion_en: 'The Roman classic, creamy, made with egg yolk and parmesan cheese.' },
+    { id: 'caffe-acqua-frizzante', seccion: 'caffe', grupo: '', grupo_nota: '', orden: 95, nombre: 'Acqua Frizzante', glosa: 'agua con gas',
+      precio: '', tipo: 'plato', requiere_salsa: 'NO', opciones: 'temp-bebida', descripcion: 'Agua con gas, helada o sin helar.',
+      glosa_en: 'sparkling water', descripcion_en: 'Sparkling water, chilled or not.' }
+  ],
+
+  // grupo, nombre, nombre_en, tipo (una|varias), obligatorio, opcion, opcion_en, precio, orden, activo
+  opciones: (function () {
+    var f = [];
+    function g(id, n, ne, tipo, req, ops, activo) {
+      ops.forEach(function (o, i) { f.push([id, n, ne, tipo, req, o[0], o[1], o[2] || '', (i + 1) * 10, activo || 'SI']); });
+    }
+    g('termino', 'Término de la carne', 'Doneness', 'una', 'SI',
+      [['Término medio', 'Medium'], ['Tres cuartos', 'Medium well'], ['Bien cocido', 'Well done']]);
+    g('picante', 'Nivel de picante', 'Spice level', 'una', 'SI',
+      [['1 · Suave', '1 · Mild'], ['2 · Medio', '2 · Medium'], ['3 · Picante', '3 · Hot']]);
+    g('salsa-gamberi', 'Salsa', 'Sauce', 'una', 'SI',
+      [['Salsa roja (tomate)', 'Red sauce (tomato)'], ['Salsa blanca (bechamel)', 'White sauce (béchamel)']]);
+    g('fettuccine-tipo', 'Tipo de fettuccine', 'Fettuccine type', 'una', 'SI',
+      [['Clásico', 'Classic'], ['Verde (de espinaca)', 'Green (spinach)']]);
+    g('temp-limonada', 'Temperatura', 'Temperature', 'una', 'SI',
+      [['Helada', 'Iced'], ['Temperatura ambiente', 'Room temperature'], ['Frozen', 'Frozen']]);
+    g('temp-bebida', 'Temperatura', 'Temperature', 'una', 'SI', [['Helada', 'Chilled'], ['Sin helar', 'Not chilled']]);
+    g('sabor-gaseosa', 'Sabor', 'Flavour', 'una', 'SI', [['Inca Kola', 'Inca Kola'], ['Coca-Cola', 'Coca-Cola'], ['Fanta', 'Fanta'], ['Sprite', 'Sprite']]);
+    g('vino-copa', 'Vino', 'Wine', 'una', 'SI', [['Frontera Cabernet Sauvignon', 'Frontera Cabernet Sauvignon'], ['Frontera Borgoña', 'Frontera Borgoña']]);
+    g('extras-pizza', 'Ingredientes adicionales', 'Extra toppings', 'varias', 'NO', [
+      ['Mozzarella extra', 'Extra mozzarella', 4], ['Jamón', 'Ham', 4], ['Pepperoni', 'Pepperoni', 4], ['Tocino', 'Bacon', 4],
+      ['Chorizo', 'Chorizo', 4], ['Salame', 'Salami', 4], ['Carne', 'Beef', 4], ['Pollo', 'Chicken', 4], ['Champiñones', 'Mushrooms', 4],
+      ['Aceitunas', 'Olives', 4], ['Piña', 'Pineapple', 4], ['Durazno', 'Peach', 4], ['Pimiento', 'Bell pepper', 4], ['Cebolla', 'Onion', 4],
+      ['Alcachofa', 'Artichoke', 4], ['Choclo', 'Peruvian corn', 4], ['Atún', 'Tuna', 4], ['Tomate', 'Tomato', 4]]);
+    g('extras-pasta', 'Agregados para tu pasta', 'Pasta extras', 'varias', 'NO', [
+      ['Queso parmesano extra', 'Extra parmesan', ''], ['Champiñones', 'Mushrooms', ''], ['Jamón', 'Ham', ''], ['Tocino', 'Bacon', '']], 'NO');
+    return f;
+  })()
+};
+
+/** Aplica la actualización v2 sobre las tablas (objetos). Función pura: se prueba fuera de Google. */
+function aplicarMigracionV2_(t, M) {
+  M = M || MIGRACION_V2;
+  var porId = {};
+  t.productos.forEach(function (p) { porId[String(p.id)] = p; });
+  Object.keys(M.productos).forEach(function (id) {
+    var p = porId[id];
+    if (!p) return;
+    Object.keys(M.productos[id]).forEach(function (k) { p[k] = M.productos[id][k]; });
+  });
+  M.productosNuevos.forEach(function (n) {
+    if (porId[n.id]) return;
+    var p = { canal: 'todos', disponible: 'SI', visible: 'SI', destacado: '', alergenos: '', foto: '', recargo: '', tamanos: '', precio_antes: '', opciones: '', nombre_en: '' };
+    Object.keys(n).forEach(function (k) { p[k] = n[k]; });
+    t.productos.push(p);
+    porId[n.id] = p;
+  });
+  t.productos.forEach(function (p) { if (!p.canal) p.canal = 'todos'; });
+
+  var secPorId = {};
+  t.secciones.forEach(function (s) { secPorId[String(s.id)] = s; });
+  M.seccionesNuevas.forEach(function (n) {
+    if (secPorId[n.id]) return;
+    var s = {}; Object.keys(n).forEach(function (k) { s[k] = n[k]; });
+    t.secciones.unshift(s); secPorId[n.id] = s;
+  });
+  Object.keys(M.secciones).forEach(function (id) {
+    var s = secPorId[id]; if (!s) return;
+    Object.keys(M.secciones[id]).forEach(function (k) { s[k] = M.secciones[id][k]; });
+  });
+
+  var existentes = {};
+  t.opciones.forEach(function (o) { existentes[o.grupo] = true; });
+  M.opciones.forEach(function (r) {
+    if (existentes[r[0]]) return;
+    var o = {}; COLS.opciones.forEach(function (c, i) { o[c] = r[i]; });
+    t.opciones.push(o);
+  });
+  M.opciones.forEach(function (r) { existentes[r[0]] = true; });
+
+  M.config.forEach(function (r) { if (!(r[0] in t.config)) t.config[r[0]] = { valor: r[1], ayuda: r[2], nuevo: true }; });
+  return t;
+}
+
+/** Ejecuta la actualización v2 en este Google Sheets. */
+function actualizarV2() {
+  exigirAdmin_('');
+  var ss = SpreadsheetApp.getActive();
+  var t = {
+    productos: leerTabla_(HOJA.productos),
+    secciones: leerTabla_(HOJA.secciones),
+    opciones: ss.getSheetByName(HOJA.opciones) ? leerTabla_(HOJA.opciones) : [],
+    config: leerConfig_()
+  };
+  aplicarMigracionV2_(t);
+  escribirTabla_(HOJA.productos, COLS.productos, t.productos);
+  escribirTabla_(HOJA.secciones, COLS.secciones, t.secciones);
+  escribirTabla_(HOJA.opciones, COLS.opciones, t.opciones);
+  MIGRACION_V2.config.forEach(function (r) {
+    var c = t.config[r[0]];
+    if (c && c.nuevo) ss.getSheetByName(HOJA.config).appendRow([r[0], r[1], r[2]]);
+  });
+  formatearHojas_();
+  marcarPendiente_();
+  PropertiesService.getScriptProperties().setProperty('MIGRACION_V2', new Date().toISOString());
+  return 'Actualización v2 aplicada: ' + t.productos.length + ' productos, ' + t.opciones.length + ' opciones.';
+}

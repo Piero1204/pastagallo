@@ -279,3 +279,34 @@ textarea.campo{min-height:76px;resize:vertical}
 @media (min-width:760px){.capa{align-items:center}.hoja{max-height:86vh;border:1px solid var(--oro)}}
 
 .total strong,.linea__p,.barra-ped strong,.precio,.opcion__p,.stepper output{font-variant-numeric:lining-nums}
+
+/* =================== v2: idioma, ficha, promos =================== */
+.portada{min-height:88vh;min-height:88svh}
+.portada--compacta{min-height:auto;padding:70px 22px 54px}
+.portada--compacta .gallo{width:80px}
+.portada--compacta .marca{width:min(62vw,280px)}
+.portada--compacta .saludo{font-size:1.6rem}
+.portada--compacta .bajar{display:none}
+.idioma{flex:none;height:46px;min-width:46px;padding:0 12px;background:none;border:0;border-left:1px solid rgba(201,164,92,.3);color:var(--oro-claro);font:700 .78rem/1 var(--sans);letter-spacing:.14em}
+.idioma--portada{position:absolute;top:58px;right:26px;z-index:2;height:36px;border:1px solid var(--oro);border-radius:18px;padding:0 14px}
+.link-historia{margin-top:18px;color:var(--oro-claro);font:italic 500 1.05rem var(--serif);text-decoration:none;border-bottom:1px solid rgba(201,164,92,.5)}
+.precio--antes{color:var(--tinta-2);font-size:1.1rem;text-decoration:line-through;opacity:.7;margin-right:8px}
+.etq{display:inline-block;margin:8px 6px 0 0;font:700 .66rem/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--oliva);background:rgba(59,65,40,.08);padding:5px 8px;border-radius:2px}
+.it--clic{cursor:pointer;transition:background .2s}
+.it--clic:hover{background:rgba(247,241,227,.7)}
+.it--clic:focus-visible{outline:2px solid var(--oro);outline-offset:4px}
+.it--agotado .it__n,.it--agotado .precio{opacity:.55}
+.sec--promo .sec__cab{background:radial-gradient(110% 90% at 50% 0%,#8a6a2e,#5d4419 75%);padding:46px 24px 38px}
+.sec--promo .sec__cab .num{display:none}
+.sec--promo .sec__cuerpo{padding-top:20px;padding-bottom:40px}
+.hoja--detalle .hoja__cuerpo{padding-top:0}
+.detalle__foto{width:calc(100% + 36px);margin:0 -18px 14px;max-height:280px;object-fit:cover;display:block}
+.detalle__g{margin-top:14px;font-style:italic;color:var(--oro);font-size:1.1rem}
+.detalle__al{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;font:500 .84rem var(--sans)}
+.detalle__al li{display:flex;gap:6px;align-items:center}
+.detalle__al svg{width:16px;height:16px;stroke:var(--oliva);fill:none;stroke-width:1.6}
+.detalle__precio{margin-top:14px}
+.detalle__aviso{margin-top:16px;padding:12px 14px;background:#f3e9d6;border-left:3px solid var(--oro);font:500 .9rem/1.45 var(--sans)}
+.btn-ped--linea{background:none;color:var(--vino)}
+.grupo-op{margin-top:4px}
+.hoja .tam{margin-top:16px}

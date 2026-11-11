@@ -1,6 +1,7 @@
-/* Datos iniciales de la carta. Solo se usan UNA vez, al ejecutar "instalar".
-   Después todo se edita en las hojas del Google Sheets. */
+/* Datos iniciales de la carta (v2). Solo se usan UNA vez, al ejecutar "instalar".
+   Después todo se edita en las hojas del Google Sheets o en el panel. */
 var DATOS_INICIALES = {
+ "version": 2,
  "config": [
   [
    "nombre",
@@ -166,9 +167,60 @@ var DATOS_INICIALES = {
    "admins",
    "",
    "Correos de Google con acceso al panel, separados por comas (además del dueño de la hoja)"
+  ],
+  [
+   "minutos_alerta",
+   45,
+   "Minutos para marcar un pedido como atrasado en el panel"
+  ],
+  [
+   "historia_eyebrow_en",
+   "Our story",
+   ""
+  ],
+  [
+   "historia_titulo_en",
+   "Welcome to Our Home",
+   ""
+  ],
+  [
+   "historia_texto_en",
+   "Since 1997, in the heart of Trujillo, a pizzeria was born that brought not only authentic Italian flavour but also a story of love and dedication. It all began when Mr. Pietro Gallo, an Italian passionate about his culture and cuisine, met Mrs. Edit Varela. Together they built a family and gave life to this corner full of tradition, flavour and warmth.\n\nOver the years, Pietro's expert hand and his family's effort turned this place into a true tribute to Italian cooking. Although Mr. Pietro passed away on February 9, 2024, his legacy is more alive than ever in every pizza, every pasta and every sauce we proudly serve.\n\nToday his family carries on this beautiful project, honouring his memory and sharing with you the authentic taste of Italy, keeping intact the essence he left us.",
+   ""
+  ],
+  [
+   "texto_delivery_en",
+   "The delivery fee depends on your area; we will confirm it by WhatsApp.",
+   ""
+  ],
+  [
+   "horario_texto_en",
+   "Tuesday to Sunday · 6:00 pm – 11:00 pm",
+   "Horario en inglés"
+  ],
+  [
+   "cerrado_texto_en",
+   "Closed on Mondays",
+   ""
   ]
  ],
  "secciones": [
+  [
+   "promociones",
+   0,
+   "Offerte",
+   "Promociones de la casa",
+   "",
+   "",
+   "NO",
+   "SI",
+   "SI",
+   "SI",
+   "Offerte",
+   "House offers",
+   "",
+   ""
+  ],
   [
    "antipasti",
    1,
@@ -179,7 +231,11 @@ var DATOS_INICIALES = {
    "NO",
    "SI",
    "SI",
-   "SI"
+   "SI",
+   "",
+   "To open the table",
+   "Small beginnings to awaken the appetite.",
+   ""
   ],
   [
    "pizze",
@@ -187,11 +243,15 @@ var DATOS_INICIALES = {
    "Pizze",
    "Nuestras pizzas de la casa",
    "Cada pizza se elige en tres tamaños, para ti o para toda la mesa.",
-   "Ingrediente adicional · S/ 4.00",
+   "Puedes agregar ingredientes adicionales al pedir · S/ 4.00 c/u",
    "NO",
    "SI",
    "SI",
-   "SI"
+   "SI",
+   "",
+   "Our house pizzas",
+   "Every pizza comes in three sizes, for you or for the whole table.",
+   "Add extra toppings when ordering · S/ 4.00 each"
   ],
   [
    "pasta",
@@ -203,7 +263,11 @@ var DATOS_INICIALES = {
    "NO",
    "SI",
    "SI",
-   "SI"
+   "SI",
+   "",
+   "Choose your pasta, choose your sauce",
+   "Every pasta comes with the sauce of your choice. You will find all our sauces at the end of this section.",
+   "Extras for your pasta: ask your waiter for the price"
   ],
   [
    "lasagne",
@@ -215,31 +279,43 @@ var DATOS_INICIALES = {
    "NO",
    "SI",
    "SI",
-   "SI"
+   "SI",
+   "",
+   "Layers to enjoy slowly",
+   "",
+   ""
   ],
   [
    "parrillas",
    5,
    "Parrillas",
    "Para quienes prefieren la carne",
-   "",
+   "Todas nuestras parrillas vienen con su porción de papas fritas.",
    "",
    "NO",
    "SI",
    "SI",
-   "SI"
+   "SI",
+   "Grill",
+   "For meat lovers",
+   "All our grill dishes come with a portion of French fries.",
+   ""
   ],
   [
    "dolci",
    6,
    "Dolci",
    "Para cerrar con dulzura",
-   "Postres sujetos a disponibilidad. Consulta con tu mozo cuáles tenemos hoy y su precio.",
+   "Postres sujetos a disponibilidad. Pregunta a tu mozo cuáles tenemos hoy.",
    "",
    "NO",
    "SI",
    "SI",
-   "SI"
+   "SI",
+   "",
+   "A sweet ending",
+   "Desserts subject to availability. Ask your waiter what we have today.",
+   ""
   ],
   [
    "caffe",
@@ -251,7 +327,11 @@ var DATOS_INICIALES = {
    "NO",
    "SI",
    "SI",
-   "SI"
+   "SI",
+   "",
+   "Coffee, tea and soft drinks",
+   "",
+   ""
   ],
   [
    "aperitivi",
@@ -263,7 +343,11 @@ var DATOS_INICIALES = {
    "SI",
    "NO",
    "SI",
-   "SI"
+   "SI",
+   "",
+   "House cocktails",
+   "",
+   ""
   ],
   [
    "vini",
@@ -275,7 +359,11 @@ var DATOS_INICIALES = {
    "SI",
    "SI",
    "SI",
-   "SI"
+   "SI",
+   "",
+   "Wines, beers and spirits",
+   "",
+   ""
   ],
   [
    "italia",
@@ -287,7 +375,11 @@ var DATOS_INICIALES = {
    "NO",
    "SI",
    "SI",
-   "SI"
+   "SI",
+   "",
+   "Original flavours imported from Italy",
+   "Biscuits, sweets and delicacies brought straight from Italy.",
+   ""
   ]
  ],
  "productos": [
@@ -309,7 +401,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "garlic bread",
+   "Golden, fragrant garlic bread, the perfect companion to any pasta."
   ],
   [
    "antipasti-pane-allaglio-con-formaggio",
@@ -329,7 +427,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "garlic bread with cheese",
+   "Our garlic bread, now with cheese."
   ],
   [
    "antipasti-bruschetta-ai-funghi",
@@ -349,7 +453,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "mushroom bruschetta",
+   "Toasted bread topped with mushrooms, rustic and full of flavour."
   ],
   [
    "antipasti-bruschetta-alla-siciliana",
@@ -369,7 +479,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "Sicilian-style bruschetta",
+   "Toasted bread in the Sicilian style, with the sunny taste of the Mediterranean."
   ],
   [
    "antipasti-prosciutto-crudo",
@@ -389,7 +505,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "100 grams",
+   "Italian-style cured ham, served in thin slices. 100-gram portion."
   ],
   [
    "antipasti-affettato-misto",
@@ -409,7 +531,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "mixed cold cuts",
+   "A selection of thinly sliced cured meats and cold cuts, to enjoy at your own pace."
   ],
   [
    "antipasti-piqueo-allitaliana",
@@ -429,7 +557,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "Italian-style sharing platter",
+   "Our Italian-style platter: a variety of bites to share at the table."
   ],
   [
    "antipasti-insalata-italiana",
@@ -449,7 +583,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "Italian salad",
+   "A fresh salad for a light start."
   ],
   [
    "antipasti-insalata-caprese",
@@ -469,7 +609,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "Caprese salad",
+   "Born on the island of Capri, it brings together the colours of the Italian flag."
   ],
   [
    "antipasti-frittata-di-cipolla",
@@ -489,7 +635,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "onion omelette",
+   "Homemade onion omelette, simple and comforting."
   ],
   [
    "antipasti-frittata-mista",
@@ -509,7 +661,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "mixed omelette",
+   "A more generous mixed omelette with more flavours."
   ],
   [
    "antipasti-crespelle-agli-asparagi",
@@ -529,7 +687,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "asparagus crêpes",
+   "Delicate crêpes filled with asparagus, the Italian way."
   ],
   [
    "pizze-napoletana",
@@ -549,7 +713,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Mozzarella and olives: our house pizza at its purest."
   ],
   [
    "pizze-americana",
@@ -569,7 +739,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Ham and mozzarella, the balance that never fails."
   ],
   [
    "pizze-arrabbiata",
@@ -589,7 +765,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Pepperoni, bell pepper, ham and olives. Bold, just as its name promises."
   ],
   [
    "pizze-speciale",
@@ -609,7 +791,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Beef, bacon, mushrooms and olives, for those who want more flavour in every slice."
   ],
   [
    "pizze-tentazione",
@@ -629,7 +817,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Chorizo, bacon, mushrooms and olives. Hard to resist."
   ],
   [
    "pizze-hawaiana",
@@ -649,7 +843,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Ham, pineapple and peach: sweet and savoury in perfect harmony."
   ],
   [
    "pizze-vegetariana",
@@ -669,7 +869,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Mushrooms, artichoke, bell pepper, onion and olives: a whole garden on the dough."
   ],
   [
    "pizze-ghiottona",
@@ -689,7 +895,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "the greedy one",
+   "Ham, chorizo, bacon and olives, for a hearty appetite."
   ],
   [
    "pizze-campagnola",
@@ -709,7 +921,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "country style",
+   "Beef, ham and olives, with a rustic country flavour."
   ],
   [
    "pizze-primavera",
@@ -729,7 +947,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Pineapple, chicken and olives: fresh and light like the season it is named after."
   ],
   [
    "pizze-quattro-stagioni",
@@ -749,7 +973,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "four seasons",
+   "Ham, mushrooms, artichokes, tomato and tuna: a different season in every bite."
   ],
   [
    "pizze-piemontese",
@@ -769,7 +999,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Prosciutto crudo and parmesan: elegant and with few ingredients."
   ],
   [
    "pizze-quattro-formaggi",
@@ -789,7 +1025,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "four cheeses",
+   "A pizza for cheese lovers: blue cheese, mozzarella, parmesan and more."
   ],
   [
    "pizze-la-peruanita",
@@ -809,7 +1051,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Our Peruvian twist: lomo saltado on a pizza."
   ],
   [
    "pizze-abbuffata",
@@ -829,7 +1077,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "a feast",
+   "Salami, ham, chorizo and bacon. «Abbuffata» means feast: come hungry."
   ],
   [
    "pizze-la-chama",
@@ -849,7 +1103,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "extras-pizza",
+   "",
+   "",
+   "Bell pepper, Peruvian corn, ham, chorizo and olives: colourful and full of flavour."
   ],
   [
    "pasta-fonte-di-ravioli",
@@ -857,9 +1117,9 @@ var DATOS_INICIALES = {
    "Piatti Grandi",
    "Platos grandes de la casa",
    10,
-   "Fonte di Ravioli",
-   "fuente de ravioles",
-   "Una fuente generosa de ravioles, servida con la salsa de tu elección.",
+   "Fonte di Ravioli di Ricotta",
+   "fuente de ravioles de ricotta",
+   "Una fuente generosa de ravioles rellenos de ricotta, servida con la salsa de tu elección.",
    60,
    "",
    "plato",
@@ -869,7 +1129,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "platter of ricotta ravioli",
+   "A generous platter of ricotta-filled ravioli, served with the sauce of your choice."
   ],
   [
    "pasta-fonte-di-fettuccine",
@@ -879,7 +1145,7 @@ var DATOS_INICIALES = {
    20,
    "Fonte di Fettuccine",
    "fuente de fettuccine",
-   "Una fuente generosa de fettuccine, servida con la salsa de tu elección.",
+   "Una fuente generosa de fettuccine, clásicos o verdes (de espinaca), servida con la salsa de tu elección.",
    50,
    "",
    "plato",
@@ -889,7 +1155,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "fettuccine-tipo",
+   "",
+   "platter of fettuccine",
+   "A generous platter of fettuccine, classic or green (spinach), served with the sauce of your choice."
   ],
   [
    "pasta-tris-di-pasta",
@@ -909,7 +1181,13 @@ var DATOS_INICIALES = {
    "SI",
    "tris",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "three pastas on one plate",
+   "A long plate with three pastas: fettuccine on the right, beef lasagna in the centre and raviolini on the left. You choose one sauce for the fettuccine and the raviolini; the lasagna does not take it."
   ],
   [
    "pasta-fettuccine-allalfredo-con-lomo",
@@ -919,8 +1197,8 @@ var DATOS_INICIALES = {
    40,
    "Fettuccine all’Alfredo con Lomo",
    "",
-   "Fettuccine bañados en la cremosa salsa Alfredo y coronados con lomo.",
-   55,
+   "Fettuccine bañados en la cremosa salsa Alfredo y coronados con lomo, en el término que prefieras.",
+   65,
    "",
    "plato",
    "",
@@ -929,7 +1207,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "termino",
+   "",
+   "",
+   "Fettuccine in creamy Alfredo sauce topped with beef tenderloin, cooked to your liking."
   ],
   [
    "pasta-spaghetti-alla-huancaina-con-lomo",
@@ -939,8 +1223,8 @@ var DATOS_INICIALES = {
    50,
    "Spaghetti alla Huancaina con Lomo",
    "spaghetti a la huancaína con lomo",
-   "Dos mundos en un plato: spaghetti italianos con la cremosa salsa huancaína peruana y lomo.",
-   60,
+   "Dos mundos en un plato: spaghetti italianos con la cremosa salsa huancaína peruana y lomo. Elige tu nivel de picante.",
+   70,
    "",
    "plato",
    "",
@@ -949,7 +1233,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "picante",
+   "",
+   "spaghetti with huancaína sauce and beef",
+   "Two worlds on one plate: Italian spaghetti with creamy Peruvian huancaína sauce and beef tenderloin. Choose your spice level."
   ],
   [
    "pasta-spaghetti-ai-gamberoni",
@@ -957,10 +1247,10 @@ var DATOS_INICIALES = {
    "Le Nostre Specialità",
    "Especialidades de la casa",
    60,
-   "Spaghetti ai Gamberoni",
+   "Spaghetti ai Gamberi",
    "spaghetti con langostinos",
-   "Spaghetti con langostinos: un homenaje al mar en la mesa.",
-   60,
+   "Spaghetti con langostinos en salsa roja (de tomate) o blanca (bechamel), a tu elección, con el nivel de picante que prefieras.",
+   70,
    "",
    "plato",
    "",
@@ -969,7 +1259,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "salsa-gamberi, picante",
+   "",
+   "spaghetti with prawns",
+   "Spaghetti with prawns in red (tomato) or white (béchamel) sauce, your choice, with the spice level you prefer."
   ],
   [
    "pasta-fettuccine",
@@ -979,7 +1275,7 @@ var DATOS_INICIALES = {
    70,
    "Fettuccine",
    "",
-   "Cintas largas y planas, ideales para las salsas cremosas.",
+   "Cintas largas y planas, ideales para las salsas cremosas. Clásicos o verdes (de espinaca).",
    30,
    "",
    "plato",
@@ -989,7 +1285,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "fettuccine-tipo",
+   "",
+   "",
+   "Long, flat ribbons, ideal for creamy sauces. Classic or green (spinach)."
   ],
   [
    "pasta-pappardelle",
@@ -1009,7 +1311,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Wide ribbons from the Tuscan tradition, made for hearty sauces."
   ],
   [
    "pasta-spaghetti",
@@ -1029,7 +1337,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "The classic of classics, always welcome."
   ],
   [
    "pasta-conchiglie",
@@ -1049,7 +1363,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "shells",
+   "Shell-shaped pasta that holds the sauce in every bite."
   ],
   [
    "pasta-gomiti",
@@ -1069,7 +1389,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "elbows",
+   "Little pasta elbows: simple, charming and much loved."
   ],
   [
    "pasta-maccheroni",
@@ -1089,7 +1415,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "macaroni",
+   "Short pasta tubes that embrace the sauce."
   ],
   [
    "pasta-ravioli-di-carne",
@@ -1109,7 +1441,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "beef ravioli",
+   "Beef-filled ravioli, with the sauce of your choice."
   ],
   [
    "pasta-ravioli-di-formaggio",
@@ -1117,9 +1455,9 @@ var DATOS_INICIALES = {
    "Ripieni e Gnocchi",
    "Pastas rellenas y ñoquis",
    140,
-   "Ravioli di Formaggio",
-   "ravioles de queso",
-   "Ravioles rellenos de queso, suaves y cremosos.",
+   "Ravioli di Ricotta",
+   "ravioles de ricotta",
+   "Ravioles rellenos de ricotta, suaves y cremosos.",
    32,
    "",
    "plato",
@@ -1129,7 +1467,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "ricotta ravioli",
+   "Ricotta-filled ravioli, soft and creamy."
   ],
   [
    "pasta-gnocchi-di-patate",
@@ -1149,17 +1493,23 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "potato gnocchi",
+   "Soft potato gnocchi, light as a cloud."
   ],
   [
    "pasta-tortellini",
    "pasta",
    "Ripieni e Gnocchi",
    "Pastas rellenas y ñoquis",
-   160,
-   "Tortellini",
-   "",
-   "Pasta rellena en forma de pequeño anillo, nacida en Emilia-Romaña.",
+   147,
+   "Tortellini di Carne",
+   "tortellini de carne",
+   "Pequeños anillos de pasta rellenos de carne, con el mismo relleno de nuestros ravioli di carne. Tradición de Emilia-Romaña.",
    32,
    "",
    "plato",
@@ -1169,7 +1519,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "beef tortellini",
+   "Little rings of pasta filled with beef, the same filling as our beef ravioli. A tradition from Emilia-Romagna."
   ],
   [
    "salsa-puttanesca",
@@ -1179,7 +1535,7 @@ var DATOS_INICIALES = {
    170,
    "Puttanesca",
    "",
-   "Intensa y sabrosa, de tomate, aceitunas y alcaparras. Una clásica napolitana.",
+   "Salsa de tomate con atún, intensa y con carácter. Por naturaleza es picante: elige tu nivel.",
    "",
    "",
    "salsa",
@@ -1189,7 +1545,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "picante",
+   "",
+   "",
+   "Tomato sauce with tuna, intense and full of character. Naturally spicy: choose your level."
   ],
   [
    "salsa-aglio-olio-e-peperoncino",
@@ -1199,7 +1561,7 @@ var DATOS_INICIALES = {
    180,
    "Aglio, Olio e Peperoncino",
    "ajo, aceite y ají",
-   "Ajo dorado en aceite con un toque de peperoncino. Sencilla, aromática y con un punto picante.",
+   "Ajo dorado en aceite con peperoncino. Sencilla y aromática; por naturaleza es picante: elige tu nivel.",
    "",
    "",
    "salsa",
@@ -1209,7 +1571,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "picante",
+   "",
+   "garlic, oil and chilli",
+   "Golden garlic in oil with peperoncino. Simple and aromatic; naturally spicy: choose your level."
   ],
   [
    "salsa-ragu-di-carne",
@@ -1229,7 +1597,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "meat sauce",
+   "Ragù-style meat sauce: rich and hearty."
   ],
   [
    "salsa-alfredo",
@@ -1249,7 +1623,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Creamy and smooth, with butter and parmesan cheese."
   ],
   [
    "salsa-gorgonzola",
@@ -1269,7 +1649,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Creamy gorgonzola cheese sauce, intense and elegant."
   ],
   [
    "salsa-rosata",
@@ -1289,7 +1675,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "pink sauce",
+   "Tomato and cream meet in a smooth, rosy sauce."
   ],
   [
    "salsa-pesto",
@@ -1309,7 +1701,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Basil, cheese and olive oil, Genoa style. Fresh and aromatic."
   ],
   [
    "salsa-quattro-formaggi",
@@ -1329,7 +1727,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "four cheeses",
+   "Four cheeses melted into a creamy, irresistible sauce."
   ],
   [
    "salsa-marchigiana-e-pomodoro",
@@ -1337,9 +1741,9 @@ var DATOS_INICIALES = {
    "Le Salse",
    "Cada pasta lleva la salsa de tu elección. Las salsas marcadas tienen un adicional de S/ 8.00.",
    250,
-   "Marchigiana e Pomodoro",
-   "marchigiana y tomate",
-   "Salsa de tomate al estilo de Las Marcas, región del centro de Italia.",
+   "Amatriciana",
+   "salsa amatriciana",
+   "La clásica salsa de tomate de Amatrice, sabrosa y de naturaleza picante: elige tu nivel.",
    "",
    "",
    "salsa",
@@ -1349,7 +1753,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "picante",
+   "",
+   "amatriciana sauce",
+   "The classic tomato sauce from Amatrice, flavourful and naturally spicy: choose your level."
   ],
   [
    "salsa-salsa-al-lomo",
@@ -1357,9 +1767,9 @@ var DATOS_INICIALES = {
    "Le Salse",
    "Cada pasta lleva la salsa de tu elección. Las salsas marcadas tienen un adicional de S/ 8.00.",
    260,
-   "Salsa al Lomo",
-   "con trozos de lomo",
-   "Una salsa contundente con lomo, para quienes quieren más.",
+   "Lomo Saltado",
+   "al estilo lomo saltado",
+   "Como un lomo saltado sobre tu pasta: trozos de lomo salteados al sillao (salsa de soya).",
    "",
    "",
    "salsa",
@@ -1369,7 +1779,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "Peruvian stir-fried beef",
+   "Like a Peruvian lomo saltado over your pasta: beef strips stir-fried with soy sauce."
   ],
   [
    "salsa-funghi-e-cardonada",
@@ -1377,9 +1793,9 @@ var DATOS_INICIALES = {
    "Le Salse",
    "Cada pasta lleva la salsa de tu elección. Las salsas marcadas tienen un adicional de S/ 8.00.",
    270,
-   "Funghi e Cardonada",
-   "champiñones y cardonada",
-   "Champiñones en una salsa de la casa, con sabor profundo.",
+   "Funghi",
+   "salsa de champiñones",
+   "Salsa bechamel con champiñones, ajo y perejil.",
    "",
    "",
    "salsa",
@@ -1389,7 +1805,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "mushroom sauce",
+   "Béchamel sauce with mushrooms, garlic and parsley."
   ],
   [
    "lasagne-lasagna-di-spinaci",
@@ -1400,7 +1822,7 @@ var DATOS_INICIALES = {
    "Lasagna di Spinaci",
    "lasagna de espinaca",
    "Capas de pasta y espinaca, gratinada hasta quedar dorada.",
-   34,
+   36,
    "",
    "plato",
    "",
@@ -1409,7 +1831,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "spinach lasagna",
+   "Layers of pasta and spinach, baked until golden."
   ],
   [
    "lasagne-lasagna-di-carne",
@@ -1420,7 +1848,7 @@ var DATOS_INICIALES = {
    "Lasagna di Carne",
    "lasagna de carne",
    "La clásica de siempre: capas de pasta y carne, gratinada y reconfortante.",
-   32,
+   34,
    "",
    "plato",
    "",
@@ -1429,7 +1857,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "beef lasagna",
+   "The classic: layers of pasta and beef, gratinated and comforting."
   ],
   [
    "lasagne-lasagna-agli-asparagi",
@@ -1440,66 +1874,6 @@ var DATOS_INICIALES = {
    "Lasagna agli Asparagi",
    "lasagna de espárragos",
    "Capas de pasta con espárragos, delicada y gratinada.",
-   36,
-   "",
-   "plato",
-   "",
-   "NO",
-   "SI",
-   "SI",
-   "",
-   "",
-   ""
-  ],
-  [
-   "parrillas-parrilla-mixta",
-   "parrillas",
-   "",
-   "",
-   10,
-   "Parrilla Mixta",
-   "",
-   "Una selección de churrasco, chuleta, pollo y chorizo, ideal para quien quiere probar un poco de todo.",
-   60,
-   "",
-   "plato",
-   "",
-   "NO",
-   "SI",
-   "SI",
-   "",
-   "",
-   ""
-  ],
-  [
-   "parrillas-lomo-fino-a-la-plancha",
-   "parrillas",
-   "",
-   "",
-   20,
-   "Lomo Fino a la Plancha",
-   "",
-   "Lomo fino de 350 gramos, sellado a la plancha. Se acompaña con ensalada y papas fritas.",
-   60,
-   "",
-   "plato",
-   "",
-   "NO",
-   "SI",
-   "SI",
-   "",
-   "",
-   ""
-  ],
-  [
-   "parrillas-churrasco-o-chuleta",
-   "parrillas",
-   "",
-   "",
-   30,
-   "Churrasco o Chuleta",
-   "",
-   "A tu elección: churrasco o chuleta. Se acompaña con ensalada y papas fritas.",
    38,
    "",
    "plato",
@@ -1509,7 +1883,91 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "asparagus lasagna",
+   "Layers of pasta with asparagus, delicate and gratinated."
+  ],
+  [
+   "parrillas-parrilla-mixta",
+   "parrillas",
+   "",
+   "",
+   10,
+   "Parrilla Mixta",
+   "Con ensalada y papas fritas",
+   "Una selección de churrasco, chuleta, pollo y chorizo, para probar un poco de todo.",
+   60,
+   "",
+   "plato",
+   "",
+   "NO",
+   "SI",
+   "SI",
+   "",
+   "",
+   "",
+   "todos",
+   "",
+   "",
+   "Mixed Grill",
+   "With salad and French fries",
+   "A selection of steak, pork chop, chicken and chorizo, to try a little of everything."
+  ],
+  [
+   "parrillas-lomo-fino-a-la-plancha",
+   "parrillas",
+   "",
+   "",
+   20,
+   "Lomo Fino a la Plancha",
+   "Con ensalada y papas fritas",
+   "Lomo fino de 350 gramos, sellado a la plancha y servido en el término que prefieras.",
+   70,
+   "",
+   "plato",
+   "",
+   "NO",
+   "SI",
+   "SI",
+   "",
+   "",
+   "",
+   "todos",
+   "",
+   "termino",
+   "Griddled Beef Tenderloin",
+   "With salad and French fries",
+   "350 grams of beef tenderloin, seared on the griddle and cooked to your liking."
+  ],
+  [
+   "parrillas-churrasco-o-chuleta",
+   "parrillas",
+   "",
+   "",
+   30,
+   "Churrasco o Chuleta",
+   "Con ensalada y papas fritas",
+   "A tu elección: churrasco o chuleta.",
+   38,
+   "",
+   "plato",
+   "",
+   "NO",
+   "SI",
+   "SI",
+   "",
+   "",
+   "",
+   "todos",
+   "",
+   "",
+   "Steak or Pork Chop",
+   "With salad and French fries",
+   "Your choice: steak or pork chop."
   ],
   [
    "parrillas-milanesa-de-pollo",
@@ -1518,8 +1976,8 @@ var DATOS_INICIALES = {
    "",
    40,
    "Milanesa de Pollo",
-   "",
-   "Pollo apanado, dorado y crocante. Se acompaña con papas fritas.",
+   "Con papas fritas",
+   "Pollo apanado, dorado y crocante.",
    30,
    "",
    "plato",
@@ -1529,7 +1987,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "Chicken Milanese",
+   "With French fries",
+   "Breaded chicken, golden and crispy."
   ],
   [
    "parrillas-porcion-de-chorizo",
@@ -1538,8 +2002,8 @@ var DATOS_INICIALES = {
    "",
    50,
    "Porción de Chorizo",
-   "",
-   "Incluye 3 chorizos y papas fritas.",
+   "Con papas fritas",
+   "Incluye 3 chorizos.",
    22,
    "",
    "plato",
@@ -1549,7 +2013,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "Chorizo Portion",
+   "With French fries",
+   "Includes 3 chorizo sausages."
   ],
   [
    "dolci-tiramisu",
@@ -1560,7 +2030,7 @@ var DATOS_INICIALES = {
    "Tiramisù",
    "",
    "El postre italiano más célebre: capas de bizcocho, café y suave crema de mascarpone.",
-   "",
+   12,
    "",
    "plato",
    "",
@@ -1569,7 +2039,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Italy's most famous dessert: layers of sponge, coffee and smooth mascarpone cream."
   ],
   [
    "dolci-torta-al-cioccolato",
@@ -1580,7 +2056,7 @@ var DATOS_INICIALES = {
    "Torta al Cioccolato",
    "torta de chocolate",
    "Una torta esponjosa para los amantes del chocolate.",
-   "",
+   12,
    "",
    "plato",
    "",
@@ -1589,7 +2065,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "chocolate cake",
+   "A fluffy cake for chocolate lovers."
   ],
   [
    "dolci-biscotti-con-gocce-di-cioccolato",
@@ -1597,10 +2079,10 @@ var DATOS_INICIALES = {
    "",
    "",
    30,
-   "Biscotti con Gocce di Cioccolato",
-   "galletas con chispas de chocolate",
-   "Galletas con chispas de chocolate, ideales con un buen café.",
-   "",
+   "Biscotto con Gocce di Cioccolato",
+   "galleta con chispas de chocolate",
+   "Galleta con chispas de chocolate, ideal con un buen café.",
+   6,
    "",
    "plato",
    "",
@@ -1609,7 +2091,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "chocolate chip cookie",
+   "Chocolate chip cookie, perfect with a good coffee."
   ],
   [
    "dolci-biscotto-al-cioccolato",
@@ -1620,7 +2108,7 @@ var DATOS_INICIALES = {
    "Biscotto al Cioccolato",
    "galleta de chocolate",
    "Una galleta de chocolate intenso, para el antojo del final.",
-   "",
+   6,
    "",
    "plato",
    "",
@@ -1629,7 +2117,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "chocolate cookie",
+   "An intense chocolate cookie for that final craving."
   ],
   [
    "dolci-biscotto-red-velvet",
@@ -1640,7 +2134,7 @@ var DATOS_INICIALES = {
    "Biscotto Red Velvet",
    "galleta red velvet",
    "Color rubí y sabor suave a cacao: elegante hasta el último bocado.",
-   "",
+   6,
    "",
    "plato",
    "",
@@ -1649,7 +2143,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "red velvet cookie",
+   "Ruby colour and a soft cocoa taste: elegant to the last bite."
   ],
   [
    "caffe-caffe",
@@ -1669,7 +2169,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "coffee",
+   "House coffee, to go with the after-dinner chat."
   ],
   [
    "caffe-espresso",
@@ -1689,7 +2195,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "espresso",
+   "The Italian classic: short, intense, in one sip."
   ],
   [
    "caffe-cappuccino",
@@ -1709,7 +2221,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Espresso with milk and foam, the favourite of Italian mornings."
   ],
   [
    "caffe-cioccolata-calda",
@@ -1729,7 +2247,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "hot chocolate",
+   "Thick, comforting hot chocolate."
   ],
   [
    "caffe-te",
@@ -1749,7 +2273,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "tea",
+   "A hot infusion to end the meal calmly."
   ],
   [
    "caffe-limonata",
@@ -1759,7 +2289,7 @@ var DATOS_INICIALES = {
    60,
    "Limonata",
    "limonada",
-   "Fresca y cítrica, la más refrescante de la carta.",
+   "Fresca y cítrica. Helada, a temperatura ambiente o frozen.",
    18,
    "",
    "plato",
@@ -1769,7 +2299,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "temp-limonada",
+   "",
+   "lemonade",
+   "Fresh and citrusy. Iced, at room temperature or frozen."
   ],
   [
    "caffe-maracuya",
@@ -1779,7 +2315,7 @@ var DATOS_INICIALES = {
    70,
    "Maracuyá",
    "refresco de maracuyá",
-   "El sabor tropical y vibrante del maracuyá.",
+   "El sabor tropical y vibrante del maracuyá. Helada, a temperatura ambiente o frozen.",
    18,
    "",
    "plato",
@@ -1789,7 +2325,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "temp-limonada",
+   "",
+   "passion fruit juice",
+   "The vibrant tropical taste of passion fruit. Iced, at room temperature or frozen."
   ],
   [
    "caffe-bibita-gassata",
@@ -1799,7 +2341,7 @@ var DATOS_INICIALES = {
    80,
    "Bibita Gassata",
    "gaseosa",
-   "Elige el tamaño que prefieras.",
+   "Inca Kola, Coca-Cola, Fanta o Sprite, helada o sin helar. Elige el tamaño.",
    "",
    "Personal=3.5; Mediana=4.5; 1 litro=8; 1½ litros=15",
    "plato",
@@ -1809,7 +2351,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "sabor-gaseosa, temp-bebida",
+   "",
+   "soft drink",
+   "Inca Kola, Coca-Cola, Fanta or Sprite, chilled or not. Choose your size."
   ],
   [
    "caffe-acqua",
@@ -1818,8 +2366,8 @@ var DATOS_INICIALES = {
    "",
    90,
    "Acqua",
-   "agua",
-   "Agua para acompañar la comida.",
+   "agua sin gas",
+   "Agua sin gas, helada o sin helar.",
    3.5,
    "",
    "plato",
@@ -1829,7 +2377,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "temp-bebida",
+   "",
+   "still water",
+   "Still water, chilled or not."
   ],
   [
    "caffe-ghiaccio",
@@ -1849,7 +2403,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "local",
+   "",
+   "",
+   "",
+   "ice",
+   "Extra ice for your drink."
   ],
   [
    "aperitivi-pina-colada",
@@ -1869,7 +2429,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Tropical and creamy: rum, coconut cream and pineapple juice."
   ],
   [
    "aperitivi-pisco-sour",
@@ -1889,7 +2455,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "The Peruvian classic: pisco, egg white, lime juice and simple syrup."
   ],
   [
    "aperitivi-dont-worry-be-happy",
@@ -1909,7 +2481,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Vodka, coconut cream and orange juice. With that name, nothing more to say."
   ],
   [
    "aperitivi-chilcano",
@@ -1929,7 +2507,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Light and bubbly: pisco, simple syrup, lime juice and ginger ale."
   ],
   [
    "aperitivi-bob-dylan",
@@ -1949,7 +2533,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Cifrut, Schweppes and Jägermeister."
   ],
   [
    "aperitivi-orgasmo",
@@ -1969,7 +2559,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Baileys and amaretto, smooth and sweet."
   ],
   [
    "aperitivi-algarrobina",
@@ -1989,7 +2585,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "A northern Peruvian classic: algarrobina syrup, pisco, milk and cream."
   ],
   [
    "aperitivi-baileys-colada",
@@ -2009,7 +2611,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "Baileys, coconut cream and milk: smooth and very creamy."
   ],
   [
    "vini-calice-di-vino",
@@ -2019,8 +2627,8 @@ var DATOS_INICIALES = {
    10,
    "Calice di Vino",
    "copa de vino",
-   "Copa de vino a elección.",
-   12,
+   "Copa de vino Frontera: Cabernet Sauvignon o Borgoña.",
+   14,
    "",
    "plato",
    "",
@@ -2029,7 +2637,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "vino-copa",
+   "",
+   "glass of wine",
+   "A glass of Frontera wine: Cabernet Sauvignon or Borgoña."
   ],
   [
    "vini-birra-cusquena",
@@ -2049,6 +2663,12 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "beer",
    ""
   ],
   [
@@ -2069,6 +2689,12 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "beer",
    ""
   ],
   [
@@ -2089,6 +2715,12 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "sangria",
    ""
   ],
   [
@@ -2098,8 +2730,8 @@ var DATOS_INICIALES = {
    "Vinos y espumantes",
    50,
    "Tabernero Gran Tinto",
-   "tinto",
-   "",
+   "tinto semiseco · Perú",
+   "Tinto semiseco peruano de uva Malbec del valle de Chincha: dulce, frutal y muy fácil de beber.",
    48,
    "",
    "plato",
@@ -2109,7 +2741,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "off-dry red · Peru",
+   "Off-dry Peruvian red from Malbec grapes of the Chincha Valley: sweet, fruity and very easy to drink."
   ],
   [
    "vini-tabernero-borgona",
@@ -2118,8 +2756,8 @@ var DATOS_INICIALES = {
    "Vinos y espumantes",
    60,
    "Tabernero Borgoña",
-   "",
-   "",
+   "tinto semiseco · Perú",
+   "Semiseco del valle de Chincha, con aromas de cereza confitada y un toque de regaliz. Taninos muy suaves: ideal para acompañar platos con algo de picante.",
    45,
    "",
    "plato",
@@ -2129,7 +2767,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "off-dry red · Peru",
+   "Off-dry red from the Chincha Valley, with candied cherry aromas and a hint of liquorice. Very soft tannins: great with slightly spicy dishes."
   ],
   [
    "vini-gran-blanco",
@@ -2149,6 +2793,12 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "white",
    ""
   ],
   [
@@ -2158,8 +2808,8 @@ var DATOS_INICIALES = {
    "Vinos y espumantes",
    80,
    "Frontera",
-   "",
-   "",
+   "tinto · Chile",
+   "De Viña Concha y Toro. En su versión Cabernet Sauvignon: fruta negra madura con toques de vainilla, café y chocolate; suave y de final largo.",
    48,
    "",
    "plato",
@@ -2169,7 +2819,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "red · Chile",
+   "From Concha y Toro. In its Cabernet Sauvignon version: ripe black fruit with hints of vanilla, coffee and chocolate; smooth with a long finish."
   ],
   [
    "vini-tacama-seco",
@@ -2178,8 +2834,8 @@ var DATOS_INICIALES = {
    "Vinos y espumantes",
    90,
    "Tacama Seco",
-   "seco",
-   "",
+   "seco · Perú",
+   "De Viña Tacama, en el valle de Ica, una de las bodegas con más historia del Perú.",
    55,
    "",
    "plato",
@@ -2189,7 +2845,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "dry · Peru",
+   "From Viña Tacama in the Ica Valley, one of Peru's most historic wineries."
   ],
   [
    "vini-tacama-semiseco",
@@ -2198,8 +2860,8 @@ var DATOS_INICIALES = {
    "Vinos y espumantes",
    100,
    "Tacama Semiseco",
-   "semiseco",
-   "",
+   "semiseco · Perú",
+   "De Viña Tacama, en el valle de Ica: un toque más dulce y amable.",
    55,
    "",
    "plato",
@@ -2209,7 +2871,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "off-dry · Peru",
+   "From Viña Tacama in the Ica Valley: a touch sweeter and gentler."
   ],
   [
    "vini-casillero-del-diablo",
@@ -2218,8 +2886,8 @@ var DATOS_INICIALES = {
    "Vinos y espumantes",
    110,
    "Casillero del Diablo",
-   "",
-   "",
+   "tinto · Chile",
+   "De Viña Concha y Toro. En Cabernet Sauvignon: cereza, grosella y ciruela negra con un toque de vainilla de barrica; taninos elegantes y final largo.",
    60,
    "",
    "plato",
@@ -2229,7 +2897,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "red · Chile",
+   "From Concha y Toro. As Cabernet Sauvignon: cherry, redcurrant and black plum with a touch of oak vanilla; elegant tannins and a long finish."
   ],
   [
    "vini-spumante-brut-tabernero",
@@ -2238,8 +2912,8 @@ var DATOS_INICIALES = {
    "Vinos y espumantes",
    120,
    "Spumante Brut Tabernero",
-   "espumante brut",
-   "",
+   "espumante brut · Perú",
+   "Espumante peruano brut (seco), fresco y burbujeante, ideal para brindar.",
    65,
    "",
    "plato",
@@ -2249,7 +2923,13 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
-   ""
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "brut sparkling · Peru",
+   "Peruvian brut (dry) sparkling wine, fresh and bubbly, perfect for a toast."
   ],
   [
    "vini-patrillo",
@@ -2267,6 +2947,12 @@ var DATOS_INICIALES = {
    "NO",
    "SI",
    "SI",
+   "",
+   "",
+   "",
+   "todos",
+   "",
+   "",
    "",
    "",
    ""
@@ -2289,7 +2975,635 @@ var DATOS_INICIALES = {
    "SI",
    "",
    "",
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
    ""
+  ],
+  [
+   "pasta-fonte-di-ravioli-di-carne",
+   "pasta",
+   "Piatti Grandi",
+   "Platos grandes de la casa",
+   15,
+   "Fonte di Ravioli di Carne",
+   "fuente de ravioles de carne",
+   "Una fuente generosa de ravioles rellenos de carne, servida con la salsa de tu elección.",
+   60,
+   "",
+   "plato",
+   "",
+   "SI",
+   "SI",
+   "SI",
+   "",
+   "",
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "platter of beef ravioli",
+   "A generous platter of beef-filled ravioli, served with the sauce of your choice."
+  ],
+  [
+   "pasta-raviolini",
+   "pasta",
+   "Ripieni e Gnocchi",
+   "Pastas rellenas y ñoquis",
+   145,
+   "Raviolini",
+   "ravioles pequeños",
+   "Como nuestros ravioli, pero en tamaño pequeño: más bocados en cada plato.",
+   "",
+   "",
+   "plato",
+   "",
+   "SI",
+   "SI",
+   "SI",
+   "",
+   "",
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "small ravioli",
+   "Like our ravioli, but smaller: more bites on every plate."
+  ],
+  [
+   "salsa-carbonara",
+   "pasta",
+   "Le Salse",
+   "Cada pasta lleva la salsa de tu elección. Las salsas marcadas tienen un adicional de S/ 8.00.",
+   275,
+   "Carbonara",
+   "",
+   "La clásica romana, cremosa, a base de yema de huevo y queso parmesano.",
+   "",
+   "",
+   "salsa",
+   8,
+   "NO",
+   "SI",
+   "SI",
+   "",
+   "",
+   "",
+   "todos",
+   "",
+   "",
+   "",
+   "",
+   "The Roman classic, creamy, made with egg yolk and parmesan cheese."
+  ],
+  [
+   "caffe-acqua-frizzante",
+   "caffe",
+   "",
+   "",
+   95,
+   "Acqua Frizzante",
+   "agua con gas",
+   "Agua con gas, helada o sin helar.",
+   "",
+   "",
+   "plato",
+   "",
+   "NO",
+   "SI",
+   "SI",
+   "",
+   "",
+   "",
+   "todos",
+   "",
+   "temp-bebida",
+   "",
+   "sparkling water",
+   "Sparkling water, chilled or not."
+  ]
+ ],
+ "opciones": [
+  [
+   "termino",
+   "Término de la carne",
+   "Doneness",
+   "una",
+   "SI",
+   "Término medio",
+   "Medium",
+   "",
+   10,
+   "SI"
+  ],
+  [
+   "termino",
+   "Término de la carne",
+   "Doneness",
+   "una",
+   "SI",
+   "Tres cuartos",
+   "Medium well",
+   "",
+   20,
+   "SI"
+  ],
+  [
+   "termino",
+   "Término de la carne",
+   "Doneness",
+   "una",
+   "SI",
+   "Bien cocido",
+   "Well done",
+   "",
+   30,
+   "SI"
+  ],
+  [
+   "picante",
+   "Nivel de picante",
+   "Spice level",
+   "una",
+   "SI",
+   "1 · Suave",
+   "1 · Mild",
+   "",
+   10,
+   "SI"
+  ],
+  [
+   "picante",
+   "Nivel de picante",
+   "Spice level",
+   "una",
+   "SI",
+   "2 · Medio",
+   "2 · Medium",
+   "",
+   20,
+   "SI"
+  ],
+  [
+   "picante",
+   "Nivel de picante",
+   "Spice level",
+   "una",
+   "SI",
+   "3 · Picante",
+   "3 · Hot",
+   "",
+   30,
+   "SI"
+  ],
+  [
+   "salsa-gamberi",
+   "Salsa",
+   "Sauce",
+   "una",
+   "SI",
+   "Salsa roja (tomate)",
+   "Red sauce (tomato)",
+   "",
+   10,
+   "SI"
+  ],
+  [
+   "salsa-gamberi",
+   "Salsa",
+   "Sauce",
+   "una",
+   "SI",
+   "Salsa blanca (bechamel)",
+   "White sauce (béchamel)",
+   "",
+   20,
+   "SI"
+  ],
+  [
+   "fettuccine-tipo",
+   "Tipo de fettuccine",
+   "Fettuccine type",
+   "una",
+   "SI",
+   "Clásico",
+   "Classic",
+   "",
+   10,
+   "SI"
+  ],
+  [
+   "fettuccine-tipo",
+   "Tipo de fettuccine",
+   "Fettuccine type",
+   "una",
+   "SI",
+   "Verde (de espinaca)",
+   "Green (spinach)",
+   "",
+   20,
+   "SI"
+  ],
+  [
+   "temp-limonada",
+   "Temperatura",
+   "Temperature",
+   "una",
+   "SI",
+   "Helada",
+   "Iced",
+   "",
+   10,
+   "SI"
+  ],
+  [
+   "temp-limonada",
+   "Temperatura",
+   "Temperature",
+   "una",
+   "SI",
+   "Temperatura ambiente",
+   "Room temperature",
+   "",
+   20,
+   "SI"
+  ],
+  [
+   "temp-limonada",
+   "Temperatura",
+   "Temperature",
+   "una",
+   "SI",
+   "Frozen",
+   "Frozen",
+   "",
+   30,
+   "SI"
+  ],
+  [
+   "temp-bebida",
+   "Temperatura",
+   "Temperature",
+   "una",
+   "SI",
+   "Helada",
+   "Chilled",
+   "",
+   10,
+   "SI"
+  ],
+  [
+   "temp-bebida",
+   "Temperatura",
+   "Temperature",
+   "una",
+   "SI",
+   "Sin helar",
+   "Not chilled",
+   "",
+   20,
+   "SI"
+  ],
+  [
+   "sabor-gaseosa",
+   "Sabor",
+   "Flavour",
+   "una",
+   "SI",
+   "Inca Kola",
+   "Inca Kola",
+   "",
+   10,
+   "SI"
+  ],
+  [
+   "sabor-gaseosa",
+   "Sabor",
+   "Flavour",
+   "una",
+   "SI",
+   "Coca-Cola",
+   "Coca-Cola",
+   "",
+   20,
+   "SI"
+  ],
+  [
+   "sabor-gaseosa",
+   "Sabor",
+   "Flavour",
+   "una",
+   "SI",
+   "Fanta",
+   "Fanta",
+   "",
+   30,
+   "SI"
+  ],
+  [
+   "sabor-gaseosa",
+   "Sabor",
+   "Flavour",
+   "una",
+   "SI",
+   "Sprite",
+   "Sprite",
+   "",
+   40,
+   "SI"
+  ],
+  [
+   "vino-copa",
+   "Vino",
+   "Wine",
+   "una",
+   "SI",
+   "Frontera Cabernet Sauvignon",
+   "Frontera Cabernet Sauvignon",
+   "",
+   10,
+   "SI"
+  ],
+  [
+   "vino-copa",
+   "Vino",
+   "Wine",
+   "una",
+   "SI",
+   "Frontera Borgoña",
+   "Frontera Borgoña",
+   "",
+   20,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Mozzarella extra",
+   "Extra mozzarella",
+   4,
+   10,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Jamón",
+   "Ham",
+   4,
+   20,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Pepperoni",
+   "Pepperoni",
+   4,
+   30,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Tocino",
+   "Bacon",
+   4,
+   40,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Chorizo",
+   "Chorizo",
+   4,
+   50,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Salame",
+   "Salami",
+   4,
+   60,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Carne",
+   "Beef",
+   4,
+   70,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Pollo",
+   "Chicken",
+   4,
+   80,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Champiñones",
+   "Mushrooms",
+   4,
+   90,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Aceitunas",
+   "Olives",
+   4,
+   100,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Piña",
+   "Pineapple",
+   4,
+   110,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Durazno",
+   "Peach",
+   4,
+   120,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Pimiento",
+   "Bell pepper",
+   4,
+   130,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Cebolla",
+   "Onion",
+   4,
+   140,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Alcachofa",
+   "Artichoke",
+   4,
+   150,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Choclo",
+   "Peruvian corn",
+   4,
+   160,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Atún",
+   "Tuna",
+   4,
+   170,
+   "SI"
+  ],
+  [
+   "extras-pizza",
+   "Ingredientes adicionales",
+   "Extra toppings",
+   "varias",
+   "NO",
+   "Tomate",
+   "Tomato",
+   4,
+   180,
+   "SI"
+  ],
+  [
+   "extras-pasta",
+   "Agregados para tu pasta",
+   "Pasta extras",
+   "varias",
+   "NO",
+   "Queso parmesano extra",
+   "Extra parmesan",
+   "",
+   10,
+   "NO"
+  ],
+  [
+   "extras-pasta",
+   "Agregados para tu pasta",
+   "Pasta extras",
+   "varias",
+   "NO",
+   "Champiñones",
+   "Mushrooms",
+   "",
+   20,
+   "NO"
+  ],
+  [
+   "extras-pasta",
+   "Agregados para tu pasta",
+   "Pasta extras",
+   "varias",
+   "NO",
+   "Jamón",
+   "Ham",
+   "",
+   30,
+   "NO"
+  ],
+  [
+   "extras-pasta",
+   "Agregados para tu pasta",
+   "Pasta extras",
+   "varias",
+   "NO",
+   "Tocino",
+   "Bacon",
+   "",
+   40,
+   "NO"
   ]
  ]
 };
