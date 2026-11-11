@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T12:38:10-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T12:38:14-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -490,6 +490,7 @@ window.CARTA = {
        "g": "pan al ajo con queso",
        "d": "Nuestro pan al ajo, ahora con queso.",
        "p": 6,
+       "agotado": true,
        "al": [
         "gluten",
         "lacteos"
@@ -2464,5 +2465,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T12:38:10-05:00"
+ "publicado": "2026-11-11T12:38:14-05:00"
 };
