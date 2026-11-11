@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-10T22:42:01-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-10T23:08:12-05:00).
    No lo edites a mano: cambia los datos en el panel y pulsa "Publicar". */
 window.CARTA = {
  "negocio": {
@@ -131,24 +131,6 @@ window.CARTA = {
     {
      "n": "3 · Picante",
      "n_en": "3 · Hot",
-     "p": 0
-    }
-   ]
-  },
-  "salsa-gamberi": {
-   "n": "Salsa",
-   "n_en": "Sauce",
-   "tipo": "una",
-   "req": true,
-   "ops": [
-    {
-     "n": "Salsa roja (tomate)",
-     "n_en": "Red sauce (tomato)",
-     "p": 0
-    },
-    {
-     "n": "Salsa blanca (bechamel)",
-     "n_en": "White sauce (béchamel)",
      "p": 0
     }
    ]
@@ -353,6 +335,24 @@ window.CARTA = {
      "n": "Tomate",
      "n_en": "Tomato",
      "p": 4
+    }
+   ]
+  },
+  "salsa-gamberi": {
+   "n": "Salsa",
+   "n_en": "Sauce",
+   "tipo": "una",
+   "req": true,
+   "ops": [
+    {
+     "n": "Pomodoro",
+     "n_en": "besciamella",
+     "p": 0
+    },
+    {
+     "n": "besciamella",
+     "n_en": "besciamella",
+     "p": 0
     }
    ]
   }
@@ -1905,5 +1905,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-10T22:42:01-05:00"
+ "publicado": "2026-11-10T23:08:12-05:00"
 };
