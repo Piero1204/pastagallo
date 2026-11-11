@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-10T23:08:12-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T00:50:54-05:00).
    No lo edites a mano: cambia los datos en el panel y pulsa "Publicar". */
 window.CARTA = {
  "negocio": {
@@ -7,11 +7,11 @@ window.CARTA = {
   "direccion": "Av. Fátima 149, La Merced, Trujillo",
   "telefono": "948 323 337",
   "whatsapp": "51948323337",
-  "mensajeWhatsapp": "Hola Pasta Gallo, quisiera hacer un pedido.",
+  "mensajeWhatsapp": "Hola, quisiera hacer un pedido.",
   "instagram": "pasta_gallo_",
   "tiktok": "pastagallotrattoria",
-  "facebookUrl": "",
-  "horarioTexto": "Martes a domingo · 6:00 pm – 11:00 pm",
+  "facebookUrl": "https://www.facebook.com/pizzeriapastagallo",
+  "horarioTexto": "Martes a domingo · 18:00 – 23:00",
   "cerradoTexto": "Lunes cerrado",
   "sitioUrl": "https://pastagallo.pages.dev",
   "horarioTexto_en": "Tuesday to Sunday · 6:00 pm – 11:00 pm",
@@ -49,18 +49,18 @@ window.CARTA = {
  },
  "historia": {
   "eyebrow": "Nuestra historia",
-  "titulo": "Bienvenidos a Nuestra Casa",
+  "titulo": "Bienvenidos a Nuestra Mesa",
   "parrafos": [
-   "Desde 1997, en el corazón de Trujillo, nació una pizzería que no solo trajo consigo el auténtico sabor italiano, sino también una historia de amor y dedicación. Todo comenzó cuando el señor Pietro Gallo, un apasionado italiano enamorado de su cultura y gastronomía, conoció a la señora Edit Varela. Juntos formaron una familia y dieron vida a este rincón lleno de tradición, sabor y calidez.",
-   "A lo largo de los años, la mano experta de Pietro y el esfuerzo de su familia convirtieron este lugar en un verdadero homenaje a la cocina italiana. Aunque el señor Pietro partió el 9 de febrero de 2024, su legado sigue más vivo que nunca en cada pizza, cada pasta y cada salsa que servimos con orgullo.",
-   "Hoy, su familia continúa este hermoso proyecto, honrando su memoria y compartiendo con ustedes el auténtico sabor de Italia, manteniendo intacta la esencia que él nos dejó."
+   "Desde 1997, en el corazón de Trujillo, florece un rincón culinario que trajo consigo la auténtica esencia de la cocina italiana y una entrañable historia de amor y devoción. Todo comenzó cuando el señor Pietro Gallo, un distinguido italiano profundamente enamorado de su tierra y su gastronomía, unió su vida a la de la señora Edit Varela. Juntos formaron una familia y dieron vida a esta casa, un espacio cálido, lleno de tradición y sabor.",
+   "A lo largo de las décadas, la maestría artesanal de Pietro y la entrega de su familia convirtieron esta mesa en un verdadero tributo a Italia. Aunque el señor Pietro partió el 9 de febrero de 2024, su legado perdura en cada creación: desde nuestras pizzas y pastas hasta el secreto de nuestras salsas, elaboradas con el mismo orgullo y respeto por sus raíces.",
+   "Hoy, su familia continúa esta noble labor honrando su memoria, preservando intacta la esencia que nos confió y compartiendo con nuestros comensales el verdadero espíritu de Italia en cada bocado."
   ],
   "eyebrow_en": "Our story",
   "titulo_en": "Welcome to Our Home",
   "parrafos_en": [
-   "Since 1997, in the heart of Trujillo, a pizzeria was born that brought not only authentic Italian flavour but also a story of love and dedication. It all began when Mr. Pietro Gallo, an Italian passionate about his culture and cuisine, met Mrs. Edit Varela. Together they built a family and gave life to this corner full of tradition, flavour and warmth.",
-   "Over the years, Pietro's expert hand and his family's effort turned this place into a true tribute to Italian cooking. Although Mr. Pietro passed away on February 9, 2024, his legacy is more alive than ever in every pizza, every pasta and every sauce we proudly serve.",
-   "Today his family carries on this beautiful project, honouring his memory and sharing with you the authentic taste of Italy, keeping intact the essence he left us."
+   "Since 1997, in the heart of Trujillo, a culinary haven has flourished, bringing with it the authentic essence of Italian cuisine and a heartwarming story of love and devotion. It all began when Mr. Pietro Gallo, a distinguished Italian deeply in love with his homeland and its gastronomy, united his life with Mrs. Edit Varela. Together, they built a family and brought this house to life—a warm space filled with tradition and flavor.",
+   "Over the decades, Pietro’s artisanal mastery and his family’s dedication turned this table into a true tribute to Italy. Although Mr. Pietro passed away on February 9, 2024, his legacy lives on in every creation: from our pizzas and pastas to the secret of our sauces, crafted with the same pride and respect for his roots.",
+   "Today, his family carries on this noble endeavor by honoring his memory, keeping the essence he entrusted to us intact, and sharing the true spirit of Italy with our guests in every bite."
   ]
  },
  "alergenos": {
@@ -77,7 +77,7 @@ window.CARTA = {
  "pedidos": {
   "api": "https://script.google.com/macros/s/AKfycbyR-cpNUiFhkrM7uOequH9O8ebYC6BSMQPhgf7Io63fx294K1oAoABz6R_8f1PNYWs0ew/exec",
   "activos": true,
-  "fueraHorario": false,
+  "fueraHorario": true,
   "mesaActivos": true,
   "recojo": true,
   "metodosPago": [
@@ -1905,5 +1905,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-10T23:08:12-05:00"
+ "publicado": "2026-11-11T00:50:54-05:00"
 };
