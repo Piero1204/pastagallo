@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T00:53:20-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T01:13:17-05:00).
    No lo edites a mano: cambia los datos en el panel y pulsa "Publicar". */
 window.CARTA = {
  "negocio": {
@@ -351,7 +351,7 @@ window.CARTA = {
     },
     {
      "n": "Besciamella",
-     "n_en": "besciamella",
+     "n_en": "Besciamella",
      "p": 0
     }
    ]
@@ -445,11 +445,11 @@ window.CARTA = {
    "id": "promociones",
    "titulo": "Offerte",
    "subtitulo": "Promociones de la casa",
-   "intro": "",
+   "intro": "Combinaciones especiales pensadas para compartir y celebrar juntos.",
    "pie": "",
    "alcohol": false,
    "delivery": true,
-   "mesa": true,
+   "mesa": false,
    "grupos": [],
    "titulo_en": "Offerte",
    "subtitulo_en": "House offers",
@@ -1037,12 +1037,12 @@ window.CARTA = {
        "id": "pasta-tris-di-pasta",
        "n": "Tris di Pasta",
        "g": "tres pastas en un plato",
-       "d": "Un plato largo que reúne tres pastas: fettuccine a la derecha, lasagna de carne al centro y raviolini a la izquierda. Se elige una sola salsa, que acompañará al fettuccine y a los raviolini; la lasagna no la lleva.",
+       "d": "Un plato largo que reúne nuestros clásicos: fettuccine, lasagna de carne y raviolini di carne.",
        "p": 34,
        "salsa": true,
        "destacado": "tris",
        "g_en": "three pastas on one plate",
-       "d_en": "A long plate with three pastas: fettuccine on the right, beef lasagna in the centre and raviolini on the left. You choose one sauce for the fettuccine and the raviolini; the lasagna does not take it."
+       "d_en": "A long plate with our classics: fettuccine, lasagna and raviolini."
       }
      ]
     },
@@ -1332,8 +1332,8 @@ window.CARTA = {
   {
    "id": "lasagne",
    "titulo": "Lasagne",
-   "subtitulo": "Capas que se disfrutan despacio",
-   "intro": "",
+   "subtitulo": "Capas llenas de tradición",
+   "intro": "Capas generosas horneadas a la perfección, un clásico que enamora",
    "pie": "",
    "alcohol": false,
    "delivery": true,
@@ -1456,8 +1456,8 @@ window.CARTA = {
   {
    "id": "dolci",
    "titulo": "Dolci",
-   "subtitulo": "Para cerrar con dulzura",
-   "intro": "Postres sujetos a disponibilidad. Pregunta a tu mozo cuáles tenemos hoy.",
+   "subtitulo": "El broche de oro",
+   "intro": "Postres sujetos a disponibilidad.",
    "pie": "",
    "alcohol": false,
    "delivery": true,
@@ -1673,7 +1673,7 @@ window.CARTA = {
   {
    "id": "aperitivi",
    "titulo": "Aperitivi",
-   "subtitulo": "Cócteles de la casa",
+   "subtitulo": "Para brindar y empezar",
    "intro": "",
    "pie": "",
    "alcohol": true,
@@ -1750,12 +1750,12 @@ window.CARTA = {
   },
   {
    "id": "vini",
-   "titulo": "Vini e Birre",
-   "subtitulo": "Vinos, cervezas y licores",
+   "titulo": "Vini",
+   "subtitulo": "El maridaje ideal",
    "intro": "",
    "pie": "",
    "alcohol": true,
-   "delivery": true,
+   "delivery": false,
    "mesa": true,
    "grupos": [
     {
@@ -1898,12 +1898,29 @@ window.CARTA = {
    "alcohol": false,
    "delivery": true,
    "mesa": true,
-   "grupos": [],
+   "grupos": [
+    {
+     "titulo": "Tre Marie",
+     "nota": "",
+     "items": [
+      {
+       "id": "italia-wafer-mandorlato-tre-marie",
+       "n": "Wafer Mandorlato Tre Marie",
+       "g": "Wafer de chocolate con leche y almendras",
+       "d": "Una obra maestra de la tradición pastelera milanesa. Cuentan con un equilibrio sublime entre la delicadeza de tres finas láminas de barquillo dorado y la untuosidad de una sedosa crema de chocolate con leche. En su interior, sutiles trocitos de almendras sicilianas aportan una textura crujiente y un aroma tostado inconfundible.",
+       "p": 17.9,
+       "n_en": "Wafer Mandorlato Tre Marie",
+       "g_en": "Milk chocolate and almond wafers",
+       "d_en": "A masterpiece of Milanese pastry tradition. They feature a sublime balance between the delicacy of three thin, golden wafer sheets and the richness of a silky milk chocolate cream. Inside, subtle pieces of Sicilian almonds add a crunchy texture and an unmistakable roasted aroma."
+      }
+     ]
+    }
+   ],
    "titulo_en": "",
    "subtitulo_en": "Original flavours imported from Italy",
    "intro_en": "Biscuits, sweets and delicacies brought straight from Italy.",
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T00:53:20-05:00"
+ "publicado": "2026-11-11T01:13:17-05:00"
 };
