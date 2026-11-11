@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo.
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-10T21:06:36-05:00).
    No lo edites a mano: cambia los datos en el panel y pulsa "Publicar". */
 window.CARTA = {
  "negocio": {
@@ -66,7 +66,7 @@ window.CARTA = {
   "sulfitos": "Sulfitos"
  },
  "pedidos": {
-  "api": "",
+  "api": "https://script.google.com/macros/s/AKfycbyR-cpNUiFhkrM7uOequH9O8ebYC6BSMQPhgf7Io63fx294K1oAoABz6R_8f1PNYWs0ew/exec",
   "activos": true,
   "fueraHorario": false,
   "mesaActivos": true,
@@ -1236,5 +1236,5 @@ window.CARTA = {
    "grupos": []
   }
  ],
- "publicado": "2026-11-10T19:14:27.455Z"
+ "publicado": "2026-11-10T21:06:36-05:00"
 };
