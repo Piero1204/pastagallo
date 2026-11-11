@@ -1951,7 +1951,7 @@ window.CARTA = {
         "huevo",
         "lacteos"
        ],
-       "foto": "https://images.unsplash.com/photo-1782852232674-64bc7f102866?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/dolci-biscotto-gocce-cioccolato.jpg",
        "g_en": "chocolate chip cookie",
        "d_en": "Chocolate chip cookie, perfect with a good coffee."
       },
