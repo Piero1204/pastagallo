@@ -18,9 +18,10 @@ var COLS = {
     'titulo_en', 'subtitulo_en', 'intro_en', 'pie_en'],
   productos: ['id', 'seccion', 'grupo', 'grupo_nota', 'orden', 'nombre', 'glosa', 'descripcion', 'precio', 'tamanos',
     'tipo', 'recargo', 'requiere_salsa', 'disponible', 'visible', 'destacado', 'alergenos', 'foto',
-    'canal', 'precio_antes', 'opciones', 'nombre_en', 'glosa_en', 'descripcion_en'],
+    'canal', 'precio_antes', 'opciones', 'nombre_en', 'glosa_en', 'descripcion_en',
+    'incluye', 'incluye_en', 'promo_dias', 'promo_desde', 'promo_hasta', 'promo_horas', 'promo_excluir', 'promo_extra'],
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
-    'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial',
+    'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
     'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado'],
   mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde'],
   opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo']
@@ -29,6 +30,9 @@ var CANALES = ['todos', 'local', 'delivery'];
 var ESTADOS = ['Nuevo', 'Confirmado', 'En preparación', 'Listo', 'En camino', 'Entregado', 'Cancelado'];
 var ALERGENOS = { gluten: 'Gluten', lacteos: 'Lácteos', huevo: 'Huevo', pescado: 'Pescado', mariscos: 'Mariscos',
   frutosSecos: 'Frutos secos', mani: 'Maní', soya: 'Soya', sulfitos: 'Sulfitos' };
+/* Columnas de promoción: si el panel no las envía (editor general de la carta), se conservan las que ya había. */
+var COLS_PROMO = ['incluye', 'incluye_en', 'promo_dias', 'promo_desde', 'promo_hasta', 'promo_horas', 'promo_excluir', 'promo_extra'];
+var DIAS_CORTOS = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
 var DIAS_CFG = ['horario_domingo', 'horario_lunes', 'horario_martes', 'horario_miercoles', 'horario_jueves', 'horario_viernes', 'horario_sabado'];
 
 /* =========================== MENÚ DEL SHEETS =========================== */
@@ -148,6 +152,19 @@ function obtenerHoja_(ss, nombre, cabecera) {
   return h;
 }
 
+/** Agrega al final de la cabecera las columnas que falten. Devuelve la cabecera completa. */
+function asegurarColumnas_(h, cols) {
+  var n = Math.max(h.getLastColumn(), 1);
+  var cab = h.getRange(1, 1, 1, n).getValues()[0].map(function (c) { return String(c).trim(); });
+  while (cab.length && !cab[cab.length - 1]) cab.pop();
+  var faltan = cols.filter(function (c) { return cab.indexOf(c) < 0; });
+  if (faltan.length) {
+    h.getRange(1, cab.length + 1, 1, faltan.length).setValues([faltan]).setFontWeight('bold').setBackground('#4a1519').setFontColor('#efe6d3');
+    cab = cab.concat(faltan);
+  }
+  return cab;
+}
+
 /* =========================== LECTURA DE DATOS =========================== */
 function leerConfig_() {
   var h = SpreadsheetApp.getActive().getSheetByName(HOJA.config);
@@ -236,6 +253,97 @@ function horarioDe_(cfg, dia) {
 
 function minutos_(hhmm) { var p = hhmm.split(':'); return (+p[0]) * 60 + (+p[1]); }
 
+/* =========================== PROMOCIONES (lógica pura) ===========================
+   Cada promoción es un producto (normalmente de la sección "promociones") con su calendario:
+   - promo_dias:    días de la semana, ej. "mar, mie, jue". Vacío = todos los días.
+   - promo_desde / promo_hasta: rango de fechas (AAAA-MM-DD). Vacío = sin límite.
+   - promo_horas:   franja horaria opcional, ej. "18:00-21:00".
+   - promo_excluir: fechas en que NO va aunque sea su día (feriados, días sin stock).
+   - promo_extra:   fechas en que SÍ va aunque no sea su día (ej. un lunes feriado).
+   El interruptor "visible" es el que la activa o la apaga por completo. */
+
+/** "mar, miércoles, 4" → [2, 3, 4]. Vacío → null (= todos los días). */
+function parsearDias_(v) {
+  var txt = String(v == null ? '' : v).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  if (!txt || txt === 'todos') return null;
+  var r = [];
+  txt.split(/[\s,;|\/]+/).forEach(function (x) {
+    if (!x) return;
+    var i = /^[0-6]$/.test(x) ? Number(x) : DIAS_CORTOS.indexOf(x.slice(0, 3));
+    if (i >= 0 && r.indexOf(i) < 0) r.push(i);
+  });
+  return r.sort();
+}
+function diasTexto_(lista) { return lista == null ? '' : lista.map(function (d) { return DIAS_CORTOS[d]; }).join(', '); }
+
+/** Celda → "AAAA-MM-DD" (acepta fechas de Sheets o texto). '' si no es válida. */
+function fechaIso_(v) {
+  if (v instanceof Date) {
+    if (typeof Utilities !== 'undefined') {
+      var tz = 'America/Lima';
+      try { tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone() || tz; } catch (e) { /* sin hoja */ }
+      return Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+    }
+    return v.getFullYear() + '-' + ('0' + (v.getMonth() + 1)).slice(-2) + '-' + ('0' + v.getDate()).slice(-2);
+  }
+  var s = String(v == null ? '' : v).trim();
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/) || s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return '';
+  var a = m[1].length === 4 ? [m[1], m[2], m[3]] : [m[3], m[2], m[1]];
+  return a[0] + '-' + ('0' + a[1]).slice(-2) + '-' + ('0' + a[2]).slice(-2);
+}
+function listaFechas_(v) {
+  if (v instanceof Date) return [fechaIso_(v)];
+  var r = [];
+  String(v == null ? '' : v).split(/[,;\n]+/).forEach(function (x) { var f = fechaIso_(x); if (f && r.indexOf(f) < 0) r.push(f); });
+  return r.sort();
+}
+function horasPromo_(v) {
+  var m = String(v == null ? '' : v).trim().match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  return [('0' + m[1]).slice(-2) + ':' + m[2], ('0' + m[3]).slice(-2) + ':' + m[4]];
+}
+/** ¿El producto tiene algún dato de calendario? */
+function tieneCalendario_(p) {
+  return COLS_PROMO.slice(2).some(function (c) { return String(p[c] == null ? '' : p[c]).trim() !== '' || p[c] instanceof Date; });
+}
+/** Día de la semana (0 = domingo) de una fecha "AAAA-MM-DD", sin depender de la zona horaria. */
+function diaDeFecha_(iso) {
+  var p = iso.split('-');
+  return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay();
+}
+/**
+ * ¿La promoción va en esta fecha? (no mira la hora). Devuelve true/false.
+ * Es la misma regla que usan la web (app.js) y el panel (calendario).
+ */
+function promoEnFecha_(p, iso) {
+  var desde = fechaIso_(p.promo_desde), hasta = fechaIso_(p.promo_hasta);
+  if (desde && iso < desde) return false;
+  if (hasta && iso > hasta) return false;
+  if (listaFechas_(p.promo_excluir).indexOf(iso) >= 0) return false;
+  if (listaFechas_(p.promo_extra).indexOf(iso) >= 0) return true;
+  var dias = parsearDias_(p.promo_dias);
+  return dias == null || dias.indexOf(diaDeFecha_(iso)) >= 0;
+}
+/** Texto corto de cuándo va una promoción, para mensajes de error. */
+function cuandoPromo_(p) {
+  var n = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  var d = parsearDias_(p.promo_dias);
+  if (d) d = [1, 2, 3, 4, 5, 6, 0].filter(function (x) { return d.indexOf(x) >= 0; }); // de lunes a domingo
+  var txt = d == null ? 'todos los días' : (d.length === 1 ? 'los ' + n[d[0]] : d.map(function (x) { return n[x]; }).join(', ').replace(/, ([^,]*)$/, ' y $1'));
+  var h = horasPromo_(p.promo_horas);
+  return txt + (h ? ' de ' + h[0] + ' a ' + h[1] : '');
+}
+/** momento = { dia, min, fecha: 'AAAA-MM-DD' } → { ok, error } */
+function promoVigente_(p, momento) {
+  if (!tieneCalendario_(p)) return { ok: true };
+  var nombre = String(p.nombre || 'Esta promoción');
+  if (!momento.fecha || !promoEnFecha_(p, momento.fecha)) return { ok: false, error: nombre + ' no está disponible hoy. Va ' + cuandoPromo_(p) + '.' };
+  var h = horasPromo_(p.promo_horas);
+  if (h && (momento.min < minutos_(h[0]) || momento.min >= minutos_(h[1]))) return { ok: false, error: nombre + ' solo se puede pedir de ' + h[0] + ' a ' + h[1] + '.' };
+  return { ok: true };
+}
+
 /** momento = { dia: 0-6 (0 = domingo), min: minutos desde medianoche } */
 function estaAbierto_(cfg, momento) {
   var r = horarioDe_(cfg, momento.dia);
@@ -320,6 +428,8 @@ function calcularPedido_(body, cat, cfg, momento) {
     var s = sec[String(p.seccion)];
     if (!s || !esSi_(s.visible)) return { ok: false, error: 'Un producto de tu pedido ya no está en la carta.' };
     if (!esSi_(p.disponible)) return { ok: false, error: p.nombre + ' está agotado por hoy.' };
+    var vig = promoVigente_(p, { dia: momento.dia, fecha: momento.fecha, min: programado ? minutos_(programado) : momento.min });
+    if (!vig.ok) return { ok: false, error: vig.error };
     var canalSec = canal === 'mesa' ? s.mesa : s.delivery;
     if (!esSi_(canalSec)) return { ok: false, error: p.nombre + ' no está disponible para este tipo de pedido.' };
     var canalProd = String(p.canal || 'todos').trim().toLowerCase();
@@ -388,8 +498,9 @@ function calcularPedido_(body, cat, cfg, momento) {
     return t;
   }).join('\n');
 
+  var origen = String(body.origen || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30);
   return { ok: true, canal: canal, mesa: mesa, programado: programado, cliente: cliente, lineas: lineas,
-    total: total, detalle: detalle, abierto: abierto, comp: comp, ref: texto_(body.ref, 12) };
+    total: total, detalle: detalle, abierto: abierto, origen: origen, comp: comp, ref: texto_(body.ref, 12) };
 }
 
 /** Construye el objeto CARTA que usa la web (menu-data.js). */
@@ -432,6 +543,20 @@ function construirCarta_(cfg, secciones, productos, opciones) {
       if (p.nombre_en) it.n_en = String(p.nombre_en);
       if (p.glosa_en) it.g_en = String(p.glosa_en);
       if (p.descripcion_en) it.d_en = String(p.descripcion_en);
+      var inc = String(p.incluye || '').split(/\n|;/).map(function (x) { return x.trim(); }).filter(Boolean);
+      if (inc.length) it.inc = inc;
+      var incEn = String(p.incluye_en || '').split(/\n|;/).map(function (x) { return x.trim(); }).filter(Boolean);
+      if (incEn.length) it.inc_en = incEn;
+      if (tieneCalendario_(p)) {
+        var pr = {}, dd = parsearDias_(p.promo_dias), hh = horasPromo_(p.promo_horas);
+        if (dd != null) pr.dias = dd;
+        if (fechaIso_(p.promo_desde)) pr.desde = fechaIso_(p.promo_desde);
+        if (fechaIso_(p.promo_hasta)) pr.hasta = fechaIso_(p.promo_hasta);
+        if (hh) pr.horas = hh;
+        if (listaFechas_(p.promo_excluir).length) pr.excluir = listaFechas_(p.promo_excluir);
+        if (listaFechas_(p.promo_extra).length) pr.extra = listaFechas_(p.promo_extra);
+        it.promo = pr;
+      }
       lista[idx[g]].items.push(it);
     });
     return { id: String(s.id), titulo: String(s.titulo), subtitulo: String(s.subtitulo || ''), intro: String(s.intro || ''),
@@ -475,6 +600,8 @@ function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
   var cancel = validos.filter(function (p) { return p.estado === 'Cancelado'; }).length;
   var ok = validos.filter(function (p) { return p.estado !== 'Cancelado'; });
   var ventas = 0, porDia = {}, porHora = {}, porCanal = {}, porProd = {}, tiempos = [];
+  var porSemana = [0, 1, 2, 3, 4, 5, 6].map(function () { return { pedidos: 0, ventas: 0 }; });
+  var porPromo = {}, porOrigen = {}, conPromo = { pedidos: 0, ventas: 0 }, sinPromo = { pedidos: 0, ventas: 0 };
   ok.forEach(function (p) {
     var t = Number(p.total) || 0; ventas += t;
     if (p.estado === 'Entregado' && p.actualizado instanceof Date && p.fecha instanceof Date) {
@@ -488,18 +615,34 @@ function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
     if (!porCanal[c]) porCanal[c] = { pedidos: 0, ventas: 0 };
     porCanal[c].pedidos++; porCanal[c].ventas += t;
     var items = []; try { items = JSON.parse(p.items_json || '[]'); } catch (e) { items = []; }
+    var hayPromo = false;
     items.forEach(function (l) {
       var k = l.nombre + (l.tam ? ' (' + l.tam + ')' : '');
       if (!porProd[k]) porProd[k] = { nombre: k, cant: 0, ventas: 0 };
       porProd[k].cant += l.cant; porProd[k].ventas += l.subtotal;
+      if (l.seccion === 'promociones') {
+        hayPromo = true;
+        if (!porPromo[l.nombre]) porPromo[l.nombre] = { nombre: l.nombre, cant: 0, ventas: 0 };
+        porPromo[l.nombre].cant += l.cant; porPromo[l.nombre].ventas += l.subtotal;
+      }
     });
+    var grupo = hayPromo ? conPromo : sinPromo; grupo.pedidos++; grupo.ventas += t;
+    var ds = Number(zonaFmt(p.fecha, 'u')) % 7; porSemana[ds].pedidos++; porSemana[ds].ventas += t;
+    var o = String(p.origen || '').trim() || 'directo';
+    if (!porOrigen[o]) porOrigen[o] = { pedidos: 0, ventas: 0 };
+    porOrigen[o].pedidos++; porOrigen[o].ventas += t;
   });
+  var r2 = function (n) { return Math.round(n * 100) / 100; };
+  [conPromo, sinPromo].forEach(function (g) { g.ventas = r2(g.ventas); g.ticket = g.pedidos ? r2(g.ventas / g.pedidos) : 0; });
   var top = Object.keys(porProd).map(function (k) { return porProd[k]; })
     .sort(function (a, b) { return b.cant - a.cant || b.ventas - a.ventas; }).slice(0, 10);
   return {
     ventas: Math.round(ventas * 100) / 100, pedidos: ok.length, cancelados: cancel,
     ticket: ok.length ? Math.round(ventas / ok.length * 100) / 100 : 0,
     porDia: porDia, porHora: porHora, porCanal: porCanal, top: top,
+    porSemana: porSemana.map(function (x) { return { pedidos: x.pedidos, ventas: r2(x.ventas) }; }),
+    promos: Object.keys(porPromo).map(function (k) { return porPromo[k]; }).sort(function (a, b) { return b.cant - a.cant; }),
+    conPromo: conPromo, sinPromo: sinPromo, porOrigen: porOrigen,
     tiempoProm: tiempos.length ? Math.round(tiempos.reduce(function (a, b) { return a + b; }, 0) / tiempos.length) : null
   };
 }
@@ -542,7 +685,7 @@ function momentoActual_(cfg) {
   var ahora = new Date();
   var u = Number(Utilities.formatDate(ahora, zona, 'u')); // 1 = lunes ... 7 = domingo
   var hm = Utilities.formatDate(ahora, zona, 'HH:mm');
-  return { dia: u % 7, min: minutos_(hm) };
+  return { dia: u % 7, min: minutos_(hm), fecha: Utilities.formatDate(ahora, zona, 'yyyy-MM-dd') };
 }
 
 function registrarPedido_(body) {
@@ -584,30 +727,18 @@ function registrarPedido_(body) {
       telefono: r.cliente.telefono, direccion: r.cliente.direccion, referencia: r.cliente.referencia,
       pago: r.cliente.pago, programado: r.programado ? "'" + r.programado : '', detalle: r.detalle, total: r.total, estado: 'Nuevo',
       notas: r.cliente.notas, items_json: JSON.stringify(r.lineas), actualizado: ahora, historial: 'Nuevo ' + fmt_(ahora, 'HH:mm'),
+      origen: r.origen,
       ref: r.ref, comprobante: r.comp.tipo, doc: r.comp.doc ? "'" + r.comp.doc : '', razon: r.comp.razon, correo: r.comp.correo,
       comp_estado: r.comp.tipo ? 'Pendiente' : ''
     };
     var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
     var cab = asegurarColumnas_(h, COLS.pedidos);
-    h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] === undefined ? '' : fila[c]); }));
+    h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
     props.setProperty('PEDIDOS_VERSION', String(Date.now()));
   } finally {
     lock.releaseLock();
   }
   return { ok: true, numero: numero, total: r.total, detalle: r.detalle, lineas: r.lineas };
-}
-
-/** Devuelve la cabecera de la hoja agregando al final las columnas que falten. */
-function asegurarColumnas_(h, cols) {
-  var n = Math.max(1, h.getLastColumn());
-  var cab = h.getRange(1, 1, 1, n).getValues()[0].map(function (c) { return String(c).trim(); });
-  while (cab.length && !cab[cab.length - 1]) cab.pop();
-  var faltan = cols.filter(function (c) { return cab.indexOf(c) < 0; });
-  if (faltan.length) {
-    h.getRange(1, cab.length + 1, 1, faltan.length).setValues([faltan]);
-    cab = cab.concat(faltan);
-  }
-  return cab;
 }
 
 function listaComprobantes_(cfg) {
@@ -680,7 +811,9 @@ function panelInicio(sesion) {
     pendientes: props.getProperty('CAMBIOS_PENDIENTES') === 'SI', claveLista: !!props.getProperty('PANEL_CLAVE'),
     ultimaPublicacion: props.getProperty('ULTIMA_PUBLICACION') || '',
     abierto: estaAbierto_(cfg, momentoActual_(cfg)),
-    minutosAlerta: num_(cfg.minutos_alerta) || 45, ahora: Date.now()
+    minutosAlerta: num_(cfg.minutos_alerta) || 45, ahora: Date.now(),
+    horario: [0, 1, 2, 3, 4, 5, 6].map(function (d) { return horarioDe_(cfg, d); }),
+    hoy: Utilities.formatDate(new Date(), cfg.zona_horaria || 'America/Lima', 'yyyy-MM-dd')
   };
 }
 
@@ -775,7 +908,15 @@ function dashboard(sesion, periodo) {
 /* ---------- carta ---------- */
 function listarCarta(sesion) {
   exigirAdmin_(sesion);
-  return { secciones: leerTabla_(HOJA.secciones), productos: leerTabla_(HOJA.productos) };
+  var productos = leerTabla_(HOJA.productos).map(function (p) {
+    // google.script.run no puede enviar fechas: se pasan a texto
+    p.promo_desde = fechaIso_(p.promo_desde); p.promo_hasta = fechaIso_(p.promo_hasta);
+    p.promo_excluir = listaFechas_(p.promo_excluir).join(', '); p.promo_extra = listaFechas_(p.promo_extra).join(', ');
+    p.promo_horas = (horasPromo_(celdaTexto_(p.promo_horas)) || []).join('-');
+    Object.keys(p).forEach(function (k) { if (p[k] instanceof Date) p[k] = celdaTexto_(p[k], 'yyyy-MM-dd HH:mm'); });
+    return p;
+  });
+  return { secciones: leerTabla_(HOJA.secciones), productos: productos };
 }
 
 function guardarProducto(sesion, p) {
@@ -791,7 +932,9 @@ function guardarProducto(sesion, p) {
   if (CANALES.indexOf(p.canal) < 0) throw new Error('Canal no válido.');
   var gruposValidos = gruposOpciones_(leerTabla_(HOJA.opciones));
   p.opciones = listaIds_(p.opciones).filter(function (g) { return gruposValidos[g]; }).join(', ');
+  normalizarPromo_(p);
   var h = SpreadsheetApp.getActive().getSheetByName(HOJA.productos);
+  asegurarColumnas_(h, COLS.productos);
   var datos = leerTabla_(HOJA.productos);
   if (!p.id) {
     var base = String(p.seccion) + '-' + String(p.nombre).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -802,6 +945,7 @@ function guardarProducto(sesion, p) {
   }
   var limpio = {};
   COLS.productos.forEach(function (c) {
+    if (COLS_PROMO.indexOf(c) >= 0 && !(c in p)) return; // no vino del panel: se conserva lo que había
     var v = p[c] == null ? '' : p[c];
     if (typeof v === 'string') v = v.trim();
     if (['requiere_salsa', 'disponible', 'visible'].indexOf(c) >= 0) v = esSi_(v) ? 'SI' : 'NO';
@@ -816,6 +960,64 @@ function guardarProducto(sesion, p) {
   else h.appendRow(fila);
   autoPublicar_(sesion);
   return limpio;
+}
+
+/** Valida y deja en formato estándar los campos de promoción que vengan en p (los que no vengan no se tocan). */
+function normalizarPromo_(p) {
+  if ('promo_dias' in p) {
+    var d = parsearDias_(p.promo_dias);
+    if (String(p.promo_dias || '').trim() && String(p.promo_dias).trim().toLowerCase() !== 'todos' && (!d || !d.length)) throw new Error('Días no válidos. Usa por ejemplo: mar, mie, jue');
+    p.promo_dias = diasTexto_(d);
+  }
+  ['promo_desde', 'promo_hasta'].forEach(function (c) {
+    if (!(c in p)) return;
+    var v = String(p[c] || '').trim();
+    if (v && !fechaIso_(v)) throw new Error('Fecha no válida (' + v + '). Usa AAAA-MM-DD, por ejemplo 2026-12-24.');
+    p[c] = v ? "'" + fechaIso_(v) : '';
+  });
+  if (p.promo_desde && p.promo_hasta && p.promo_desde > p.promo_hasta) throw new Error('La fecha "desde" es posterior a la fecha "hasta".');
+  if ('promo_horas' in p) {
+    var hv = String(p.promo_horas || '').trim();
+    if (hv && !horasPromo_(hv)) throw new Error('Horario de la promoción no válido. Usa 18:00-21:00 o déjalo vacío.');
+    p.promo_horas = hv ? "'" + horasPromo_(hv).join('-') : '';
+  }
+  ['promo_excluir', 'promo_extra'].forEach(function (c) {
+    if (!(c in p)) return;
+    var bruto = String(p[c] || '').split(/[,;\n]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+    bruto.forEach(function (x) { if (!fechaIso_(x)) throw new Error('Fecha no válida en la lista (' + x + '). Usa AAAA-MM-DD.'); });
+    p[c] = listaFechas_(bruto.join(',')).join(', ');
+    if (p[c] && p[c].indexOf(',') < 0) p[c] = "'" + p[c]; // una sola fecha: que Sheets no la convierta
+  });
+  ['incluye', 'incluye_en'].forEach(function (c) {
+    if (c in p) p[c] = String(p[c] || '').split(/\n|;/).map(function (x) { return x.trim(); }).filter(Boolean).join('\n');
+  });
+}
+
+/** Activa o desactiva UNA promoción en UNA fecha (desde el calendario del panel). */
+function cambiarFechaPromo(sesion, id, fecha, activar) {
+  exigirAdmin_(sesion);
+  var iso = fechaIso_(fecha);
+  if (!iso) throw new Error('Fecha no válida.');
+  var p = leerTabla_(HOJA.productos).filter(function (d) { return String(d.id) === String(id); })[0];
+  if (!p) throw new Error('Promoción no encontrada.');
+  var exc = listaFechas_(p.promo_excluir), ext = listaFechas_(p.promo_extra);
+  var sinQuitar = function (l) { return l.filter(function (x) { return x !== iso; }); };
+  exc = sinQuitar(exc); ext = sinQuitar(ext);
+  var base = { promo_dias: p.promo_dias, promo_desde: p.promo_desde, promo_hasta: p.promo_hasta, promo_excluir: exc.join(','), promo_extra: ext.join(',') };
+  var porDefecto = promoEnFecha_(base, iso);
+  if (activar && !porDefecto) {
+    var d = fechaIso_(p.promo_desde), ha = fechaIso_(p.promo_hasta);
+    if ((d && iso < d) || (ha && iso > ha)) throw new Error('Esa fecha está fuera del rango de la promoción (' + (d || '…') + ' a ' + (ha || '…') + '). Cambia el rango en "Editar".');
+    ext.push(iso);
+  }
+  if (!activar && porDefecto) exc.push(iso);
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.productos);
+  var cab = asegurarColumnas_(h, COLS.productos);
+  var fmt = function (l) { l = l.sort(); return l.length === 1 ? "'" + l[0] : l.join(', '); };
+  h.getRange(p._fila, cab.indexOf('promo_excluir') + 1).setValue(fmt(exc));
+  h.getRange(p._fila, cab.indexOf('promo_extra') + 1).setValue(fmt(ext));
+  autoPublicar_(sesion);
+  return { promo_excluir: exc.sort().join(', '), promo_extra: ext.sort().join(', ') };
 }
 
 function cambiarCampoProducto(sesion, id, campo, valor) {

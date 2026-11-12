@@ -511,7 +511,204 @@ function actualizarV3() {
 }
 
 /* =====================================================================
-   PASTA GALLO · Actualización v4 (12-nov-2026) — función "actualizarV4"
+   PASTA GALLO · Actualización v4: PROMOCIONES CON CALENDARIO (11-nov-2026)
+   Se ejecuta UNA vez con la función "actualizarV4". Se puede repetir:
+   - No borra nada. Si un combo ya existe, NO lo pisa (respeta lo que editaste en el panel).
+   - Agrega columnas nuevas a Productos (incluye, días, fechas, horas) y a Pedidos (origen).
+   - Crea los grupos "Sabor de pizza" de cada combo (si no existen).
+   - Carga los 4 combos actuales con el plan de la dueña:
+       martes a jueves → Combo Personale, Combo Alfredo y Combo per Due
+       viernes a domingo → Combo Famiglia
+   ===================================================================== */
+var MIGRACION_V4 = {
+  seccion: { id: 'promociones', delivery: 'SI', mesa: 'NO', visible: 'SI', titulo: 'Offerte', subtitulo: 'Combos de la casa',
+    intro: 'Para llevar: delivery o recojo en el local. Cada combo tiene sus días.',
+    subtitulo_en: 'House combos', intro_en: 'For delivery or pick-up. Each combo has its own days.' },
+
+  grupos: [
+    { id: 'combo-pizza-personal', nombre: 'Sabor de pizza', nombre_en: 'Pizza flavour', ops: ['Hawaiana', 'Americana'] },
+    { id: 'combo-pizza-mediana', nombre: 'Sabor de pizza mediana', nombre_en: 'Medium pizza flavour',
+      ops: ['Americana', 'Hawaiana', 'Napoletana', 'Arrabbiata', 'Speciale', 'Tentazione', 'Vegetariana', 'Ghiottona', 'Campagnola', 'Primavera'] },
+    { id: 'combo-pizza-familiar', nombre: 'Sabor de pizza familiar', nombre_en: 'Family pizza flavour',
+      ops: ['Americana', 'Hawaiana', 'Napoletana', 'Arrabbiata', 'Speciale', 'Tentazione', 'Vegetariana', 'Ghiottona', 'Campagnola',
+        'Quattro Stagioni', 'Piemontese', 'Abbuffata', 'La Chama'] }
+  ],
+
+  // componentes: de dónde se copian alérgenos (referenciales) y la foto referencial
+  combos: [
+    { id: 'promociones-combo-personale', orden: 10, nombre: 'Combo Personale', precio: 25,
+      glosa: 'pizza personal + pan al ajo + Pepsi', glosa_en: 'personal pizza + garlic bread + Pepsi',
+      descripcion: 'Tu pizza personal, Hawaiana o Americana, con dos porciones de pan al ajo y una Pepsi helada.',
+      descripcion_en: 'Your personal pizza, Hawaiian or Americana, with two portions of garlic bread and a cold Pepsi.',
+      incluye: 'Pizza personal Hawaiana o Americana\n2 porciones de pan al ajo\nPepsi de ½ litro',
+      incluye_en: 'Personal Hawaiian or Americana pizza\n2 portions of garlic bread\n½-litre Pepsi',
+      opciones: 'combo-pizza-personal, temp-bebida', promo_dias: 'mar, mie, jue',
+      componentes: ['pizze-hawaiana', 'antipasti-pane-allaglio'], fotoDe: 'pizze-hawaiana' },
+    { id: 'promociones-combo-alfredo', orden: 20, nombre: 'Combo Alfredo', precio: 35,
+      glosa: 'fettuccine + pan al ajo + Pepsi', glosa_en: 'fettuccine + garlic bread + Pepsi',
+      descripcion: 'Una porción de fettuccine all’Alfredo, cremosos y generosos, con tres porciones de pan al ajo y una Pepsi.',
+      descripcion_en: 'A portion of creamy fettuccine Alfredo with three portions of garlic bread and a Pepsi.',
+      incluye: 'Fettuccine all’Alfredo\n3 porciones de pan al ajo\nPepsi de ½ litro',
+      incluye_en: 'Fettuccine Alfredo\n3 portions of garlic bread\n½-litre Pepsi',
+      opciones: 'temp-bebida', promo_dias: 'mar, mie, jue',
+      componentes: ['pasta-fettuccine', 'salsa-alfredo', 'antipasti-pane-allaglio'], fotoDe: 'pasta-fettuccine' },
+    { id: 'promociones-combo-per-due', orden: 30, nombre: 'Combo per Due', precio: 60,
+      glosa: 'pizza mediana + fettuccine + pan al ajo + Pepsi', glosa_en: 'medium pizza + fettuccine + garlic bread + Pepsi',
+      descripcion: 'Para compartir entre dos: una pizza mediana a elección y un plato de fettuccine all’Alfredo, con pan al ajo y Pepsi.',
+      descripcion_en: 'To share between two: a medium pizza of your choice and a plate of fettuccine Alfredo, with garlic bread and Pepsi.',
+      incluye: 'Pizza mediana a elección\nFettuccine all’Alfredo\n2 porciones de pan al ajo\nPepsi de ½ litro',
+      incluye_en: 'Medium pizza of your choice\nFettuccine Alfredo\n2 portions of garlic bread\n½-litre Pepsi',
+      opciones: 'combo-pizza-mediana, temp-bebida', promo_dias: 'mar, mie, jue',
+      componentes: ['pizze-americana', 'pasta-fettuccine', 'salsa-alfredo', 'antipasti-pane-allaglio'], fotoDe: 'pizze-americana' },
+    { id: 'promociones-combo-famiglia', orden: 40, nombre: 'Combo Famiglia', precio: 65,
+      glosa: 'pizza familiar + pan al ajo + Pepsi 1.5 L', glosa_en: 'family pizza + garlic bread + 1.5 L Pepsi',
+      descripcion: 'La mesa del fin de semana: una pizza familiar a elección, cuatro porciones de pan al ajo y una Pepsi de litro y medio.',
+      descripcion_en: 'The weekend table: a family-size pizza of your choice, four portions of garlic bread and a 1.5-litre Pepsi.',
+      incluye: 'Pizza familiar a elección\n4 porciones de pan al ajo\nPepsi de 1.5 litros',
+      incluye_en: 'Family-size pizza of your choice\n4 portions of garlic bread\n1.5-litre Pepsi',
+      opciones: 'combo-pizza-familiar, temp-bebida', promo_dias: 'vie, sab, dom',
+      componentes: ['pizze-arrabbiata', 'antipasti-pane-allaglio'], fotoDe: 'pizze-arrabbiata' }
+  ]
+};
+
+/** Lógica pura de la v4 (se puede probar sin Google). t = { productos, secciones, opciones } */
+function aplicarMigracionV4_(t, M) {
+  M = M || MIGRACION_V4;
+  var porId = {}; t.productos.forEach(function (p) { porId[String(p.id)] = p; });
+  var creados = [];
+  M.combos.forEach(function (c) {
+    if (porId[c.id]) return; // ya existe: no se pisa
+    var al = [];
+    c.componentes.forEach(function (id) {
+      var x = porId[id]; if (!x) return;
+      String(x.alergenos || '').split(',').forEach(function (a) { a = a.trim(); if (a && al.indexOf(a) < 0) al.push(a); });
+    });
+    var p = { id: c.id, seccion: 'promociones', grupo: '', grupo_nota: '', orden: c.orden, nombre: c.nombre, glosa: c.glosa,
+      descripcion: c.descripcion, precio: c.precio, tamanos: '', tipo: 'plato', recargo: '', requiere_salsa: 'NO',
+      disponible: 'SI', visible: 'SI', destacado: '', alergenos: al.join(', '), foto: porId[c.fotoDe] ? porId[c.fotoDe].foto || '' : '',
+      canal: 'delivery', precio_antes: '', opciones: c.opciones, nombre_en: '', glosa_en: c.glosa_en, descripcion_en: c.descripcion_en,
+      incluye: c.incluye, incluye_en: c.incluye_en, promo_dias: c.promo_dias, promo_desde: '', promo_hasta: '', promo_horas: '',
+      promo_excluir: '', promo_extra: '' };
+    t.productos.push(p); porId[c.id] = p; creados.push(c.nombre);
+  });
+  var sec = t.secciones.filter(function (s) { return String(s.id) === M.seccion.id; })[0];
+  if (!sec) { sec = { orden: 0, pie: '', alcohol: 'NO', titulo_en: 'Offerte', pie_en: '' }; t.secciones.push(sec); }
+  Object.keys(M.seccion).forEach(function (k) { sec[k] = M.seccion[k]; });
+
+  var existentes = {}; t.opciones.forEach(function (o) { existentes[String(o.grupo)] = true; });
+  M.grupos.forEach(function (g) {
+    if (existentes[g.id]) return;
+    g.ops.forEach(function (op, i) {
+      t.opciones.push({ grupo: g.id, nombre: g.nombre, nombre_en: g.nombre_en, tipo: 'una', obligatorio: 'SI', opcion: op, opcion_en: '',
+        precio: 0, orden: (i + 1) * 10, activo: 'SI' });
+    });
+  });
+  return { t: t, creados: creados };
+}
+
+function actualizarV4() {
+  exigirAdmin_('');
+  var ss = SpreadsheetApp.getActive();
+  asegurarColumnas_(ss.getSheetByName(HOJA.productos), COLS.productos);
+  asegurarColumnas_(ss.getSheetByName(HOJA.pedidos), COLS.pedidos);
+  var t = { productos: leerTabla_(HOJA.productos), secciones: leerTabla_(HOJA.secciones), opciones: leerTabla_(HOJA.opciones) };
+  var r = aplicarMigracionV4_(t);
+  escribirTabla_(HOJA.productos, COLS.productos, t.productos);
+  escribirTabla_(HOJA.secciones, COLS.secciones, t.secciones);
+  escribirTabla_(HOJA.opciones, COLS.opciones, t.opciones);
+  formatearHojas_();
+  marcarPendiente_();
+  PropertiesService.getScriptProperties().setProperty('MIGRACION_V4', new Date().toISOString());
+  var pub = publicarCarta('');
+  return 'Actualización v4 aplicada. Combos nuevos: ' + (r.creados.join(', ') || 'ninguno (ya existían)') + '. ' + pub.mensaje;
+}
+
+/* =====================================================================
+   PASTA GALLO · Ajuste v4b de los combos (11-nov-2026)
+   Función "actualizarV4b". Se puede repetir.
+   - 1 porción de pan al ajo = 2 rebanadas: se aclara en "Qué incluye".
+   - Fettuccine clásico o verde (verde sujeto a disponibilidad) en Combo Alfredo y Combo per Due.
+   - Fotos REFERENCIALES de los combos (Unsplash, licencia gratuita) copiadas al repositorio
+     (carpeta fotos/). Solo se ponen si el combo no tiene una foto subida desde el panel.
+   ===================================================================== */
+var MIGRACION_V4B = {
+  fotos: {
+    'promociones-combo-personale': 'photo-1778449038133-2219a23a6bcd',
+    'promociones-combo-alfredo': 'photo-1645112411341-6c4fd023714a',
+    'promociones-combo-per-due': 'photo-1552580715-4d9bc27f1e2f',
+    'promociones-combo-famiglia': 'photo-1600628421060-939639517883'
+  },
+  incluye: {
+    'promociones-combo-personale': ['Pizza personal Hawaiana o Americana\n2 porciones de pan al ajo (4 rebanadas)\nPepsi de ½ litro',
+      'Personal Hawaiian or Americana pizza\n2 portions of garlic bread (4 slices)\n½-litre Pepsi'],
+    'promociones-combo-alfredo': ['Fettuccine all’Alfredo, clásico o verde\n3 porciones de pan al ajo (6 rebanadas)\nPepsi de ½ litro',
+      'Fettuccine Alfredo, classic or green\n3 portions of garlic bread (6 slices)\n½-litre Pepsi'],
+    'promociones-combo-per-due': ['Pizza mediana a elección\nFettuccine all’Alfredo, clásico o verde\n2 porciones de pan al ajo (4 rebanadas)\nPepsi de ½ litro',
+      'Medium pizza of your choice\nFettuccine Alfredo, classic or green\n2 portions of garlic bread (4 slices)\n½-litre Pepsi'],
+    'promociones-combo-famiglia': ['Pizza familiar a elección\n4 porciones de pan al ajo (8 rebanadas)\nPepsi de 1.5 litros',
+      'Family-size pizza of your choice\n4 portions of garlic bread (8 slices)\n1.5-litre Pepsi']
+  },
+  fettuccine: ['promociones-combo-alfredo', 'promociones-combo-per-due']
+};
+
+function actualizarV4b() {
+  exigirAdmin_('');
+  var M = MIGRACION_V4B;
+  var productos = leerTabla_(HOJA.productos);
+  var porId = {}; productos.forEach(function (p) { porId[String(p.id)] = p; });
+  var hechas = [];
+  Object.keys(M.fotos).forEach(function (id) {
+    var p = porId[id]; if (!p) return;
+    var f = String(p.foto || '');
+    if (f && f.indexOf('fotos/ref-') !== 0 && f.indexOf('images.unsplash.com') < 0) return; // ya tiene foto propia
+    var ruta = 'fotos/ref-' + id.replace('promociones-', '') + '.jpg';
+    var r = UrlFetchApp.fetch('https://images.unsplash.com/' + M.fotos[id] + '?w=1200&h=900&fit=crop&crop=entropy&q=72&fm=jpg', { muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) return;
+    githubPut_(ruta, Utilities.base64Encode(r.getBlob().getBytes()), 'Foto referencial (Unsplash) de ' + p.nombre);
+    p.foto = ruta; hechas.push(p.nombre);
+  });
+  Object.keys(M.incluye).forEach(function (id) { var p = porId[id]; if (p) { p.incluye = M.incluye[id][0]; p.incluye_en = M.incluye[id][1]; } });
+  M.fettuccine.forEach(function (id) {
+    var p = porId[id]; if (!p) return;
+    var ops = listaIds_(p.opciones);
+    if (ops.indexOf('fettuccine-tipo') < 0) { ops.splice(ops.indexOf('temp-bebida') >= 0 ? ops.indexOf('temp-bebida') : ops.length, 0, 'fettuccine-tipo'); p.opciones = ops.join(', '); }
+    var nota = ' El fettuccine verde está sujeto a disponibilidad.', notaEn = ' Green fettuccine is subject to availability.';
+    if (String(p.descripcion || '').indexOf('sujeto a disponibilidad') < 0) p.descripcion = String(p.descripcion || '').trim() + nota;
+    if (String(p.descripcion_en || '').indexOf('availability') < 0) p.descripcion_en = String(p.descripcion_en || '').trim() + notaEn;
+  });
+  escribirTabla_(HOJA.productos, COLS.productos, productos);
+  marcarPendiente_();
+  var pub = publicarCarta('');
+  return 'v4b aplicada. Fotos referenciales: ' + (hechas.join(', ') || 'ninguna (ya tenían foto propia)') + '. ' + pub.mensaje;
+}
+
+/* =====================================================================
+   PASTA GALLO · Fotos reales (se puede repetir cada vez que lleguen fotos nuevas)
+   Función "actualizarFotosReales": pone en la hoja Productos la foto indicada
+   (ya subida al repositorio en fotos/) y publica la carta.
+   ===================================================================== */
+var FOTOS_REALES = {
+  'promociones-combo-alfredo': 'fotos/real-fettuccine-alfredo.jpg',
+  'pasta-fettuccine': 'fotos/real-fettuccine-alfredo.jpg',
+  'antipasti-pane-allaglio': 'fotos/real-pane-allaglio.jpg'
+};
+
+function actualizarFotosReales() {
+  exigirAdmin_('');
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.productos);
+  var col = asegurarColumnas_(h, COLS.productos).indexOf('foto') + 1;
+  var hechas = [];
+  leerTabla_(HOJA.productos).forEach(function (p) {
+    var ruta = FOTOS_REALES[String(p.id)];
+    if (ruta && String(p.foto) !== ruta) { h.getRange(p._fila, col).setValue(ruta); hechas.push(p.nombre); }
+  });
+  marcarPendiente_();
+  var pub = publicarCarta('');
+  return 'Fotos reales puestas en: ' + (hechas.join(', ') || 'ninguno (ya estaban)') + '. ' + pub.mensaje;
+}
+
+/* =====================================================================
+   PASTA GALLO · Actualización v5 (11-nov-2026, noche) — función "actualizarV5"
    - Precios: pizzas +2 (cada tamaño), fuentes de ravioli 65, fuente de fettuccine +5,
      tris +2, resto de pastas +2, milanesa y churrasco +2
    - Pollo a la plancha (S/ 30)
@@ -519,7 +716,7 @@ function actualizarV3() {
    - Comprobantes (boleta / factura) y cuenta abierta por mesa
    Los aumentos se aplican UNA sola vez (queda marcado); repetir la función no vuelve a subir precios.
    ===================================================================== */
-var MIGRACION_V4 = {
+var MIGRACION_V5 = {
   fotoPollo: 'https://images.unsplash.com/photo-1670398564097-0762e1b30b3a?w=700&q=70&auto=format&fit=crop',
   pizzasMas: 2,
   pastaFijos: { 'pasta-fonte-di-ravioli': 65, 'pasta-fonte-di-ravioli-di-carne': 65 },
@@ -566,8 +763,8 @@ function sumarTamanos_(t, n) {
   }).filter(Boolean).join('; ');
 }
 
-function aplicarMigracionV4_(t, M, conPrecios) {
-  M = M || MIGRACION_V4;
+function aplicarMigracionV5_(t, M, conPrecios) {
+  M = M || MIGRACION_V5;
   var porId = {}; t.productos.forEach(function (p) { porId[String(p.id)] = p; });
   var mas = function (p, n) { var v = Number(p.precio); if (p.precio !== '' && !isNaN(v)) p.precio = Math.round((v + n) * 100) / 100; };
   if (conPrecios) {
@@ -596,21 +793,21 @@ function aplicarMigracionV4_(t, M, conPrecios) {
   return t;
 }
 
-function actualizarV4() {
+function actualizarV5() {
   exigirAdmin_('');
   var props = PropertiesService.getScriptProperties();
   var conPrecios = !props.getProperty('MIGRACION_V4_PRECIOS');
   var t = { productos: leerTabla_(HOJA.productos) };
-  aplicarMigracionV4_(t, MIGRACION_V4, conPrecios);
+  aplicarMigracionV5_(t, MIGRACION_V5, conPrecios);
   escribirTabla_(HOJA.productos, COLS.productos, t.productos);
   if (conPrecios) props.setProperty('MIGRACION_V4_PRECIOS', new Date().toISOString());
   var cfg = leerConfig_();
-  MIGRACION_V4.config.forEach(function (c) { if (cfg[c[0]] === undefined) SpreadsheetApp.getActive().getSheetByName(HOJA.config).appendRow(c); });
+  MIGRACION_V5.config.forEach(function (c) { if (cfg[c[0]] === undefined) SpreadsheetApp.getActive().getSheetByName(HOJA.config).appendRow(c); });
   asegurarColumnas_(SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), COLS.pedidos);
   asegurarColumnas_(SpreadsheetApp.getActive().getSheetByName(HOJA.mesas), COLS.mesas);
   formatearHojas_();
   limpiarCache_();
   marcarPendiente_();
   var r = publicarCarta('');
-  return 'Actualización v4 aplicada' + (conPrecios ? ' (con precios nuevos)' : ' (precios ya estaban actualizados)') + '. ' + r.mensaje;
+  return 'Actualización v5 aplicada' + (conPrecios ? ' (con precios nuevos)' : ' (precios ya estaban actualizados)') + '. ' + r.mensaje;
 }
