@@ -971,3 +971,109 @@ function actualizarV4c() {
   var pub = publicarCarta('');
   return 'v4c aplicada (nombres de trattoria y fotos reales). ' + pub.mensaje;
 }
+
+/* =====================================================================
+   PASTA GALLO · v4d: ofertas de junio rearmadas (12-nov-2026) — función "actualizarV4d"
+   Se puede repetir: no pisa productos ni grupos que ya existan.
+   Prodotti d'Italia (todos los días, delivery, recojo y local):
+     - Box Italia S/ 65: 1 galleta Tre Marie + 1 wafer Tre Marie (a elección) + 1 Gianduia Classica Caffarel
+     - Biscotti Tre Marie × 2 S/ 50 · Wafer Tre Marie × 2 S/ 30
+   Le Proposte della Casa (cargadas APAGADAS; se activan desde el panel):
+     - Il Classico S/ 55 (lasagna di carne + pizza personal + pan al ajo + Pepsi ½ L), mar–jue,
+       con agregado opcional de wafer Tre Marie +S/ 15
+     - Festa Italiana S/ 99 (Tris di Pasta + pizza personal + galletas Tre Marie + 5 porciones de pan al ajo + Pepsi 1.5 L), vie–dom
+   ===================================================================== */
+var MIGRACION_V4D = {
+  grupos: [
+    { id: 'tremarie-galleta', nombre: 'Galletas Tre Marie', nombre_en: 'Tre Marie biscuits', req: 'SI', precio: 0,
+      ops: [['Cioccolato in Pezzi', 'Chocolate chunks'], ['Caramello Salato e Cioccolato', 'Salted caramel & chocolate'], ['Cacao con Gocce di Cioccolato', 'Cocoa with chocolate chips']] },
+    { id: 'tremarie-galleta-2', nombre: 'Segundo paquete de galletas', nombre_en: 'Second pack of biscuits', req: 'SI', precio: 0,
+      ops: [['Cioccolato in Pezzi', 'Chocolate chunks'], ['Caramello Salato e Cioccolato', 'Salted caramel & chocolate'], ['Cacao con Gocce di Cioccolato', 'Cocoa with chocolate chips']] },
+    { id: 'tremarie-wafer', nombre: 'Wafer Tre Marie', nombre_en: 'Tre Marie wafer', req: 'SI', precio: 0,
+      ops: [['Stracciatella', ''], ['Nocciolato', 'Hazelnut'], ['Mandorlato', 'Almond'], ['Gianduia Nera', 'Dark gianduja']] },
+    { id: 'tremarie-wafer-2', nombre: 'Segundo wafer', nombre_en: 'Second wafer', req: 'SI', precio: 0,
+      ops: [['Stracciatella', ''], ['Nocciolato', 'Hazelnut'], ['Mandorlato', 'Almond'], ['Gianduia Nera', 'Dark gianduja']] },
+    { id: 'aggiungi-wafer', nombre: 'Agrega un wafer Tre Marie', nombre_en: 'Add a Tre Marie wafer', req: 'NO', precio: 15,
+      ops: [['Stracciatella', ''], ['Nocciolato', 'Hazelnut'], ['Mandorlato', 'Almond'], ['Gianduia Nera', 'Dark gianduja']] }
+  ],
+  productos: [
+    { id: 'italia-box-italia', seccion: 'italia', grupo: 'Per Regalare', orden: 1, nombre: 'Box Italia', precio: 65, precio_antes: 74.7,
+      glosa: 'galletas + wafer + gianduia', glosa_en: 'biscuits + wafer + gianduja',
+      descripcion: 'Tu selección de sabores italianos: un paquete de galletas Tre Marie, un wafer Tre Marie y una barra Gianduia Classica de Caffarel. Ideal para regalar.',
+      descripcion_en: 'Your selection of Italian flavours: a pack of Tre Marie biscuits, a Tre Marie wafer and a Caffarel Gianduia Classica bar. Perfect as a gift.',
+      incluye: '1 paquete de galletas Tre Marie a elección\n1 wafer Tre Marie a elección\n1 Gianduia Classica Caffarel (80 g)',
+      incluye_en: '1 pack of Tre Marie biscuits of your choice\n1 Tre Marie wafer of your choice\n1 Caffarel Gianduia Classica (80 g)',
+      opciones: 'tremarie-galleta, tremarie-wafer', canal: 'todos', visible: 'SI', foto: 'fotos/italia-box-italia.jpg',
+      componentes: ['italia-cioccolato-in-pezzi-tre-marie', 'italia-wafer-nocciolato-tre-marie', 'italia-gianduia-classica-caffarel'] },
+    { id: 'italia-biscotti-tre-marie-x2', seccion: 'italia', grupo: 'Tre Marie', orden: 2, nombre: 'Biscotti Tre Marie × 2', precio: 50, precio_antes: 57.8,
+      glosa: 'dos paquetes a elección', glosa_en: 'two packs of your choice',
+      descripcion: 'Dos paquetes de galletas Tre Marie, del sabor que prefieras.', descripcion_en: 'Two packs of Tre Marie biscuits, in the flavours you prefer.',
+      incluye: '2 paquetes de galletas Tre Marie a elección', incluye_en: '2 packs of Tre Marie biscuits of your choice',
+      opciones: 'tremarie-galleta, tremarie-galleta-2', canal: 'todos', visible: 'SI', foto: 'fotos/italia-biscotti-tre-marie-x2.jpg',
+      componentes: ['italia-cioccolato-in-pezzi-tre-marie'] },
+    { id: 'italia-wafer-tre-marie-x2', seccion: 'italia', grupo: 'Tre Marie', orden: 3, nombre: 'Wafer Tre Marie × 2', precio: 30, precio_antes: 35.8,
+      glosa: 'dos wafers a elección', glosa_en: 'two wafers of your choice',
+      descripcion: 'Dos wafers Tre Marie, del sabor que prefieras.', descripcion_en: 'Two Tre Marie wafers, in the flavours you prefer.',
+      incluye: '2 wafers Tre Marie a elección', incluye_en: '2 Tre Marie wafers of your choice',
+      opciones: 'tremarie-wafer, tremarie-wafer-2', canal: 'todos', visible: 'SI', foto: 'fotos/italia-wafer-tre-marie-x2.jpg',
+      componentes: ['italia-wafer-nocciolato-tre-marie'] },
+    { id: 'promociones-il-classico', seccion: 'promociones', grupo: '', orden: 50, nombre: 'Il Classico', precio: 55, precio_antes: '',
+      glosa: 'lasagna + pizza personal + pan al ajo + Pepsi', glosa_en: 'lasagna + personal pizza + garlic bread + Pepsi',
+      descripcion: 'Lo clásico de la casa en un solo pedido: lasagna di carne y una pizza personal, con pan al ajo y Pepsi. Puedes sumarle un wafer Tre Marie.',
+      descripcion_en: 'The house classics in one order: beef lasagna and a personal pizza, with garlic bread and Pepsi. You can add a Tre Marie wafer.',
+      incluye: 'Lasagna di carne\nPizza personal (sabor a consultar)\n2 porciones de pan al ajo (4 rebanadas)\nPepsi de ½ litro',
+      incluye_en: 'Beef lasagna\nPersonal pizza (ask for flavours)\n2 portions of garlic bread (4 slices)\n½-litre Pepsi',
+      opciones: 'aggiungi-wafer, temp-bebida', canal: 'delivery', visible: 'NO', promo_dias: 'mar, mie, jue',
+      foto: 'fotos/ref-il-classico.jpg', unsplash: 'photo-1709429790175-b02bb1b19207',
+      componentes: ['lasagne-lasagna-di-carne', 'pizze-americana', 'antipasti-pane-allaglio'] },
+    { id: 'promociones-festa-italiana', seccion: 'promociones', grupo: '', orden: 60, nombre: 'Festa Italiana', precio: 99, precio_antes: '',
+      glosa: 'Tris di Pasta + pizza personal + galletas Tre Marie + pan al ajo + Pepsi 1.5 L', glosa_en: 'Tris di Pasta + personal pizza + Tre Marie biscuits + garlic bread + 1.5 L Pepsi',
+      descripcion: 'Una mesa completa para el fin de semana: nuestro Tris di Pasta, una pizza personal, pan al ajo para todos, Pepsi y galletas italianas Tre Marie para el final.',
+      descripcion_en: 'A complete weekend table: our Tris di Pasta, a personal pizza, garlic bread for everyone, Pepsi and Italian Tre Marie biscuits to finish.',
+      incluye: 'Tris di Pasta (fettuccine, lasagna di carne y raviolini)\nPizza personal (sabor a consultar)\n1 paquete de galletas Tre Marie a elección\n5 porciones de pan al ajo (10 rebanadas)\nPepsi de 1.5 litros',
+      incluye_en: 'Tris di Pasta (fettuccine, beef lasagna and raviolini)\nPersonal pizza (ask for flavours)\n1 pack of Tre Marie biscuits of your choice\n5 portions of garlic bread (10 slices)\n1.5-litre Pepsi',
+      opciones: 'tremarie-galleta, temp-bebida', canal: 'delivery', visible: 'NO', promo_dias: 'vie, sab, dom',
+      foto: 'fotos/ref-festa-italiana.jpg', unsplash: 'photo-1616299915952-04c803388e5f',
+      componentes: ['pasta-tris-di-pasta', 'pizze-americana', 'italia-cioccolato-in-pezzi-tre-marie', 'antipasti-pane-allaglio'] }
+  ]
+};
+
+function actualizarV4d() {
+  exigirAdmin_('');
+  var M = MIGRACION_V4D, ss = SpreadsheetApp.getActive();
+  asegurarColumnas_(ss.getSheetByName(HOJA.productos), COLS.productos);
+  var productos = leerTabla_(HOJA.productos), opciones = leerTabla_(HOJA.opciones);
+  var porId = {}; productos.forEach(function (p) { porId[String(p.id)] = p; });
+  var existentes = {}; opciones.forEach(function (o) { existentes[String(o.grupo)] = true; });
+  M.grupos.forEach(function (g) {
+    if (existentes[g.id]) return;
+    g.ops.forEach(function (op, i) {
+      opciones.push({ grupo: g.id, nombre: g.nombre, nombre_en: g.nombre_en, tipo: 'una', obligatorio: g.req, opcion: op[0], opcion_en: op[1],
+        precio: g.precio, orden: (i + 1) * 10, activo: 'SI' });
+    });
+  });
+  var creados = [];
+  M.productos.forEach(function (c) {
+    if (porId[c.id]) return;
+    if (c.unsplash) {
+      var r = UrlFetchApp.fetch('https://images.unsplash.com/' + c.unsplash + '?w=1200&h=900&fit=crop&crop=entropy&q=72&fm=jpg', { muteHttpExceptions: true });
+      if (r.getResponseCode() === 200) githubPut_(c.foto, Utilities.base64Encode(r.getBlob().getBytes()), 'Foto referencial (Unsplash) de ' + c.nombre);
+      else c.foto = '';
+    }
+    var al = [];
+    c.componentes.forEach(function (id) {
+      var x = porId[id]; if (!x) return;
+      String(x.alergenos || '').split(',').forEach(function (a) { a = a.trim(); if (a && al.indexOf(a) < 0) al.push(a); });
+    });
+    var p = {};
+    COLS.productos.forEach(function (k) { p[k] = ''; });
+    Object.keys(c).forEach(function (k) { if (COLS.productos.indexOf(k) >= 0) p[k] = c[k]; });
+    p.tipo = 'plato'; p.requiere_salsa = 'NO'; p.disponible = 'SI'; p.alergenos = al.join(', ');
+    productos.push(p); porId[c.id] = p; creados.push(c.nombre);
+  });
+  escribirTabla_(HOJA.opciones, COLS.opciones, opciones);
+  escribirTabla_(HOJA.productos, COLS.productos, productos);
+  marcarPendiente_();
+  var pub = publicarCarta('');
+  return 'v4d aplicada. Nuevos: ' + (creados.join(', ') || 'ninguno') + '. ' + pub.mensaje;
+}
