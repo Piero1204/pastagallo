@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:43:35-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:44:25-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -976,7 +976,7 @@ window.CARTA = {
         "frutosSecos",
         "soya"
        ],
-       "foto": "https://images.unsplash.com/photo-1612739406198-71fc29b3c1c9?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/italia-wafer-nocciolato-tre-marie-1794451459496.jpg",
        "n_en": "Wafer Nocciolato Tre Marie",
        "g_en": "Hazelnut cream wafers",
        "d_en": "From Tre Marie’s «Ancora Uno» line, a historic brand of Milanese pastry tradition: thin, crisp golden wafers filled with a smooth hazelnut cream. The perfect companion for a coffee."
@@ -2772,5 +2772,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:43:35-05:00"
+ "publicado": "2026-11-11T21:44:25-05:00"
 };
