@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:49:33-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:49:54-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -681,9 +681,9 @@ window.CARTA = {
        "d": "Para compartir entre dos: una pizza mediana a elección y un plato de fettuccine all’Alfredo, con pan al ajo y Pepsi. El fettuccine verde está sujeto a disponibilidad.",
        "p": 60,
        "al": [
+        "huevo",
         "gluten",
-        "lacteos",
-        "huevo"
+        "lacteos"
        ],
        "foto": "fotos/ref-combo-per-due.jpg",
        "canal": "delivery",
@@ -708,8 +708,6 @@ window.CARTA = {
        ],
        "promo": {
         "dias": [
-         2,
-         3,
          4
         ]
        }
@@ -2772,5 +2770,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:49:33-05:00"
+ "publicado": "2026-11-11T21:49:54-05:00"
 };
