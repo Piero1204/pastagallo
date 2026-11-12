@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T19:50:39-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:12:15-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -652,7 +652,7 @@ window.CARTA = {
         "lacteos",
         "huevo"
        ],
-       "foto": "fotos/real-fettuccine-alfredo.jpg",
+       "foto": "fotos/ref-combo-alfredo.jpg",
        "canal": "delivery",
        "op": [
         "fettuccine-tipo",
@@ -786,7 +786,7 @@ window.CARTA = {
        "al": [
         "huevo"
        ],
-       "foto": "fotos/real-pane-allaglio.jpg",
+       "foto": "https://images.unsplash.com/photo-1587676353811-1708ddf47031?w=700&q=70&auto=format&fit=crop",
        "g_en": "garlic bread",
        "d_en": "Golden, fragrant garlic bread, the perfect companion to any pasta."
       },
@@ -1747,7 +1747,7 @@ window.CARTA = {
        "al": [
         "gluten"
        ],
-       "foto": "fotos/real-fettuccine-alfredo.jpg",
+       "foto": "fotos/pasta-fettuccine-1794449529303.jpg",
        "op": [
         "fettuccine-tipo"
        ],
@@ -2771,5 +2771,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T19:50:39-05:00"
+ "publicado": "2026-11-11T21:12:15-05:00"
 };
