@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:47:02-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:47:12-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2285,6 +2285,7 @@ window.CARTA = {
        "g": "galleta red velvet",
        "d": "Color rubí y sabor suave a cacao: elegante hasta el último bocado.",
        "p": 6,
+       "agotado": true,
        "al": [
         "gluten",
         "huevo",
@@ -2773,5 +2774,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:47:02-05:00"
+ "publicado": "2026-11-11T21:47:12-05:00"
 };
