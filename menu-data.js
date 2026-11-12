@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T22:46:45-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T23:37:10-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -784,7 +784,7 @@ window.CARTA = {
        "al": [
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1587676353811-1708ddf47031?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/antipasti-pane-allaglio-1794458225804.jpg",
        "g_en": "garlic bread",
        "d_en": "Golden, fragrant garlic bread, the perfect companion to any pasta."
       },
@@ -2794,5 +2794,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T22:46:45-05:00"
+ "publicado": "2026-11-11T23:37:10-05:00"
 };
