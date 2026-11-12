@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:48:46-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:49:09-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -611,9 +611,9 @@ window.CARTA = {
        "d": "Tu pizza personal, Hawaiana o Americana, con dos porciones de pan al ajo y una Pepsi helada.",
        "p": 25,
        "al": [
+        "huevo",
         "gluten",
-        "lacteos",
-        "huevo"
+        "lacteos"
        ],
        "foto": "fotos/ref-combo-personale.jpg",
        "canal": "delivery",
@@ -635,9 +635,7 @@ window.CARTA = {
        ],
        "promo": {
         "dias": [
-         2,
-         3,
-         4
+         2
         ]
        }
       },
@@ -2774,5 +2772,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:48:46-05:00"
+ "publicado": "2026-11-11T21:49:09-05:00"
 };
