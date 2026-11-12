@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:47:12-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:48:08-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2225,6 +2225,7 @@ window.CARTA = {
        "n": "Tiramisù",
        "d": "El postre italiano más célebre: capas de bizcocho, café y suave crema de mascarpone.",
        "p": 12,
+       "agotado": true,
        "al": [
         "gluten",
         "huevo",
@@ -2239,6 +2240,7 @@ window.CARTA = {
        "g": "torta de chocolate",
        "d": "Una torta esponjosa para los amantes del chocolate.",
        "p": 12,
+       "agotado": true,
        "al": [
         "gluten",
         "huevo",
@@ -2774,5 +2776,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:47:12-05:00"
+ "publicado": "2026-11-11T21:48:08-05:00"
 };
