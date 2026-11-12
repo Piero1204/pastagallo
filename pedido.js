@@ -12,6 +12,7 @@
   var carrito = [];
   var P, h; // utilidades de app.js
 
+  function origen() { try { return sessionStorage.getItem("pg-origen") || ""; } catch (e) { return ""; } }
   function guardar() { try { localStorage.setItem(CLAVE, JSON.stringify({ t: Date.now(), c: carrito })); } catch (e) {} }
   function cargar() {
     try {
@@ -42,6 +43,8 @@
   }
   function motivoNoPedible(it, sec) {
     if (it.agotado) return t("agotado");
+    if (it.promo && !it._hoy) return t("promoOtroDia", { c: it._cuando });
+    if (it.promo && it._hora) return t("promoHora", { c: it._cuando });
     if (it.canal === "local" && MODO !== "mesa") return t("soloLocalTxt");
     if (it.canal === "delivery" && MODO === "mesa") return t("soloDeliveryTxt");
     if (it.p == null && !(it.t && it.t.length)) return t("consulta");
@@ -129,6 +132,12 @@
     }
     if (tx(it, "g")) c.appendChild(h("p", "detalle__g", tx(it, "g")));
     if (tx(it, "d")) c.appendChild(h("p", "hoja__desc", tx(it, "d")));
+    var inc = I.lang === "en" && it.inc_en ? it.inc_en : it.inc;
+    if (inc && inc.length) {
+      c.appendChild(h("h3", "hoja__sub", t("incluye")));
+      var ul = h("ul", "incluye"); inc.forEach(function (x) { ul.appendChild(h("li", null, x)); }); c.appendChild(ul);
+      if (it._cuando) c.appendChild(h("p", "detalle__g", t("disponible") + it._cuando));
+    }
     if (it.destacado === "tris" && P.diagramaTris) c.appendChild(P.diagramaTris());
     if (it.al && it.al.length) {
       var al = h("ul", "detalle__al");
@@ -414,7 +423,7 @@
       canal: MODO === "mesa" ? "mesa" : form.canal, mesa: MESA, codigo: CODIGO, web: trampa || "", idioma: I.lang,
       nombre: form.nombre || "", telefono: form.telefono || "", direccion: form.canal === "delivery" ? (form.direccion || "") : "",
       referencia: form.canal === "delivery" ? (form.referencia || "") : "", pago: form.pago || "",
-      programado: form.programado || "", notas: form.notas || "", mayorEdad: !!form.mayorEdad,
+      programado: form.programado || "", notas: form.notas || "", mayorEdad: !!form.mayorEdad, origen: origen(),
       items: carrito.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {} }; })
     };
   }
