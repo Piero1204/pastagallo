@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T23:59:03-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T01:13:09-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -960,7 +960,7 @@ window.CARTA = {
         "frutosSecos",
         "lacteos"
        ],
-       "foto": "fotos/italia-wafer-mandorlato-tre-marie-1794451394387.jpg",
+       "foto": "fotos/italia-wafer-mandorlato-tre-marie-1794463975620.jpg",
        "n_en": "Wafer Mandorlato Tre Marie",
        "g_en": "Milk chocolate and almond wafers",
        "d_en": "A masterpiece of Milanese pastry tradition. They feature a sublime balance between the delicacy of three thin, golden wafer sheets and the richness of a silky milk chocolate cream. Inside, subtle pieces of Sicilian almonds add a crunchy texture and an unmistakable roasted aroma."
@@ -977,7 +977,7 @@ window.CARTA = {
         "frutosSecos",
         "lacteos"
        ],
-       "foto": "fotos/italia-wafer-nocciolato-tre-marie-1794451459496.jpg",
+       "foto": "fotos/italia-wafer-nocciolato-tre-marie-1794463977070.jpg",
        "n_en": "Wafer Nocciolato Tre Marie",
        "g_en": "Hazelnut cream wafers",
        "d_en": "From Tre Marie’s «Ancora Uno» line, a historic brand of Milanese pastry tradition: thin, crisp golden wafers filled with a smooth hazelnut cream. The perfect companion for a coffee."
@@ -994,7 +994,7 @@ window.CARTA = {
         "frutosSecos",
         "soya"
        ],
-       "foto": "https://images.unsplash.com/photo-1772986234414-ada1a1cef8e4?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/italia-wafer-stracciatella-tre-marie-1794463978667.jpg",
        "n_en": "Wafer Stracciatella Tre Marie",
        "g_en": "Milk cream and chocolate wafers",
        "d_en": "Inspired by the classic Italian gelato: crisp wafer layers filled with milk cream and pieces of extra dark chocolate. Made without hydrogenated fats."
@@ -1011,7 +1011,7 @@ window.CARTA = {
         "frutosSecos",
         "soya"
        ],
-       "foto": "https://images.unsplash.com/photo-1772985427174-e140b55944a5?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/italia-wafer-gianduia-nera-tre-marie-1794463980338.jpg",
        "n_en": "Wafer Gianduia Nera Tre Marie",
        "g_en": "Dark gianduia cream wafers",
        "d_en": "Crisp wafers filled with gianduia cream —the traditional Piedmontese blend of cocoa and hazelnuts— in its dark, intense version."
@@ -1029,7 +1029,7 @@ window.CARTA = {
         "soya",
         "frutosSecos"
        ],
-       "foto": "https://images.unsplash.com/photo-1583743089695-4b816a340f82?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/italia-cioccolato-in-pezzi-tre-marie-1794463982017.jpg",
        "n_en": "Cioccolato in Pezzi Tre Marie",
        "g_en": "Chocolate chunk biscuits",
        "d_en": "Frollini, the traditional Italian shortbread biscuits, with generous chunks of chocolate. For breakfast, an afternoon snack or with coffee."
@@ -1047,7 +1047,7 @@ window.CARTA = {
         "soya",
         "frutosSecos"
        ],
-       "foto": "https://images.unsplash.com/photo-1706167754899-36a714b5dc66?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/italia-caramello-salato-tre-marie-1794463983926.jpg",
        "n_en": "Caramello Salato e Cioccolato Tre Marie",
        "g_en": "Salted caramel and chocolate biscuits",
        "d_en": "Shortbread biscuits with salted caramel and chocolate chips, made with 100% Italian wheat. An irresistible sweet-and-salty contrast."
@@ -1065,7 +1065,7 @@ window.CARTA = {
         "soya",
         "frutosSecos"
        ],
-       "foto": "https://images.unsplash.com/photo-1590080874088-eec64895b423?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/italia-cacao-gocce-tre-marie-1794463986331.jpg",
        "n_en": "Cacao con Gocce di Cioccolato Tre Marie",
        "g_en": "Cocoa biscuits with chocolate chips",
        "d_en": "Cocoa biscuits with extra dark chocolate chips, made with 100% Italian wheat, butter and free-range eggs."
@@ -2826,5 +2826,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T23:59:03-05:00"
+ "publicado": "2026-11-12T01:13:09-05:00"
 };
