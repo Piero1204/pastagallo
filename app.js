@@ -83,12 +83,11 @@
   var MAPA_DIA = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
   function ahoraLugar(fecha) {
     try {
-      var f = new Intl.DateTimeFormat("en-US", { timeZone: C.horario.zona, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit" });
+      var f = new Intl.DateTimeFormat("en-US", { timeZone: C.horario.zona, weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
       var o = {}; f.formatToParts(fecha).forEach(function (x) { o[x.type] = x.value; });
-      return { dia: MAPA_DIA[o.weekday], min: (+o.hour % 24) * 60 + (+o.minute), fecha: o.year + "-" + o.month + "-" + o.day };
+      return { dia: MAPA_DIA[o.weekday], min: (+o.hour % 24) * 60 + (+o.minute) };
     } catch (e) {
-      var p2 = function (n) { return ("0" + n).slice(-2); };
-      return { dia: fecha.getDay(), min: fecha.getHours() * 60 + fecha.getMinutes(), fecha: fecha.getFullYear() + "-" + p2(fecha.getMonth() + 1) + "-" + p2(fecha.getDate()) };
+      return { dia: fecha.getDay(), min: fecha.getHours() * 60 + fecha.getMinutes() };
     }
   }
   function estadoActual(fecha) {
@@ -105,48 +104,6 @@
       if (r) return { abierto: false, cuando: (i === 1 ? t("manana") : t("el")) + t("dias")[d] + t("aLas") + fmt12(r[0]) };
     }
     return { abierto: false, cuando: t("pronto") };
-  }
-
-  /* ---------- promociones con calendario (misma regla que el servidor) ---------- */
-  function sumarDias(iso, n) {
-    var p = iso.split("-"), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + n));
-    return d.getUTCFullYear() + "-" + ("0" + (d.getUTCMonth() + 1)).slice(-2) + "-" + ("0" + d.getUTCDate()).slice(-2);
-  }
-  function diaDe(iso) { var p = iso.split("-"); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay(); }
-  function promoEnFecha(pr, iso) {
-    if (pr.desde && iso < pr.desde) return false;
-    if (pr.hasta && iso > pr.hasta) return false;
-    if (pr.excluir && pr.excluir.indexOf(iso) >= 0) return false;
-    if (pr.extra && pr.extra.indexOf(iso) >= 0) return true;
-    return !pr.dias || pr.dias.indexOf(diaDe(iso)) >= 0;
-  }
-  /** Texto de los días: "martes, miércoles y jueves" / "viernes a domingo" */
-  function diasTexto(dias) {
-    var nombres = t("dias"), orden = [1, 2, 3, 4, 5, 6, 0];
-    var l = orden.filter(function (d) { return dias.indexOf(d) >= 0; });
-    var seguidos = l.length > 2 && l.every(function (d, i) { return i === 0 || orden.indexOf(d) === orden.indexOf(l[i - 1]) + 1; });
-    if (seguidos) return nombres[l[0]] + t("a") + nombres[l[l.length - 1]];
-    return l.map(function (d) { return nombres[d]; }).join(", ").replace(/, ([^,]*)$/, t("y") + "$1");
-  }
-  /** Marca cada promo: _hoy (va hoy), _prox (próxima fecha en 14 días), _hora (fuera de su franja ahora). */
-  function evaluarPromos() {
-    var ah = ahoraLugar(new Date());
-    C.secciones.forEach(function (s) {
-      s.grupos.forEach(function (g) {
-        g.items.forEach(function (it) {
-          var pr = it.promo; if (!pr) return;
-          it._hoy = promoEnFecha(pr, ah.fecha);
-          it._prox = null; it._hora = false;
-          if (it._hoy && pr.horas) it._hora = ah.min < minutos(pr.horas[0]) || ah.min >= minutos(pr.horas[1]);
-          if (!it._hoy) for (var i = 1; i <= 14; i++) { var f = sumarDias(ah.fecha, i); if (promoEnFecha(pr, f)) { it._prox = f; break; } }
-          var cuando = pr.dias && pr.dias.length && pr.dias.length < 7 ? diasTexto(pr.dias) : t("todosDias");
-          if (pr.horas) cuando += t("deA", { a: fmt12(pr.horas[0]), b: fmt12(pr.horas[1]) });
-          it._cuando = cuando;
-          it._oculto = !it._hoy && !it._prox; // vencida o muy lejana: no se muestra
-        });
-      });
-    });
-    return ah;
   }
 
   var estadoBarra, bienvenida, fab, fabTxt;
@@ -264,14 +221,7 @@
 
   /* ---------- plato ---------- */
   function plato(it, sec) {
-    var a = h("article", "it rev" + (it.agotado ? " it--agotado" : "") + (it.promo ? " it--promo" + (it._hoy ? " it--hoy" : " it--otrodia") : ""));
-    a.id = "p-" + it.id;
-    if (it.promo) {
-      var bd = h("div", "promo-dia");
-      if (it._hoy) { bd.appendChild(h("b", null, t("hoy"))); bd.appendChild(document.createTextNode(" · " + it._cuando)); }
-      else bd.appendChild(document.createTextNode(it._cuando));
-      a.appendChild(bd);
-    }
+    var a = h("article", "it rev" + (it.agotado ? " it--agotado" : ""));
     if (it.destacado === "tris") a.className += " it--dest";
     var tieneFoto = !!it.foto;
     if (tieneFoto) a.className += " fcon";
@@ -285,19 +235,8 @@
     a.appendChild(top);
     if (tx(it, "g")) a.appendChild(h("p", "it__g", tx(it, "g")));
     if (tx(it, "d")) a.appendChild(h("p", "it__d", tx(it, "d")));
-    var inc = I.lang === "en" && it.inc_en ? it.inc_en : it.inc;
-    if (inc && inc.length) {
-      var ul = h("ul", "incluye");
-      inc.forEach(function (x) { ul.appendChild(h("li", null, x)); });
-      a.appendChild(ul);
-    }
-    if (it.promo && !it._hoy && it._prox) {
-      var dp = diaDe(it._prox), ah = ahoraLugar(new Date());
-      a.appendChild(h("p", "promo-prox", t("vuelve") + (it._prox === sumarDias(ah.fecha, 1) ? t("mananaCorto") : t("el") + t("dias")[dp])));
-    }
     if (it.canal === "local") a.appendChild(h("span", "etq", t("soloLocal")));
-    if (it.canal === "delivery" && !it.promo) a.appendChild(h("span", "etq", t("soloDelivery")));
-    if (it.destacado === "tris") a.appendChild(diagramaTris());
+    if (it.canal === "delivery") a.appendChild(h("span", "etq", t("soloDelivery")));
     if (it.extra) a.appendChild(h("span", "mas", t("adicional") + dinero(it.extra)));
     if (it.t) {
       var tb = h("div", "tam");
@@ -342,16 +281,10 @@
     var modo = PED ? PED.modo : "delivery";
     var grupos = sec.grupos.filter(function (g) {
       g.items = (g.items || []).filter(function (i) {
-        if (i.oculto || i._oculto) return false;
+        if (i.oculto) return false;
         if (i.canal === "local" && modo !== "mesa") return false;
         if (i.canal === "delivery" && modo === "mesa") return false;
         return true;
-      });
-      // promociones: primero las de hoy, luego por la fecha más cercana
-      g.items.sort(function (x, y) {
-        if (!x.promo || !y.promo) return 0;
-        if (x._hoy !== y._hoy) return x._hoy ? -1 : 1;
-        return String(x._prox || "").localeCompare(String(y._prox || ""));
       });
       return g.items.length;
     });
@@ -367,7 +300,6 @@
     c.appendChild(h("div", "sub", tx(sec, "subtitulo")));
     c.appendChild(ornamento());
     if (tx(sec, "intro")) c.appendChild(h("p", "intro", tx(sec, "intro")));
-    if (sec.id === "promociones") { var sem = semanaPromos(grupos); if (sem) c.appendChild(sem); }
     cab.appendChild(c); s.appendChild(cab);
 
     var cuerpo = h("div", "sec__cuerpo");
@@ -387,25 +319,6 @@
     if (sec.alcohol) cuerpo.appendChild(h("p", "aviso18", t("alcohol")));
     s.appendChild(cuerpo);
     return s;
-  }
-
-  /** Tira "la semana": qué combo va cada día (solo días con atención y con alguna promo). */
-  function semanaPromos(grupos) {
-    var items = []; grupos.forEach(function (g) { g.items.forEach(function (i) { if (i.promo) items.push(i); }); });
-    if (items.length < 2) return null;
-    var ah = ahoraLugar(new Date()), w = h("div", "semana"), hay = 0;
-    for (var k = 0; k < 7; k++) {
-      var f = sumarDias(ah.fecha, k), d = diaDe(f);
-      if (!C.horario.dias[d]) continue;
-      var deDia = items.filter(function (i) { return promoEnFecha(i.promo, f); });
-      if (!deDia.length) continue;
-      var col = h("a", "semana__d" + (k === 0 ? " hoy" : ""));
-      col.href = "#p-" + deDia[0].id;
-      col.appendChild(h("span", "semana__n", k === 0 ? t("hoy") : t("dias")[d].slice(0, 3)));
-      col.appendChild(h("span", "semana__p", deDia.map(function (i) { return tx(i, "n"); }).join(" · ")));
-      w.appendChild(col); hay++;
-    }
-    return hay ? w : null;
   }
 
   function leyenda() {
@@ -507,7 +420,6 @@
 
   /* ---------- construcción ---------- */
   function construir() {
-    evaluarPromos();
     window.PG = { h: h, estadoActual: estadoActual, dinero: dinero, waUrl: waUrl, precioEl: precioEl, iconoSvg: iconoSvg, ICONOS: ICONOS, diagramaTris: diagramaTris };
     if (PED) { PED.iniciar(window.PG); document.body.classList.add("modo-" + PED.modo); }
     var app = q("#app");
@@ -574,21 +486,5 @@
     }
   }
 
-  /* Enlace directo a un producto o combo (para historias de Instagram): ?p=ID&o=ig */
-  function abrirEnlace() {
-    var params = new URLSearchParams(location.search);
-    var o = (params.get("o") || params.get("utm_source") || "").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 30);
-    if (o) { try { sessionStorage.setItem("pg-origen", o); } catch (e) {} }
-    var id = params.get("p"); if (!id) return;
-    var art = document.getElementById("p-" + id); if (!art) return;
-    var it = null, sec = null;
-    C.secciones.forEach(function (s) { s.grupos.forEach(function (g) { g.items.forEach(function (i) { if (i.id === id) { it = i; sec = s; } }); }); });
-    setTimeout(function () {
-      art.classList.add("ya", "it--enlace");
-      window.scrollTo({ top: art.getBoundingClientRect().top + window.pageYOffset - 120, behavior: "auto" });
-      if (it && PED) PED.abrirDetalle(it, sec);
-    }, 250);
-  }
-  function iniciar() { construir(); abrirEnlace(); }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", construir); else construir();
 })();

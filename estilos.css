@@ -311,24 +311,16 @@ textarea.campo{min-height:76px;resize:vertical}
 .grupo-op{margin-top:4px}
 .hoja .tam{margin-top:16px}
 
-/* =================== v4: promociones con calendario =================== */
-.it--promo{padding-top:16px}
-.promo-dia{grid-column:1/-1;display:inline-flex;align-self:start;justify-self:start;align-items:center;gap:2px;margin-bottom:8px;padding:4px 10px 4px 9px;border:1px solid var(--oro);border-radius:2px;font:700 .64rem/1.2 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--oro)}
-.promo-dia b{color:#fff;background:var(--rojo);margin:-4px 6px -4px -9px;padding:4px 8px;font-weight:800}
-.it--otrodia .promo-dia{color:var(--tinta-2);border-color:rgba(90,70,63,.35)}
-.it--otrodia .it__n,.it--otrodia .precio,.it--otrodia .foto{opacity:.6}
-.it--otrodia .foto{filter:grayscale(.5)}
-.incluye{list-style:none;margin:8px 0 2px;padding:0;display:grid;gap:3px;font-size:1.05rem;color:#41302b}
-.incluye li{position:relative;padding-left:22px}
-.incluye li::before{content:"";position:absolute;left:3px;top:.45em;width:9px;height:5px;border-left:2px solid var(--verde);border-bottom:2px solid var(--verde);transform:rotate(-45deg)}
-.hoja .incluye{margin-bottom:12px}
-.promo-prox{margin-top:8px;font:italic 600 1.02rem var(--serif);color:var(--oro)}
-.it--enlace{animation:pgEnlace 1.6s ease-out 2}
-@keyframes pgEnlace{0%{background:rgba(201,164,92,.35)}100%{background:transparent}}
-.semana{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:18px auto 0;max-width:620px}
-.semana__d{flex:1 1 0;min-width:78px;max-width:140px;display:flex;flex-direction:column;gap:4px;padding:8px 6px 9px;border:1px solid rgba(239,230,211,.45);color:var(--crema);text-decoration:none;text-align:center;border-radius:2px}
-.semana__d.hoy{background:var(--crema);color:var(--vino);border-color:var(--crema)}
-.semana__n{font:800 .62rem/1 var(--sans);letter-spacing:.18em;text-transform:uppercase;opacity:.85}
-.semana__d.hoy .semana__n{color:var(--rojo);opacity:1}
-.semana__p{font:italic 600 .98rem/1.15 var(--serif)}
-@media (max-width:520px){.semana__d{min-width:31%}}
+/* v4: extras plegables, comprobante, cuenta de la mesa */
+details.grupo-op--plegable{border:1px solid var(--oro);border-radius:10px;padding:10px 12px;margin:12px 0;background:rgba(255,255,255,.35)}
+details.grupo-op--plegable>summary{cursor:pointer;list-style:none;margin:0;display:flex;justify-content:space-between;align-items:center;gap:8px}
+details.grupo-op--plegable>summary::-webkit-details-marker{display:none}
+details.grupo-op--plegable>summary::after{content:"▾";font-size:14px;transition:transform .2s}
+details.grupo-op--plegable[open]>summary::after{transform:rotate(180deg)}
+details.grupo-op--plegable[open]>summary{margin-bottom:8px}
+.link-wa{display:block;text-align:center;margin:6px 0 12px;font-size:14px;color:inherit;opacity:.8}
+.btn-cuenta{position:fixed;left:12px;bottom:84px;z-index:45;border:1px solid var(--oro);background:var(--crema-3,#f3ead8);color:var(--vino,#4a1519);
+  border-radius:999px;padding:9px 14px;font:600 13px/1 var(--sans,system-ui);box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
+.cuenta__ped{border-bottom:1px dashed var(--oro);padding:10px 0}
+.cuenta__det{white-space:pre-wrap;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:6px 0 0}
+.comp{margin-top:4px}
