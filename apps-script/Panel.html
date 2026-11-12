@@ -1062,7 +1062,8 @@ function reducir(file, max, calidad){
       img.onload = function(){
         var esc = Math.min(1, max / Math.max(img.width, img.height));
         var c = document.createElement('canvas'); c.width = Math.round(img.width * esc); c.height = Math.round(img.height * esc);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        var cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);   // PNG transparente → fondo blanco (no negro)
+        cx.drawImage(img, 0, 0, c.width, c.height);
         ok(c.toDataURL('image/jpeg', calidad));
       };
       img.onerror = function(){ ko('No se pudo leer la imagen.'); };

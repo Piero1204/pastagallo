@@ -370,3 +370,8 @@ body.con-carrito .repetir{display:none}
 .ubic{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:-2px 0 10px}
 .btn-ubic{border:1px solid var(--oro);background:transparent;color:inherit;padding:8px 12px;font:600 13px/1 var(--sans);border-radius:2px;cursor:pointer}
 .ubic .hoja__ayuda{margin:0}
+
+/* =================== fotos: centradas; productos envasados sobre blanco =================== */
+.detalle__foto{max-width:none;margin-left:-18px;margin-right:-18px}
+.detalle__foto--producto{object-fit:contain;background:#fff;height:280px;padding:14px}
+.foto.foto--producto{object-fit:contain;background:#fff}

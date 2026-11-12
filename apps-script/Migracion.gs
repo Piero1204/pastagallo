@@ -911,3 +911,25 @@ function actualizarV6() {
   var r = publicarCarta('');
   return 'v6 aplicada: ' + (hecho.join(', ') || 'sin cambios') + '. ' + r.mensaje;
 }
+
+/* =====================================================================
+   Fotos de productos preparadas fuera (fondo blanco). Para usarla se pega TEMPORALMENTE
+   arriba de esta función:  var FOTOS_TMP = { 'id-del-producto': 'base64 del JPG', ... };
+   se ejecuta "importarFotosTmp" y luego se borra FOTOS_TMP.
+   ===================================================================== */
+function importarFotosTmp() {
+  exigirAdmin_('');
+  if (typeof FOTOS_TMP === 'undefined') return 'No hay FOTOS_TMP.';
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.productos);
+  var col = asegurarColumnas_(h, COLS.productos).indexOf('foto') + 1;
+  var porId = {}; leerTabla_(HOJA.productos).forEach(function (p) { porId[String(p.id)] = p; });
+  var hechas = [];
+  Object.keys(FOTOS_TMP).forEach(function (id) {
+    var p = porId[id]; if (!p) return;
+    var ruta = 'fotos/' + id.replace(/[^a-z0-9-]/g, '') + '-' + Date.now() + '.jpg';
+    githubPut_(ruta, String(FOTOS_TMP[id]).replace(/^data:image\/\w+;base64,/, ''), 'Foto de ' + p.nombre);
+    h.getRange(p._fila, col).setValue(ruta); hechas.push(p.nombre);
+  });
+  limpiarCache_(); marcarPendiente_();
+  return 'Fotos: ' + hechas.join(', ') + '. ' + publicarCarta('').mensaje;
+}

@@ -94,6 +94,31 @@
     l.unit = Math.round((base + extra) * 100) / 100;
     return l;
   }
+  /* Próxima franja en la que se puede entregar o recoger: hoy (desde dentro de 30 min) o el próximo día abierto.
+     Misma regla que el servidor (proximaVentana_). */
+  function hhmm(m) { m = ((m % 1440) + 1440) % 1440; return ("0" + Math.floor(m / 60)).slice(-2) + ":" + ("0" + (m % 60)).slice(-2); }
+  function fmtHora(m) {
+    m = ((m % 1440) + 1440) % 1440;
+    var hh = Math.floor(m / 60), mi = ("0" + (m % 60)).slice(-2), suf = hh >= 12 ? "pm" : "am";
+    return (hh % 12 || 12) + ":" + mi + " " + suf;
+  }
+  function ventanaPedido() {
+    var dias = (C.horario && C.horario.dias) || {};
+    var ah = P.ahoraLugar(new Date());
+    for (var i = 0; i <= 7; i++) {
+      var d = (ah.dia + i) % 7, r = dias[d]; if (!r) continue;
+      var a = P.minutos(r[0]), c = P.minutos(r[1]); if (c <= a) c += 1440;
+      var desde = a, hasta = c - 15;
+      if (i === 0) {
+        if (ah.min >= c - 15) continue;
+        desde = Math.max(a, Math.ceil((ah.min + 30) / 15) * 15);
+      }
+      if (desde > hasta) continue;
+      var etq = i === 0 ? t("hoy").toLowerCase() : i === 1 ? t("manana").trim().replace(/,$/, "").toLowerCase() : t("el") + t("dias")[d];
+      return { dias: i, dia: d, a: a, c: c, desde: desde, hasta: hasta, etiqueta: etq.trim() };
+    }
+    return null;
+  }
   function tieneOpciones(it) { return !!(it.t || it.salsa || (it.op && it.op.length)); }
 
   /* ---------- dinero ---------- */
@@ -158,7 +183,7 @@
   function abrirDetalle(it, sec) {
     var c = h("div", "hoja__cuerpo");
     if (it.foto) {
-      var im = h("img", "detalle__foto"); im.src = it.foto; im.alt = tx(it, "n");
+      var im = h("img", "detalle__foto" + (sec && sec.id === "italia" ? " detalle__foto--producto" : "")); im.src = it.foto; im.alt = tx(it, "n");
       im.onerror = function () { im.remove(); };
       c.appendChild(im);
     }
@@ -443,8 +468,20 @@
         f.appendChild(opcionesUI("pago", CFG.metodosPago.map(function (m) { return { valor: m, texto: m, marcado: form.pago === m }; }),
           false, function (v) { form.pago = v[0]; }));
       }
-      if (!abiertoAhora() || form.programado) {
-        f.appendChild(campo("programado", abiertoAhora() ? t("paraHora") : t("paraHoraReq"), "time", {}));
+      var vent = ventanaPedido();
+      if (vent) {
+        // la hora solo se puede elegir DENTRO del horario de atención (cada 15 minutos)
+        var horas = [{ valor: "", texto: abiertoAhora() ? t("loAntes") : t("eligeHora") }];
+        for (var mm = vent.desde; mm <= vent.hasta; mm += 15) horas.push({ valor: hhmm(mm), texto: vent.etiqueta + " · " + fmtHora(mm) });
+        if (form.programado && !horas.some(function (x) { return x.valor === form.programado; })) form.programado = "";
+        var wh = h("label", "campo-w");
+        wh.appendChild(h("span", "campo-l", abiertoAhora() ? t("paraHora") : t("paraHoraReq")));
+        var sh = h("select", "campo"); sh.name = "programado";
+        horas.forEach(function (x) { var o = h("option", null, x.texto); o.value = x.valor; if (x.valor === (form.programado || "")) o.selected = true; sh.appendChild(o); });
+        sh.addEventListener("change", function () { form.programado = sh.value; form.programadoTxt = sh.value ? sh.options[sh.selectedIndex].text : ""; });
+        wh.appendChild(sh);
+        wh.appendChild(h("span", "hoja__ayuda", t("horarioRango", { a: fmtHora(vent.a), b: fmtHora(vent.c), d: vent.etiqueta })));
+        f.appendChild(wh);
       }
       f.appendChild(campo("notas", t("comentarios"), "area", { max: 300 }));
       f.appendChild(bloqueComprobante());
@@ -590,7 +627,7 @@
       if (form.ubicacion) L.push("Ubicación: " + form.ubicacion);
     }
     if (form.pago) L.push("Pago: " + form.pago);
-    L.push("Para: " + (form.programado ? "las " + form.programado : "lo antes posible"));
+    L.push("Para: " + (form.programado ? (form.programadoTxt || "las " + form.programado) : "lo antes posible"));
     if (form.notas) L.push("Comentarios: " + form.notas);
     if (form.comprobante) {
       L.push("");

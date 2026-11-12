@@ -325,7 +325,7 @@
       a.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && ev.target === a) { ev.preventDefault(); PED.abrirDetalle(it, sec); } });
     }
     if (tieneFoto) {
-      var im = h("img", "foto"); im.src = it.foto; im.alt = tx(it, "n"); im.loading = "lazy";
+      var im = h("img", "foto" + (sec && sec.id === "italia" ? " foto--producto" : "")); im.src = it.foto; im.alt = tx(it, "n"); im.loading = "lazy";
       im.onerror = function () { a.className = a.className.replace(" fcon", ""); im.remove(); };
       a.appendChild(im);
     }
@@ -507,7 +507,7 @@
   /* ---------- construcción ---------- */
   function construir() {
     evaluarPromos();
-    window.PG = { h: h, estadoActual: estadoActual, dinero: dinero, waUrl: waUrl, precioEl: precioEl, iconoSvg: iconoSvg, ICONOS: ICONOS, diagramaTris: diagramaTris };
+    window.PG = { h: h, estadoActual: estadoActual, ahoraLugar: ahoraLugar, minutos: minutos, dinero: dinero, waUrl: waUrl, precioEl: precioEl, iconoSvg: iconoSvg, ICONOS: ICONOS, diagramaTris: diagramaTris };
     if (PED) { PED.iniciar(window.PG); document.body.classList.add("modo-" + PED.modo); }
     var app = q("#app");
     estadoBarra = h("div", "estado"); estadoBarra.setAttribute("role", "status");

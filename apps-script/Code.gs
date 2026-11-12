@@ -258,6 +258,20 @@ function horarioDe_(cfg, dia) {
 }
 
 function minutos_(hhmm) { var p = hhmm.split(':'); return (+p[0]) * 60 + (+p[1]); }
+var DIAS_LARGOS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+/** Próxima franja de atención desde "momento": hoy si aún no cerró, si no el próximo día abierto.
+ *  Devuelve { dias (0 = hoy), dia, a, c (minutos; c puede pasar de 1440), desde, hasta } o null. */
+function proximaVentana_(cfg, momento) {
+  for (var i = 0; i <= 7; i++) {
+    var d = (momento.dia + i) % 7, r = horarioDe_(cfg, d);
+    if (!r) continue;
+    var a = minutos_(r[0]), c = minutos_(r[1]);
+    if (c <= a) c += 1440;
+    if (i === 0 && momento.min >= c) continue;
+    return { dias: i, dia: d, a: a, c: c, desde: r[0], hasta: r[1] };
+  }
+  return null;
+}
 
 /* =========================== PROMOCIONES (lógica pura) ===========================
    Cada promoción es un producto (normalmente de la sección "promociones") con su calendario:
@@ -388,6 +402,18 @@ function calcularPedido_(body, cat, cfg, momento) {
     if (!esSi_(cfg.pedidos_fuera_de_horario)) return { ok: false, error: 'En este momento estamos cerrados. Revisa nuestro horario.' };
     if (!programado) return { ok: false, error: 'Estamos cerrados: indica a qué hora quieres tu pedido.' };
   }
+  var paraOtroDia = '';
+  if (programado) {
+    // la hora elegida debe caer DENTRO del horario de atención (hoy, o el próximo día abierto si ya cerramos)
+    var v = proximaVentana_(cfg, momento);
+    if (!v) return { ok: false, error: 'No tenemos horario de atención configurado. Escríbenos por WhatsApp.' };
+    var pm = minutos_(programado);
+    if (pm < v.a && pm + 1440 <= v.c) pm += 1440;
+    if (pm < v.a || pm > v.c || (v.dias === 0 && pm < momento.min)) {
+      return { ok: false, error: 'Elige una hora dentro de nuestro horario: de ' + v.desde + ' a ' + v.hasta + (v.dias === 0 ? ' (hoy).' : ' (' + (v.dias === 1 ? 'mañana' : 'el ' + DIAS_LARGOS[v.dia]) + ').') };
+    }
+    if (v.dias > 0) paraOtroDia = 'PARA ' + (v.dias === 1 ? 'MAÑANA ' : '') + DIAS_LARGOS[v.dia].toUpperCase() + ' ' + programado + '. ';
+  }
 
   var cliente = {
     nombre: texto_(body.nombre, 60),
@@ -395,7 +421,7 @@ function calcularPedido_(body, cat, cfg, momento) {
     direccion: texto_(body.direccion, 200),
     referencia: texto_(body.referencia, 200),
     pago: texto_(body.pago, 40),
-    notas: texto_(body.notas, 300)
+    notas: (paraOtroDia + texto_(body.notas, 300)).trim()
   };
   if (canal !== 'mesa') {
     if (cliente.nombre.length < 2) return { ok: false, error: 'Escribe tu nombre.' };
