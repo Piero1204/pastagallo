@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T11:04:42-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T11:24:02-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -596,9 +596,9 @@ window.CARTA = {
  "secciones": [
   {
    "id": "promociones",
-   "titulo": "Offerte",
-   "subtitulo": "Combos de la casa",
-   "intro": "Para llevar: delivery o recojo en el local. Cada combo tiene sus días.",
+   "titulo": "Le Proposte della Casa",
+   "subtitulo": "Para llevar · cada día, su propuesta",
+   "intro": "Delivery o recojo en el local.",
    "pie": "",
    "alcohol": false,
    "delivery": true,
@@ -610,7 +610,7 @@ window.CARTA = {
      "items": [
       {
        "id": "promociones-combo-personale",
-       "n": "Combo Personale",
+       "n": "Pizza per Uno",
        "g": "pizza personal + pan al ajo + Pepsi",
        "d": "Tu pizza personal, Hawaiana o Americana, con dos porciones de pan al ajo y una Pepsi helada.",
        "p": 35,
@@ -645,7 +645,7 @@ window.CARTA = {
       },
       {
        "id": "promociones-combo-alfredo",
-       "n": "Combo Alfredo",
+       "n": "Alfredo della Casa",
        "g": "fettuccine + pan al ajo + Pepsi",
        "d": "Una porción de fettuccine all’Alfredo, cremosos y generosos, con tres porciones de pan al ajo y una Pepsi. El fettuccine verde está sujeto a disponibilidad.",
        "p": 35,
@@ -654,7 +654,7 @@ window.CARTA = {
         "gluten",
         "lacteos"
        ],
-       "foto": "fotos/promociones-combo-alfredo-1794451132861.jpg",
+       "foto": "fotos/real-fettuccine-alfredo.jpg",
        "canal": "delivery",
        "op": [
         "fettuccine-tipo",
@@ -680,7 +680,7 @@ window.CARTA = {
       },
       {
        "id": "promociones-combo-per-due",
-       "n": "Combo per Due",
+       "n": "Cena per Due",
        "g": "pizza mediana + fettuccine + pan al ajo + Pepsi",
        "d": "Para compartir entre dos: una pizza mediana a elección y un plato de fettuccine all’Alfredo, con pan al ajo y Pepsi. El fettuccine verde está sujeto a disponibilidad.",
        "p": 60,
@@ -718,7 +718,7 @@ window.CARTA = {
       },
       {
        "id": "promociones-combo-famiglia",
-       "n": "Combo Famiglia",
+       "n": "La Tavolata",
        "g": "pizza familiar + pan al ajo + Pepsi 1.5 L",
        "d": "La mesa del fin de semana: una pizza familiar a elección, cuatro porciones de pan al ajo y una Pepsi de litro y medio.",
        "p": 65,
@@ -756,9 +756,9 @@ window.CARTA = {
      ]
     }
    ],
-   "titulo_en": "Offerte",
-   "subtitulo_en": "House combos",
-   "intro_en": "For delivery or pick-up. Each combo has its own days.",
+   "titulo_en": "Le Proposte della Casa",
+   "subtitulo_en": "To take away · every day has its own",
+   "intro_en": "Delivery or pick-up.",
    "pie_en": ""
   },
   {
@@ -786,7 +786,7 @@ window.CARTA = {
         "gluten",
         "lacteos"
        ],
-       "foto": "fotos/antipasti-pane-allaglio-1794458225804.jpg",
+       "foto": "fotos/real-pane-allaglio.jpg",
        "g_en": "garlic bread",
        "d_en": "Golden, fragrant garlic bread, the perfect companion to any pasta."
       },
@@ -1751,7 +1751,7 @@ window.CARTA = {
         "huevo",
         "gluten"
        ],
-       "foto": "fotos/pasta-fettuccine-1794449529303.jpg",
+       "foto": "fotos/real-fettuccine-alfredo.jpg",
        "op": [
         "fettuccine-tipo"
        ],
@@ -2825,5 +2825,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-12T11:04:42-05:00"
+ "publicado": "2026-11-12T11:24:02-05:00"
 };
