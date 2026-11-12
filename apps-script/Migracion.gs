@@ -689,7 +689,8 @@ function actualizarV4b() {
    ===================================================================== */
 var FOTOS_REALES = {
   'promociones-combo-alfredo': 'fotos/real-fettuccine-alfredo.jpg',
-  'pasta-fettuccine': 'fotos/real-fettuccine-alfredo.jpg'
+  'pasta-fettuccine': 'fotos/real-fettuccine-alfredo.jpg',
+  'antipasti-pane-allaglio': 'fotos/real-pane-allaglio.jpg'
 };
 
 function actualizarFotosReales() {

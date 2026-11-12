@@ -786,7 +786,7 @@ window.CARTA = {
        "al": [
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1587676353811-1708ddf47031?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/real-pane-allaglio.jpg",
        "g_en": "garlic bread",
        "d_en": "Golden, fragrant garlic bread, the perfect companion to any pasta."
       },
