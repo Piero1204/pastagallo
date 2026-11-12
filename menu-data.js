@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T11:24:02-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T11:32:16-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -508,6 +508,136 @@ window.CARTA = {
      "p": 0
     }
    ]
+  },
+  "tremarie-galleta": {
+   "n": "Galletas Tre Marie",
+   "n_en": "Tre Marie biscuits",
+   "tipo": "una",
+   "req": true,
+   "ops": [
+    {
+     "n": "Cioccolato in Pezzi",
+     "n_en": "Chocolate chunks",
+     "p": 0
+    },
+    {
+     "n": "Caramello Salato e Cioccolato",
+     "n_en": "Salted caramel & chocolate",
+     "p": 0
+    },
+    {
+     "n": "Cacao con Gocce di Cioccolato",
+     "n_en": "Cocoa with chocolate chips",
+     "p": 0
+    }
+   ]
+  },
+  "tremarie-galleta-2": {
+   "n": "Segundo paquete de galletas",
+   "n_en": "Second pack of biscuits",
+   "tipo": "una",
+   "req": true,
+   "ops": [
+    {
+     "n": "Cioccolato in Pezzi",
+     "n_en": "Chocolate chunks",
+     "p": 0
+    },
+    {
+     "n": "Caramello Salato e Cioccolato",
+     "n_en": "Salted caramel & chocolate",
+     "p": 0
+    },
+    {
+     "n": "Cacao con Gocce di Cioccolato",
+     "n_en": "Cocoa with chocolate chips",
+     "p": 0
+    }
+   ]
+  },
+  "tremarie-wafer": {
+   "n": "Wafer Tre Marie",
+   "n_en": "Tre Marie wafer",
+   "tipo": "una",
+   "req": true,
+   "ops": [
+    {
+     "n": "Stracciatella",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Nocciolato",
+     "n_en": "Hazelnut",
+     "p": 0
+    },
+    {
+     "n": "Mandorlato",
+     "n_en": "Almond",
+     "p": 0
+    },
+    {
+     "n": "Gianduia Nera",
+     "n_en": "Dark gianduja",
+     "p": 0
+    }
+   ]
+  },
+  "tremarie-wafer-2": {
+   "n": "Segundo wafer",
+   "n_en": "Second wafer",
+   "tipo": "una",
+   "req": true,
+   "ops": [
+    {
+     "n": "Stracciatella",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Nocciolato",
+     "n_en": "Hazelnut",
+     "p": 0
+    },
+    {
+     "n": "Mandorlato",
+     "n_en": "Almond",
+     "p": 0
+    },
+    {
+     "n": "Gianduia Nera",
+     "n_en": "Dark gianduja",
+     "p": 0
+    }
+   ]
+  },
+  "aggiungi-wafer": {
+   "n": "Agrega un wafer Tre Marie",
+   "n_en": "Add a Tre Marie wafer",
+   "tipo": "una",
+   "req": false,
+   "ops": [
+    {
+     "n": "Stracciatella",
+     "n_en": "",
+     "p": 15
+    },
+    {
+     "n": "Nocciolato",
+     "n_en": "Hazelnut",
+     "p": 15
+    },
+    {
+     "n": "Mandorlato",
+     "n_en": "Almond",
+     "p": 15
+    },
+    {
+     "n": "Gianduia Nera",
+     "n_en": "Dark gianduja",
+     "p": 15
+    }
+   ]
   }
  },
  "salsas": [
@@ -944,9 +1074,102 @@ window.CARTA = {
    "mesa": true,
    "grupos": [
     {
+     "titulo": "Per Regalare",
+     "nota": "",
+     "items": [
+      {
+       "id": "italia-box-italia",
+       "n": "Box Italia",
+       "g": "galletas + wafer + gianduia",
+       "d": "Tu selección de sabores italianos: un paquete de galletas Tre Marie, un wafer Tre Marie y una barra Gianduia Classica de Caffarel. Ideal para regalar.",
+       "p": 65,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos",
+        "soya",
+        "frutosSecos"
+       ],
+       "foto": "fotos/italia-box-italia.jpg",
+       "pa": 74.7,
+       "op": [
+        "tremarie-galleta",
+        "tremarie-wafer"
+       ],
+       "g_en": "biscuits + wafer + gianduja",
+       "d_en": "Your selection of Italian flavours: a pack of Tre Marie biscuits, a Tre Marie wafer and a Caffarel Gianduia Classica bar. Perfect as a gift.",
+       "inc": [
+        "1 paquete de galletas Tre Marie a elección",
+        "1 wafer Tre Marie a elección",
+        "1 Gianduia Classica Caffarel (80 g)"
+       ],
+       "inc_en": [
+        "1 pack of Tre Marie biscuits of your choice",
+        "1 Tre Marie wafer of your choice",
+        "1 Caffarel Gianduia Classica (80 g)"
+       ]
+      }
+     ]
+    },
+    {
      "titulo": "Tre Marie",
      "nota": "",
      "items": [
+      {
+       "id": "italia-biscotti-tre-marie-x2",
+       "n": "Biscotti Tre Marie × 2",
+       "g": "dos paquetes a elección",
+       "d": "Dos paquetes de galletas Tre Marie, del sabor que prefieras.",
+       "p": 50,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos",
+        "soya",
+        "frutosSecos"
+       ],
+       "foto": "fotos/italia-biscotti-tre-marie-x2.jpg",
+       "pa": 57.8,
+       "op": [
+        "tremarie-galleta",
+        "tremarie-galleta-2"
+       ],
+       "g_en": "two packs of your choice",
+       "d_en": "Two packs of Tre Marie biscuits, in the flavours you prefer.",
+       "inc": [
+        "2 paquetes de galletas Tre Marie a elección"
+       ],
+       "inc_en": [
+        "2 packs of Tre Marie biscuits of your choice"
+       ]
+      },
+      {
+       "id": "italia-wafer-tre-marie-x2",
+       "n": "Wafer Tre Marie × 2",
+       "g": "dos wafers a elección",
+       "d": "Dos wafers Tre Marie, del sabor que prefieras.",
+       "p": 30,
+       "al": [
+        "soya",
+        "gluten",
+        "frutosSecos",
+        "lacteos"
+       ],
+       "foto": "fotos/italia-wafer-tre-marie-x2.jpg",
+       "pa": 35.8,
+       "op": [
+        "tremarie-wafer",
+        "tremarie-wafer-2"
+       ],
+       "g_en": "two wafers of your choice",
+       "d_en": "Two Tre Marie wafers, in the flavours you prefer.",
+       "inc": [
+        "2 wafers Tre Marie a elección"
+       ],
+       "inc_en": [
+        "2 Tre Marie wafers of your choice"
+       ]
+      },
       {
        "id": "italia-wafer-mandorlato-tre-marie",
        "n": "Wafer Mandorlato Tre Marie",
@@ -2825,5 +3048,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-12T11:24:02-05:00"
+ "publicado": "2026-11-12T11:32:16-05:00"
 };
