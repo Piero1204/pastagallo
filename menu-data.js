@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:39:13-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:41:43-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2255,8 +2255,8 @@ window.CARTA = {
        "d": "Galleta con chispas de chocolate, ideal con un buen café.",
        "p": 6,
        "al": [
-        "gluten",
         "huevo",
+        "gluten",
         "lacteos"
        ],
        "foto": "https://images.unsplash.com/photo-1782852232674-64bc7f102866?w=700&q=70&auto=format&fit=crop",
@@ -2772,5 +2772,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:39:13-05:00"
+ "publicado": "2026-11-11T21:41:43-05:00"
 };
