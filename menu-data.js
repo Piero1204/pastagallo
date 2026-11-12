@@ -652,7 +652,7 @@ window.CARTA = {
         "lacteos",
         "huevo"
        ],
-       "foto": "fotos/ref-combo-alfredo.jpg",
+       "foto": "fotos/real-fettuccine-alfredo.jpg",
        "canal": "delivery",
        "op": [
         "fettuccine-tipo",
@@ -1747,7 +1747,7 @@ window.CARTA = {
        "al": [
         "gluten"
        ],
-       "foto": "https://images.unsplash.com/photo-1664214649076-7b17006db5b5?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/real-fettuccine-alfredo.jpg",
        "op": [
         "fettuccine-tipo"
        ],
