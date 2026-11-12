@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:44:25-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:44:49-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -971,10 +971,10 @@ window.CARTA = {
        "d": "De la línea «Ancora Uno» de Tre Marie, antigua marca de la tradición pastelera milanesa: finas láminas de barquillo dorado y crujiente, rellenas de una suave crema de avellanas. El acompañante perfecto para un café.",
        "p": 17.9,
        "al": [
+        "soya",
         "gluten",
-        "lacteos",
         "frutosSecos",
-        "soya"
+        "lacteos"
        ],
        "foto": "fotos/italia-wafer-nocciolato-tre-marie-1794451459496.jpg",
        "n_en": "Wafer Nocciolato Tre Marie",
@@ -2772,5 +2772,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:44:25-05:00"
+ "publicado": "2026-11-11T21:44:49-05:00"
 };
