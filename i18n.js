@@ -65,7 +65,18 @@
       envianosWa: "Envíanos tu pedido por WhatsApp para confirmarlo.",
       confirmaWa: "Para confirmarlo, envíanos el detalle por WhatsApp. Ya está listo, solo pulsa enviar.",
       enviarWa: "Enviar por WhatsApp", respondemos: "Te responderemos para confirmar el total{d} y el tiempo de entrega.", conDelivery: " con el delivery",
-      quitarUno: "Quitar uno", agregarUno: "Agregar uno"
+      quitarUno: "Quitar uno", agregarUno: "Agregar uno",
+      enviarWaDirecto: "Enviar pedido por WhatsApp", abriendoWa: "¡Listo! Tu pedido se abrió en WhatsApp",
+      soloEnviar: "Solo pulsa enviar en WhatsApp para confirmarlo. Te responderemos con el total{d} y el tiempo de entrega.",
+      noAbrio: "¿No se abrió WhatsApp? Toca aquí", codigoPedido: "Código de tu pedido: ",
+      comprobante: "¿Necesitas comprobante?", sinComp: "No, gracias", boleta: "Boleta", factura: "Factura",
+      docBoleta: "DNI o RUC", docFactura: "RUC", razonBoleta: "Nombre completo", razonFactura: "Razón social",
+      correo: "Correo (te enviamos el comprobante)", whatsappComp: "Tu WhatsApp",
+      errDoc: "Escribe tu DNI (8 dígitos) o RUC (11 dígitos).", errRuc: "Escribe un RUC válido (11 dígitos).",
+      errRazon: "Escribe el nombre o razón social.", errCorreo: "Escribe un correo válido.", errWaComp: "Escribe tu WhatsApp para enviarte el comprobante.",
+      cuentaMesa: "Cuenta de la mesa", cuentaVacia: "Todavía no hay pedidos en esta mesa.", cuentaTotal: "Total de la mesa",
+      cuentaNota: "El mozo te traerá la cuenta final al pedirla.", cargando: "Cargando…", verCuenta: "Ver lo pedido en la mesa",
+      extrasOpc: "Agregar {g} (opcional)"
     },
     en: {
       abierto: "Open now · until ", cerrado: "Closed · we open ", mesa: "Table ",
@@ -121,7 +132,18 @@
       envianosWa: "Send us your order on WhatsApp to confirm it.",
       confirmaWa: "To confirm it, send us the details on WhatsApp. It's ready, just press send.",
       enviarWa: "Send on WhatsApp", respondemos: "We will reply to confirm the total{d} and the delivery time.", conDelivery: " including delivery",
-      quitarUno: "Remove one", agregarUno: "Add one"
+      quitarUno: "Remove one", agregarUno: "Add one",
+      enviarWaDirecto: "Send order on WhatsApp", abriendoWa: "Done! Your order opened in WhatsApp",
+      soloEnviar: "Just press send in WhatsApp to confirm it. We will reply with the total{d} and the delivery time.",
+      noAbrio: "WhatsApp didn't open? Tap here", codigoPedido: "Your order code: ",
+      comprobante: "Do you need a receipt or invoice?", sinComp: "No, thanks", boleta: "Receipt (boleta)", factura: "Invoice (factura)",
+      docBoleta: "DNI or RUC", docFactura: "RUC", razonBoleta: "Full name", razonFactura: "Company name",
+      correo: "Email (we will send it there)", whatsappComp: "Your WhatsApp",
+      errDoc: "Enter your DNI (8 digits) or RUC (11 digits).", errRuc: "Enter a valid RUC (11 digits).",
+      errRazon: "Enter the name or company name.", errCorreo: "Enter a valid email.", errWaComp: "Enter your WhatsApp to send you the document.",
+      cuentaMesa: "Table bill", cuentaVacia: "No orders at this table yet.", cuentaTotal: "Table total",
+      cuentaNota: "Your waiter will bring the final bill when you ask for it.", cargando: "Loading…", verCuenta: "See what this table ordered",
+      extrasOpc: "Add {g} (optional)"
     }
   };
   var AL_EN = { gluten: "Gluten", lacteos: "Dairy", huevo: "Egg", pescado: "Fish", mariscos: "Shellfish", frutosSecos: "Tree nuts", mani: "Peanuts", soya: "Soy", sulfitos: "Sulphites" };

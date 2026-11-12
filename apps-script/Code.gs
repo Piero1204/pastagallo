@@ -21,8 +21,9 @@ var COLS = {
     'canal', 'precio_antes', 'opciones', 'nombre_en', 'glosa_en', 'descripcion_en',
     'incluye', 'incluye_en', 'promo_dias', 'promo_desde', 'promo_hasta', 'promo_horas', 'promo_excluir', 'promo_extra'],
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
-    'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen'],
-  mesas: ['mesa', 'codigo', 'activa', 'link'],
+    'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
+    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado'],
+  mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde'],
   opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo']
 };
 var CANALES = ['todos', 'local', 'delivery'];
@@ -190,11 +191,11 @@ function leerTabla_(nombre) {
   if (!h || h.getLastRow() < 2) return [];
   var v = h.getDataRange().getValues();
   var cab = v.shift().map(function (c) { return String(c).trim(); });
-  return v.filter(function (r) { return r.join('') !== ''; }).map(function (r, i) {
-    var o = { _fila: i + 2 };
+  return v.map(function (r, i) {
+    var o = { _fila: i + 2, _vacia: r.join('') === '' };
     cab.forEach(function (c, j) { o[c] = r[j]; });
     return o;
-  });
+  }).filter(function (o) { return !o._vacia; });
 }
 
 function leerCatalogo_() {
@@ -398,6 +399,19 @@ function calcularPedido_(body, cat, cfg, momento) {
   }
   if (canal === 'delivery' && cliente.direccion.length < 5) return { ok: false, error: 'Escribe la dirección de entrega.' };
 
+  // Comprobante (boleta o factura): datos para emitirlo después
+  var comp = { tipo: texto_(body.comprobante, 10), doc: String(body.doc || '').replace(/\D/g, '').slice(0, 11),
+    razon: texto_(body.razon, 120), correo: texto_(body.correo, 120).toLowerCase() };
+  var tiposComp = listaComprobantes_(cfg);
+  if (comp.tipo) {
+    if (tiposComp.indexOf(comp.tipo) < 0) return { ok: false, error: 'Ese tipo de comprobante no está disponible.' };
+    var er = validarDocumento_(comp.tipo, comp.doc);
+    if (er) return { ok: false, error: er };
+    if (comp.razon.length < 3) return { ok: false, error: comp.tipo === 'Factura' ? 'Escribe la razón social.' : 'Escribe el nombre para la boleta.' };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(comp.correo)) return { ok: false, error: 'Escribe un correo válido para enviarte el comprobante.' };
+    if (cliente.telefono.replace(/\D/g, '').length < 9) return { ok: false, error: 'Escribe tu WhatsApp para enviarte el comprobante.' };
+  } else comp = { tipo: '', doc: '', razon: '', correo: '' };
+
   var items = Array.isArray(body.items) ? body.items : [];
   if (!items.length) return { ok: false, error: 'Tu pedido está vacío.' };
   if (items.length > 40) return { ok: false, error: 'El pedido tiene demasiadas líneas.' };
@@ -486,7 +500,7 @@ function calcularPedido_(body, cat, cfg, momento) {
 
   var origen = String(body.origen || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30);
   return { ok: true, canal: canal, mesa: mesa, programado: programado, cliente: cliente, lineas: lineas,
-    total: total, detalle: detalle, abierto: abierto, origen: origen };
+    total: total, detalle: detalle, abierto: abierto, origen: origen, comp: comp, ref: texto_(body.ref, 12) };
 }
 
 /** Construye el objeto CARTA que usa la web (menu-data.js). */
@@ -571,7 +585,8 @@ function construirCarta_(cfg, secciones, productos, opciones) {
       api: cfg.api_url || '', activos: esSi_(cfg.pedidos_activos), fueraHorario: esSi_(cfg.pedidos_fuera_de_horario),
       mesaActivos: esSi_(cfg.pedidos_mesa_activos), recojo: esSi_(cfg.recojo_activo),
       metodosPago: String(cfg.metodos_pago || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean),
-      textoDelivery: cfg.texto_delivery || '', textoDelivery_en: cfg.texto_delivery_en || ''
+      textoDelivery: cfg.texto_delivery || '', textoDelivery_en: cfg.texto_delivery_en || '',
+      comprobantes: listaComprobantes_(cfg)
     },
     opciones: grupos,
     salsas: salsas,
@@ -634,11 +649,15 @@ function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
 
 /* =========================== API PÚBLICA (web) =========================== */
 function doGet(e) {
-  if (!(e && e.parameter && e.parameter.estado)) {
+  if (!(e && e.parameter && (e.parameter.estado || e.parameter.cuenta))) {
     var t = HtmlService.createTemplateFromFile('Panel');
     t.modoWeb = true;
     return t.evaluate().setTitle('Panel · Pasta Gallo')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+  if (e.parameter.cuenta) {
+    try { return json_(cuentaPublica_(texto_(e.parameter.m, 6), texto_(e.parameter.c, 20))); }
+    catch (err) { return json_({ ok: false, error: 'No pudimos leer la cuenta.' }); }
   }
   var cfg = leerConfig_();
   var momento = momentoActual_(cfg);
@@ -708,7 +727,9 @@ function registrarPedido_(body) {
       telefono: r.cliente.telefono, direccion: r.cliente.direccion, referencia: r.cliente.referencia,
       pago: r.cliente.pago, programado: r.programado ? "'" + r.programado : '', detalle: r.detalle, total: r.total, estado: 'Nuevo',
       notas: r.cliente.notas, items_json: JSON.stringify(r.lineas), actualizado: ahora, historial: 'Nuevo ' + fmt_(ahora, 'HH:mm'),
-      origen: r.origen
+      origen: r.origen,
+      ref: r.ref, comprobante: r.comp.tipo, doc: r.comp.doc ? "'" + r.comp.doc : '', razon: r.comp.razon, correo: r.comp.correo,
+      comp_estado: r.comp.tipo ? 'Pendiente' : ''
     };
     var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
     var cab = asegurarColumnas_(h, COLS.pedidos);
@@ -718,6 +739,26 @@ function registrarPedido_(body) {
     lock.releaseLock();
   }
   return { ok: true, numero: numero, total: r.total, detalle: r.detalle, lineas: r.lineas };
+}
+
+function listaComprobantes_(cfg) {
+  return String(cfg.comprobantes || '').split(',').map(function (x) { return x.trim(); })
+    .filter(function (x) { return x === 'Boleta' || x === 'Factura'; });
+}
+
+/** DNI: 8 dígitos. RUC: 11 dígitos, empieza en 10/15/16/17/20 y dígito verificador válido. */
+function rucValido_(r) {
+  if (!/^(10|15|16|17|20)\d{9}$/.test(r)) return false;
+  var f = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2], s = 0;
+  for (var i = 0; i < 10; i++) s += Number(r.charAt(i)) * f[i];
+  var d = 11 - (s % 11); if (d === 10) d = 0; if (d === 11) d = 1;
+  return d === Number(r.charAt(10));
+}
+function validarDocumento_(tipo, doc) {
+  if (tipo === 'Factura') return rucValido_(doc) ? '' : 'Para factura escribe un RUC válido (11 dígitos).';
+  if (doc.length === 8) return '';
+  if (doc.length === 11) return rucValido_(doc) ? '' : 'El RUC no es válido.';
+  return 'Escribe tu DNI (8 dígitos) o RUC (11 dígitos).';
 }
 
 /** Evita que un texto escrito por el cliente se interprete como fórmula en el Sheets. */
@@ -795,6 +836,8 @@ function pedidoAObjeto_(p, zona) {
     direccion: celdaTexto_(p.direccion), referencia: celdaTexto_(p.referencia), pago: celdaTexto_(p.pago),
     programado: celdaTexto_(p.programado), detalle: celdaTexto_(p.detalle), total: Number(p.total) || 0,
     estado: celdaTexto_(p.estado), notas: celdaTexto_(p.notas), historial: celdaTexto_(p.historial),
+    ref: celdaTexto_(p.ref), comprobante: celdaTexto_(p.comprobante), doc: celdaTexto_(p.doc), razon: celdaTexto_(p.razon),
+    correo: celdaTexto_(p.correo), compEstado: celdaTexto_(p.comp_estado),
     ts: p.fecha instanceof Date ? p.fecha.getTime() : 0,
     act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0
   };
@@ -1012,7 +1055,8 @@ var CLAVES_EDITABLES = ['nombre', 'desde', 'direccion', 'telefono', 'whatsapp', 
   'horario_viernes', 'horario_sabado', 'horario_domingo', 'historia_eyebrow', 'historia_titulo', 'historia_texto',
   'pedidos_activos', 'pedidos_fuera_de_horario', 'pedidos_mesa_activos', 'metodos_pago', 'recojo_activo', 'texto_delivery',
   'api_url', 'sitio_url', 'github_repo', 'github_rama', 'admins', 'minutos_alerta',
-  'historia_eyebrow_en', 'historia_titulo_en', 'historia_texto_en', 'texto_delivery_en', 'horario_texto_en', 'cerrado_texto_en'];
+  'historia_eyebrow_en', 'historia_titulo_en', 'historia_texto_en', 'texto_delivery_en', 'horario_texto_en', 'cerrado_texto_en',
+  'comprobantes'];
 
 function leerAjustes(sesion) {
   exigirAdmin_(sesion);
@@ -1142,7 +1186,11 @@ function listarMesas(sesion) {
 function nuevaMesa(sesion, nombre) {
   exigirAdmin_(sesion);
   nombre = texto_(nombre, 6);
-  if (!nombre) throw new Error('Escribe el número o nombre de la mesa (máx. 6 caracteres).');
+  if (!nombre) {   // sin nombre: la siguiente mesa (la más alta + 1)
+    var max = 0;
+    leerTabla_(HOJA.mesas).forEach(function (m) { var n = Number(m.mesa); if (n > max) max = n; });
+    nombre = String(max + 1);
+  }
   if (leerTabla_(HOJA.mesas).some(function (m) { return String(m.mesa) === nombre; })) throw new Error('Esa mesa ya existe.');
   SpreadsheetApp.getActive().getSheetByName(HOJA.mesas).appendRow([nombre, codigoMesa_(), 'SI', '']);
   return listarMesas(sesion);
@@ -1162,6 +1210,65 @@ function activarMesa(sesion, nombre, activa) {
   if (!m) throw new Error('Mesa no encontrada.');
   SpreadsheetApp.getActive().getSheetByName(HOJA.mesas).getRange(m._fila, 3).setValue(activa ? 'SI' : 'NO');
   return listarMesas(sesion);
+}
+
+/* ---------- cuenta abierta de cada mesa ----------
+   Una mesa tiene la cuenta abierta desde "abierta_desde" (o desde el inicio del día).
+   Todos los pedidos de esa mesa desde entonces (menos los cancelados) forman su cuenta. */
+function inicioCuenta_(m, zona) {
+  var hoy = Utilities.formatDate(new Date(), zona, 'yyyy-MM-dd');
+  var ini = Utilities.parseDate(hoy + ' 00:00:00', zona, 'yyyy-MM-dd HH:mm:ss').getTime();
+  var d = m && m.abierta_desde instanceof Date ? m.abierta_desde.getTime() : 0;
+  return Math.max(ini, d);
+}
+function cuentaMesa_(mesa, m, pedidos, zona) {
+  var desde = inicioCuenta_(m, zona);
+  var lista = pedidos.filter(function (p) {
+    return String(p.mesa) === String(mesa) && p.canal === 'mesa' && p.fecha instanceof Date && p.fecha.getTime() >= desde && p.estado !== 'Cancelado';
+  }).map(function (p) {
+    return { numero: p.numero, hora: Utilities.formatDate(p.fecha, zona, 'HH:mm'), detalle: celdaTexto_(p.detalle),
+      total: Number(p.total) || 0, estado: celdaTexto_(p.estado), nombre: celdaTexto_(p.nombre) };
+  });
+  var total = Math.round(lista.reduce(function (a, p) { return a + p.total; }, 0) * 100) / 100;
+  return { mesa: String(mesa), pedidos: lista, total: total };
+}
+/** Para la web de la mesa (con su código del QR). */
+function cuentaPublica_(mesa, codigo) {
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
+  if (!m || !esSi_(m.activa) || String(m.codigo) !== String(codigo)) return { ok: false, error: 'Código de mesa no válido.' };
+  var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
+  c.ok = true;
+  c.pedidos.forEach(function (p) { delete p.nombre; });
+  return c;
+}
+/** Para el panel: mesas con cuenta abierta. */
+function cuentasMesas(sesion) {
+  exigirAdmin_(sesion);
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var peds = leerTabla_(HOJA.pedidos);
+  return leerTabla_(HOJA.mesas).map(function (m) { return cuentaMesa_(m.mesa, m, peds, zona); })
+    .filter(function (c) { return c.pedidos.length; });
+}
+function cerrarCuentaMesa(sesion, mesa) {
+  exigirAdmin_(sesion);
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.mesas);
+  var cab = asegurarColumnas_(h, COLS.mesas);
+  var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
+  if (!m) throw new Error('Mesa no encontrada.');
+  h.getRange(m._fila, cab.indexOf('abierta_desde') + 1).setValue(new Date(Date.now() + 1000));
+  return cuentasMesas(sesion);
+}
+function marcarComprobante(sesion, numero, estado) {
+  exigirAdmin_(sesion);
+  if (['Pendiente', 'Emitido'].indexOf(estado) < 0) throw new Error('Estado no válido.');
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
+  var cab = asegurarColumnas_(h, COLS.pedidos);
+  var p = leerTabla_(HOJA.pedidos).filter(function (x) { return String(x.numero) === String(numero); })[0];
+  if (!p) throw new Error('Pedido no encontrado.');
+  h.getRange(p._fila, cab.indexOf('comp_estado') + 1).setValue(estado);
+  PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+  return true;
 }
 
 /* =========================== ACCESO POR CONTRASEÑA (panel web) =========================== */
