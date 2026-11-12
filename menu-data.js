@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:49:54-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T22:43:18-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -86,7 +86,11 @@ window.CARTA = {
    "Plin"
   ],
   "textoDelivery": "El costo del delivery depende de tu zona y te lo confirmamos por WhatsApp.",
-  "textoDelivery_en": "The delivery fee depends on your area; we will confirm it by WhatsApp."
+  "textoDelivery_en": "The delivery fee depends on your area; we will confirm it by WhatsApp.",
+  "comprobantes": [
+   "Boleta",
+   "Factura"
+  ]
  },
  "opciones": {
   "termino": {
@@ -622,22 +626,7 @@ window.CARTA = {
         "temp-bebida"
        ],
        "g_en": "personal pizza + garlic bread + Pepsi",
-       "d_en": "Your personal pizza, Hawaiian or Americana, with two portions of garlic bread and a cold Pepsi.",
-       "inc": [
-        "Pizza personal Hawaiana o Americana",
-        "2 porciones de pan al ajo (4 rebanadas)",
-        "Pepsi de ½ litro"
-       ],
-       "inc_en": [
-        "Personal Hawaiian or Americana pizza",
-        "2 portions of garlic bread (4 slices)",
-        "½-litre Pepsi"
-       ],
-       "promo": {
-        "dias": [
-         2
-        ]
-       }
+       "d_en": "Your personal pizza, Hawaiian or Americana, with two portions of garlic bread and a cold Pepsi."
       },
       {
        "id": "promociones-combo-alfredo",
@@ -657,22 +646,7 @@ window.CARTA = {
         "temp-bebida"
        ],
        "g_en": "fettuccine + garlic bread + Pepsi",
-       "d_en": "A portion of creamy fettuccine Alfredo with three portions of garlic bread and a Pepsi. Green fettuccine is subject to availability.",
-       "inc": [
-        "Fettuccine all’Alfredo, clásico o verde",
-        "3 porciones de pan al ajo (6 rebanadas)",
-        "Pepsi de ½ litro"
-       ],
-       "inc_en": [
-        "Fettuccine Alfredo, classic or green",
-        "3 portions of garlic bread (6 slices)",
-        "½-litre Pepsi"
-       ],
-       "promo": {
-        "dias": [
-         3
-        ]
-       }
+       "d_en": "A portion of creamy fettuccine Alfredo with three portions of garlic bread and a Pepsi. Green fettuccine is subject to availability."
       },
       {
        "id": "promociones-combo-per-due",
@@ -693,24 +667,7 @@ window.CARTA = {
         "temp-bebida"
        ],
        "g_en": "medium pizza + fettuccine + garlic bread + Pepsi",
-       "d_en": "To share between two: a medium pizza of your choice and a plate of fettuccine Alfredo, with garlic bread and Pepsi. Green fettuccine is subject to availability.",
-       "inc": [
-        "Pizza mediana a elección",
-        "Fettuccine all’Alfredo, clásico o verde",
-        "2 porciones de pan al ajo (4 rebanadas)",
-        "Pepsi de ½ litro"
-       ],
-       "inc_en": [
-        "Medium pizza of your choice",
-        "Fettuccine Alfredo, classic or green",
-        "2 portions of garlic bread (4 slices)",
-        "½-litre Pepsi"
-       ],
-       "promo": {
-        "dias": [
-         4
-        ]
-       }
+       "d_en": "To share between two: a medium pizza of your choice and a plate of fettuccine Alfredo, with garlic bread and Pepsi. Green fettuccine is subject to availability."
       },
       {
        "id": "promociones-combo-famiglia",
@@ -730,24 +687,7 @@ window.CARTA = {
         "temp-bebida"
        ],
        "g_en": "family pizza + garlic bread + 1.5 L Pepsi",
-       "d_en": "The weekend table: a family-size pizza of your choice, four portions of garlic bread and a 1.5-litre Pepsi.",
-       "inc": [
-        "Pizza familiar a elección",
-        "4 porciones de pan al ajo (8 rebanadas)",
-        "Pepsi de 1.5 litros"
-       ],
-       "inc_en": [
-        "Family-size pizza of your choice",
-        "4 portions of garlic bread (8 slices)",
-        "1.5-litre Pepsi"
-       ],
-       "promo": {
-        "dias": [
-         0,
-         5,
-         6
-        ]
-       }
+       "d_en": "The weekend table: a family-size pizza of your choice, four portions of garlic bread and a 1.5-litre Pepsi."
       }
      ]
     }
@@ -1130,15 +1070,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         22
+         24
         ],
         [
          "Media",
-         33
+         35
         ],
         [
          "Famiglia",
-         50
+         52
         ]
        ],
        "al": [
@@ -1158,15 +1098,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         25
+         27
         ],
         [
          "Media",
-         35
+         37
         ],
         [
          "Famiglia",
-         55
+         57
         ]
        ],
        "al": [
@@ -1186,15 +1126,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
+         32
         ],
         [
          "Media",
-         40
+         42
         ],
         [
          "Famiglia",
-         60
+         62
         ]
        ],
        "al": [
@@ -1214,15 +1154,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
+         32
         ],
         [
          "Media",
-         40
+         42
         ],
         [
          "Famiglia",
-         60
+         62
         ]
        ],
        "al": [
@@ -1242,15 +1182,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
+         32
         ],
         [
          "Media",
-         40
+         42
         ],
         [
          "Famiglia",
-         60
+         62
         ]
        ],
        "al": [
@@ -1270,15 +1210,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         32
+         34
         ],
         [
          "Media",
-         42
+         44
         ],
         [
          "Famiglia",
-         62
+         64
         ]
        ],
        "al": [
@@ -1298,15 +1238,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
+         32
         ],
         [
          "Media",
-         40
+         42
         ],
         [
          "Famiglia",
-         60
+         62
         ]
        ],
        "al": [
@@ -1327,15 +1267,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
+         32
         ],
         [
          "Media",
-         40
+         42
         ],
         [
          "Famiglia",
-         60
+         62
         ]
        ],
        "al": [
@@ -1357,15 +1297,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         32
+         34
         ],
         [
          "Media",
-         42
+         44
         ],
         [
          "Famiglia",
-         62
+         64
         ]
        ],
        "al": [
@@ -1386,15 +1326,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         32
+         34
         ],
         [
          "Media",
-         42
+         44
         ],
         [
          "Famiglia",
-         65
+         67
         ]
        ],
        "al": [
@@ -1415,15 +1355,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         35
+         37
         ],
         [
          "Media",
-         45
+         47
         ],
         [
          "Famiglia",
-         66
+         68
         ]
        ],
        "al": [
@@ -1445,15 +1385,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         35
+         37
         ],
         [
          "Media",
-         45
+         47
         ],
         [
          "Famiglia",
-         66
+         68
         ]
        ],
        "al": [
@@ -1474,15 +1414,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         35
+         37
         ],
         [
          "Media",
-         45
+         47
         ],
         [
          "Famiglia",
-         70
+         72
         ]
        ],
        "al": [
@@ -1503,15 +1443,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         32
+         34
         ],
         [
          "Media",
-         45
+         47
         ],
         [
          "Famiglia",
-         75
+         77
         ]
        ],
        "al": [
@@ -1533,15 +1473,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         35
+         37
         ],
         [
          "Media",
-         45
+         47
         ],
         [
          "Famiglia",
-         70
+         72
         ]
        ],
        "al": [
@@ -1562,15 +1502,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         35
+         37
         ],
         [
          "Media",
-         45
+         47
         ],
         [
          "Famiglia",
-         70
+         72
         ]
        ],
        "al": [
@@ -1610,7 +1550,7 @@ window.CARTA = {
        "n": "Fonte di Ravioli di Ricotta",
        "g": "fuente de ravioles de ricotta",
        "d": "Una fuente generosa de ravioles rellenos de ricotta, servida con la salsa de tu elección.",
-       "p": 60,
+       "p": 65,
        "salsa": true,
        "al": [
         "gluten",
@@ -1626,7 +1566,7 @@ window.CARTA = {
        "n": "Fonte di Ravioli di Carne",
        "g": "fuente de ravioles de carne",
        "d": "Una fuente generosa de ravioles rellenos de carne, servida con la salsa de tu elección.",
-       "p": 60,
+       "p": 65,
        "salsa": true,
        "al": [
         "gluten",
@@ -1641,7 +1581,7 @@ window.CARTA = {
        "n": "Fonte di Fettuccine",
        "g": "fuente de fettuccine",
        "d": "Una fuente generosa de fettuccine, clásicos o verdes (de espinaca), servida con la salsa de tu elección.",
-       "p": 50,
+       "p": 55,
        "salsa": true,
        "al": [
         "gluten"
@@ -1658,7 +1598,7 @@ window.CARTA = {
        "n": "Tris di Pasta",
        "g": "tres pastas en un plato",
        "d": "Un plato largo que reúne nuestros clásicos: fettuccine, lasagna de carne y raviolini di carne.",
-       "p": 34,
+       "p": 36,
        "salsa": true,
        "destacado": "tris",
        "al": [
@@ -1680,7 +1620,7 @@ window.CARTA = {
        "id": "pasta-fettuccine-allalfredo-con-lomo",
        "n": "Fettuccine all’Alfredo con Lomo",
        "d": "Fettuccine bañados en la cremosa salsa Alfredo y coronados con lomo, en el término que prefieras.",
-       "p": 65,
+       "p": 67,
        "al": [
         "gluten",
         "lacteos"
@@ -1696,7 +1636,7 @@ window.CARTA = {
        "n": "Spaghetti alla Huancaina con Lomo",
        "g": "spaghetti a la huancaína con lomo",
        "d": "Dos mundos en un plato: spaghetti italianos con la cremosa salsa huancaína peruana y lomo. Elige tu nivel de picante.",
-       "p": 70,
+       "p": 72,
        "al": [
         "gluten",
         "lacteos"
@@ -1713,7 +1653,7 @@ window.CARTA = {
        "n": "Spaghetti ai Gamberi",
        "g": "spaghetti con langostinos",
        "d": "Spaghetti con langostinos en salsa roja (de tomate) o blanca (bechamel), a tu elección, con el nivel de picante que prefieras.",
-       "p": 70,
+       "p": 72,
        "al": [
         "gluten",
         "mariscos"
@@ -1736,7 +1676,7 @@ window.CARTA = {
        "id": "pasta-fettuccine",
        "n": "Fettuccine",
        "d": "Cintas largas y planas, ideales para las salsas cremosas. Clásicos o verdes (de espinaca).",
-       "p": 30,
+       "p": 32,
        "salsa": true,
        "al": [
         "huevo",
@@ -1752,7 +1692,7 @@ window.CARTA = {
        "id": "pasta-pappardelle",
        "n": "Pappardelle",
        "d": "Anchas cintas de tradición toscana, hechas para salsas con carácter.",
-       "p": 30,
+       "p": 32,
        "salsa": true,
        "al": [
         "gluten"
@@ -1764,7 +1704,7 @@ window.CARTA = {
        "id": "pasta-spaghetti",
        "n": "Spaghetti",
        "d": "El clásico entre los clásicos, siempre bienvenido.",
-       "p": 30,
+       "p": 32,
        "salsa": true,
        "al": [
         "gluten"
@@ -1777,7 +1717,7 @@ window.CARTA = {
        "n": "Conchiglie",
        "g": "conchitas",
        "d": "Pasta en forma de concha que guarda la salsa en cada bocado.",
-       "p": 30,
+       "p": 32,
        "salsa": true,
        "al": [
         "gluten"
@@ -1791,7 +1731,7 @@ window.CARTA = {
        "n": "Gomiti",
        "g": "coditos",
        "d": "Pequeños codos de pasta: sencillos, simpáticos y muy queridos.",
-       "p": 30,
+       "p": 32,
        "salsa": true,
        "al": [
         "gluten"
@@ -1805,7 +1745,7 @@ window.CARTA = {
        "n": "Maccheroni",
        "g": "macarrones",
        "d": "Tubos cortos de pasta que abrazan la salsa.",
-       "p": 30,
+       "p": 32,
        "salsa": true,
        "al": [
         "gluten"
@@ -1825,7 +1765,7 @@ window.CARTA = {
        "n": "Ravioli di Carne",
        "g": "ravioles de carne",
        "d": "Ravioles rellenos de carne, con la salsa de tu elección.",
-       "p": 32,
+       "p": 34,
        "salsa": true,
        "al": [
         "gluten",
@@ -1840,7 +1780,7 @@ window.CARTA = {
        "n": "Ravioli di Ricotta",
        "g": "ravioles de ricotta",
        "d": "Ravioles rellenos de ricotta, suaves y cremosos.",
-       "p": 32,
+       "p": 34,
        "salsa": true,
        "al": [
         "gluten",
@@ -1870,7 +1810,7 @@ window.CARTA = {
        "n": "Tortellini di Carne",
        "g": "tortellini de carne",
        "d": "Pequeños anillos de pasta rellenos de carne, con el mismo relleno de nuestros ravioli di carne. Tradición de Emilia-Romaña.",
-       "p": 32,
+       "p": 34,
        "salsa": true,
        "al": [
         "gluten",
@@ -1885,7 +1825,7 @@ window.CARTA = {
        "n": "Gnocchi di Patate",
        "g": "ñoquis de papa",
        "d": "Suaves ñoquis de papa, tiernos como una nube.",
-       "p": 30,
+       "p": 32,
        "salsa": true,
        "al": [
         "gluten"
@@ -2160,18 +2100,25 @@ window.CARTA = {
        "n": "Churrasco o Chuleta",
        "g": "Con ensalada y papas fritas",
        "d": "A tu elección: churrasco o chuleta.",
-       "p": 38,
+       "p": 40,
        "foto": "https://images.unsplash.com/photo-1662499754738-e0d6ac84f308?w=700&q=70&auto=format&fit=crop",
        "n_en": "Steak or Pork Chop",
        "g_en": "With salad and French fries",
        "d_en": "Your choice: steak or pork chop."
       },
       {
+       "id": "parrillas-pollo-a-la-plancha",
+       "n": "Pollo a la Plancha",
+       "p": 30,
+       "foto": "https://images.unsplash.com/photo-1670398564097-0762e1b30b3a?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Grilled Chicken"
+      },
+      {
        "id": "parrillas-milanesa-de-pollo",
        "n": "Milanesa de Pollo",
        "g": "Con papas fritas",
        "d": "Pollo apanado, dorado y crocante.",
-       "p": 30,
+       "p": 32,
        "al": [
         "gluten",
         "huevo"
@@ -2638,28 +2585,97 @@ window.CARTA = {
      ]
     },
     {
-     "titulo": "I Nostri Vini",
-     "nota": "Vinos y espumantes",
+     "titulo": "Vini Italiani",
+     "nota": "",
      "items": [
       {
-       "id": "vini-tabernero-gran-tinto",
-       "n": "Tabernero Gran Tinto",
-       "g": "tinto semiseco · Perú",
-       "d": "Tinto semiseco peruano de uva Malbec del valle de Chincha: dulce, frutal y muy fácil de beber.",
-       "p": 48,
+       "id": "vini-ca-bianca",
+       "n": "Ca' Bianca",
+       "g": "Piamonte · Italia",
+       "d": "Vino del Piamonte elaborado por Tenimenti Ca' Bianca.",
+       "p": 80,
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1767510533093-ffb6421a002d?w=700&q=70&auto=format&fit=crop",
-       "g_en": "off-dry red · Peru",
-       "d_en": "Off-dry Peruvian red from Malbec grapes of the Chincha Valley: sweet, fruity and very easy to drink."
+       "g_en": "Piedmont · Italy",
+       "d_en": "A Piedmont wine by Tenimenti Ca' Bianca."
+      },
+      {
+       "id": "vini-cavicchioli",
+       "n": "Cavicchioli",
+       "g": "Emilia-Romaña · Italia",
+       "d": "De la casa Cavicchioli, fundada en 1928 en Emilia-Romaña y conocida por sus Lambruscos.",
+       "p": 60,
+       "al": [
+        "sulfitos"
+       ],
+       "g_en": "Emilia-Romagna · Italy",
+       "d_en": "From Cavicchioli, founded in 1928 in Emilia-Romagna and known for its Lambruscos."
+      },
+      {
+       "id": "vini-victoria",
+       "n": "Victoria",
+       "g": "Italia",
+       "p": 150,
+       "al": [
+        "sulfitos"
+       ],
+       "g_en": "Italy"
+      },
+      {
+       "id": "vini-prisionero",
+       "n": "Prisionero",
+       "g": "Italia",
+       "p": 130,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1611575189074-9dfbbceb258a?w=700&q=70&auto=format&fit=crop",
+       "g_en": "Italy"
+      },
+      {
+       "id": "vini-patrillo",
+       "n": "Patrillo",
+       "g": "Italia",
+       "p": 150,
+       "al": [
+        "sulfitos"
+       ],
+       "foto": "https://images.unsplash.com/photo-1578911373434-0cb395d2cbfb?w=700&q=70&auto=format&fit=crop",
+       "g_en": "Italy"
+      }
+     ]
+    },
+    {
+     "titulo": "Vini Sudamericani",
+     "nota": "",
+     "items": [
+      {
+       "id": "vini-tabernero-tuyo",
+       "n": "Tabernero Tuyo",
+       "g": "Perú",
+       "p": 38,
+       "al": [
+        "sulfitos"
+       ],
+       "g_en": "Peru"
+      },
+      {
+       "id": "vini-tabernero-moscato",
+       "n": "Tabernero Moscato",
+       "g": "Perú",
+       "p": 38,
+       "al": [
+        "sulfitos"
+       ],
+       "g_en": "Peru"
       },
       {
        "id": "vini-tabernero-borgona",
        "n": "Tabernero Borgoña",
        "g": "tinto semiseco · Perú",
        "d": "Semiseco del valle de Chincha, con aromas de cereza confitada y un toque de regaliz. Taninos muy suaves: ideal para acompañar platos con algo de picante.",
-       "p": 45,
+       "p": 40,
        "al": [
         "sulfitos"
        ],
@@ -2668,35 +2684,11 @@ window.CARTA = {
        "d_en": "Off-dry red from the Chincha Valley, with candied cherry aromas and a hint of liquorice. Very soft tannins: great with slightly spicy dishes."
       },
       {
-       "id": "vini-gran-blanco",
-       "n": "Gran Blanco",
-       "g": "blanco",
-       "p": 50,
-       "al": [
-        "sulfitos"
-       ],
-       "foto": "https://images.unsplash.com/photo-1585553616435-2dc0a54e271d?w=700&q=70&auto=format&fit=crop",
-       "g_en": "white"
-      },
-      {
-       "id": "vini-frontera",
-       "n": "Frontera",
-       "g": "tinto · Chile",
-       "d": "De Viña Concha y Toro. En su versión Cabernet Sauvignon: fruta negra madura con toques de vainilla, café y chocolate; suave y de final largo.",
-       "p": 48,
-       "al": [
-        "sulfitos"
-       ],
-       "foto": "https://images.unsplash.com/photo-1630369160812-26c7604cbd8c?w=700&q=70&auto=format&fit=crop",
-       "g_en": "red · Chile",
-       "d_en": "From Concha y Toro. In its Cabernet Sauvignon version: ripe black fruit with hints of vanilla, coffee and chocolate; smooth with a long finish."
-      },
-      {
        "id": "vini-tacama-seco",
        "n": "Tacama Seco",
        "g": "seco · Perú",
        "d": "De Viña Tacama, en el valle de Ica, una de las bodegas con más historia del Perú.",
-       "p": 55,
+       "p": 45,
        "al": [
         "sulfitos"
        ],
@@ -2705,61 +2697,29 @@ window.CARTA = {
        "d_en": "From Viña Tacama in the Ica Valley, one of Peru's most historic wineries."
       },
       {
-       "id": "vini-tacama-semiseco",
-       "n": "Tacama Semiseco",
-       "g": "semiseco · Perú",
-       "d": "De Viña Tacama, en el valle de Ica: un toque más dulce y amable.",
-       "p": 55,
-       "al": [
-        "sulfitos"
-       ],
-       "foto": "https://images.unsplash.com/photo-1765033670193-be9fc10ccd8a?w=700&q=70&auto=format&fit=crop",
-       "g_en": "off-dry · Peru",
-       "d_en": "From Viña Tacama in the Ica Valley: a touch sweeter and gentler."
-      },
-      {
-       "id": "vini-casillero-del-diablo",
-       "n": "Casillero del Diablo",
+       "id": "vini-frontera",
+       "n": "Frontera Cabernet Sauvignon",
        "g": "tinto · Chile",
-       "d": "De Viña Concha y Toro. En Cabernet Sauvignon: cereza, grosella y ciruela negra con un toque de vainilla de barrica; taninos elegantes y final largo.",
-       "p": 60,
+       "d": "De Viña Concha y Toro. En su versión Cabernet Sauvignon: fruta negra madura con toques de vainilla, café y chocolate; suave y de final largo.",
+       "p": 40,
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1764874299343-e55d7af327cd?w=700&q=70&auto=format&fit=crop",
+       "foto": "https://images.unsplash.com/photo-1630369160812-26c7604cbd8c?w=700&q=70&auto=format&fit=crop",
        "g_en": "red · Chile",
-       "d_en": "From Concha y Toro. As Cabernet Sauvignon: cherry, redcurrant and black plum with a touch of oak vanilla; elegant tannins and a long finish."
+       "d_en": "From Concha y Toro. In its Cabernet Sauvignon version: ripe black fruit with hints of vanilla, coffee and chocolate; smooth with a long finish."
       },
       {
-       "id": "vini-spumante-brut-tabernero",
-       "n": "Spumante Brut Tabernero",
-       "g": "espumante brut · Perú",
-       "d": "Espumante peruano brut (seco), fresco y burbujeante, ideal para brindar.",
-       "p": 65,
+       "id": "vini-frontera-malbec",
+       "n": "Frontera Malbec",
+       "g": "tinto · Chile",
+       "d": "Malbec chileno de la línea Frontera de Concha y Toro.",
+       "p": 38,
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1706106591925-8818b8bf7fc0?w=700&q=70&auto=format&fit=crop",
-       "g_en": "brut sparkling · Peru",
-       "d_en": "Peruvian brut (dry) sparkling wine, fresh and bubbly, perfect for a toast."
-      },
-      {
-       "id": "vini-patrillo",
-       "n": "Patrillo",
-       "p": 120,
-       "al": [
-        "sulfitos"
-       ],
-       "foto": "https://images.unsplash.com/photo-1578911373434-0cb395d2cbfb?w=700&q=70&auto=format&fit=crop"
-      },
-      {
-       "id": "vini-prisionero",
-       "n": "Prisionero",
-       "p": 100,
-       "al": [
-        "sulfitos"
-       ],
-       "foto": "https://images.unsplash.com/photo-1611575189074-9dfbbceb258a?w=700&q=70&auto=format&fit=crop"
+       "g_en": "red · Chile",
+       "d_en": "Chilean Malbec from Concha y Toro’s Frontera line."
       }
      ]
     }
@@ -2770,5 +2730,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:49:54-05:00"
+ "publicado": "2026-11-11T22:43:18-05:00"
 };
