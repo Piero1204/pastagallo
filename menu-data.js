@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T19:44:18-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T19:50:39-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -615,7 +615,7 @@ window.CARTA = {
         "lacteos",
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1778449726826-8b0c92e4624e?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/ref-combo-personale.jpg",
        "canal": "delivery",
        "op": [
         "combo-pizza-personal",
@@ -625,12 +625,12 @@ window.CARTA = {
        "d_en": "Your personal pizza, Hawaiian or Americana, with two portions of garlic bread and a cold Pepsi.",
        "inc": [
         "Pizza personal Hawaiana o Americana",
-        "2 porciones de pan al ajo",
+        "2 porciones de pan al ajo (4 rebanadas)",
         "Pepsi de ½ litro"
        ],
        "inc_en": [
         "Personal Hawaiian or Americana pizza",
-        "2 portions of garlic bread",
+        "2 portions of garlic bread (4 slices)",
         "½-litre Pepsi"
        ],
        "promo": {
@@ -645,28 +645,29 @@ window.CARTA = {
        "id": "promociones-combo-alfredo",
        "n": "Combo Alfredo",
        "g": "fettuccine + pan al ajo + Pepsi",
-       "d": "Una porción de fettuccine all’Alfredo, cremosos y generosos, con tres porciones de pan al ajo y una Pepsi.",
+       "d": "Una porción de fettuccine all’Alfredo, cremosos y generosos, con tres porciones de pan al ajo y una Pepsi. El fettuccine verde está sujeto a disponibilidad.",
        "p": 35,
        "al": [
         "gluten",
         "lacteos",
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1664214649076-7b17006db5b5?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/ref-combo-alfredo.jpg",
        "canal": "delivery",
        "op": [
+        "fettuccine-tipo",
         "temp-bebida"
        ],
        "g_en": "fettuccine + garlic bread + Pepsi",
-       "d_en": "A portion of creamy fettuccine Alfredo with three portions of garlic bread and a Pepsi.",
+       "d_en": "A portion of creamy fettuccine Alfredo with three portions of garlic bread and a Pepsi. Green fettuccine is subject to availability.",
        "inc": [
-        "Fettuccine all’Alfredo",
-        "3 porciones de pan al ajo",
+        "Fettuccine all’Alfredo, clásico o verde",
+        "3 porciones de pan al ajo (6 rebanadas)",
         "Pepsi de ½ litro"
        ],
        "inc_en": [
-        "Fettuccine Alfredo",
-        "3 portions of garlic bread",
+        "Fettuccine Alfredo, classic or green",
+        "3 portions of garlic bread (6 slices)",
         "½-litre Pepsi"
        ],
        "promo": {
@@ -681,31 +682,32 @@ window.CARTA = {
        "id": "promociones-combo-per-due",
        "n": "Combo per Due",
        "g": "pizza mediana + fettuccine + pan al ajo + Pepsi",
-       "d": "Para compartir entre dos: una pizza mediana a elección y un plato de fettuccine all’Alfredo, con pan al ajo y Pepsi.",
+       "d": "Para compartir entre dos: una pizza mediana a elección y un plato de fettuccine all’Alfredo, con pan al ajo y Pepsi. El fettuccine verde está sujeto a disponibilidad.",
        "p": 60,
        "al": [
         "gluten",
         "lacteos",
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1717883235373-ef10b2a745a3?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/ref-combo-per-due.jpg",
        "canal": "delivery",
        "op": [
         "combo-pizza-mediana",
+        "fettuccine-tipo",
         "temp-bebida"
        ],
        "g_en": "medium pizza + fettuccine + garlic bread + Pepsi",
-       "d_en": "To share between two: a medium pizza of your choice and a plate of fettuccine Alfredo, with garlic bread and Pepsi.",
+       "d_en": "To share between two: a medium pizza of your choice and a plate of fettuccine Alfredo, with garlic bread and Pepsi. Green fettuccine is subject to availability.",
        "inc": [
         "Pizza mediana a elección",
-        "Fettuccine all’Alfredo",
-        "2 porciones de pan al ajo",
+        "Fettuccine all’Alfredo, clásico o verde",
+        "2 porciones de pan al ajo (4 rebanadas)",
         "Pepsi de ½ litro"
        ],
        "inc_en": [
         "Medium pizza of your choice",
-        "Fettuccine Alfredo",
-        "2 portions of garlic bread",
+        "Fettuccine Alfredo, classic or green",
+        "2 portions of garlic bread (4 slices)",
         "½-litre Pepsi"
        ],
        "promo": {
@@ -727,7 +729,7 @@ window.CARTA = {
         "lacteos",
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1777891257674-36c5532e6654?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/ref-combo-famiglia.jpg",
        "canal": "delivery",
        "op": [
         "combo-pizza-familiar",
@@ -737,12 +739,12 @@ window.CARTA = {
        "d_en": "The weekend table: a family-size pizza of your choice, four portions of garlic bread and a 1.5-litre Pepsi.",
        "inc": [
         "Pizza familiar a elección",
-        "4 porciones de pan al ajo",
+        "4 porciones de pan al ajo (8 rebanadas)",
         "Pepsi de 1.5 litros"
        ],
        "inc_en": [
         "Family-size pizza of your choice",
-        "4 portions of garlic bread",
+        "4 portions of garlic bread (8 slices)",
         "1.5-litre Pepsi"
        ],
        "promo": {
@@ -2769,5 +2771,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T19:44:18-05:00"
+ "publicado": "2026-11-11T19:50:39-05:00"
 };
