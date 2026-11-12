@@ -681,3 +681,27 @@ function actualizarV4b() {
   var pub = publicarCarta('');
   return 'v4b aplicada. Fotos referenciales: ' + (hechas.join(', ') || 'ninguna (ya tenían foto propia)') + '. ' + pub.mensaje;
 }
+
+/* =====================================================================
+   PASTA GALLO · Fotos reales (se puede repetir cada vez que lleguen fotos nuevas)
+   Función "actualizarFotosReales": pone en la hoja Productos la foto indicada
+   (ya subida al repositorio en fotos/) y publica la carta.
+   ===================================================================== */
+var FOTOS_REALES = {
+  'promociones-combo-alfredo': 'fotos/real-fettuccine-alfredo.jpg',
+  'pasta-fettuccine': 'fotos/real-fettuccine-alfredo.jpg'
+};
+
+function actualizarFotosReales() {
+  exigirAdmin_('');
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.productos);
+  var col = asegurarColumnas_(h, COLS.productos).indexOf('foto') + 1;
+  var hechas = [];
+  leerTabla_(HOJA.productos).forEach(function (p) {
+    var ruta = FOTOS_REALES[String(p.id)];
+    if (ruta && String(p.foto) !== ruta) { h.getRange(p._fila, col).setValue(ruta); hechas.push(p.nombre); }
+  });
+  marcarPendiente_();
+  var pub = publicarCarta('');
+  return 'Fotos reales puestas en: ' + (hechas.join(', ') || 'ninguno (ya estaban)') + '. ' + pub.mensaje;
+}
