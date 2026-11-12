@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:38:58-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:39:13-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -648,9 +648,9 @@ window.CARTA = {
        "d": "Una porción de fettuccine all’Alfredo, cremosos y generosos, con tres porciones de pan al ajo y una Pepsi. El fettuccine verde está sujeto a disponibilidad.",
        "p": 35,
        "al": [
+        "huevo",
         "gluten",
-        "lacteos",
-        "huevo"
+        "lacteos"
        ],
        "foto": "fotos/promociones-combo-alfredo-1794451132861.jpg",
        "canal": "delivery",
@@ -2772,5 +2772,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:38:58-05:00"
+ "publicado": "2026-11-11T21:39:13-05:00"
 };
