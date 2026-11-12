@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:43:20-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:43:35-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -954,10 +954,10 @@ window.CARTA = {
        "d": "Una obra maestra de la tradición pastelera milanesa. Cuentan con un equilibrio sublime entre la delicadeza de tres finas láminas de barquillo dorado y la untuosidad de una sedosa crema de chocolate con leche. En su interior, sutiles trocitos de almendras sicilianas aportan una textura crujiente y un aroma tostado inconfundible.",
        "p": 17.9,
        "al": [
+        "soya",
         "gluten",
-        "lacteos",
         "frutosSecos",
-        "soya"
+        "lacteos"
        ],
        "foto": "fotos/italia-wafer-mandorlato-tre-marie-1794451394387.jpg",
        "n_en": "Wafer Mandorlato Tre Marie",
@@ -2772,5 +2772,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:43:20-05:00"
+ "publicado": "2026-11-11T21:43:35-05:00"
 };
