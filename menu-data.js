@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T23:37:10-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T23:59:03-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -782,7 +782,9 @@ window.CARTA = {
        "d": "Pan dorado y aromático con ajo, el compañero perfecto de cualquier pasta.",
        "p": 5,
        "al": [
-        "huevo"
+        "huevo",
+        "gluten",
+        "lacteos"
        ],
        "foto": "fotos/antipasti-pane-allaglio-1794458225804.jpg",
        "g_en": "garlic bread",
@@ -797,7 +799,8 @@ window.CARTA = {
        "agotado": true,
        "al": [
         "gluten",
-        "lacteos"
+        "lacteos",
+        "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1619535860434-ba1d8fa12536?w=700&q=70&auto=format&fit=crop",
        "g_en": "garlic bread with cheese",
@@ -1648,7 +1651,8 @@ window.CARTA = {
        "p": 55,
        "salsa": true,
        "al": [
-        "gluten"
+        "gluten",
+        "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1627207644206-a2040d60ecad?w=700&q=70&auto=format&fit=crop",
        "op": [
@@ -1687,7 +1691,8 @@ window.CARTA = {
        "p": 67,
        "al": [
         "gluten",
-        "lacteos"
+        "lacteos",
+        "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1791202978575-21e01ab3a6e5?w=700&q=70&auto=format&fit=crop",
        "op": [
@@ -1720,7 +1725,8 @@ window.CARTA = {
        "p": 72,
        "al": [
         "gluten",
-        "mariscos"
+        "mariscos",
+        "lacteos"
        ],
        "foto": "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w=700&q=70&auto=format&fit=crop",
        "op": [
@@ -1759,7 +1765,8 @@ window.CARTA = {
        "p": 32,
        "salsa": true,
        "al": [
-        "gluten"
+        "gluten",
+        "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1601751911508-fd69ffc08fa2?w=700&q=70&auto=format&fit=crop",
        "d_en": "Wide ribbons from the Tuscan tradition, made for hearty sauces."
@@ -1860,6 +1867,7 @@ window.CARTA = {
        "n": "Raviolini",
        "g": "ravioles pequeños",
        "d": "Como nuestros ravioli, pero en tamaño pequeño: más bocados en cada plato.",
+       "p": 34,
        "salsa": true,
        "al": [
         "gluten",
@@ -1894,6 +1902,7 @@ window.CARTA = {
        "al": [
         "gluten"
        ],
+       "foto": "https://images.unsplash.com/photo-1579349443343-73da56a71a20?w=700&q=70&auto=format&fit=crop",
        "g_en": "potato gnocchi",
        "d_en": "Soft potato gnocchi, light as a cloud."
       }
@@ -1911,6 +1920,7 @@ window.CARTA = {
        "al": [
         "pescado"
        ],
+       "foto": "https://images.unsplash.com/photo-1597131628347-c769fc631754?w=700&q=70&auto=format&fit=crop",
        "op": [
         "picante"
        ],
@@ -1922,6 +1932,7 @@ window.CARTA = {
        "g": "ajo, aceite y ají",
        "d": "Ajo dorado en aceite con peperoncino. Sencilla y aromática; por naturaleza es picante: elige tu nivel.",
        "tipo": "salsa",
+       "foto": "https://images.unsplash.com/photo-1516685018646-549198525c1b?w=700&q=70&auto=format&fit=crop",
        "op": [
         "picante"
        ],
@@ -1934,6 +1945,7 @@ window.CARTA = {
        "g": "salsa de carne",
        "d": "Salsa de carne al estilo ragú: sabrosa y contundente.",
        "tipo": "salsa",
+       "foto": "https://images.unsplash.com/photo-1785396347369-b5e70e3f3af3?w=700&q=70&auto=format&fit=crop",
        "g_en": "meat sauce",
        "d_en": "Ragù-style meat sauce: rich and hearty."
       },
@@ -1945,6 +1957,7 @@ window.CARTA = {
        "al": [
         "lacteos"
        ],
+       "foto": "https://images.unsplash.com/photo-1781086917723-dbe2d7ef85dc?w=700&q=70&auto=format&fit=crop",
        "d_en": "Creamy and smooth, with butter and parmesan cheese."
       },
       {
@@ -1955,6 +1968,7 @@ window.CARTA = {
        "al": [
         "lacteos"
        ],
+       "foto": "https://images.unsplash.com/photo-1645112411341-6c4fd023714a?w=700&q=70&auto=format&fit=crop",
        "d_en": "Creamy gorgonzola cheese sauce, intense and elegant."
       },
       {
@@ -1966,6 +1980,7 @@ window.CARTA = {
        "al": [
         "lacteos"
        ],
+       "foto": "https://images.unsplash.com/photo-1626028937210-754d2118d5f7?w=700&q=70&auto=format&fit=crop",
        "g_en": "pink sauce",
        "d_en": "Tomato and cream meet in a smooth, rosy sauce."
       },
@@ -1978,6 +1993,7 @@ window.CARTA = {
         "lacteos",
         "frutosSecos"
        ],
+       "foto": "https://images.unsplash.com/photo-1616299908398-9af1134ad522?w=700&q=70&auto=format&fit=crop",
        "d_en": "Basil, cheese and olive oil, Genoa style. Fresh and aromatic."
       },
       {
@@ -1990,6 +2006,7 @@ window.CARTA = {
        "al": [
         "lacteos"
        ],
+       "foto": "https://images.unsplash.com/photo-1667499989723-c4ab9549d63c?w=700&q=70&auto=format&fit=crop",
        "g_en": "four cheeses",
        "d_en": "Four cheeses melted into a creamy, irresistible sauce."
       },
@@ -2000,6 +2017,7 @@ window.CARTA = {
        "d": "La clásica salsa de tomate de Amatrice, sabrosa y de naturaleza picante: elige tu nivel.",
        "extra": 8,
        "tipo": "salsa",
+       "foto": "https://images.unsplash.com/photo-1627286400579-027de47e9e73?w=700&q=70&auto=format&fit=crop",
        "op": [
         "picante"
        ],
@@ -2016,6 +2034,7 @@ window.CARTA = {
        "al": [
         "soya"
        ],
+       "foto": "https://images.unsplash.com/photo-1611270629569-8b357cb88da9?w=700&q=70&auto=format&fit=crop",
        "g_en": "Peruvian stir-fried beef",
        "d_en": "Like a Peruvian lomo saltado over your pasta: beef strips stir-fried with soy sauce."
       },
@@ -2030,6 +2049,7 @@ window.CARTA = {
         "gluten",
         "lacteos"
        ],
+       "foto": "https://images.unsplash.com/photo-1597692493647-35763cb92183?w=700&q=70&auto=format&fit=crop",
        "g_en": "mushroom sauce",
        "d_en": "Béchamel sauce with mushrooms, garlic and parsley."
       },
@@ -2043,6 +2063,7 @@ window.CARTA = {
         "huevo",
         "lacteos"
        ],
+       "foto": "https://images.unsplash.com/photo-1633337474564-1d9478ca4e2e?w=700&q=70&auto=format&fit=crop",
        "d_en": "The Roman classic, creamy, made with egg yolk and parmesan cheese."
       }
      ]
@@ -2072,7 +2093,7 @@ window.CARTA = {
        "n": "Lasagna di Spinaci",
        "g": "lasagna de espinaca",
        "d": "Capas de pasta y espinaca, gratinada hasta quedar dorada.",
-       "p": 36,
+       "p": 38,
        "al": [
         "gluten",
         "huevo",
@@ -2087,7 +2108,7 @@ window.CARTA = {
        "n": "Lasagna di Carne",
        "g": "lasagna de carne",
        "d": "La clásica de siempre: capas de pasta y carne, gratinada y reconfortante.",
-       "p": 34,
+       "p": 36,
        "al": [
         "gluten",
         "huevo",
@@ -2102,7 +2123,7 @@ window.CARTA = {
        "n": "Lasagna agli Asparagi",
        "g": "lasagna de espárragos",
        "d": "Capas de pasta con espárragos, delicada y gratinada.",
-       "p": 38,
+       "p": 40,
        "al": [
         "gluten",
         "huevo",
@@ -2173,9 +2194,13 @@ window.CARTA = {
       {
        "id": "parrillas-pollo-a-la-plancha",
        "n": "Pollo a la Plancha",
+       "g": "Con papas fritas y ensalada",
+       "d": "Pollo a la plancha, servido con papas fritas y ensalada.",
        "p": 30,
        "foto": "https://images.unsplash.com/photo-1670398564097-0762e1b30b3a?w=700&q=70&auto=format&fit=crop",
-       "n_en": "Grilled Chicken"
+       "n_en": "Grilled Chicken",
+       "g_en": "With French fries and salad",
+       "d_en": "Grilled chicken, served with French fries and salad."
       },
       {
        "id": "parrillas-milanesa-de-pollo",
@@ -2480,6 +2505,7 @@ window.CARTA = {
        "n": "Acqua Frizzante",
        "g": "agua con gas",
        "d": "Agua con gas, helada o sin helar.",
+       "p": 3.5,
        "foto": "https://images.unsplash.com/photo-1775390722213-2830af4dde60?w=700&q=70&auto=format&fit=crop",
        "op": [
         "temp-bebida"
@@ -2661,6 +2687,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
+       "foto": "https://images.unsplash.com/photo-1769140243164-b677642e9279?w=700&q=70&auto=format&fit=crop",
        "g_en": "Piedmont · Italy",
        "d_en": "A Piedmont wine by Tenimenti Ca' Bianca."
       },
@@ -2673,6 +2700,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
+       "foto": "https://images.unsplash.com/photo-1602800268804-4a850d622360?w=700&q=70&auto=format&fit=crop",
        "g_en": "Emilia-Romagna · Italy",
        "d_en": "From Cavicchioli, founded in 1928 in Emilia-Romagna and known for its Lambruscos."
       },
@@ -2684,6 +2712,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
+       "foto": "https://images.unsplash.com/photo-1641759756543-20168fcab299?w=700&q=70&auto=format&fit=crop",
        "g_en": "Italy"
       },
       {
@@ -2717,12 +2746,13 @@ window.CARTA = {
       {
        "id": "vini-tabernero-tuyo",
        "n": "Tabernero Tuyo",
-       "g": "Perú",
+       "g": "rosé · Perú",
        "p": 38,
        "al": [
         "sulfitos"
        ],
-       "g_en": "Peru"
+       "foto": "https://images.unsplash.com/photo-1771583102699-f79a6c6d08c8?w=700&q=70&auto=format&fit=crop",
+       "g_en": "rosé · Peru"
       },
       {
        "id": "vini-tabernero-moscato",
@@ -2732,6 +2762,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
+       "foto": "https://images.unsplash.com/photo-1597905722448-a1df7c00000a?w=700&q=70&auto=format&fit=crop",
        "g_en": "Peru"
       },
       {
@@ -2782,6 +2813,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
+       "foto": "https://images.unsplash.com/photo-1606767351797-1664b860ae5a?w=700&q=70&auto=format&fit=crop",
        "g_en": "red · Chile",
        "d_en": "Chilean Malbec from Concha y Toro’s Frontera line."
       }
@@ -2794,5 +2826,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T23:37:10-05:00"
+ "publicado": "2026-11-11T23:59:03-05:00"
 };
