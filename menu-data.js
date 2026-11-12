@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:42:01-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T21:43:20-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -959,7 +959,7 @@ window.CARTA = {
         "frutosSecos",
         "soya"
        ],
-       "foto": "fotos/italia-wafer-mandorlato-tre-marie-1794377793079.jpg",
+       "foto": "fotos/italia-wafer-mandorlato-tre-marie-1794451394387.jpg",
        "n_en": "Wafer Mandorlato Tre Marie",
        "g_en": "Milk chocolate and almond wafers",
        "d_en": "A masterpiece of Milanese pastry tradition. They feature a sublime balance between the delicacy of three thin, golden wafer sheets and the richness of a silky milk chocolate cream. Inside, subtle pieces of Sicilian almonds add a crunchy texture and an unmistakable roasted aroma."
@@ -2772,5 +2772,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T21:42:01-05:00"
+ "publicado": "2026-11-11T21:43:20-05:00"
 };
