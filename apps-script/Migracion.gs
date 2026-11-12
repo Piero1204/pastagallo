@@ -622,3 +622,62 @@ function actualizarV4() {
   var pub = publicarCarta('');
   return 'Actualización v4 aplicada. Combos nuevos: ' + (r.creados.join(', ') || 'ninguno (ya existían)') + '. ' + pub.mensaje;
 }
+
+/* =====================================================================
+   PASTA GALLO · Ajuste v4b de los combos (11-nov-2026)
+   Función "actualizarV4b". Se puede repetir.
+   - 1 porción de pan al ajo = 2 rebanadas: se aclara en "Qué incluye".
+   - Fettuccine clásico o verde (verde sujeto a disponibilidad) en Combo Alfredo y Combo per Due.
+   - Fotos REFERENCIALES de los combos (Unsplash, licencia gratuita) copiadas al repositorio
+     (carpeta fotos/). Solo se ponen si el combo no tiene una foto subida desde el panel.
+   ===================================================================== */
+var MIGRACION_V4B = {
+  fotos: {
+    'promociones-combo-personale': 'photo-1778449038133-2219a23a6bcd',
+    'promociones-combo-alfredo': 'photo-1645112411341-6c4fd023714a',
+    'promociones-combo-per-due': 'photo-1552580715-4d9bc27f1e2f',
+    'promociones-combo-famiglia': 'photo-1600628421060-939639517883'
+  },
+  incluye: {
+    'promociones-combo-personale': ['Pizza personal Hawaiana o Americana\n2 porciones de pan al ajo (4 rebanadas)\nPepsi de ½ litro',
+      'Personal Hawaiian or Americana pizza\n2 portions of garlic bread (4 slices)\n½-litre Pepsi'],
+    'promociones-combo-alfredo': ['Fettuccine all’Alfredo, clásico o verde\n3 porciones de pan al ajo (6 rebanadas)\nPepsi de ½ litro',
+      'Fettuccine Alfredo, classic or green\n3 portions of garlic bread (6 slices)\n½-litre Pepsi'],
+    'promociones-combo-per-due': ['Pizza mediana a elección\nFettuccine all’Alfredo, clásico o verde\n2 porciones de pan al ajo (4 rebanadas)\nPepsi de ½ litro',
+      'Medium pizza of your choice\nFettuccine Alfredo, classic or green\n2 portions of garlic bread (4 slices)\n½-litre Pepsi'],
+    'promociones-combo-famiglia': ['Pizza familiar a elección\n4 porciones de pan al ajo (8 rebanadas)\nPepsi de 1.5 litros',
+      'Family-size pizza of your choice\n4 portions of garlic bread (8 slices)\n1.5-litre Pepsi']
+  },
+  fettuccine: ['promociones-combo-alfredo', 'promociones-combo-per-due']
+};
+
+function actualizarV4b() {
+  exigirAdmin_('');
+  var M = MIGRACION_V4B;
+  var productos = leerTabla_(HOJA.productos);
+  var porId = {}; productos.forEach(function (p) { porId[String(p.id)] = p; });
+  var hechas = [];
+  Object.keys(M.fotos).forEach(function (id) {
+    var p = porId[id]; if (!p) return;
+    var f = String(p.foto || '');
+    if (f && f.indexOf('fotos/ref-') !== 0 && f.indexOf('images.unsplash.com') < 0) return; // ya tiene foto propia
+    var ruta = 'fotos/ref-' + id.replace('promociones-', '') + '.jpg';
+    var r = UrlFetchApp.fetch('https://images.unsplash.com/' + M.fotos[id] + '?w=1200&h=900&fit=crop&crop=entropy&q=72&fm=jpg', { muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) return;
+    githubPut_(ruta, Utilities.base64Encode(r.getBlob().getBytes()), 'Foto referencial (Unsplash) de ' + p.nombre);
+    p.foto = ruta; hechas.push(p.nombre);
+  });
+  Object.keys(M.incluye).forEach(function (id) { var p = porId[id]; if (p) { p.incluye = M.incluye[id][0]; p.incluye_en = M.incluye[id][1]; } });
+  M.fettuccine.forEach(function (id) {
+    var p = porId[id]; if (!p) return;
+    var ops = listaIds_(p.opciones);
+    if (ops.indexOf('fettuccine-tipo') < 0) { ops.splice(ops.indexOf('temp-bebida') >= 0 ? ops.indexOf('temp-bebida') : ops.length, 0, 'fettuccine-tipo'); p.opciones = ops.join(', '); }
+    var nota = ' El fettuccine verde está sujeto a disponibilidad.', notaEn = ' Green fettuccine is subject to availability.';
+    if (String(p.descripcion || '').indexOf('sujeto a disponibilidad') < 0) p.descripcion = String(p.descripcion || '').trim() + nota;
+    if (String(p.descripcion_en || '').indexOf('availability') < 0) p.descripcion_en = String(p.descripcion_en || '').trim() + notaEn;
+  });
+  escribirTabla_(HOJA.productos, COLS.productos, productos);
+  marcarPendiente_();
+  var pub = publicarCarta('');
+  return 'v4b aplicada. Fotos referenciales: ' + (hechas.join(', ') || 'ninguna (ya tenían foto propia)') + '. ' + pub.mensaje;
+}
