@@ -345,3 +345,28 @@ details.grupo-op--plegable[open]>summary{margin-bottom:8px}
 .cuenta__ped{border-bottom:1px dashed var(--oro);padding:10px 0}
 .cuenta__det{white-space:pre-wrap;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:6px 0 0}
 .comp{margin-top:4px}
+
+/* =================== MESA: llamar al mozo / pedir la cuenta =================== */
+.btn-cuenta{display:none}
+.mesa-acc{position:fixed;left:12px;right:12px;bottom:12px;z-index:45;display:flex;gap:6px;max-width:560px;margin:0 auto;transition:bottom .3s}
+body.con-carrito .mesa-acc{bottom:80px}
+.mesa-acc button{flex:1;min-height:46px;border:1px solid var(--oro);background:var(--crema-3,#f3ead8);color:var(--vino,#4a1519);border-radius:999px;
+  font:700 12.5px/1.15 var(--sans,system-ui);box-shadow:0 4px 14px rgba(0,0,0,.22);padding:6px 8px;cursor:pointer}
+.mesa-acc button:disabled{opacity:.7}
+body.modo-mesa .gracias{padding-bottom:110px}
+body.modo-mesa.con-carrito .gracias{padding-bottom:180px}
+/* =================== DELIVERY: repetir pedido, sugerencias, ubicación =================== */
+.repetir{position:fixed;left:12px;bottom:14px;z-index:44;display:none;align-items:center;max-width:calc(100% - 214px);
+  background:var(--crema-3,#f3ead8);border:1px solid var(--oro);color:var(--vino,#4a1519);box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.repetir.on{display:flex}
+body.con-carrito .repetir{display:none}
+.repetir__b{background:none;border:0;color:inherit;font:700 .72rem/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;min-height:48px;padding:0 4px 0 14px;text-align:left;cursor:pointer}
+.repetir__x{background:none;border:0;color:inherit;font-size:20px;line-height:1;width:36px;min-height:48px;cursor:pointer;opacity:.7}
+.sugiere{margin:6px 0 4px}
+.sugiere__fila{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.sugiere__it{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:3px;background:var(--crema-3,#f3ead8);border:1px solid var(--oro);
+  color:var(--vino,#4a1519);padding:8px 12px;border-radius:2px;font:600 13px/1.2 var(--sans);cursor:pointer;max-width:200px;text-align:left}
+.sugiere__p{font-weight:700;font-size:12px;opacity:.85}
+.ubic{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:-2px 0 10px}
+.btn-ubic{border:1px solid var(--oro);background:transparent;color:inherit;padding:8px 12px;font:600 13px/1 var(--sans);border-radius:2px;cursor:pointer}
+.ubic .hoja__ayuda{margin:0}

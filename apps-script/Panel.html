@@ -201,6 +201,26 @@ tr.oculto td{opacity:.5}
 @media (max-width:1000px){.kpis{grid-template-columns:repeat(2,1fr)}.resumen{grid-template-columns:repeat(2,1fr)}.paneles{grid-template-columns:1fr}}
 @media (max-width:700px){.top__in{flex-wrap:wrap}.form{grid-template-columns:1fr}.grupos{grid-template-columns:1fr}main{padding:10px}#v-carta .tabla{display:block;overflow-x:auto}}
 @media (prefers-reduced-motion:reduce){.ped.tarde{animation:none;box-shadow:0 0 0 3px var(--mal);background:#ffe9e6}}
+/* avisos desde la mesa */
+.avisosMesa{display:grid;gap:8px;margin-bottom:12px}
+.avm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:2px solid #d9822b;border-left-width:9px;border-radius:var(--r);padding:10px 14px;animation:avisoLuz 1.6s ease-in-out infinite;font-size:15px}
+.avm.cuenta{border-color:var(--ok)}
+.avm b{font:700 22px var(--serif);color:var(--vino)}
+@keyframes avisoLuz{50%{background:#fff1dc}}
+@media (prefers-reduced-motion:reduce){.avm{animation:none}}
+.tonoSel{width:auto;padding:6px 8px;font-size:13px;font-weight:600}
+/* comprobantes */
+.pend-comp{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;margin-bottom:18px}
+.pc{background:#fff;border:1px solid #ecd28c;border-left:5px solid #d9a52b;border-radius:var(--r);padding:10px 12px;display:grid;gap:5px;font-size:13px}
+.pc b{font:700 16px var(--serif);color:var(--vino)}
+.tabla .cod{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tabla tr.anulado td{opacity:.5}.tabla tr.anulado .cod{text-decoration:line-through}
+.tabla .acc{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.pasosComp{margin:0 0 12px 18px;font-size:13px;color:var(--gris);line-height:1.6}
+.ok-emitido{background:#e9f5ec;border:1px solid #b5dcc0;border-radius:10px;padding:14px;margin-top:6px}
+.ok-emitido h3{font:700 22px var(--serif);color:var(--vino);margin:0 0 6px}
+#v-comp .tabla{display:table}
+@media (max-width:800px){#v-comp .tabla{display:block;overflow-x:auto}}
 </style>
 </head>
 <body>
@@ -217,6 +237,7 @@ tr.oculto td{opacity:.5}
     <button data-v="pedidos" data-area="todos" class="on">📋 Todos <span class="cnt" id="cTodos"></span></button>
     <button data-v="pedidos" data-area="llevar">🛵 Para llevar <span class="cnt" id="cLlevar"></span></button>
     <button data-v="pedidos" data-area="salon">🍽 Salón <span class="cnt" id="cSalon"></span></button>
+    <button data-v="comp">🧾 Comprobantes <span class="cnt" id="cComp"></span></button>
     <button data-v="dash">📈 Dashboard</button>
     <button data-v="promos">🏷️ Promociones</button>
     <button data-v="carta">🍕 Carta y precios</button>
@@ -229,6 +250,7 @@ tr.oculto td{opacity:.5}
 <main>
   <section class="vista on" id="v-pedidos">
     <div class="aviso sonidoAviso" id="sonidoAviso">🔕 El sonido está apagado: no escucharás los pedidos nuevos ni los atrasados. <button class="btn peq prim" id="sonidoOn">Activar sonido</button></div>
+    <div class="avisosMesa" id="avisosMesa"></div>
     <div class="resumen" id="resumen"></div>
     <div class="barra">
       <h2 class="tit" id="areaTit" style="margin:0 6px 0 0">Todos los pedidos</h2>
@@ -242,12 +264,37 @@ tr.oculto td{opacity:.5}
       <span class="esp"></span>
       <button class="btn son" id="autoImp" title="Imprime la comanda al confirmar un pedido y al llegar un pedido de mesa">🖨 Impresión automática</button>
       <button class="btn son" id="sonido">🔔 Sonido</button>
+      <select class="txt tonoSel" id="tonoSel" title="Tipo de sonido (al cambiarlo suena de prueba)">
+        <option value="campana">🔔 Campana (recomendado)</option><option value="timbre">🛎 Timbre de mostrador</option><option value="fuerte">📢 Alarma fuerte</option>
+      </select>
       <button class="btn" id="recargar">↻ Actualizar</button>
       <span class="nota" id="ultimaAct"></span>
     </div>
     <div id="avisoApi"></div>
     <div id="cuentas"></div>
     <div class="grid" id="listaPed"></div>
+  </section>
+
+  <section class="vista" id="v-comp">
+    <div class="barra">
+      <h2 class="tit" style="margin:0 8px 0 0">Comprobantes</h2>
+      <div class="seg" id="compPer"><button data-p="hoy" class="on">Hoy</button><button data-p="7">7 días</button><button data-p="mes">Este mes</button><button data-p="todo">Todo</button></div>
+      <div class="seg" id="compTipo"><button data-t="" class="on">Todos</button><button data-t="Boleta">Boletas</button><button data-t="Factura">Facturas</button></div>
+      <input class="txt" id="compBusca" placeholder="Buscar número, DNI/RUC, cliente…" style="width:230px">
+      <span class="esp"></span>
+      <button class="btn" id="compCsv">⬇ Descargar para Excel</button>
+      <button class="btn prim" id="compNuevo">＋ Registrar comprobante</button>
+    </div>
+    <ol class="pasosComp">
+      <li>Emite la boleta o factura como siempre en el sistema de SUNAT (usa <b>📋 Copiar datos</b> para no reescribir nada).</li>
+      <li>Pulsa <b>🧾 Emitir</b> en el pedido y anota la serie y el número que te dio SUNAT: queda guardado aquí y ligado al pedido.</li>
+      <li>Envíaselo al cliente por <b>WhatsApp</b> o <b>correo</b> con un toque (el PDF de SUNAT lo adjuntas tú).</li>
+    </ol>
+    <div class="kpis" id="compKpis"></div>
+    <h3 class="cuentas__tit" id="compPendTit"></h3>
+    <div class="pend-comp" id="compPend"></div>
+    <h3 class="cuentas__tit">Registrados</h3>
+    <table class="tabla"><thead><tr><th>Fecha</th><th>Comprobante</th><th>Cliente</th><th>Total</th><th>Pedido</th><th>Enviado</th><th></th></tr></thead><tbody id="compT"></tbody></table>
   </section>
 
   <section class="vista" id="v-dash">
@@ -366,6 +413,7 @@ var MODO_WEB = <?!= JSON.stringify(modoWeb) ?>;
 var SESION = '';
 if (MODO_WEB) { try { SESION = sessionStorage.getItem('pg-sesion') || ''; } catch(e) {} }
 var INFO = {}, CARTA = {secciones:[], productos:[]}, GRUPOS = [], PEDIDOS = [], VISTOS = {}, AVISADOS = {}, versionPed = '';
+var cargoUnaVez = false, AVISOS = [], AVISOS_VISTOS = {}, ultimoAvisoSon = 0;
 var sonido = false, filtro = 'activos', AREA = 'todos', CANAL = '', RES = '', difReloj = 0;
 var ACTIVOS = ['Nuevo','Confirmado','En preparación','Listo','En camino'];
 var SIG = { 'Nuevo':['Confirmado'], 'Confirmado':['En preparación'], 'En preparación':['Listo'], 'Listo':['En camino','Entregado'], 'En camino':['Entregado'] };
@@ -419,6 +467,7 @@ $('#tabs').addEventListener('click', function(e){
   document.querySelectorAll('.vista').forEach(function(v){ v.classList.toggle('on', v.id === 'v-' + b.dataset.v); });
   if (b.dataset.area) { AREA = b.dataset.area; CANAL = ''; RES = ''; marcarSeg('#filtroCanal', ''); pintarPedidos([]); }
   if (b.dataset.v === 'dash') cargarDash();
+  if (b.dataset.v === 'comp') cargarComp();
   if (b.dataset.v === 'carta') cargarCarta();
   if (b.dataset.v === 'promos') cargarPromos();
   if (b.dataset.v === 'opciones') cargarGrupos();
@@ -443,23 +492,55 @@ function pintarPub(){
 function marcarPendiente(){ INFO.pendientes = false; pintarPub(); }
 
 /* ---------- sonido ---------- */
-var ctxAudio;
-function tono(frec, veces, sep){
-  if (!sonido) return;
-  try {
-    ctxAudio = ctxAudio || new (window.AudioContext || window.webkitAudioContext)();
-    if (ctxAudio.state === 'suspended') ctxAudio.resume();
-    for (var i = 0; i < veces; i++) {
-      var t0 = ctxAudio.currentTime + i * sep;
-      var o = ctxAudio.createOscillator(), g = ctxAudio.createGain();
-      o.frequency.value = frec; o.type = 'sine'; o.connect(g); g.connect(ctxAudio.destination);
-      g.gain.setValueAtTime(.28, t0); g.gain.exponentialRampToValueAtTime(.001, t0 + .22);
-      o.start(t0); o.stop(t0 + .24);
-    }
-  } catch(e) {}
+var ctxAudio, TONO = 'campana';
+try { TONO = localStorage.getItem('pg-tono') || 'campana'; } catch(e) {}
+function audio(){
+  ctxAudio = ctxAudio || new (window.AudioContext || window.webkitAudioContext)();
+  if (ctxAudio.state === 'suspended') ctxAudio.resume();
+  if (!ctxAudio._sal) { var k = ctxAudio.createDynamicsCompressor(); k.connect(ctxAudio.destination); ctxAudio._sal = k; }
+  return ctxAudio;
 }
-function sonidoNuevo(){ tono(880, 3, .25); }
-function sonidoTarde(){ tono(440, 4, .35); }
+/* Una nota con armónicos: suena a campana y se distingue mejor en una cocina ruidosa que un pitido puro. */
+function golpe(c, t0, frec, dur, vol, parciales, onda){
+  (parciales || [[1,1]]).forEach(function(pa){
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = onda || 'sine'; o.frequency.value = frec * pa[0];
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol * pa[1], t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + (pa[0] > 2 ? dur * .55 : dur));
+    o.connect(g); g.connect(c._sal); o.start(t0); o.stop(t0 + dur + .05);
+  });
+}
+var CAMPANA = [[1,1],[2,.45],[3,.22],[4.2,.1]], TIMBRE = [[1,1],[2.76,.5],[5.4,.25],[8.93,.1]];
+var PATRONES = {
+  campana: {   // tres notas que suben (do-mi-sol), dos veces: claro, agradable y fácil de reconocer
+    nuevo: function(c,t){ [[1047,0],[1319,.16],[1568,.32],[1047,1.1],[1319,1.26],[1568,1.42]].forEach(function(n){ golpe(c, t + n[1], n[0], 1.2, .35, CAMPANA); }); },
+    tarde: function(c,t){ for (var i = 0; i < 4; i++) { golpe(c, t + i*.42, 880, .5, .4, CAMPANA, 'triangle'); golpe(c, t + i*.42 + .21, 698, .5, .4, CAMPANA, 'triangle'); } },
+    aviso: function(c,t){ golpe(c, t, 1319, 1.6, .42, CAMPANA); golpe(c, t + .5, 1047, 2, .42, CAMPANA); }   // "din-don" de timbre
+  },
+  timbre: {    // campanilla de mostrador
+    nuevo: function(c,t){ golpe(c, t, 1760, 1.8, .4, TIMBRE); golpe(c, t + .55, 1760, 1.8, .4, TIMBRE); },
+    tarde: function(c,t){ for (var i = 0; i < 5; i++) golpe(c, t + i*.28, 1760, .9, .4, TIMBRE); },
+    aviso: function(c,t){ golpe(c, t, 1568, 2, .42, TIMBRE); golpe(c, t + .7, 1568, 2, .42, TIMBRE); }
+  },
+  fuerte: {    // para cuando hay mucho ruido
+    nuevo: function(c,t){ for (var i = 0; i < 6; i++) golpe(c, t + i*.2 + (i > 2 ? .25 : 0), 1000, .14, .22, null, 'square'); },
+    tarde: function(c,t){ for (var i = 0; i < 8; i++) golpe(c, t + i*.25, i % 2 ? 1200 : 800, .2, .25, null, 'square'); },
+    aviso: function(c,t){ for (var i = 0; i < 3; i++) golpe(c, t + i*.3, 1400, .18, .22, null, 'square'); }
+  }
+};
+function sonar(tipo, forzar){
+  if (!sonido && !forzar) return;
+  try { var c = audio(); (PATRONES[TONO] || PATRONES.campana)[tipo](c, c.currentTime + .05); } catch(e) {}
+}
+function sonidoNuevo(){ sonar('nuevo'); }
+function sonidoTarde(){ sonar('tarde'); }
+function sonidoAviso(){ sonar('aviso'); }
+$('#tonoSel').value = PATRONES[TONO] ? TONO : 'campana';
+$('#tonoSel').addEventListener('change', function(){
+  TONO = this.value; try { localStorage.setItem('pg-tono', TONO); } catch(e) {}
+  sonar('nuevo', true);
+});
 function pintarSonido(){
   $('#sonido').classList.toggle('on', sonido); $('#sonido').textContent = sonido ? '🔔 Sonido activado' : '🔕 Sonido apagado';
   $('#sonidoAviso').classList.toggle('on', !sonido);
@@ -499,10 +580,17 @@ function hace(m){ if (m < 1) return 'recién'; if (m < 60) return 'hace ' + m + 
 function cargarPedidos(){
   return run('listarPedidos', filtro).then(function(r){
     if (!r || !r.pedidos) throw new Error('No se pudieron leer los pedidos. Recarga la página; si sigue, avisa a Piero.');
-    var primera = !Object.keys(VISTOS).length;
+    var primera = !cargoUnaVez; cargoUnaVez = true;
     var nuevos = r.pedidos.filter(function(p){ return p.estado === 'Nuevo' && !VISTOS[p.numero]; });
     r.pedidos.forEach(function(p){ VISTOS[p.numero] = true; });
     PEDIDOS = r.pedidos; versionPed = r.version;
+    var avNuevos = (r.avisos || []).filter(function(a){ return !AVISOS_VISTOS[a.id]; });
+    (r.avisos || []).forEach(function(a){ AVISOS_VISTOS[a.id] = true; });
+    AVISOS = r.avisos || [];
+    if (!primera && avNuevos.length) {
+      sonidoAviso(); ultimoAvisoSon = Date.now();
+      toast('🙋 Mesa ' + avNuevos[0].mesa + ': ' + avNuevos[0].texto.toLowerCase() + (avNuevos[0].detalle ? ' (' + avNuevos[0].detalle + ')' : ''));
+    }
     pintarPedidos(primera ? [] : nuevos.map(function(p){ return p.numero; }));
     if (!primera && autoImp) nuevos.filter(function(p){ return p.canal === 'mesa'; }).forEach(imprimirComanda);
     if (!primera && nuevos.length) {
@@ -563,6 +651,7 @@ function pintarPedidos(destacar){
   $('#filtroCanal').style.display = AREA === 'salon' ? 'none' : '';
   $('#filtroCanal [data-c="mesa"]').style.display = AREA === 'llevar' ? 'none' : '';
   if (AREA === 'salon') pintarCuentas(); else $('#cuentas').textContent = '';
+  pintarAvisos();
   var base = PEDIDOS.filter(function(p){ return enArea(p) && (!CANAL || p.canal === CANAL); });
   pintarResumen(base);
   var q = norm($('#buscaPed').value);
@@ -593,6 +682,7 @@ function dibujarCuentas(){
       el('div', {class:'cuenta__tot', text: soles(c.total)}),
       el('div', {style:'display:flex;gap:6px;flex-wrap:wrap'}, [
         el('button', {class:'btn peq', text:'🖨 Cuenta', onclick:function(){ imprimirCuenta(c); }}),
+        el('button', {class:'btn peq', text:'🧾 Comprobante', onclick:function(){ comprobanteMesa(c.mesa); }}),
         el('button', {class:'btn peq prim', text:'Cerrar cuenta', onclick:function(){
           if (!confirm('¿Cerrar la cuenta de la mesa ' + c.mesa + ' (' + soles(c.total) + ')? Los próximos pedidos de esa mesa empiezan una cuenta nueva.')) return;
           run('cerrarCuentaMesa', c.mesa).then(function(r){ CUENTAS = r; dibujarCuentas(); toast('Cuenta de la mesa ' + c.mesa + ' cerrada'); }).catch(error);
@@ -605,6 +695,47 @@ function dibujarCuentas(){
 function imprimirCuenta(c){
   var det = c.pedidos.map(function(p){ return '#' + p.numero + ' · ' + p.hora + '\n' + p.detalle; }).join('\n\n');
   imprimirComanda({ canal:'mesa', mesa:c.mesa, numero:'CUENTA', fecha:new Date().toLocaleString('es-PE'), detalle:det, total:c.total });
+}
+
+/* ---------- avisos desde la mesa (llamar al mozo / pedir la cuenta) ---------- */
+function pintarAvisos(){
+  var w = $('#avisosMesa'); if (!w) return; w.textContent = '';
+  if (AREA === 'llevar') return;
+  AVISOS.forEach(function(a){
+    var m = Math.max(0, Math.floor((ahora() - a.ts) / 60000));
+    w.appendChild(el('div', {class:'avm ' + a.motivo}, [
+      el('span', {style:'font-size:28px', text: a.motivo === 'cuenta' ? '🧾' : '🙋'}),
+      el('b', {text:'Mesa ' + a.mesa}),
+      el('span', {text: a.texto + (a.detalle ? ' · ' + a.detalle : '')}),
+      el('span', {class:'nota', text: a.hora + ' · ' + hace(m)}),
+      el('span', {class:'esp'}),
+      a.motivo === 'cuenta' ? el('button', {class:'btn peq', text:'🖨 Imprimir cuenta', onclick:function(){ imprimirCuentaMesa(a.mesa); }}) : null,
+      a.motivo === 'cuenta' ? el('button', {class:'btn peq', text:'🧾 Boleta/Factura', onclick:function(){ comprobanteMesa(a.mesa); }}) : null,
+      el('button', {class:'btn ok peq', text:'✓ Atendido', onclick:function(){
+        var b = this; b.disabled = true;
+        run('atenderAviso', a.id).then(function(){ AVISOS = AVISOS.filter(function(x){ return x.id !== a.id; }); pintarAvisos(); revisarAtrasos(); })
+          .catch(function(e){ b.disabled = false; error(e); });
+      }})
+    ]));
+  });
+}
+function cuentaDeMesa(mesa){
+  return run('cuentasMesas').then(function(c){
+    CUENTAS = c || []; cuentasVer = versionPed;
+    var x = CUENTAS.filter(function(k){ return String(k.mesa) === String(mesa); })[0];
+    if (!x) toast('La mesa ' + mesa + ' no tiene pedidos en su cuenta de hoy.', true);
+    return x;
+  });
+}
+function imprimirCuentaMesa(mesa){ cuentaDeMesa(mesa).then(function(x){ if (x) imprimirCuenta(x); }).catch(error); }
+function comprobanteMesa(mesa){
+  cuentaDeMesa(mesa).then(function(x){
+    if (!x) return;
+    var conDatos = PEDIDOS.filter(function(p){ return p.canal === 'mesa' && String(p.mesa) === String(mesa) && p.comprobante && p.compEstado !== 'Emitido'; })[0] || {};
+    emitirComp({ numero:'', pedidoRef:'Mesa ' + mesa, comprobante: conDatos.comprobante || 'Boleta', doc: conDatos.doc || '', razon: conDatos.razon || '',
+      correo: conDatos.correo || '', telefono: conDatos.telefono || '', total: x.total,
+      detalle: x.pedidos.map(function(p){ return '#' + p.numero + ' · ' + p.hora + '\n' + p.detalle; }).join('\n\n') });
+  }).catch(error);
 }
 
 function tarjeta(p, flash){
@@ -639,15 +770,14 @@ function tarjeta(p, flash){
 
 function bloqueComp(p){
   var emitido = p.compEstado === 'Emitido';
-  var txt = p.comprobante + ' · ' + p.doc + ' · ' + p.razon + ' · ' + p.correo + (p.telefono ? ' · ' + p.telefono : '');
   return el('div', {class:'comp ' + (emitido ? 'comp--ok' : '')}, [
-    el('div', null, [el('b', {text:'🧾 ' + p.comprobante + (emitido ? ' (emitida)' : ' pendiente') + ': '}), p.doc + ' — ' + p.razon]),
+    el('div', null, [el('b', {text:'🧾 ' + p.comprobante + (emitido ? ' emitida' + (p.compNumero ? ' ' + p.compNumero : '') : ' por emitir') + ': '}), p.doc + ' — ' + p.razon]),
     el('div', {class:'nota', text: p.correo}),
-    el('div', {style:'display:flex;gap:6px;margin-top:4px;flex-wrap:wrap'}, [
-      el('button', {class:'btn peq', text:'Copiar datos', onclick:function(){ copiar(txt); }}),
-      el('button', {class:'btn peq ' + (emitido ? '' : 'ok'), text: emitido ? 'Marcar pendiente' : '✓ Marcar emitida', onclick:function(){
-        run('marcarComprobante', p.numero, emitido ? 'Pendiente' : 'Emitido').then(function(){ p.compEstado = emitido ? 'Pendiente' : 'Emitido'; pintarPedidos([]); }).catch(error);
-      }})
+    el('div', {style:'display:flex;gap:6px;margin-top:4px;flex-wrap:wrap'}, emitido ? [
+      el('button', {class:'btn peq', text:'Ver en Comprobantes', onclick:function(){ irA('comp'); }})
+    ] : [
+      el('button', {class:'btn peq', text:'📋 Copiar datos', onclick:function(){ copiar(textoSunat(p), 'Datos copiados: pégalos en el sistema de SUNAT'); }}),
+      el('button', {class:'btn peq ok', text:'🧾 Emitir', onclick:function(){ emitirComp(p); }})
     ])
   ]);
 }
@@ -660,6 +790,7 @@ function acciones(p){
   });
   if (p.estado !== 'Cancelado' && p.estado !== 'Entregado') w.appendChild(el('button', {class:'btn mal peq', text:'Cancelar', onclick: function(){ if (confirm('¿Cancelar el pedido #' + p.numero + '?')) cambiar(p, 'Cancelado'); }}));
   w.appendChild(el('button', {class:'btn peq', text:'🖨 Comanda', onclick: function(){ imprimirComanda(p); }}));
+  if (!p.comprobante && p.estado !== 'Cancelado') w.appendChild(el('button', {class:'btn peq', title:'Registrar una boleta o factura para este pedido', text:'🧾', onclick: function(){ emitirComp(p); }}));
   if (p.telefono && (p.estado === 'Nuevo' || p.estado === 'Confirmado')) {
     var msg = 'Hola ' + (p.nombre||'') + ', somos Pasta Gallo. Confirmamos tu pedido #' + p.numero + ' por ' + soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '') + '. ¡Gracias!';
     w.appendChild(el('a', {class:'btn peq', href:'https://wa.me/' + telWa(p.telefono) + '?text=' + encodeURIComponent(msg), target:'_blank', rel:'noopener', text:'WhatsApp'}));
@@ -744,7 +875,8 @@ function revisarAtrasos(){
     ultimoRecordatorio = Date.now();       // recordatorio cada 2 minutos mientras haya atrasados o sin confirmar
     if (tardes.length) sonidoTarde(); else sonidoNuevo();
   }
-  document.title = tardes.length ? '⚠ ' + tardes.length + ' atrasado(s) · Pasta Gallo' : (nuevosSin.length ? '(' + nuevosSin.length + ') Nuevo pedido' : 'Panel · Pasta Gallo');
+  if (AVISOS.length && Date.now() - ultimoAvisoSon > 60000) { ultimoAvisoSon = Date.now(); sonidoAviso(); }
+  document.title = AVISOS.length ? '🙋 ' + AVISOS.length + ' mesa(s) llamando · Pasta Gallo' : tardes.length ? '⚠ ' + tardes.length + ' atrasado(s) · Pasta Gallo' : (nuevosSin.length ? '(' + nuevosSin.length + ') Nuevo pedido' : 'Panel · Pasta Gallo');
 }
 setInterval(revisarAtrasos, 20000);
 
@@ -1250,10 +1382,10 @@ function pintarMesas(){
     ]));
   });
 }
-function copiar(t){
+function copiar(t, msg){
   if (!t) return;
   var a = el('textarea'); a.value = t; document.body.appendChild(a); a.select();
-  try { document.execCommand('copy'); toast('Link copiado'); } catch(e) { prompt('Copia el link:', t); }
+  try { document.execCommand('copy'); toast(msg || 'Link copiado'); } catch(e) { prompt('Copia:', t); }
   a.remove();
 }
 $('#agregarMesa').addEventListener('click', function(){
@@ -1276,6 +1408,166 @@ $('#imprimirQR').addEventListener('click', function(){
   });
   setTimeout(function(){ f.contentWindow.focus(); f.contentWindow.print(); setTimeout(function(){ f.remove(); }, 2000); }, 300);
 });
+
+/* ---------- comprobantes ---------- */
+var COMP = { comprobantes:[], pendientes:[], series:[], hoy:'' }, compPer = 'hoy', compTipo = '';
+function irA(v){ var b = document.querySelector('#tabs button[data-v="' + v + '"]'); if (b) b.click(); }
+function cargarComp(){ return run('listarComprobantes').then(function(r){ COMP = r; pintarComp(); }).catch(error); }
+$('#compPer').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; compPer = b.dataset.p; this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); }); pintarComp(); });
+$('#compTipo').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; compTipo = b.dataset.t; this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); }); pintarComp(); });
+$('#compBusca').addEventListener('input', function(){ pintarComp(); });
+$('#compNuevo').addEventListener('click', function(){ emitirComp({ comprobante:'Boleta' }); });
+$('#compCsv').addEventListener('click', function(){
+  var filas = [['Fecha','Tipo','Serie','Numero','DNI/RUC','Cliente','Correo','WhatsApp','Total','Pedido','Estado','Enviado','Notas']];
+  compFiltrados().forEach(function(c){ filas.push([c.fecha, c.tipo, c.serie, c.numero, c.doc, c.razon, c.correo, c.whatsapp, c.total.toFixed(2), c.pedido, c.estado, c.enviado, c.notas]); });
+  var csv = '﻿' + filas.map(function(f){ return f.map(function(x){ return '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+  var a = el('a', {href: URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'})), download: 'comprobantes-pasta-gallo-' + (COMP.hoy || 'hoy') + '.csv'});
+  document.body.appendChild(a); a.click(); setTimeout(function(){ a.remove(); }, 500);
+});
+function enPeriodo(c){
+  if (compPer === 'todo' || !COMP.hoy) return true;
+  if (compPer === 'hoy') return c.dia === COMP.hoy;
+  if (compPer === 'mes') return c.dia.slice(0,7) === COMP.hoy.slice(0,7);
+  var d = new Date(COMP.hoy + 'T12:00:00'); d.setDate(d.getDate() - 6);
+  return c.dia >= isoDe(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function compFiltrados(){
+  var q = norm($('#compBusca').value);
+  return COMP.comprobantes.filter(function(c){
+    if (!enPeriodo(c)) return false;
+    if (compTipo && c.tipo !== compTipo) return false;
+    if (q && norm([c.codigo, c.doc, c.razon, c.correo, c.pedido].join(' ')).indexOf(q) < 0) return false;
+    return true;
+  });
+}
+function pintarComp(){
+  var lista = compFiltrados(), validos = lista.filter(function(c){ return c.estado !== 'Anulado'; });
+  var k = $('#compKpis'); k.textContent = '';
+  [['Boletas', validos.filter(function(c){ return c.tipo === 'Boleta'; }).length],
+   ['Facturas', validos.filter(function(c){ return c.tipo === 'Factura'; }).length],
+   ['Total emitido', soles(validos.reduce(function(a,c){ return a + c.total; }, 0))],
+   ['Anulados', lista.length - validos.length],
+   ['Por emitir', COMP.pendientes.length]].forEach(function(x){ k.appendChild(el('div', {class:'kpi'}, [el('span', {text:x[0]}), el('strong', {text:String(x[1])})])); });
+  $('#cComp').textContent = COMP.pendientes.length || '';
+  var pd = $('#compPend'); pd.textContent = '';
+  $('#compPendTit').textContent = COMP.pendientes.length ? 'Pedidos que pidieron comprobante y falta emitir (' + COMP.pendientes.length + ')' : 'No hay comprobantes por emitir ✓';
+  COMP.pendientes.forEach(function(p){
+    pd.appendChild(el('div', {class:'pc'}, [
+      el('div', null, [el('b', {text:'#' + p.numero}), ' · ' + (p.canal === 'mesa' ? 'Mesa ' + p.mesa : p.canal) + ' · ' + p.fecha]),
+      el('div', null, [el('strong', {text:p.comprobante + ': '}), p.doc + ' — ' + p.razon]),
+      el('div', {class:'nota', text: p.correo + (p.telefono ? ' · ' + p.telefono : '')}),
+      el('div', {style:'display:flex;gap:6px;align-items:center;flex-wrap:wrap'}, [el('strong', {text:soles(p.total)}), el('span', {class:'esp'}),
+        el('button', {class:'btn peq', text:'📋 Copiar datos', onclick:function(){ copiar(textoSunat(p), 'Datos copiados: pégalos en el sistema de SUNAT'); }}),
+        el('button', {class:'btn peq ok', text:'🧾 Emitir', onclick:function(){ emitirComp(p); }})])
+    ]));
+  });
+  var t = $('#compT'); t.textContent = '';
+  if (!lista.length) t.appendChild(el('tr', null, [el('td', {colspan:'7', class:'nota', text:'No hay comprobantes registrados en este periodo.'})]));
+  lista.forEach(function(c){
+    var anulado = c.estado === 'Anulado';
+    t.appendChild(el('tr', {class: anulado ? 'anulado' : ''}, [
+      el('td', {text:c.fecha}),
+      el('td', null, [el('span', {class:'cod', text:c.codigo}), el('br'), el('span', {class:'nota', text:c.tipo + (anulado ? ' · ANULADO' : '')})]),
+      el('td', null, [c.razon || '—', el('br'), el('span', {class:'nota', text:c.doc || 'sin documento'})]),
+      el('td', {class:'cod', text:soles(c.total)}),
+      el('td', {text: c.pedido ? (/^\d+$/.test(c.pedido) ? '#' + c.pedido : c.pedido) : '—'}),
+      el('td', {class:'nota', text:c.enviado || '—'}),
+      el('td', null, [el('div', {class:'acc'}, [
+        c.whatsapp && !anulado ? el('button', {class:'btn peq', text:'WhatsApp', onclick:function(){ enviarCompWa(c); }}) : null,
+        c.correo && !anulado ? el('button', {class:'btn peq', text:'Correo', onclick:function(){ enviarCompCorreo(c); }}) : null,
+        el('button', {class:'btn peq', text:'📋', title:'Copiar datos', onclick:function(){ copiar(c.tipo + ' ' + c.codigo + '\n' + (c.doc ? c.doc + ' · ' : '') + c.razon + '\nTotal ' + soles(c.total), 'Copiado'); }}),
+        el('button', {class:'btn peq ' + (anulado ? '' : 'mal'), text: anulado ? 'Reactivar' : 'Anular', onclick:function(){
+          if (!anulado && !confirm('¿Marcar ' + c.codigo + ' como ANULADO en este registro?\n\nOjo: esto no lo anula ante SUNAT. La anulación (comunicación de baja o nota de crédito) se hace en el sistema de SUNAT.')) return;
+          run('actualizarComprobante', c.id, {estado: anulado ? 'Emitido' : 'Anulado'}).then(function(r){ COMP = r; pintarComp(); }).catch(error);
+        }})
+      ])])
+    ]));
+  });
+}
+function textoSunat(p){
+  var L = [(p.comprobante || 'Boleta').toUpperCase()];
+  if (p.doc) L.push((String(p.doc).length === 11 ? 'RUC: ' : 'DNI: ') + p.doc);
+  if (p.razon) L.push((p.comprobante === 'Factura' ? 'Razón social: ' : 'Nombre: ') + p.razon);
+  if (p.correo) L.push('Correo: ' + p.correo);
+  L.push(''); L.push(p.detalle || ''); L.push(''); L.push('TOTAL: ' + soles(p.total));
+  return L.join('\n');
+}
+function serieSugerida(tipo){
+  var s = (COMP.series || []).filter(function(x){ return x.tipo === tipo; }).sort(function(a, b){ return String(b.ultimaFecha).localeCompare(String(a.ultimaFecha)); })[0];
+  return s ? { serie: s.serie, numero: s.siguiente } : { serie: '', numero: '' };
+}
+function emitirComp(p){
+  var asegurar = COMP.hoy ? Promise.resolve() : run('listarComprobantes').then(function(r){ COMP = r; });
+  asegurar.catch(function(){}).then(function(){ formularioComp(p || {}); });
+}
+function formularioComp(p){
+  var caja = $('#caja'); caja.textContent = '';
+  var ref = p.numero ? '#' + p.numero : (p.pedidoRef || '');
+  caja.appendChild(el('h2', {text: 'Emitir boleta / factura' + (ref ? ' · ' + (p.numero ? 'pedido ' : '') + ref : '')}));
+  caja.appendChild(el('ol', {class:'pasosComp'}, [
+    el('li', null, ['Copia los datos y emite el comprobante en el sistema de SUNAT, como siempre.']),
+    el('li', null, ['Escribe aquí la ', el('b', {text:'serie y el número'}), ' que te dio SUNAT y guarda.']),
+    el('li', null, ['Envíaselo al cliente por WhatsApp o correo (el PDF lo adjuntas tú).'])
+  ]));
+  var f = el('form', {class:'form'});
+  var tipo0 = p.comprobante === 'Factura' ? 'Factura' : 'Boleta', sug = serieSugerida(tipo0);
+  f.appendChild(campo('Tipo', 'tipo', tipo0, 'select', {opciones:[['Boleta','Boleta de venta'],['Factura','Factura']]}));
+  f.appendChild(campo('Serie', 'serie', sug.serie, 'text', {ayuda: sug.serie ? 'La última que usaste para este tipo.' : 'Ej.: B001, EB01 (boleta) · F001, E001 (factura). Se recordará para la próxima.'}));
+  f.appendChild(campo('Número que dio SUNAT', 'numero', sug.numero, 'number', {ayuda: sug.numero ? 'Sugerido: el último registrado + 1. Corrígelo si SUNAT te dio otro.' : 'Solo el número, sin ceros a la izquierda.'}));
+  f.appendChild(campo('Total (S/)', 'total', p.total != null ? Number(p.total).toFixed(2) : '', 'text', {ayuda: p.canal === 'delivery' ? 'Si cobraste el delivery, súmalo aquí.' : ''}));
+  f.appendChild(campo('DNI o RUC', 'doc', p.doc || '', 'text', {ayuda:'Factura: RUC de 11 dígitos. Boleta: DNI, RUC o vacío.'}));
+  f.appendChild(campo('Nombre o razón social', 'razon', p.razon || p.nombre || ''));
+  f.appendChild(campo('Correo del cliente', 'correo', p.correo || '', 'email'));
+  f.appendChild(campo('WhatsApp del cliente', 'whatsapp', p.telefono || '', 'tel'));
+  f.appendChild(campo('Notas (opcional)', 'notas', '', 'text', {ancho:true}));
+  if (p.detalle) f.appendChild(el('div', {class:'ancho'}, [el('div', {class:'nota', text:'Detalle del pedido'}), el('pre', {style:'white-space:pre-wrap;background:var(--papel);padding:10px;border-radius:8px;font-size:12.5px;max-height:220px;overflow:auto', text:p.detalle})]));
+  caja.appendChild(f);
+  var serieTocada = false;
+  f.serie.addEventListener('input', function(){ serieTocada = true; this.value = this.value.toUpperCase(); });
+  f.tipo.addEventListener('change', function(){ if (serieTocada) return; var s = serieSugerida(this.value); f.serie.value = s.serie; f.numero.value = s.numero; });
+  var datos = function(){ var o = {}; f.querySelectorAll('[name]').forEach(function(i){ o[i.name] = i.value; }); return o; };
+  var copia = el('button', {class:'btn', type:'button', text:'📋 Copiar datos para SUNAT', onclick:function(){
+    var o = datos(); copiar(textoSunat({ comprobante:o.tipo, doc:o.doc, razon:o.razon, correo:o.correo, detalle:p.detalle, total:o.total }), 'Datos copiados: pégalos en el sistema de SUNAT');
+  }});
+  var guardar = el('button', {class:'btn prim', text:'Guardar comprobante', onclick:function(){
+    var o = datos(); o.pedido = p.numero ? String(p.numero) : (p.pedidoRef || ''); o.detalle = p.detalle || '';
+    guardar.disabled = true;
+    run('registrarComprobante', o).then(function(r){
+      COMP = r;
+      var c = COMP.comprobantes[0];
+      exitoComp(c);
+      cargarPedidos(); if ($('#v-comp').classList.contains('on')) pintarComp(); else $('#cComp').textContent = COMP.pendientes.length || '';
+    }).catch(error).then(function(){ guardar.disabled = false; });
+  }});
+  caja.appendChild(el('div', {class:'pie'}, [copia, el('span', {class:'esp'}), el('button', {class:'btn', text:'Cancelar', onclick: cerrarModal}), guardar]));
+  $('#modal').classList.add('on');
+}
+function exitoComp(c){
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('div', {class:'ok-emitido'}, [
+    el('h3', {text:'✓ ' + c.tipo + ' ' + c.codigo + ' registrada'}),
+    el('div', {text: (c.razon || 'Cliente') + (c.doc ? ' · ' + c.doc : '') + ' · ' + soles(c.total)}),
+    el('p', {class:'nota', text:'Ahora envíasela al cliente. Al abrir WhatsApp o el correo, adjunta el PDF que descargaste de SUNAT.'})
+  ]));
+  caja.appendChild(el('div', {class:'pie'}, [
+    c.whatsapp ? el('button', {class:'btn ok', text:'Enviar por WhatsApp', onclick:function(){ enviarCompWa(c); }}) : null,
+    c.correo ? el('button', {class:'btn', text:'Enviar por correo', onclick:function(){ enviarCompCorreo(c); }}) : null,
+    el('button', {class:'btn prim', text:'Listo', onclick: cerrarModal})
+  ]));
+}
+function mensajeComp(c){
+  return 'Hola' + (c.razon ? ' ' + c.razon : '') + ', gracias por tu compra en Pasta Gallo. Te enviamos tu ' + c.tipo.toLowerCase() + ' electrónica ' + c.codigo +
+    ' por ' + soles(c.total) + '. ¡Te esperamos pronto!';
+}
+function enviarCompWa(c){
+  window.open('https://wa.me/' + telWa(c.whatsapp) + '?text=' + encodeURIComponent(mensajeComp(c)), '_blank', 'noopener');
+  run('actualizarComprobante', c.id, {enviado:'WhatsApp'}).then(function(r){ COMP = r; if ($('#v-comp').classList.contains('on')) pintarComp(); }).catch(function(){});
+}
+function enviarCompCorreo(c){
+  var a = el('a', {href:'mailto:' + encodeURIComponent(c.correo) + '?subject=' + encodeURIComponent(c.tipo + ' electrónica ' + c.codigo + ' · Pasta Gallo') + '&body=' + encodeURIComponent(mensajeComp(c) + '\n\nAdjuntamos el PDF.\n\nPasta Gallo')});
+  document.body.appendChild(a); a.click(); a.remove();
+  run('actualizarComprobante', c.id, {enviado:'Correo'}).then(function(r){ COMP = r; if ($('#v-comp').classList.contains('on')) pintarComp(); }).catch(function(){});
+}
 
 /* ---------- ajustes ---------- */
 var GRUPOS_AJ = [
@@ -1348,6 +1640,7 @@ function arrancar(){
     try { if (localStorage.getItem('pg-sonido')) sonido = true; } catch(e) {}
     pintarSonido(); pintarAutoImp();
     cargarPedidos();
+    run('listarComprobantes').then(function(r){ COMP = r; $('#cComp').textContent = COMP.pendientes.length || ''; }).catch(function(){});
   }).catch(function(e){ if (String(e).indexOf('Sesión vencida') < 0) document.body.textContent = String(e && e.message || e); });
 }
 try { $('#lNombre').value = localStorage.getItem('pg-nombre') || ''; } catch(x) {}

@@ -21,6 +21,22 @@
     } catch (e) { carrito = []; }
   }
 
+  /* Datos del cliente y su último pedido: se guardan SOLO en su propio celular (localStorage),
+     para no tener que escribirlos otra vez. */
+  var CLAVE_CLIENTE = "pg-cliente", CLAVE_ULTIMO = "pg-ultimo-pedido";
+  var CAMPOS_CLIENTE = ["nombre", "telefono", "direccion", "referencia", "pago", "canal", "doc", "razon", "correo"];
+  function leerJson(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+  function guardarJson(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function recordarCliente() {
+    var o = {}; CAMPOS_CLIENTE.forEach(function (k) { if (form[k]) o[k] = String(form[k]).slice(0, 200); });
+    guardarJson(CLAVE_CLIENTE, o);
+  }
+  function cargarCliente() {
+    var o = leerJson(CLAVE_CLIENTE) || {};
+    var campos = MODO === "mesa" ? ["nombre", "telefono", "doc", "razon", "correo"] : CAMPOS_CLIENTE;
+    campos.forEach(function (k) { if (o[k] && !form[k]) form[k] = o[k]; });
+  }
+
   var productos = {}, seccionDe = {};
   C.secciones.forEach(function (s) {
     s.grupos.forEach(function (g) { g.items.forEach(function (it) { productos[it.id] = it; seccionDe[it.id] = s; }); });
@@ -61,6 +77,22 @@
     var s = salsaPorId[salsaId];
     if (s && s.op) s.op.forEach(function (g) { if (ids.indexOf(g) < 0) ids.push(g); });
     return ids.filter(function (g) { return GRUPOS[g]; });
+  }
+  function repreciar(l) {
+    var it = productos[l.id]; if (!it || it.agotado) return null;
+    var base;
+    if (it.t) { var tt = it.t.filter(function (x) { return x[0] === l.tam; })[0]; if (!tt) return null; base = tt[1]; }
+    else base = it.p;
+    if (base == null) return null;
+    var extra = 0, ok = true;
+    if (l.salsa) { var s = salsaPorId[l.salsa]; if (!s) return null; extra += s.extra || 0; }
+    Object.keys(l.ops || {}).forEach(function (gid) {
+      var g = GRUPOS[gid]; if (!g) { ok = false; return; }
+      (l.ops[gid] || []).forEach(function (nm) { var o = g.ops.filter(function (x) { return x.n === nm; })[0]; if (!o) ok = false; else extra += o.p || 0; });
+    });
+    if (!ok) return null;
+    l.unit = Math.round((base + extra) * 100) / 100;
+    return l;
   }
   function tieneOpciones(it) { return !!(it.t || it.salsa || (it.op && it.op.length)); }
 
@@ -291,6 +323,7 @@
     document.body.classList.toggle("con-carrito", n > 0);
     barraTxt.textContent = t("verPedido") + n + (n === 1 ? t("producto") : t("productos"));
     barraTot.textContent = soles(total());
+    pintarRepetir();
     if (animar) { barra.classList.remove("pulso"); void barra.offsetWidth; barra.classList.add("pulso"); }
   }
 
@@ -321,11 +354,52 @@
       tot.textContent = soles(total());
     }
     c.appendChild(lista);
+    var sug = sugerencias();
+    if (sug.length) {
+      var sw = h("div", "sugiere");
+      sw.appendChild(h("h3", "hoja__sub", t("sugiereTit")));
+      var fila = h("div", "sugiere__fila");
+      sug.forEach(function (x) {
+        var b = h("button", "sugiere__it"); b.type = "button";
+        b.appendChild(h("span", "sugiere__n", tx(x.it, "n")));
+        b.appendChild(h("span", "sugiere__p", x.it.t ? (I.lang === "en" ? "from " : "desde ") + soles(x.it.t[0][1]) : "+ " + soles(x.it.p)));
+        b.addEventListener("click", function () {
+          if (tieneOpciones(x.it)) { cerrarHoja(); setTimeout(function () { abrirDetalle(x.it, x.sec); }, 80); return; }
+          agregar(x.it, { tam: "", salsa: "", cant: 1, nota: "", ops: {} }, x.it.p);
+          cerrarHoja(); setTimeout(abrirCarrito, 80);
+        });
+        fila.appendChild(b);
+      });
+      sw.appendChild(fila);
+      c.appendChild(sw);
+    }
     var tl = h("div", "total"); tl.appendChild(h("span", null, MODO === "mesa" ? t("total") : t("totalProd"))); tl.appendChild(tot);
     c.appendChild(tl);
     pintarLista();
     c.appendChild(formulario());
     abrirHoja(c, MODO === "mesa" ? t("pedidoMesa") + MESA : t("tuPedido"));
+  }
+
+  /* "¿Le sumas algo?": bebida, postre o pan al ajo, solo si aún no están en el pedido y se pueden pedir ahora. */
+  function sugerencias() {
+    var enCarrito = function (pred) { return carrito.some(function (l) { var s = seccionDe[l.id]; return pred(l, s); }); };
+    var pedible = function (id) { var it = productos[id], sec = seccionDe[id]; return it && sec && puedePedir(it, sec) ? { it: it, sec: sec } : null; };
+    var primeroDe = function (secId, ids) {
+      for (var i = 0; i < ids.length; i++) { var x = pedible(ids[i]); if (x) return x; }
+      var sec = C.secciones.filter(function (s) { return s.id === secId; })[0]; if (!sec) return null;
+      for (var g = 0; g < sec.grupos.length; g++) for (var j = 0; j < sec.grupos[g].items.length; j++) {
+        var y = pedible(sec.grupos[g].items[j].id); if (y && !tieneOpciones(y.it)) return y;
+      }
+      return null;
+    };
+    var r = [];
+    var conPlato = enCarrito(function (l, s) { return s && (s.id === "pizze" || s.id === "pasta" || s.id === "lasagne" || s.id === "promociones"); });
+    if (conPlato && !enCarrito(function (l) { return /pane-allaglio/.test(l.id); })) { var pa = pedible("antipasti-pane-allaglio"); if (pa) r.push(pa); }
+    if (!enCarrito(function (l, s) { return s && (s.id === "caffe" || s.id === "caffetteria" || s.id === "aperitivi" || s.id === "vini") || /promociones/.test(l.id); })) {
+      var be = primeroDe("caffe", ["caffe-bibita-gassata", "caffe-limonata", "caffe-maracuya"]); if (be) r.push(be);
+    }
+    if (!enCarrito(function (l, s) { return s && s.id === "dolci"; })) { var po = primeroDe("dolci", ["dolci-tiramisu"]); if (po) r.push(po); }
+    return r.slice(0, 3);
   }
 
   function campo(nombre, etiqueta, tipo, opc) {
@@ -412,6 +486,21 @@
       }
       zona.appendChild(campo("direccion", t("direccion"), "text", { max: 200, auto: "street-address" }));
       zona.appendChild(campo("referencia", t("referencia"), "text", { max: 200, ph: t("referenciaPh") }));
+      if (navigator.geolocation) {
+        var ub = h("div", "ubic");
+        var ubEst = h("span", "hoja__ayuda", form.ubicacion ? t("ubicLista") : t("ubicAyuda"));
+        var ubB = boton(form.ubicacion ? "📍 " + t("ubicOtra") : "📍 " + t("ubicBtn"), "btn-ubic", function () {
+          ubB.disabled = true; ubEst.textContent = t("ubicBuscando");
+          navigator.geolocation.getCurrentPosition(function (pos) {
+            form.ubicacion = "https://maps.google.com/?q=" + pos.coords.latitude.toFixed(6) + "," + pos.coords.longitude.toFixed(6);
+            ubB.disabled = false; ubB.textContent = "📍 " + t("ubicOtra"); ubEst.textContent = t("ubicLista");
+          }, function () {
+            ubB.disabled = false; ubEst.textContent = t("ubicError");
+          }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+        });
+        ub.appendChild(ubB); ub.appendChild(ubEst);
+        zona.appendChild(ub);
+      }
       var td = I.lang === "en" && CFG.textoDelivery_en ? CFG.textoDelivery_en : CFG.textoDelivery;
       if (td) zona.appendChild(h("p", "hoja__ayuda", td));
     }
@@ -470,7 +559,7 @@
     return {
       canal: MODO === "mesa" ? "mesa" : form.canal, mesa: MESA, codigo: CODIGO, web: trampa || "", idioma: I.lang,
       nombre: form.nombre || "", telefono: form.telefono || "", direccion: form.canal === "delivery" ? (form.direccion || "") : "",
-      referencia: form.canal === "delivery" ? (form.referencia || "") : "", pago: form.pago || "",
+      referencia: form.canal === "delivery" ? [form.referencia || "", form.ubicacion ? "Ubicación: " + form.ubicacion : ""].filter(Boolean).join(" · ") : "", pago: form.pago || "",
       programado: form.programado || "", notas: form.notas || "", mayorEdad: !!form.mayorEdad, origen: origen(), ref: form.ref || "",
       comprobante: form.comprobante || "", doc: form.comprobante ? String(form.doc || "").replace(/\D/g, "") : "",
       razon: form.comprobante ? (form.razon || "") : "", correo: form.comprobante ? String(form.correo || "").trim() : "",
@@ -498,6 +587,7 @@
     if (form.canal === "delivery") {
       L.push("Dirección: " + (form.direccion || ""));
       if (form.referencia) L.push("Referencia: " + form.referencia);
+      if (form.ubicacion) L.push("Ubicación: " + form.ubicacion);
     }
     if (form.pago) L.push("Pago: " + form.pago);
     L.push("Para: " + (form.programado ? "las " + form.programado : "lo antes posible"));
@@ -535,8 +625,11 @@
     var a = h("a", "link-wa", t("noAbrio")); a.href = url; a.target = "_blank"; a.rel = "noopener";
     c.appendChild(a);
     c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
+    recordarCliente();
+    guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
     carrito = []; guardar(); pintarBarra();
-    form.ref = "";
+    form.ref = ""; form.ubicacion = "";
+    pintarRepetir();
     abrirHoja(c, t("tuPedido"));
     if (!w) setTimeout(function () { location.href = url; }, 50);
   }
@@ -551,6 +644,7 @@
       .then(function (r) {
         clearTimeout(tm);
         if (!r || !r.ok) return { error: (r && r.error) || t("errEnvio") };
+        recordarCliente();
         exito(r.numero, r.total, r.detalle, false);
         return {};
       })
@@ -583,29 +677,118 @@
   }
 
   /* ---------- cuenta de la mesa (lo pedido por todos los que escanearon el QR) ---------- */
+  function leerCuenta() {
+    // "cod" y no "c": Google responde error 400 si /exec recibe un parámetro "c" con letras
+    return fetch(CFG.api + "?cuenta=1&m=" + encodeURIComponent(MESA) + "&cod=" + encodeURIComponent(CODIGO))
+      .then(function (r) { return r.json(); });
+  }
+  function pintarCuenta(c, r) {
+    if (!r || !r.ok) { c.appendChild(h("p", "hoja__err", (r && r.error) || t("errCocina"))); return false; }
+    if (!r.pedidos.length) { c.appendChild(h("p", "hoja__desc", t("cuentaVacia"))); return false; }
+    r.pedidos.forEach(function (p) {
+      var b = h("div", "cuenta__ped");
+      b.appendChild(h("strong", null, "#" + p.numero + " · " + p.hora));
+      b.appendChild(h("pre", "cuenta__det", p.detalle));
+      c.appendChild(b);
+    });
+    var tl = h("div", "total"); tl.appendChild(h("span", null, t("cuentaTotal"))); tl.appendChild(h("strong", null, soles(r.total)));
+    c.appendChild(tl);
+    return true;
+  }
   function abrirCuenta() {
     var c = h("div", "hoja__cuerpo");
     var estado = h("p", "hoja__desc", t("cargando"));
     c.appendChild(estado);
     abrirHoja(c, t("cuentaMesa") + " · " + t("mesa") + MESA);
     if (!CFG.api) { estado.textContent = t("cuentaVacia"); return; }
-    fetch(CFG.api + "?cuenta=1&m=" + encodeURIComponent(MESA) + "&c=" + encodeURIComponent(CODIGO))
-      .then(function (r) { return r.json(); })
-      .then(function (r) {
-        c.textContent = "";
-        if (!r || !r.ok) { c.appendChild(h("p", "hoja__err", (r && r.error) || t("errCocina"))); return; }
-        if (!r.pedidos.length) { c.appendChild(h("p", "hoja__desc", t("cuentaVacia"))); return; }
-        r.pedidos.forEach(function (p) {
-          var b = h("div", "cuenta__ped");
-          b.appendChild(h("strong", null, "#" + p.numero + " · " + p.hora));
-          b.appendChild(h("pre", "cuenta__det", p.detalle));
-          c.appendChild(b);
-        });
-        var tl = h("div", "total"); tl.appendChild(h("span", null, t("cuentaTotal"))); tl.appendChild(h("strong", null, soles(r.total)));
-        c.appendChild(tl);
+    leerCuenta().then(function (r) {
+      c.textContent = "";
+      if (pintarCuenta(c, r)) {
         c.appendChild(h("p", "hoja__ayuda", t("cuentaNota")));
-      })
-      .catch(function () { c.textContent = ""; c.appendChild(h("p", "hoja__err", t("errCocina"))); });
+        c.appendChild(boton("🧾 " + t("pedirCuenta"), "btn-ped", abrirPedirCuenta));
+      }
+    }).catch(function () { c.textContent = ""; c.appendChild(h("p", "hoja__err", t("errCocina"))); });
+  }
+
+  /* ---------- llamar al mozo / pedir la cuenta ---------- */
+  function enviarAviso(motivo, detalle) {
+    if (!CFG.api) return Promise.resolve({ ok: false, error: t("errCocina") });
+    return fetch(CFG.api, { method: "POST", body: JSON.stringify({ aviso: 1, motivo: motivo, detalle: detalle || "", mesa: MESA, codigo: CODIGO }) })
+      .then(function (r) { return r.json(); })
+      .catch(function () { return { ok: false, error: t("errCocina") }; });
+  }
+  var mozoT = 0;
+  function llamarMozo(btn) {
+    if (Date.now() - mozoT < 45000) { aviso(t("mozoYaAvisado")); return; }
+    var txt = btn.textContent; btn.disabled = true; btn.textContent = t("enviando");
+    enviarAviso("mozo").then(function (r) {
+      btn.disabled = false;
+      if (!r || !r.ok) { btn.textContent = txt; aviso((r && r.error) || t("errCocina")); return; }
+      mozoT = Date.now(); btn.textContent = "✓ " + t("mozoEnCamino"); aviso(t("mozoAvisado"));
+      setTimeout(function () { btn.textContent = txt; }, 45000);
+    });
+  }
+  function abrirPedirCuenta() {
+    var c = h("div", "hoja__cuerpo");
+    var resumen = h("div"); resumen.appendChild(h("p", "hoja__desc", t("cargando")));
+    c.appendChild(resumen);
+    var sel = { pago: "", comp: "" };
+    if (CFG.metodosPago && CFG.metodosPago.length) {
+      c.appendChild(h("h3", "hoja__sub", t("comoPagar")));
+      c.appendChild(opcionesUI("pagoCuenta", CFG.metodosPago.map(function (m) { return { valor: m, texto: m }; }), false, function (v) { sel.pago = v[0]; }));
+    }
+    var tipos = (CFG.comprobantes || []).filter(function (x) { return x === "Boleta" || x === "Factura"; });
+    if (tipos.length) {
+      c.appendChild(h("h3", "hoja__sub", t("comprobante")));
+      c.appendChild(opcionesUI("compCuenta", [{ valor: "", texto: t("sinComp"), marcado: true }].concat(tipos.map(function (x) {
+        return { valor: x, texto: t(x === "Boleta" ? "boleta" : "factura") };
+      })), false, function (v) { sel.comp = v[0]; }));
+    }
+    var err = h("p", "hoja__err"); c.appendChild(err);
+    var b = boton(t("pedirCuenta"), "btn-ped", function () {
+      b.disabled = true; b.textContent = t("enviando");
+      var det = [sel.pago ? "Pago: " + sel.pago : "", sel.comp ? sel.comp : ""].filter(Boolean).join(" · ");
+      enviarAviso("cuenta", det).then(function (r) {
+        b.disabled = false; b.textContent = t("pedirCuenta");
+        if (!r || !r.ok) { err.textContent = (r && r.error) || t("errCocina"); return; }
+        var ok = h("div", "hoja__cuerpo exito");
+        ok.appendChild(h("div", "exito__ic", "✓"));
+        ok.appendChild(h("h3", null, t("cuentaPedida")));
+        ok.appendChild(h("p", null, sel.comp ? t("cuentaPedidaComp") : t("cuentaPedidaTxt")));
+        ok.appendChild(boton(t("volver"), "btn-ped", cerrarHoja));
+        abrirHoja(ok, t("mesa") + MESA);
+      });
+    });
+    c.appendChild(b);
+    abrirHoja(c, t("pedirCuenta") + " · " + t("mesa") + MESA);
+    if (!CFG.api) { resumen.textContent = ""; return; }
+    leerCuenta().then(function (r) { resumen.textContent = ""; pintarCuenta(resumen, r); })
+      .catch(function () { resumen.textContent = ""; });
+  }
+
+  /* ---------- repetir el último pedido (delivery) ---------- */
+  var repetirEl;
+  function ultimoPedido() {
+    var o = leerJson(CLAVE_ULTIMO);
+    return o && Array.isArray(o.c) && o.c.length && Date.now() - o.t < 120 * 864e5 ? o : null;
+  }
+  function pintarRepetir() {
+    if (!repetirEl) return;
+    var ver = MODO === "delivery" && !carrito.length && !!ultimoPedido() && aceptaAhora();
+    repetirEl.classList.toggle("on", ver);
+  }
+  function repetirUltimo() {
+    var o = ultimoPedido(); if (!o) return;
+    var ok = [], faltan = 0;
+    o.c.forEach(function (l) {
+      var it = productos[l.id], sec = seccionDe[l.id];
+      var n = it && sec && puedePedir(it, sec) ? repreciar(JSON.parse(JSON.stringify(l))) : null;
+      if (n) { n.n = tx(it, "n"); ok.push(n); } else faltan++;
+    });
+    if (!ok.length) { aviso(t("repetirNada")); return; }
+    carrito = ok; guardar(); pintarBarra(true); pintarRepetir();
+    if (faltan) aviso(t("repetirParcial", { n: faltan }));
+    abrirCarrito();
   }
 
   /* ---------- API para app.js ---------- */
@@ -626,7 +809,8 @@
     iniciar: function (utils) {
       P = utils; h = P.h;
       cargar();
-      carrito = carrito.filter(function (l) { var it = productos[l.id]; return it && !it.agotado; });
+      carrito = carrito.filter(function (l) { return !!repreciar(l); });
+      cargarCliente();
       capa = h("div", "capa");
       hoja = h("div", "hoja"); hoja.setAttribute("role", "dialog"); hoja.setAttribute("aria-modal", "true");
       capa.appendChild(hoja);
@@ -639,13 +823,23 @@
       barra.addEventListener("click", abrirCarrito);
       document.body.appendChild(barra);
       if (MODO === "mesa" && mesaValida()) {
-        var bc = h("button", "btn-cuenta"); bc.type = "button";
-        bc.appendChild(document.createTextNode("🧾 " + t("cuentaMesa")));
-        bc.addEventListener("click", abrirCuenta);
-        document.body.appendChild(bc);
+        var acc = h("div", "mesa-acc");
+        acc.appendChild(boton("🙋 " + t("llamarMozo"), "", function () { llamarMozo(this); }));
+        acc.appendChild(boton("🧾 " + t("pedirCuenta"), "", abrirPedirCuenta));
+        acc.appendChild(boton("📋 " + t("loPedido"), "", abrirCuenta));
+        document.body.appendChild(acc);
+      }
+      if (MODO === "delivery") {
+        repetirEl = h("div", "repetir");
+        var rb = boton("↺ " + t("repetir"), "repetir__b", repetirUltimo);
+        var rx = boton("×", "repetir__x", function () { try { localStorage.removeItem(CLAVE_ULTIMO); } catch (e) {} pintarRepetir(); });
+        rx.setAttribute("aria-label", t("repetirQuitar"));
+        repetirEl.appendChild(rb); repetirEl.appendChild(rx);
+        document.body.appendChild(repetirEl);
       }
       toast = h("div", "toast"); toast.setAttribute("role", "status"); document.body.appendChild(toast);
       pintarBarra();
+      pintarRepetir();
     }
   };
 })();

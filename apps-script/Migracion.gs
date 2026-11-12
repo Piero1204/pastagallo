@@ -811,3 +811,103 @@ function actualizarV5() {
   var r = publicarCarta('');
   return 'Actualización v5 aplicada' + (conPrecios ? ' (con precios nuevos)' : ' (precios ya estaban actualizados)') + '. ' + r.mensaje;
 }
+
+/* =====================================================================
+   PASTA GALLO · Actualización v6 (12-nov-2026) — función "actualizarV6"
+   - Fotos referenciales SOLO donde no hay foto (no toca las fotos reales ya subidas)
+   - Lasagne +S/ 2 (una sola vez), Raviolini = precio de los ravioli, Acqua Frizzante = precio del agua
+   - Pollo a la plancha: con papas fritas y ensalada · Tabernero Tuyo: rosé
+   - Alérgenos: solo AGREGA los evidentes que faltaban (nunca quita ninguno)
+   - Hojas nuevas: Avisos (llamar al mozo / pedir la cuenta) y Comprobantes
+   Se puede ejecutar más de una vez sin duplicar cambios.
+   ===================================================================== */
+var U6_ = function (id) { return 'https://images.unsplash.com/' + id + '?w=700&q=70&auto=format&fit=crop'; };
+var MIGRACION_V6 = {
+  fotos: {
+    'pasta-gnocchi-di-patate': U6_('photo-1579349443343-73da56a71a20'),
+    'salsa-puttanesca': U6_('photo-1597131628347-c769fc631754'),
+    'salsa-aglio-olio-e-peperoncino': U6_('photo-1516685018646-549198525c1b'),
+    'salsa-ragu-di-carne': U6_('photo-1785396347369-b5e70e3f3af3'),
+    'salsa-alfredo': U6_('photo-1781086917723-dbe2d7ef85dc'),
+    'salsa-gorgonzola': U6_('photo-1645112411341-6c4fd023714a'),
+    'salsa-rosata': U6_('photo-1626028937210-754d2118d5f7'),
+    'salsa-pesto': U6_('photo-1616299908398-9af1134ad522'),
+    'salsa-quattro-formaggi': U6_('photo-1667499989723-c4ab9549d63c'),
+    'salsa-marchigiana-e-pomodoro': U6_('photo-1627286400579-027de47e9e73'),
+    'salsa-salsa-al-lomo': U6_('photo-1611270629569-8b357cb88da9'),
+    'salsa-funghi-e-cardonada': U6_('photo-1597692493647-35763cb92183'),
+    'salsa-carbonara': U6_('photo-1633337474564-1d9478ca4e2e'),
+    'vini-ca-bianca': U6_('photo-1769140243164-b677642e9279'),
+    'vini-cavicchioli': U6_('photo-1602800268804-4a850d622360'),
+    'vini-victoria': U6_('photo-1641759756543-20168fcab299'),
+    'vini-tabernero-tuyo': U6_('photo-1771583102699-f79a6c6d08c8'),
+    'vini-tabernero-moscato': U6_('photo-1597905722448-a1df7c00000a'),
+    'vini-frontera-malbec': U6_('photo-1606767351797-1664b860ae5a')
+  },
+  lasagneMas: 2,
+  campos: {
+    'parrillas-pollo-a-la-plancha': { glosa: 'Con papas fritas y ensalada', glosa_en: 'With French fries and salad',
+      descripcion: 'Pollo a la plancha, servido con papas fritas y ensalada.', descripcion_en: 'Grilled chicken, served with French fries and salad.' },
+    'vini-tabernero-tuyo': { glosa: 'rosé · Perú', glosa_en: 'rosé · Peru' }
+  },
+  alergenosMas: {
+    'antipasti-pane-allaglio': ['gluten', 'lacteos'],
+    'antipasti-pane-allaglio-con-formaggio': ['huevo'],
+    'pasta-fonte-di-fettuccine': ['huevo'],
+    'pasta-fettuccine-allalfredo-con-lomo': ['huevo'],
+    'pasta-pappardelle': ['huevo'],
+    'pasta-spaghetti-ai-gamberoni': ['lacteos']
+  },
+  ocultar: ['vini-barbera', 'vini-tabernero-gran-tinto', 'vini-gran-blanco', 'vini-tacama-semiseco', 'vini-casillero-del-diablo', 'vini-spumante-brut-tabernero']
+};
+
+function actualizarV6() {
+  exigirAdmin_('');
+  var M = MIGRACION_V6, props = PropertiesService.getScriptProperties();
+  var ss = SpreadsheetApp.getActive(), h = ss.getSheetByName(HOJA.productos);
+  var cab = asegurarColumnas_(h, COLS.productos);
+  var col = function (c) { return cab.indexOf(c) + 1; };
+  var filas = leerTabla_(HOJA.productos), porId = {};
+  filas.forEach(function (p) { porId[String(p.id)] = p; });
+  var hecho = [];
+  var poner = function (p, c, v) { h.getRange(p._fila, col(c)).setValue(v); p[c] = v; };
+
+  // fotos: solo si está vacía
+  Object.keys(M.fotos).forEach(function (id) { var p = porId[id]; if (p && !String(p.foto || '').trim()) { poner(p, 'foto', M.fotos[id]); hecho.push('foto ' + p.nombre); } });
+
+  // precios (una sola vez)
+  if (!props.getProperty('MIGRACION_V6_PRECIOS')) {
+    filas.forEach(function (p) {
+      if (String(p.seccion) === 'lasagne' && p.precio !== '' && !isNaN(Number(p.precio))) { poner(p, 'precio', Math.round((Number(p.precio) + M.lasagneMas) * 100) / 100); hecho.push(p.nombre + ' +2'); }
+    });
+    props.setProperty('MIGRACION_V6_PRECIOS', new Date().toISOString());
+  }
+  var rav = porId['pasta-raviolini'], ravC = porId['pasta-ravioli-di-carne'];
+  if (rav && ravC && String(rav.precio).trim() === '' && !String(rav.tamanos || '').trim()) { poner(rav, 'precio', ravC.precio); hecho.push('Raviolini ' + ravC.precio); }
+  var fr = porId['caffe-acqua-frizzante'], ag = porId['caffe-acqua'];
+  if (fr && ag && String(fr.precio).trim() === '' && !String(fr.tamanos || '').trim()) { poner(fr, 'precio', ag.precio); hecho.push('Acqua Frizzante ' + ag.precio); }
+
+  // textos
+  Object.keys(M.campos).forEach(function (id) { var p = porId[id]; if (!p) return; Object.keys(M.campos[id]).forEach(function (c) { if (String(p[c]) !== M.campos[id][c]) poner(p, c, M.campos[id][c]); }); });
+
+  // alérgenos: solo agregar
+  Object.keys(M.alergenosMas).forEach(function (id) {
+    var p = porId[id]; if (!p) return;
+    var lista = String(p.alergenos || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    var antes = lista.length;
+    M.alergenosMas[id].forEach(function (a) { if (lista.indexOf(a) < 0) lista.push(a); });
+    if (lista.length !== antes) { poner(p, 'alergenos', lista.join(', ')); hecho.push('alérgenos ' + p.nombre); }
+  });
+
+  M.ocultar.forEach(function (id) { var p = porId[id]; if (p && String(p.visible).toUpperCase() !== 'NO') poner(p, 'visible', 'NO'); });
+
+  // hojas nuevas
+  asegurarColumnas_(obtenerHoja_(ss, HOJA.avisos, COLS.avisos), COLS.avisos);
+  asegurarColumnas_(obtenerHoja_(ss, HOJA.comprobantes, COLS.comprobantes), COLS.comprobantes);
+  asegurarColumnas_(ss.getSheetByName(HOJA.pedidos), COLS.pedidos);
+
+  limpiarCache_();
+  marcarPendiente_();
+  var r = publicarCarta('');
+  return 'v6 aplicada: ' + (hecho.join(', ') || 'sin cambios') + '. ' + r.mensaje;
+}

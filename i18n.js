@@ -76,7 +76,17 @@
       errRazon: "Escribe el nombre o razón social.", errCorreo: "Escribe un correo válido.", errWaComp: "Escribe tu WhatsApp para enviarte el comprobante.",
       cuentaMesa: "Cuenta de la mesa", cuentaVacia: "Todavía no hay pedidos en esta mesa.", cuentaTotal: "Total de la mesa",
       cuentaNota: "El mozo te traerá la cuenta final al pedirla.", cargando: "Cargando…", verCuenta: "Ver lo pedido en la mesa",
-      extrasOpc: "Agregar {g} (opcional)"
+      extrasOpc: "Agregar {g} (opcional)",
+      llamarMozo: "Llamar al mozo", pedirCuenta: "Pedir la cuenta", loPedido: "Lo pedido",
+      mozoAvisado: "Listo: tu mozo ya fue avisado.", mozoEnCamino: "Mozo avisado", mozoYaAvisado: "Ya avisamos a tu mozo, en un momento te atiende.",
+      cuentaPedida: "¡Listo! Tu mozo te trae la cuenta.", cuentaPedidaTxt: "En un momento se acerca a tu mesa.",
+      cuentaPedidaComp: "Ten a mano tu DNI o RUC para el comprobante.",
+      sugiereTit: "¿Le sumas algo?",
+      ubicBtn: "Enviar mi ubicación", ubicOtra: "Actualizar ubicación", ubicAyuda: "Opcional: ayuda al repartidor a encontrarte.",
+      ubicLista: "Ubicación agregada ✓ (va en tu mensaje de WhatsApp)", ubicBuscando: "Buscando tu ubicación…",
+      ubicError: "No pudimos obtener tu ubicación. Escribe bien la dirección y una referencia.",
+      repetir: "Repetir mi último pedido", repetirQuitar: "Ocultar", repetirNada: "Los productos de tu último pedido no están disponibles ahora.",
+      repetirParcial: "{n} producto(s) de tu último pedido no están disponibles hoy."
     },
     en: {
       abierto: "Open now · until ", cerrado: "Closed · we open ", mesa: "Table ",
@@ -143,7 +153,17 @@
       errRazon: "Enter the name or company name.", errCorreo: "Enter a valid email.", errWaComp: "Enter your WhatsApp to send you the document.",
       cuentaMesa: "Table bill", cuentaVacia: "No orders at this table yet.", cuentaTotal: "Table total",
       cuentaNota: "Your waiter will bring the final bill when you ask for it.", cargando: "Loading…", verCuenta: "See what this table ordered",
-      extrasOpc: "Add {g} (optional)"
+      extrasOpc: "Add {g} (optional)",
+      llamarMozo: "Call waiter", pedirCuenta: "Ask for the bill", loPedido: "Our order",
+      mozoAvisado: "Done: your waiter has been notified.", mozoEnCamino: "Waiter notified", mozoYaAvisado: "We already notified your waiter, they'll be right with you.",
+      cuentaPedida: "Done! Your waiter is bringing the bill.", cuentaPedidaTxt: "They'll be at your table in a moment.",
+      cuentaPedidaComp: "Have your DNI or RUC ready for the receipt.",
+      sugiereTit: "Anything else?",
+      ubicBtn: "Send my location", ubicOtra: "Update location", ubicAyuda: "Optional: helps the rider find you.",
+      ubicLista: "Location added ✓ (included in your WhatsApp message)", ubicBuscando: "Getting your location…",
+      ubicError: "We couldn't get your location. Please write the address and a reference.",
+      repetir: "Repeat my last order", repetirQuitar: "Hide", repetirNada: "The items from your last order aren't available right now.",
+      repetirParcial: "{n} item(s) from your last order aren't available today."
     }
   };
   var AL_EN = { gluten: "Gluten", lacteos: "Dairy", huevo: "Egg", pescado: "Fish", mariscos: "Shellfish", frutosSecos: "Tree nuts", mani: "Peanuts", soya: "Soy", sulfitos: "Sulphites" };

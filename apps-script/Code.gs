@@ -12,7 +12,8 @@
    No compartas este Google Sheets con "Cualquier persona con el enlace".
    ===================================================================== */
 
-var HOJA = { config: 'Config', secciones: 'Secciones', productos: 'Productos', pedidos: 'Pedidos', mesas: 'Mesas', opciones: 'Opciones' };
+var HOJA = { config: 'Config', secciones: 'Secciones', productos: 'Productos', pedidos: 'Pedidos', mesas: 'Mesas', opciones: 'Opciones',
+  avisos: 'Avisos', comprobantes: 'Comprobantes' };
 var COLS = {
   secciones: ['id', 'orden', 'titulo', 'subtitulo', 'intro', 'pie', 'alcohol', 'delivery', 'mesa', 'visible',
     'titulo_en', 'subtitulo_en', 'intro_en', 'pie_en'],
@@ -22,9 +23,14 @@ var COLS = {
     'incluye', 'incluye_en', 'promo_dias', 'promo_desde', 'promo_hasta', 'promo_horas', 'promo_excluir', 'promo_extra'],
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
     'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
-    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado'],
+    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero'],
   mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde'],
-  opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo']
+  opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo'],
+  /* llamadas desde la mesa: "mozo" (llamar al mozo) o "cuenta" (pedir la cuenta) */
+  avisos: ['id', 'fecha', 'mesa', 'motivo', 'detalle', 'estado', 'atendido'],
+  /* registro de boletas y facturas emitidas (la emisión se hace en el sistema de SUNAT) */
+  comprobantes: ['id', 'fecha', 'tipo', 'serie', 'numero', 'doc', 'razon', 'correo', 'whatsapp', 'total', 'pedido', 'detalle',
+    'estado', 'enviado', 'notas', 'registrado_por']
 };
 var CANALES = ['todos', 'local', 'delivery'];
 var ESTADOS = ['Nuevo', 'Confirmado', 'En preparación', 'Listo', 'En camino', 'Entregado', 'Cancelado'];
@@ -656,7 +662,8 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
   if (e.parameter.cuenta) {
-    try { return json_(cuentaPublica_(texto_(e.parameter.m, 6), texto_(e.parameter.c, 20))); }
+    // "cod": Google responde error 400 cuando /exec recibe un parámetro "c" con letras.
+    try { return json_(cuentaPublica_(texto_(e.parameter.m, 6), texto_(e.parameter.cod || e.parameter.c, 20))); }
     catch (err) { return json_({ ok: false, error: 'No pudimos leer la cuenta.' }); }
   }
   var cfg = leerConfig_();
@@ -668,7 +675,7 @@ function doPost(e) {
   var res;
   try {
     var body = JSON.parse(e && e.postData && e.postData.contents || '{}');
-    res = registrarPedido_(body);
+    res = body && body.aviso ? registrarAviso_(body) : registrarPedido_(body);
   } catch (err) {
     console.error(err);
     res = { ok: false, error: 'No pudimos registrar tu pedido. Intenta de nuevo o escríbenos por WhatsApp.' };
@@ -837,7 +844,7 @@ function pedidoAObjeto_(p, zona) {
     programado: celdaTexto_(p.programado), detalle: celdaTexto_(p.detalle), total: Number(p.total) || 0,
     estado: celdaTexto_(p.estado), notas: celdaTexto_(p.notas), historial: celdaTexto_(p.historial),
     ref: celdaTexto_(p.ref), comprobante: celdaTexto_(p.comprobante), doc: celdaTexto_(p.doc), razon: celdaTexto_(p.razon),
-    correo: celdaTexto_(p.correo), compEstado: celdaTexto_(p.comp_estado),
+    correo: celdaTexto_(p.correo), compEstado: celdaTexto_(p.comp_estado), compNumero: celdaTexto_(p.comp_numero),
     ts: p.fecha instanceof Date ? p.fecha.getTime() : 0,
     act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0
   };
@@ -853,7 +860,7 @@ function listarPedidos(sesion, modo) {
   if (modo === 'activos') filas = filas.filter(function (p) { return activos.indexOf(p.estado) >= 0; });
   else if (modo === 'hoy') filas = filas.filter(function (p) { return p.dia === hoy; });
   filas = filas.slice(-300).reverse();
-  return { pedidos: filas, version: PropertiesService.getScriptProperties().getProperty('PEDIDOS_VERSION') || '' };
+  return { pedidos: filas, avisos: avisosPendientes_(zona), version: PropertiesService.getScriptProperties().getProperty('PEDIDOS_VERSION') || '' };
 }
 
 function versionPedidos(sesion) {
@@ -1269,6 +1276,185 @@ function marcarComprobante(sesion, numero, estado) {
   h.getRange(p._fila, cab.indexOf('comp_estado') + 1).setValue(estado);
   PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
   return true;
+}
+
+/* =========================== AVISOS DESDE LA MESA ===========================
+   El cliente, desde el QR de su mesa, puede "Llamar al mozo" o "Pedir la cuenta".
+   El aviso aparece arriba en el panel (con sonido) hasta que alguien marca "Atendido". */
+var MOTIVOS_AVISO = { mozo: 'Llama al mozo', cuenta: 'Pide la cuenta' };
+
+function registrarAviso_(body) {
+  if (body.web) return { ok: true };
+  var mesa = texto_(body.mesa, 6), codigo = texto_(body.codigo, 20), motivo = String(body.motivo || '');
+  if (!MOTIVOS_AVISO[motivo]) return { ok: false, error: 'Aviso no válido.' };
+  var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
+  if (!m || !esSi_(m.activa) || String(m.codigo) !== String(codigo)) return { ok: false, error: 'Código de mesa no válido. Pide ayuda a tu mozo.' };
+  var cache = CacheService.getScriptCache(), k = 'aviso:' + mesa;
+  var n = Number(cache.get(k) || 0);
+  if (n >= 6) return { ok: false, error: 'Ya avisamos a tu mozo varias veces; en un momento te atiende.' };
+  cache.put(k, String(n + 1), 600);
+  var detalle = texto_(body.detalle, 80);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var ss = SpreadsheetApp.getActive();
+    var h = obtenerHoja_(ss, HOJA.avisos, COLS.avisos);
+    var cab = asegurarColumnas_(h, COLS.avisos);
+    // si ya hay un aviso igual sin atender, no se duplica (solo se actualiza el detalle)
+    var igual = leerTabla_(HOJA.avisos).filter(function (a) {
+      return String(a.mesa) === String(mesa) && a.motivo === motivo && a.estado === 'Pendiente';
+    })[0];
+    if (igual) {
+      if (detalle) h.getRange(igual._fila, cab.indexOf('detalle') + 1).setValue(protegerCelda_(detalle));
+    } else {
+      var fila = { id: Utilities.getUuid().slice(0, 8), fecha: new Date(), mesa: mesa, motivo: motivo, detalle: detalle, estado: 'Pendiente', atendido: '' };
+      h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
+    }
+    PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, repetido: !!igual };
+}
+
+/** Avisos sin atender de las últimas 6 horas (para el panel). */
+function avisosPendientes_(zona) {
+  var limite = Date.now() - 6 * 3600 * 1000;
+  return leerTabla_(HOJA.avisos).filter(function (a) {
+    return a.estado === 'Pendiente' && a.fecha instanceof Date && a.fecha.getTime() >= limite;
+  }).map(function (a) {
+    return { id: String(a.id), mesa: celdaTexto_(a.mesa), motivo: String(a.motivo), texto: MOTIVOS_AVISO[a.motivo] || String(a.motivo),
+      detalle: celdaTexto_(a.detalle), hora: Utilities.formatDate(a.fecha, zona, 'HH:mm'), ts: a.fecha.getTime() };
+  });
+}
+
+function atenderAviso(sesion, id) {
+  var quien = exigirAdmin_(sesion);
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.avisos);
+  if (!h) return true;
+  var cab = asegurarColumnas_(h, COLS.avisos);
+  leerTabla_(HOJA.avisos).forEach(function (a) {
+    if (String(a.id) === String(id) && a.estado === 'Pendiente') {
+      h.getRange(a._fila, cab.indexOf('estado') + 1).setValue('Atendido');
+      h.getRange(a._fila, cab.indexOf('atendido') + 1).setValue(Utilities.formatDate(new Date(), 'America/Lima', 'HH:mm') + ' ' + String(quien || ''));
+    }
+  });
+  PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+  return true;
+}
+
+/* =========================== REGISTRO DE COMPROBANTES ===========================
+   La boleta o factura se EMITE en el sistema de SUNAT (Facturador SUNAT / SOL) como siempre.
+   Aquí se registra: número, cliente, total y a qué pedido corresponde, para tener todo en un
+   solo lugar, saber qué falta emitir y enviarla al cliente por WhatsApp o correo. */
+function serieValida_(s) { return /^[A-Z0-9]{4}$/.test(s); }
+
+function comprobanteAObjeto_(c, zona) {
+  return {
+    id: String(c.id), fecha: c.fecha instanceof Date ? Utilities.formatDate(c.fecha, zona, 'dd/MM/yyyy HH:mm') : celdaTexto_(c.fecha, 'dd/MM/yyyy HH:mm'),
+    dia: c.fecha instanceof Date ? Utilities.formatDate(c.fecha, zona, 'yyyy-MM-dd') : '',
+    tipo: celdaTexto_(c.tipo), serie: celdaTexto_(c.serie), numero: Number(c.numero) || 0,
+    codigo: celdaTexto_(c.serie) + '-' + ('0000000' + (Number(c.numero) || 0)).slice(-8),
+    doc: celdaTexto_(c.doc), razon: celdaTexto_(c.razon), correo: celdaTexto_(c.correo), whatsapp: celdaTexto_(c.whatsapp),
+    total: Number(c.total) || 0, pedido: celdaTexto_(c.pedido), detalle: celdaTexto_(c.detalle), estado: celdaTexto_(c.estado),
+    enviado: celdaTexto_(c.enviado), notas: celdaTexto_(c.notas)
+  };
+}
+
+/** Siguiente número sugerido por serie (el último registrado + 1). */
+function siguientesNumeros_(lista) {
+  var ult = {};
+  lista.forEach(function (c) {
+    var k = c.tipo + '|' + c.serie;
+    if (!ult[k] || c.numero > ult[k].numero) ult[k] = { tipo: c.tipo, serie: c.serie, numero: c.numero, fecha: c.dia + ' ' + String(c.fecha).slice(-5) };
+  });
+  return Object.keys(ult).map(function (k) { var u = ult[k]; return { tipo: u.tipo, serie: u.serie, siguiente: u.numero + 1, ultimaFecha: u.fecha }; });
+}
+
+function listarComprobantes(sesion) {
+  exigirAdmin_(sesion);
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var lista = leerTabla_(HOJA.comprobantes).map(function (c) { return comprobanteAObjeto_(c, zona); });
+  // pedidos que pidieron comprobante y todavía no se emite
+  var pendientes = leerTabla_(HOJA.pedidos).filter(function (p) {
+    return celdaTexto_(p.comprobante) && celdaTexto_(p.comp_estado) !== 'Emitido' && p.estado !== 'Cancelado';
+  }).map(function (p) { return pedidoAObjeto_(p, zona); }).slice(-60).reverse();
+  return { comprobantes: lista.slice(-500).reverse(), pendientes: pendientes, series: siguientesNumeros_(lista),
+    hoy: Utilities.formatDate(new Date(), zona, 'yyyy-MM-dd') };
+}
+
+function registrarComprobante(sesion, o) {
+  var quien = exigirAdmin_(sesion);
+  o = o || {};
+  var tipo = o.tipo === 'Factura' ? 'Factura' : o.tipo === 'Boleta' ? 'Boleta' : '';
+  if (!tipo) throw new Error('Elige Boleta o Factura.');
+  var serie = String(o.serie || '').trim().toUpperCase();
+  if (!serieValida_(serie)) throw new Error('La serie debe tener 4 letras o números (por ejemplo B001, F001, EB01, E001).');
+  var numero = Number(String(o.numero || '').replace(/\D/g, ''));
+  if (!(numero >= 1 && numero <= 99999999)) throw new Error('Escribe el número del comprobante (solo números).');
+  var doc = String(o.doc || '').replace(/\D/g, '');
+  if (tipo === 'Factura' && !rucValido_(doc)) throw new Error('Para factura el RUC debe ser válido (11 dígitos).');
+  if (tipo === 'Boleta' && doc && !(doc.length === 8 || (doc.length === 11 && rucValido_(doc)))) throw new Error('El DNI (8 dígitos) o RUC (11) no es válido.');
+  var total = Number(String(o.total || '').replace(',', '.'));
+  if (!(total > 0)) throw new Error('Escribe el total del comprobante.');
+  var correo = texto_(o.correo, 120);
+  if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) throw new Error('El correo no es válido.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var ss = SpreadsheetApp.getActive();
+    var h = obtenerHoja_(ss, HOJA.comprobantes, COLS.comprobantes);
+    var cab = asegurarColumnas_(h, COLS.comprobantes);
+    var existe = leerTabla_(HOJA.comprobantes).some(function (c) {
+      return String(c.serie).toUpperCase() === serie && Number(c.numero) === numero;
+    });
+    if (existe) throw new Error('El comprobante ' + serie + '-' + numero + ' ya está registrado.');
+    var fila = {
+      id: Utilities.getUuid().slice(0, 8), fecha: new Date(), tipo: tipo, serie: serie, numero: numero,
+      doc: doc ? "'" + doc : '', razon: texto_(o.razon, 120), correo: correo, whatsapp: String(o.whatsapp || '').replace(/\D/g, '').slice(0, 15),
+      total: Math.round(total * 100) / 100, pedido: texto_(o.pedido, 12), detalle: String(o.detalle || '').slice(0, 2000),
+      estado: 'Emitido', enviado: '', notas: texto_(o.notas, 200), registrado_por: String(quien || '')
+    };
+    h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
+    h.getRange(h.getLastRow(), cab.indexOf('numero') + 1).setNumberFormat('0');
+    // marca el pedido como emitido
+    if (fila.pedido) {
+      var hp = ss.getSheetByName(HOJA.pedidos);
+      var cp = asegurarColumnas_(hp, COLS.pedidos);
+      var p = leerTabla_(HOJA.pedidos).filter(function (x) { return String(x.numero) === String(fila.pedido); })[0];
+      if (p) {
+        hp.getRange(p._fila, cp.indexOf('comp_estado') + 1).setValue('Emitido');
+        hp.getRange(p._fila, cp.indexOf('comp_numero') + 1).setValue(serie + '-' + numero);
+      }
+    }
+    PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+  } finally {
+    lock.releaseLock();
+  }
+  return listarComprobantes(sesion);
+}
+
+/** estado: 'Anulado' (solo en este registro: la anulación ante SUNAT se hace en su sistema) o 'Emitido'. enviado: texto libre (WhatsApp / Correo). */
+function actualizarComprobante(sesion, id, campos) {
+  exigirAdmin_(sesion);
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.comprobantes);
+  if (!h) throw new Error('Todavía no hay comprobantes.');
+  var cab = asegurarColumnas_(h, COLS.comprobantes);
+  var c = leerTabla_(HOJA.comprobantes).filter(function (x) { return String(x.id) === String(id); })[0];
+  if (!c) throw new Error('Comprobante no encontrado.');
+  campos = campos || {};
+  if (campos.estado) {
+    if (['Emitido', 'Anulado'].indexOf(campos.estado) < 0) throw new Error('Estado no válido.');
+    h.getRange(c._fila, cab.indexOf('estado') + 1).setValue(campos.estado);
+  }
+  if (campos.enviado) {
+    var prev = celdaTexto_(c.enviado);
+    var nuevo = texto_(campos.enviado, 20) + ' ' + Utilities.formatDate(new Date(), 'America/Lima', 'dd/MM HH:mm');
+    h.getRange(c._fila, cab.indexOf('enviado') + 1).setValue(prev ? prev + ' · ' + nuevo : nuevo);
+  }
+  if (campos.correo != null) h.getRange(c._fila, cab.indexOf('correo') + 1).setValue(protegerCelda_(texto_(campos.correo, 120)));
+  if (campos.whatsapp != null) h.getRange(c._fila, cab.indexOf('whatsapp') + 1).setValue(String(campos.whatsapp).replace(/\D/g, '').slice(0, 15));
+  return listarComprobantes(sesion);
 }
 
 /* =========================== ACCESO POR CONTRASEÑA (panel web) =========================== */
