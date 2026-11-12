@@ -174,8 +174,14 @@
 
     function bloqueGrupo(gid) {
       var g = GRUPOS[gid];
-      var w = h("div", "grupo-op");
-      w.appendChild(h("h3", "hoja__sub", tx(g, "n") + (g.req ? "" : " (" + t("opcional") + ")")));
+      // los adicionales opcionales de varias opciones (ej.: ingredientes extra) van plegados
+      var plegable = g.tipo === "varias" && !g.req;
+      var w = h(plegable ? "details" : "div", "grupo-op" + (plegable ? " grupo-op--plegable" : ""));
+      if (plegable) {
+        var min = g.ops.reduce(function (m, o) { return o.p && (m == null || o.p < m) ? o.p : m; }, null);
+        w.appendChild(h("summary", "hoja__sub", t("extrasOpc", { g: tx(g, "n").toLowerCase() }) + (min ? " · " + t("masPrecio") + Number(min).toFixed(2) : "")));
+        if ((sel.ops[gid] || []).length) w.open = true;
+      } else w.appendChild(h("h3", "hoja__sub", tx(g, "n") + (g.req ? "" : " (" + t("opcional") + ")")));
       w.appendChild(opcionesUI("g-" + gid, g.ops.map(function (o) {
         return { valor: o.n, texto: tx(o, "n"), extra: o.p ? t("masPrecio") + Number(o.p).toFixed(2) : "",
           marcado: (sel.ops[gid] || []).indexOf(o.n) >= 0 };
@@ -336,6 +342,7 @@
     if (MODO === "mesa") {
       f.appendChild(campo("nombre", t("aNombre"), "text", { max: 60, auto: "given-name" }));
       f.appendChild(campo("notas", t("comentCocina"), "area", { max: 300 }));
+      f.appendChild(bloqueComprobante());
     } else {
       if (!form.canal || !CFG.recojo) form.canal = "delivery";
       if (CFG.recojo) {
@@ -357,6 +364,7 @@
         f.appendChild(campo("programado", abiertoAhora() ? t("paraHora") : t("paraHoraReq"), "time", {}));
       }
       f.appendChild(campo("notas", t("comentarios"), "area", { max: 300 }));
+      f.appendChild(bloqueComprobante());
       if (carrito.some(function (l) { return l.alcohol; })) {
         var lb = h("label", "check");
         var ck = h("input"); ck.type = "checkbox"; ck.checked = !!form.mayorEdad;
@@ -364,6 +372,28 @@
         lb.appendChild(ck); lb.appendChild(h("span", null, t("mayor")));
         f.appendChild(lb);
       }
+    }
+    function bloqueComprobante() {
+      var w = h("div", "comp");
+      var tipos = (CFG.comprobantes || []).filter(function (x) { return x === "Boleta" || x === "Factura"; });
+      if (!tipos.length) return w;
+      var datos = h("div");
+      w.appendChild(h("h3", "hoja__sub", t("comprobante")));
+      w.appendChild(opcionesUI("comp", [{ valor: "", texto: t("sinComp"), marcado: !form.comprobante }].concat(tipos.map(function (x) {
+        return { valor: x, texto: t(x === "Boleta" ? "boleta" : "factura"), marcado: form.comprobante === x };
+      })), false, function (v) { form.comprobante = v[0]; pintarDatos(); }));
+      w.appendChild(datos);
+      function pintarDatos() {
+        datos.textContent = "";
+        if (!form.comprobante) return;
+        var fac = form.comprobante === "Factura";
+        datos.appendChild(campo("doc", fac ? t("docFactura") : t("docBoleta"), "text", { max: 11, modo: "numeric", ph: fac ? "20XXXXXXXXX" : "" }));
+        datos.appendChild(campo("razon", fac ? t("razonFactura") : t("razonBoleta"), "text", { max: 120, auto: fac ? "organization" : "name" }));
+        datos.appendChild(campo("correo", t("correo"), "email", { max: 120, auto: "email" }));
+        if (MODO === "mesa") datos.appendChild(campo("telefono", t("whatsappComp"), "tel", { max: 16, auto: "tel", modo: "tel", ph: "9XX XXX XXX" }));
+      }
+      pintarDatos();
+      return w;
     }
     function pintarZona() {
       zona.textContent = "";
@@ -381,32 +411,50 @@
     f.appendChild(err);
     f.addEventListener("input", function () { err.textContent = ""; });
     f.addEventListener("change", function () { err.textContent = ""; });
-    var enviar = h("button", "btn-ped", MODO === "mesa" ? t("enviarCocina") : t("enviar"));
+    var enviar = h("button", "btn-ped" + (MODO === "mesa" ? "" : " btn-ped--wa"), MODO === "mesa" ? t("enviarCocina") : t("enviarWaDirecto"));
     enviar.type = "submit";
     f.appendChild(enviar);
     f.addEventListener("submit", function (ev) {
       ev.preventDefault();
       var e = validar();
       if (e) { err.textContent = e; return; }
+      if (MODO !== "mesa") { enviarPorWhatsapp(hp.value); return; }
       enviar.disabled = true; enviar.textContent = t("enviando");
       enviarPedido(hp.value).then(function (r) {
-        enviar.disabled = false; enviar.textContent = MODO === "mesa" ? t("enviarCocina") : t("enviar");
+        enviar.disabled = false; enviar.textContent = t("enviarCocina");
         if (r && r.error) err.textContent = r.error;
       });
     });
     return f;
   }
 
+  function rucValido(r) {
+    if (!/^(10|15|16|17|20)\d{9}$/.test(r)) return false;
+    var f = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2], s = 0;
+    for (var i = 0; i < 10; i++) s += Number(r.charAt(i)) * f[i];
+    var d = 11 - (s % 11); if (d === 10) d = 0; if (d === 11) d = 1;
+    return d === Number(r.charAt(10));
+  }
+  function validarComprobante() {
+    if (!form.comprobante) return "";
+    var doc = String(form.doc || "").replace(/\D/g, "");
+    if (form.comprobante === "Factura") { if (!rucValido(doc)) return t("errRuc"); }
+    else if (!(doc.length === 8 || (doc.length === 11 && rucValido(doc)))) return t("errDoc");
+    if (!form.razon || form.razon.trim().length < 3) return t("errRazon");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(form.correo || "").trim())) return t("errCorreo");
+    if (String(form.telefono || "").replace(/\D/g, "").length < 9) return t("errWaComp");
+    return "";
+  }
   function validar() {
     if (!carrito.length) return t("vacio");
-    if (MODO === "mesa") return "";
+    if (MODO === "mesa") return validarComprobante();
     if (!form.nombre || form.nombre.trim().length < 2) return t("errNombre");
     if (String(form.telefono || "").replace(/\D/g, "").length < 9) return t("errCel");
     if (form.canal === "delivery" && (!form.direccion || form.direccion.trim().length < 5)) return t("errDir");
     if (CFG.metodosPago && CFG.metodosPago.length && !form.pago) return t("errPago");
     if (!abiertoAhora() && !form.programado) return t("errHora");
     if (carrito.some(function (l) { return l.alcohol; }) && !form.mayorEdad) return t("errMayor");
-    return "";
+    return validarComprobante();
   }
 
   function cuerpoPedido(trampa) {
@@ -414,7 +462,9 @@
       canal: MODO === "mesa" ? "mesa" : form.canal, mesa: MESA, codigo: CODIGO, web: trampa || "", idioma: I.lang,
       nombre: form.nombre || "", telefono: form.telefono || "", direccion: form.canal === "delivery" ? (form.direccion || "") : "",
       referencia: form.canal === "delivery" ? (form.referencia || "") : "", pago: form.pago || "",
-      programado: form.programado || "", notas: form.notas || "", mayorEdad: !!form.mayorEdad,
+      programado: form.programado || "", notas: form.notas || "", mayorEdad: !!form.mayorEdad, ref: form.ref || "",
+      comprobante: form.comprobante || "", doc: form.comprobante ? String(form.doc || "").replace(/\D/g, "") : "",
+      razon: form.comprobante ? (form.razon || "") : "", correo: form.comprobante ? String(form.correo || "").trim() : "",
       items: carrito.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {} }; })
     };
   }
@@ -422,7 +472,7 @@
   // El mensaje de WhatsApp siempre va en español: lo lee el equipo del restaurante.
   function mensajeWhatsapp(numero, totalServidor, detalle) {
     var L = [];
-    L.push("Hola " + C.negocio.nombre + ", quiero confirmar mi pedido" + (numero ? " #" + numero : "") + ".");
+    L.push("Hola " + C.negocio.nombre + ", quiero confirmar mi pedido" + (numero ? " #" + numero : "") + (form.ref ? " (código " + form.ref + ")" : "") + ".");
     L.push(form.canal === "recojo" ? "*Recojo en el local*" : "*Delivery*");
     L.push("");
     if (detalle) L.push(detalle);
@@ -443,8 +493,43 @@
     if (form.pago) L.push("Pago: " + form.pago);
     L.push("Para: " + (form.programado ? "las " + form.programado : "lo antes posible"));
     if (form.notas) L.push("Comentarios: " + form.notas);
+    if (form.comprobante) {
+      L.push("");
+      L.push("*" + form.comprobante + "*: " + String(form.doc || "").replace(/\D/g, "") + " · " + (form.razon || ""));
+      L.push("Correo: " + String(form.correo || "").trim());
+    }
     if (I.lang === "en") L.push("(Cliente en inglés)");
     return "https://wa.me/" + C.negocio.whatsapp + "?text=" + encodeURIComponent(L.join("\n"));
+  }
+
+  /* Delivery y recojo: en el mismo toque se abre WhatsApp con el pedido listo y, a la vez,
+     el pedido se registra en el panel (con un código corto para encontrarlo). */
+  function codigoCorto() {
+    var a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", s = "";
+    for (var i = 0; i < 4; i++) s += a.charAt(Math.floor(Math.random() * a.length));
+    return s;
+  }
+  function enviarPorWhatsapp(trampa) {
+    form.ref = codigoCorto();
+    var url = mensajeWhatsapp(null, null, null);
+    var cuerpo = cuerpoPedido(trampa);
+    if (CFG.api) {
+      try { fetch(CFG.api, { method: "POST", body: JSON.stringify(cuerpo), keepalive: true }).catch(function () {}); } catch (e) {}
+    }
+    var w = null;
+    try { w = window.open(url, "_blank"); if (w) w.opener = null; } catch (e) {}
+    var c = h("div", "hoja__cuerpo exito");
+    c.appendChild(h("div", "exito__ic", "✓"));
+    c.appendChild(h("h3", null, t("abriendoWa")));
+    c.appendChild(h("p", null, t("soloEnviar", { d: form.canal === "delivery" ? t("conDelivery") : "" })));
+    c.appendChild(h("p", "hoja__ayuda", t("codigoPedido") + form.ref));
+    var a = h("a", "link-wa", t("noAbrio")); a.href = url; a.target = "_blank"; a.rel = "noopener";
+    c.appendChild(a);
+    c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
+    carrito = []; guardar(); pintarBarra();
+    form.ref = "";
+    abrirHoja(c, t("tuPedido"));
+    if (!w) setTimeout(function () { location.href = url; }, 50);
   }
 
   function enviarPedido(trampa) {
@@ -474,6 +559,7 @@
     if (MODO === "mesa") {
       c.appendChild(h("h3", null, t("enviadoMesa", { n: numero })));
       c.appendChild(h("p", null, t("mozoConfirma") + soles(totalServidor)));
+      c.appendChild(boton(t("verCuenta"), "btn-ped btn-ped--linea", abrirCuenta));
       c.appendChild(boton(t("volver"), "btn-ped", cerrarHoja));
     } else {
       var url = mensajeWhatsapp(numero, totalServidor, detalle);
@@ -485,6 +571,32 @@
     }
     carrito = []; guardar(); pintarBarra();
     abrirHoja(c, MODO === "mesa" ? t("mesa") + MESA : t("tuPedido"));
+  }
+
+  /* ---------- cuenta de la mesa (lo pedido por todos los que escanearon el QR) ---------- */
+  function abrirCuenta() {
+    var c = h("div", "hoja__cuerpo");
+    var estado = h("p", "hoja__desc", t("cargando"));
+    c.appendChild(estado);
+    abrirHoja(c, t("cuentaMesa") + " · " + t("mesa") + MESA);
+    if (!CFG.api) { estado.textContent = t("cuentaVacia"); return; }
+    fetch(CFG.api + "?cuenta=1&m=" + encodeURIComponent(MESA) + "&c=" + encodeURIComponent(CODIGO))
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        c.textContent = "";
+        if (!r || !r.ok) { c.appendChild(h("p", "hoja__err", (r && r.error) || t("errCocina"))); return; }
+        if (!r.pedidos.length) { c.appendChild(h("p", "hoja__desc", t("cuentaVacia"))); return; }
+        r.pedidos.forEach(function (p) {
+          var b = h("div", "cuenta__ped");
+          b.appendChild(h("strong", null, "#" + p.numero + " · " + p.hora));
+          b.appendChild(h("pre", "cuenta__det", p.detalle));
+          c.appendChild(b);
+        });
+        var tl = h("div", "total"); tl.appendChild(h("span", null, t("cuentaTotal"))); tl.appendChild(h("strong", null, soles(r.total)));
+        c.appendChild(tl);
+        c.appendChild(h("p", "hoja__ayuda", t("cuentaNota")));
+      })
+      .catch(function () { c.textContent = ""; c.appendChild(h("p", "hoja__err", t("errCocina"))); });
   }
 
   /* ---------- API para app.js ---------- */
@@ -517,6 +629,12 @@
       barra.appendChild(barraTxt); barra.appendChild(barraTot);
       barra.addEventListener("click", abrirCarrito);
       document.body.appendChild(barra);
+      if (MODO === "mesa" && mesaValida()) {
+        var bc = h("button", "btn-cuenta"); bc.type = "button";
+        bc.appendChild(document.createTextNode("🧾 " + t("cuentaMesa")));
+        bc.addEventListener("click", abrirCuenta);
+        document.body.appendChild(bc);
+      }
       toast = h("div", "toast"); toast.setAttribute("role", "status"); document.body.appendChild(toast);
       pintarBarra();
     }

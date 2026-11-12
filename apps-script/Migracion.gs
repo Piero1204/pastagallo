@@ -509,3 +509,108 @@ function actualizarV3() {
   var r = publicarCarta('');
   return 'Actualización v3 aplicada: ' + t.productos.length + ' productos. ' + r.mensaje;
 }
+
+/* =====================================================================
+   PASTA GALLO · Actualización v4 (12-nov-2026) — función "actualizarV4"
+   - Precios: pizzas +2 (cada tamaño), fuentes de ravioli 65, fuente de fettuccine +5,
+     tris +2, resto de pastas +2, milanesa y churrasco +2
+   - Pollo a la plancha (S/ 30)
+   - Carta de vinos según la lista de la casa (11-nov-2026)
+   - Comprobantes (boleta / factura) y cuenta abierta por mesa
+   Los aumentos se aplican UNA sola vez (queda marcado); repetir la función no vuelve a subir precios.
+   ===================================================================== */
+var MIGRACION_V4 = {
+  fotoPollo: 'https://images.unsplash.com/photo-1670398564097-0762e1b30b3a?w=700&q=70&auto=format&fit=crop',
+  pizzasMas: 2,
+  pastaFijos: { 'pasta-fonte-di-ravioli': 65, 'pasta-fonte-di-ravioli-di-carne': 65 },
+  pastaMas: { 'pasta-fonte-di-fettuccine': 5 },
+  pastaResto: 2,
+  parrillasMas: { 'parrillas-milanesa-de-pollo': 2, 'parrillas-churrasco-o-chuleta': 2 },
+  productosNuevos: [
+    { id: 'parrillas-pollo-a-la-plancha', seccion: 'parrillas', grupo: '', orden: 35, nombre: 'Pollo a la Plancha', glosa: '',
+      precio: 30, tipo: 'plato', alergenos: '', nombre_en: 'Grilled Chicken', foto: 'FOTO_POLLO' },
+    { id: 'vini-ca-bianca', seccion: 'vini', grupo: 'Vini Italiani', orden: 110, nombre: "Ca' Bianca", glosa: 'Piamonte · Italia',
+      precio: 80, tipo: 'plato', alergenos: 'sulfitos', glosa_en: 'Piedmont · Italy',
+      descripcion: "Vino del Piamonte elaborado por Tenimenti Ca' Bianca.", descripcion_en: "A Piedmont wine by Tenimenti Ca' Bianca." },
+    { id: 'vini-cavicchioli', seccion: 'vini', grupo: 'Vini Italiani', orden: 120, nombre: 'Cavicchioli', glosa: 'Emilia-Romaña · Italia',
+      precio: 60, tipo: 'plato', alergenos: 'sulfitos', glosa_en: 'Emilia-Romagna · Italy',
+      descripcion: 'De la casa Cavicchioli, fundada en 1928 en Emilia-Romaña y conocida por sus Lambruscos.',
+      descripcion_en: 'From Cavicchioli, founded in 1928 in Emilia-Romagna and known for its Lambruscos.' },
+    { id: 'vini-victoria', seccion: 'vini', grupo: 'Vini Italiani', orden: 130, nombre: 'Victoria', glosa: 'Italia',
+      precio: 150, tipo: 'plato', alergenos: 'sulfitos', glosa_en: 'Italy' },
+    { id: 'vini-tabernero-tuyo', seccion: 'vini', grupo: 'Vini Sudamericani', orden: 210, nombre: 'Tabernero Tuyo', glosa: 'Perú',
+      precio: 38, tipo: 'plato', alergenos: 'sulfitos', glosa_en: 'Peru' },
+    { id: 'vini-tabernero-moscato', seccion: 'vini', grupo: 'Vini Sudamericani', orden: 220, nombre: 'Tabernero Moscato', glosa: 'Perú',
+      precio: 38, tipo: 'plato', alergenos: 'sulfitos', glosa_en: 'Peru' },
+    { id: 'vini-frontera-malbec', seccion: 'vini', grupo: 'Vini Sudamericani', orden: 260, nombre: 'Frontera Malbec', glosa: 'tinto · Chile',
+      precio: 38, tipo: 'plato', alergenos: 'sulfitos', glosa_en: 'red · Chile',
+      descripcion: 'Malbec chileno de la línea Frontera de Concha y Toro.', descripcion_en: 'Chilean Malbec from Concha y Toro’s Frontera line.' }
+  ],
+  // productos existentes de la lista de vinos
+  vinos: {
+    'vini-prisionero': { grupo: 'Vini Italiani', orden: 140, precio: 130, glosa: 'Italia', glosa_en: 'Italy' },
+    'vini-patrillo': { grupo: 'Vini Italiani', orden: 150, precio: 150, glosa: 'Italia', glosa_en: 'Italy' },
+    'vini-tabernero-borgona': { grupo: 'Vini Sudamericani', orden: 230, precio: 40 },
+    'vini-tacama-seco': { grupo: 'Vini Sudamericani', orden: 240, precio: 45 },
+    'vini-frontera': { grupo: 'Vini Sudamericani', orden: 250, precio: 40, nombre: 'Frontera Cabernet Sauvignon', glosa: 'tinto · Chile' }
+  },
+  // no están en la lista de la casa: se ocultan (se pueden volver a mostrar desde el panel)
+  ocultar: ['vini-tabernero-gran-tinto', 'vini-gran-blanco', 'vini-tacama-semiseco', 'vini-casillero-del-diablo', 'vini-spumante-brut-tabernero'],
+  config: [['comprobantes', 'Boleta, Factura', 'Comprobantes que el cliente puede pedir (Boleta, Factura). En Nuevo RUS solo Boleta.']]
+};
+
+function sumarTamanos_(t, n) {
+  return String(t || '').split(';').map(function (x) {
+    var p = x.split('='); if (p.length < 2) return x.trim();
+    var v = Number(String(p[1]).trim()); return p[0].trim() + '=' + (isNaN(v) ? p[1].trim() : Math.round((v + n) * 100) / 100);
+  }).filter(Boolean).join('; ');
+}
+
+function aplicarMigracionV4_(t, M, conPrecios) {
+  M = M || MIGRACION_V4;
+  var porId = {}; t.productos.forEach(function (p) { porId[String(p.id)] = p; });
+  var mas = function (p, n) { var v = Number(p.precio); if (p.precio !== '' && !isNaN(v)) p.precio = Math.round((v + n) * 100) / 100; };
+  if (conPrecios) {
+    t.productos.forEach(function (p) {
+      var id = String(p.id);
+      if (p.seccion === 'pizze' && p.tamanos) p.tamanos = sumarTamanos_(p.tamanos, M.pizzasMas);
+      if (p.seccion === 'pasta' && p.tipo !== 'salsa') {
+        if (M.pastaFijos[id] != null) p.precio = M.pastaFijos[id];
+        else if (M.pastaMas[id] != null) mas(p, M.pastaMas[id]);
+        else mas(p, M.pastaResto);
+      }
+      if (M.parrillasMas[id] != null) mas(p, M.parrillasMas[id]);
+    });
+  }
+  M.productosNuevos.forEach(function (n) {
+    if (porId[n.id]) return;
+    var p = { canal: 'todos', disponible: 'SI', visible: 'SI', destacado: '', alergenos: '', foto: '', recargo: '', tamanos: '',
+      precio_antes: '', opciones: '', grupo_nota: '', requiere_salsa: 'NO', descripcion: '', descripcion_en: '', glosa_en: '', nombre_en: '' };
+    Object.keys(n).forEach(function (k) { p[k] = n[k]; });
+    if (p.foto === 'FOTO_POLLO') p.foto = M.fotoPollo || '';
+    t.productos.push(p); porId[n.id] = p;
+  });
+  Object.keys(M.vinos).forEach(function (id) { var p = porId[id]; if (p) Object.keys(M.vinos[id]).forEach(function (k) { p[k] = M.vinos[id][k]; }); });
+  M.ocultar.forEach(function (id) { if (porId[id]) porId[id].visible = 'NO'; });
+  ['vini-calice-di-vino', 'vini-sangria'].forEach(function (id) { if (porId[id]) porId[id].grupo = ''; });
+  return t;
+}
+
+function actualizarV4() {
+  exigirAdmin_('');
+  var props = PropertiesService.getScriptProperties();
+  var conPrecios = !props.getProperty('MIGRACION_V4_PRECIOS');
+  var t = { productos: leerTabla_(HOJA.productos) };
+  aplicarMigracionV4_(t, MIGRACION_V4, conPrecios);
+  escribirTabla_(HOJA.productos, COLS.productos, t.productos);
+  if (conPrecios) props.setProperty('MIGRACION_V4_PRECIOS', new Date().toISOString());
+  var cfg = leerConfig_();
+  MIGRACION_V4.config.forEach(function (c) { if (cfg[c[0]] === undefined) SpreadsheetApp.getActive().getSheetByName(HOJA.config).appendRow(c); });
+  asegurarColumnas_(SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), COLS.pedidos);
+  asegurarColumnas_(SpreadsheetApp.getActive().getSheetByName(HOJA.mesas), COLS.mesas);
+  formatearHojas_();
+  limpiarCache_();
+  marcarPendiente_();
+  var r = publicarCarta('');
+  return 'Actualización v4 aplicada' + (conPrecios ? ' (con precios nuevos)' : ' (precios ya estaban actualizados)') + '. ' + r.mensaje;
+}

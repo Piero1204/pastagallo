@@ -237,7 +237,6 @@
     if (tx(it, "d")) a.appendChild(h("p", "it__d", tx(it, "d")));
     if (it.canal === "local") a.appendChild(h("span", "etq", t("soloLocal")));
     if (it.canal === "delivery") a.appendChild(h("span", "etq", t("soloDelivery")));
-    if (it.destacado === "tris") a.appendChild(diagramaTris());
     if (it.extra) a.appendChild(h("span", "mas", t("adicional") + dinero(it.extra)));
     if (it.t) {
       var tb = h("div", "tam");
