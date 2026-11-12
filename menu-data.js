@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T12:38:19-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-11T19:44:18-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -355,6 +355,155 @@ window.CARTA = {
      "p": 0
     }
    ]
+  },
+  "combo-pizza-personal": {
+   "n": "Sabor de pizza",
+   "n_en": "Pizza flavour",
+   "tipo": "una",
+   "req": true,
+   "ops": [
+    {
+     "n": "Hawaiana",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Americana",
+     "n_en": "",
+     "p": 0
+    }
+   ]
+  },
+  "combo-pizza-mediana": {
+   "n": "Sabor de pizza mediana",
+   "n_en": "Medium pizza flavour",
+   "tipo": "una",
+   "req": true,
+   "ops": [
+    {
+     "n": "Americana",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Hawaiana",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Napoletana",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Arrabbiata",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Speciale",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Tentazione",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Vegetariana",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Ghiottona",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Campagnola",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Primavera",
+     "n_en": "",
+     "p": 0
+    }
+   ]
+  },
+  "combo-pizza-familiar": {
+   "n": "Sabor de pizza familiar",
+   "n_en": "Family pizza flavour",
+   "tipo": "una",
+   "req": true,
+   "ops": [
+    {
+     "n": "Americana",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Hawaiana",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Napoletana",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Arrabbiata",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Speciale",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Tentazione",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Vegetariana",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Ghiottona",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Campagnola",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Quattro Stagioni",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Piemontese",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "Abbuffata",
+     "n_en": "",
+     "p": 0
+    },
+    {
+     "n": "La Chama",
+     "n_en": "",
+     "p": 0
+    }
+   ]
   }
  },
  "salsas": [
@@ -444,16 +593,172 @@ window.CARTA = {
   {
    "id": "promociones",
    "titulo": "Offerte",
-   "subtitulo": "Promociones de la casa",
-   "intro": "Combinaciones especiales pensadas para compartir y celebrar juntos.",
+   "subtitulo": "Combos de la casa",
+   "intro": "Para llevar: delivery o recojo en el local. Cada combo tiene sus días.",
    "pie": "",
    "alcohol": false,
    "delivery": true,
    "mesa": false,
-   "grupos": [],
+   "grupos": [
+    {
+     "titulo": "",
+     "nota": "",
+     "items": [
+      {
+       "id": "promociones-combo-personale",
+       "n": "Combo Personale",
+       "g": "pizza personal + pan al ajo + Pepsi",
+       "d": "Tu pizza personal, Hawaiana o Americana, con dos porciones de pan al ajo y una Pepsi helada.",
+       "p": 25,
+       "al": [
+        "gluten",
+        "lacteos",
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1778449726826-8b0c92e4624e?w=700&q=70&auto=format&fit=crop",
+       "canal": "delivery",
+       "op": [
+        "combo-pizza-personal",
+        "temp-bebida"
+       ],
+       "g_en": "personal pizza + garlic bread + Pepsi",
+       "d_en": "Your personal pizza, Hawaiian or Americana, with two portions of garlic bread and a cold Pepsi.",
+       "inc": [
+        "Pizza personal Hawaiana o Americana",
+        "2 porciones de pan al ajo",
+        "Pepsi de ½ litro"
+       ],
+       "inc_en": [
+        "Personal Hawaiian or Americana pizza",
+        "2 portions of garlic bread",
+        "½-litre Pepsi"
+       ],
+       "promo": {
+        "dias": [
+         2,
+         3,
+         4
+        ]
+       }
+      },
+      {
+       "id": "promociones-combo-alfredo",
+       "n": "Combo Alfredo",
+       "g": "fettuccine + pan al ajo + Pepsi",
+       "d": "Una porción de fettuccine all’Alfredo, cremosos y generosos, con tres porciones de pan al ajo y una Pepsi.",
+       "p": 35,
+       "al": [
+        "gluten",
+        "lacteos",
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1664214649076-7b17006db5b5?w=700&q=70&auto=format&fit=crop",
+       "canal": "delivery",
+       "op": [
+        "temp-bebida"
+       ],
+       "g_en": "fettuccine + garlic bread + Pepsi",
+       "d_en": "A portion of creamy fettuccine Alfredo with three portions of garlic bread and a Pepsi.",
+       "inc": [
+        "Fettuccine all’Alfredo",
+        "3 porciones de pan al ajo",
+        "Pepsi de ½ litro"
+       ],
+       "inc_en": [
+        "Fettuccine Alfredo",
+        "3 portions of garlic bread",
+        "½-litre Pepsi"
+       ],
+       "promo": {
+        "dias": [
+         2,
+         3,
+         4
+        ]
+       }
+      },
+      {
+       "id": "promociones-combo-per-due",
+       "n": "Combo per Due",
+       "g": "pizza mediana + fettuccine + pan al ajo + Pepsi",
+       "d": "Para compartir entre dos: una pizza mediana a elección y un plato de fettuccine all’Alfredo, con pan al ajo y Pepsi.",
+       "p": 60,
+       "al": [
+        "gluten",
+        "lacteos",
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1717883235373-ef10b2a745a3?w=700&q=70&auto=format&fit=crop",
+       "canal": "delivery",
+       "op": [
+        "combo-pizza-mediana",
+        "temp-bebida"
+       ],
+       "g_en": "medium pizza + fettuccine + garlic bread + Pepsi",
+       "d_en": "To share between two: a medium pizza of your choice and a plate of fettuccine Alfredo, with garlic bread and Pepsi.",
+       "inc": [
+        "Pizza mediana a elección",
+        "Fettuccine all’Alfredo",
+        "2 porciones de pan al ajo",
+        "Pepsi de ½ litro"
+       ],
+       "inc_en": [
+        "Medium pizza of your choice",
+        "Fettuccine Alfredo",
+        "2 portions of garlic bread",
+        "½-litre Pepsi"
+       ],
+       "promo": {
+        "dias": [
+         2,
+         3,
+         4
+        ]
+       }
+      },
+      {
+       "id": "promociones-combo-famiglia",
+       "n": "Combo Famiglia",
+       "g": "pizza familiar + pan al ajo + Pepsi 1.5 L",
+       "d": "La mesa del fin de semana: una pizza familiar a elección, cuatro porciones de pan al ajo y una Pepsi de litro y medio.",
+       "p": 65,
+       "al": [
+        "gluten",
+        "lacteos",
+        "huevo"
+       ],
+       "foto": "https://images.unsplash.com/photo-1777891257674-36c5532e6654?w=700&q=70&auto=format&fit=crop",
+       "canal": "delivery",
+       "op": [
+        "combo-pizza-familiar",
+        "temp-bebida"
+       ],
+       "g_en": "family pizza + garlic bread + 1.5 L Pepsi",
+       "d_en": "The weekend table: a family-size pizza of your choice, four portions of garlic bread and a 1.5-litre Pepsi.",
+       "inc": [
+        "Pizza familiar a elección",
+        "4 porciones de pan al ajo",
+        "Pepsi de 1.5 litros"
+       ],
+       "inc_en": [
+        "Family-size pizza of your choice",
+        "4 portions of garlic bread",
+        "1.5-litre Pepsi"
+       ],
+       "promo": {
+        "dias": [
+         0,
+         5,
+         6
+        ]
+       }
+      }
+     ]
+    }
+   ],
    "titulo_en": "Offerte",
-   "subtitulo_en": "House offers",
-   "intro_en": "",
+   "subtitulo_en": "House combos",
+   "intro_en": "For delivery or pick-up. Each combo has its own days.",
    "pie_en": ""
   },
   {
@@ -1951,7 +2256,7 @@ window.CARTA = {
         "huevo",
         "lacteos"
        ],
-       "foto": "fotos/dolci-biscotto-gocce-cioccolato.jpg",
+       "foto": "https://images.unsplash.com/photo-1782852232674-64bc7f102866?w=700&q=70&auto=format&fit=crop",
        "g_en": "chocolate chip cookie",
        "d_en": "Chocolate chip cookie, perfect with a good coffee."
       },
@@ -2464,5 +2769,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-11T12:38:19-05:00"
+ "publicado": "2026-11-11T19:44:18-05:00"
 };
