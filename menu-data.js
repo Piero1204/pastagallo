@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T01:15:26-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T11:04:42-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -959,7 +959,7 @@ window.CARTA = {
         "frutosSecos",
         "lacteos"
        ],
-       "foto": "fotos/italia-wafer-mandorlato-tre-marie-1794463975620.jpg",
+       "foto": "fotos/italia-wafer-mandorlato-tre-marie-real.jpg",
        "n_en": "Wafer Mandorlato Tre Marie",
        "g_en": "Milk chocolate and almond wafers",
        "d_en": "A masterpiece of Milanese pastry tradition. They feature a sublime balance between the delicacy of three thin, golden wafer sheets and the richness of a silky milk chocolate cream. Inside, subtle pieces of Sicilian almonds add a crunchy texture and an unmistakable roasted aroma."
@@ -976,7 +976,7 @@ window.CARTA = {
         "frutosSecos",
         "lacteos"
        ],
-       "foto": "fotos/italia-wafer-nocciolato-tre-marie-1794463977070.jpg",
+       "foto": "fotos/italia-wafer-nocciolato-tre-marie-real.jpg",
        "n_en": "Wafer Nocciolato Tre Marie",
        "g_en": "Hazelnut cream wafers",
        "d_en": "From Tre Marie’s «Ancora Uno» line, a historic brand of Milanese pastry tradition: thin, crisp golden wafers filled with a smooth hazelnut cream. The perfect companion for a coffee."
@@ -993,7 +993,7 @@ window.CARTA = {
         "frutosSecos",
         "soya"
        ],
-       "foto": "fotos/italia-wafer-stracciatella-tre-marie-1794463978667.jpg",
+       "foto": "fotos/italia-wafer-stracciatella-tre-marie-real.jpg",
        "n_en": "Wafer Stracciatella Tre Marie",
        "g_en": "Milk cream and chocolate wafers",
        "d_en": "Inspired by the classic Italian gelato: crisp wafer layers filled with milk cream and pieces of extra dark chocolate. Made without hydrogenated fats."
@@ -1010,7 +1010,7 @@ window.CARTA = {
         "frutosSecos",
         "soya"
        ],
-       "foto": "fotos/italia-wafer-gianduia-nera-tre-marie-1794463980338.jpg",
+       "foto": "fotos/italia-wafer-gianduia-nera-tre-marie-real.jpg",
        "n_en": "Wafer Gianduia Nera Tre Marie",
        "g_en": "Dark gianduia cream wafers",
        "d_en": "Crisp wafers filled with gianduia cream —the traditional Piedmontese blend of cocoa and hazelnuts— in its dark, intense version."
@@ -1086,7 +1086,7 @@ window.CARTA = {
         "lacteos",
         "soya"
        ],
-       "foto": "https://images.unsplash.com/photo-1571091799989-e88304d6aed3?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/italia-gianduia-classica-caffarel-real.jpg",
        "n_en": "Gianduia Classica Caffarel",
        "g_en": "Gianduia chocolate bar",
        "d_en": "From Caffarel, the historic Turin chocolate maker that created the gianduiotto in 1865. Classic gianduia chocolate: cocoa and Piedmont hazelnuts, creamy and velvety."
@@ -1102,7 +1102,7 @@ window.CARTA = {
         "lacteos",
         "soya"
        ],
-       "foto": "https://images.unsplash.com/photo-1548741487-18d363dc4469?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/italia-gianduia-assortito-caffarel-real.jpg",
        "n_en": "Gianduia Assortito Caffarel",
        "g_en": "Assorted gianduiotti box",
        "d_en": "An assorted box of gianduiotti, the famous Turin chocolate made with Piemonte IGP hazelnuts, in milk and dark chocolate. A gift worthy of any occasion."
@@ -2825,5 +2825,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-12T01:15:26-05:00"
+ "publicado": "2026-11-12T11:04:42-05:00"
 };
