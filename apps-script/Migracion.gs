@@ -933,3 +933,41 @@ function importarFotosTmp() {
   limpiarCache_(); marcarPendiente_();
   return 'Fotos: ' + hechas.join(', ') + '. ' + publicarCarta('').mensaje;
 }
+
+/* =====================================================================
+   PASTA GALLO · v4c: nombres de trattoria para las promociones (12-nov-2026)
+   Función "actualizarV4c". Se puede repetir.
+   - Sección "Offerte" → "Le Proposte della Casa".
+   - Combo Personale → Pizza per Uno · Combo Alfredo → Alfredo della Casa
+     Combo per Due → Cena per Due · Combo Famiglia → La Tavolata
+   - Los enlaces de las historias (?p=promociones-combo-…) siguen funcionando: los id no cambian.
+   - Además deja fijas en la hoja las fotos reales de FOTOS_REALES.
+   ===================================================================== */
+var MIGRACION_V4C = {
+  seccion: { titulo: 'Le Proposte della Casa', titulo_en: 'Le Proposte della Casa',
+    subtitulo: 'Para llevar · cada día, su propuesta', subtitulo_en: 'To take away · every day has its own',
+    intro: 'Delivery o recojo en el local.', intro_en: 'Delivery or pick-up.' },
+  nombres: {
+    'promociones-combo-personale': 'Pizza per Uno',
+    'promociones-combo-alfredo': 'Alfredo della Casa',
+    'promociones-combo-per-due': 'Cena per Due',
+    'promociones-combo-famiglia': 'La Tavolata'
+  }
+};
+
+function actualizarV4c() {
+  exigirAdmin_('');
+  var M = MIGRACION_V4C, ss = SpreadsheetApp.getActive();
+  var productos = leerTabla_(HOJA.productos);
+  productos.forEach(function (p) {
+    if (M.nombres[p.id]) p.nombre = M.nombres[p.id];
+    if (FOTOS_REALES[p.id]) p.foto = FOTOS_REALES[p.id];
+  });
+  escribirTabla_(HOJA.productos, COLS.productos, productos);
+  var secciones = leerTabla_(HOJA.secciones);
+  secciones.forEach(function (s) { if (String(s.id) === 'promociones') Object.keys(M.seccion).forEach(function (k) { s[k] = M.seccion[k]; }); });
+  escribirTabla_(HOJA.secciones, COLS.secciones, secciones);
+  marcarPendiente_();
+  var pub = publicarCarta('');
+  return 'v4c aplicada (nombres de trattoria y fotos reales). ' + pub.mensaje;
+}
