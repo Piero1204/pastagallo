@@ -23,8 +23,8 @@ var COLS = {
     'incluye', 'incluye_en', 'promo_dias', 'promo_desde', 'promo_hasta', 'promo_horas', 'promo_excluir', 'promo_extra'],
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
     'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
-    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura', 'mozo'],
-  mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde', 'codigo_anterior'],
+    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura', 'mozo', 'entregado'],
+  mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde', 'codigo_anterior', 'atiende_id', 'ocupada_desde', 'x', 'y', 'forma'],
   opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo'],
   /* llamadas desde la mesa: "mozo" (llamar al mozo) o "cuenta" (pedir la cuenta) */
   avisos: ['id', 'fecha', 'mesa', 'motivo', 'detalle', 'estado', 'atendido'],
@@ -426,7 +426,8 @@ function calcularPedido_(body, cat, cfg, momento, porMozo) {
   if (canal !== 'mesa') {
     if (cliente.nombre.length < 2) return { ok: false, error: 'Escribe tu nombre.' };
     if (cliente.telefono.replace(/\D/g, '').length < 9) return { ok: false, error: 'Escribe un número de celular válido.' };
-    var pagos = String(cfg.metodos_pago || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    var pagos = metodosLista_(cfg.metodos_pago, false);
+    if (/^(yape|plin)$/i.test(cliente.pago) && pagos.indexOf(YAPE_PLIN) >= 0) cliente.pago = YAPE_PLIN; // web antigua en caché
     if (pagos.length && pagos.indexOf(cliente.pago) < 0) return { ok: false, error: 'Elige un método de pago.' };
   }
   if (canal === 'delivery' && cliente.direccion.length < 5) return { ok: false, error: 'Escribe la dirección de entrega.' };
@@ -616,8 +617,8 @@ function construirCarta_(cfg, secciones, productos, opciones) {
     pedidos: {
       api: cfg.api_url || '', activos: esSi_(cfg.pedidos_activos), fueraHorario: esSi_(cfg.pedidos_fuera_de_horario),
       mesaActivos: esSi_(cfg.pedidos_mesa_activos), recojo: esSi_(cfg.recojo_activo),
-      metodosPago: String(cfg.metodos_pago || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean),
-      metodosPagoMesa: String(cfg.metodos_pago_mesa || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean),
+      metodosPago: metodosLista_(cfg.metodos_pago, false),
+      metodosPagoMesa: metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true),
       cobro: datosCobro_(cfg),
       textoDelivery: cfg.texto_delivery || '', textoDelivery_en: cfg.texto_delivery_en || '',
       comprobantes: listaComprobantes_(cfg)
@@ -787,20 +788,27 @@ function registrarPedido_(body, mozo) {
     props.setProperty('ULTIMO_PEDIDO', String(numero));
     var ahora = new Date();
     var numDia = siguienteNumeroDia_(ahora, cfg); // el número que ven el cliente y la cocina
+    // Salón: lo que envía el mozo entra directo a cocina ("En preparación"); lo pedido desde el QR de la mesa
+    // se confirma solo (Config mesa_autoconfirmar = NO para confirmarlo a mano en el panel).
+    var estado0 = 'Nuevo', his0 = 'Nuevo ' + fmt_(ahora, 'HH:mm');
+    if (r.canal === 'mesa' && mozo) { estado0 = 'En preparación'; his0 += ' · En preparación (' + mozo.nombre + ')'; }
+    else if (r.canal === 'mesa' && String(cfg.mesa_autoconfirmar || 'SI').toUpperCase() !== 'NO') { estado0 = 'Confirmado'; his0 += ' · Confirmado (auto)'; }
     var fila = {
       numero: numero, fecha: ahora, canal: r.canal, mesa: r.mesa, nombre: r.cliente.nombre,
       telefono: r.cliente.telefono, direccion: r.cliente.direccion, referencia: r.cliente.referencia,
-      pago: r.cliente.pago, programado: r.programado ? "'" + r.programado : '', detalle: r.detalle, total: r.total, estado: 'Nuevo',
-      notas: r.cliente.notas, items_json: JSON.stringify(r.lineas), actualizado: ahora, historial: 'Nuevo ' + fmt_(ahora, 'HH:mm'),
+      pago: r.cliente.pago, programado: r.programado ? "'" + r.programado : '', detalle: r.detalle, total: r.total, estado: estado0,
+      notas: r.cliente.notas, items_json: JSON.stringify(r.lineas), actualizado: ahora, historial: his0,
       origen: r.origen,
       ref: r.ref, comprobante: r.comp.tipo, doc: r.comp.doc ? "'" + r.comp.doc : '', razon: r.comp.razon, correo: r.comp.correo,
       comp_estado: r.comp.tipo ? 'Pendiente' : '', num_dia: numDia, pago_estado: pagoEstado,
+      entregado: '',
       captura: captura ? guardarCaptura_(captura, numero) : '',
       mozo: mozo ? mozo.nombre : ''
     };
     var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
     var cab = asegurarColumnas_(h, COLS.pedidos);
     h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
+    if (r.canal === 'mesa') { try { asignarMesaAlPedir_(r.mesa, mozo, cfg); } catch (e) { console.error(e); } }
     props.setProperty('PEDIDOS_VERSION', String(Date.now()));
   } finally {
     lock.releaseLock();
@@ -907,7 +915,8 @@ function pedidoAObjeto_(p, zona) {
     correo: celdaTexto_(p.correo), compEstado: celdaTexto_(p.comp_estado), compNumero: celdaTexto_(p.comp_numero),
     ts: p.fecha instanceof Date ? p.fecha.getTime() : 0,
     act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0,
-    pagoEstado: celdaTexto_(p.pago_estado), captura: celdaTexto_(p.captura), mozo: celdaTexto_(p.mozo)
+    pagoEstado: celdaTexto_(p.pago_estado), captura: celdaTexto_(p.captura), mozo: celdaTexto_(p.mozo),
+    entregado: celdaTexto_(p.entregado)
   };
 }
 
@@ -921,7 +930,10 @@ function listarPedidos(sesion, modo) {
   if (modo === 'activos') filas = filas.filter(function (p) { return activos.indexOf(p.estado) >= 0; });
   else if (modo === 'hoy') filas = filas.filter(function (p) { return p.dia === hoy; });
   filas = filas.slice(-300).reverse();
-  return { pedidos: filas, avisos: avisosPendientes_(zona), version: PropertiesService.getScriptProperties().getProperty('PEDIDOS_VERSION') || '' };
+  var salon = null;
+  try { salon = salonDatos_(cfg); } catch (e) { console.error(e); }
+  return { pedidos: filas, avisos: salon ? salon.avisos : avisosPendientes_(zona), salon: salon,
+    version: PropertiesService.getScriptProperties().getProperty('PEDIDOS_VERSION') || '' };
 }
 
 function versionPedidos(sesion) {
@@ -999,8 +1011,27 @@ function datosCobro_(cfg) {
   return {
     Yape: { numero: String(cfg.yape_numero || ''), titular: cfg.yape_titular || '', qr: cfg.yape_qr || '' },
     Plin: { numero: String(cfg.plin_numero || ''), titular: cfg.plin_titular || '', qr: cfg.plin_qr || '' },
-    Transferencia: { texto: cfg.banco_texto || '', qr: cfg.transferencia_qr || '' }
+    Transferencia: { texto: cfg.banco_texto || '', qr: cfg.transferencia_qr || '' },
+    // "Yape o Plin" es UNA sola opción: se muestra el QR de Plin (se puede pagar desde Yape o desde Plin);
+    // si todavía no se subió el de Plin, se usa el de Yape.
+    'Yape o Plin': (cfg.plin_qr || cfg.plin_numero)
+      ? { numero: String(cfg.plin_numero || ''), titular: cfg.plin_titular || '', qr: cfg.plin_qr || '', unico: true }
+      : { numero: String(cfg.yape_numero || ''), titular: cfg.yape_titular || '', qr: cfg.yape_qr || '', unico: true }
   };
+}
+
+/* ---------- métodos de pago: "Yape" y "Plin" se muestran como una sola opción "Yape o Plin" ----------
+   En el salón no se ofrece transferencia. */
+var YAPE_PLIN = 'Yape o Plin';
+function metodosLista_(v, salon) {
+  var r = [];
+  String(v == null ? '' : v).split(',').forEach(function (s) {
+    s = s.trim(); if (!s) return;
+    if (/^(yape|plin|yape\s*(o|\/|y)\s*plin)$/i.test(s)) s = YAPE_PLIN;
+    if (salon && /^transf/i.test(s)) return;
+    if (r.indexOf(s) < 0) r.push(s);
+  });
+  return r;
 }
 
 /** Sube el QR de Yape, Plin o transferencia a la web (es público a propósito: el cliente lo escanea). */
@@ -1420,8 +1451,11 @@ function cuentaMesa_(mesa, m, pedidos, zona) {
   var lista = pedidos.filter(function (p) {
     return String(p.mesa) === String(mesa) && p.canal === 'mesa' && p.fecha instanceof Date && p.fecha.getTime() >= desde && p.estado !== 'Cancelado';
   }).map(function (p) {
-    return { numero: Number(p.num_dia) || p.numero, hora: Utilities.formatDate(p.fecha, zona, 'HH:mm'), detalle: celdaTexto_(p.detalle),
-      total: Number(p.total) || 0, estado: celdaTexto_(p.estado), nombre: celdaTexto_(p.nombre), mozo: celdaTexto_(p.mozo) };
+    var lineas = lineasCortas_(p.items_json), est = celdaTexto_(p.estado);
+    var ent = est === 'Entregado' ? lineas.map(function (x, i) { return i; }) : indicesEntregados_(p.entregado, lineas.length);
+    return { numero: Number(p.num_dia) || p.numero, id: Number(p.numero), hora: Utilities.formatDate(p.fecha, zona, 'HH:mm'), ts: p.fecha.getTime(),
+      detalle: celdaTexto_(p.detalle), total: Number(p.total) || 0, estado: est, nombre: celdaTexto_(p.nombre), mozo: celdaTexto_(p.mozo),
+      lineas: lineas, entregado: ent, falta: lineas.length - ent.length };
   });
   var total = Math.round(lista.reduce(function (a, p) { return a + p.total; }, 0) * 100) / 100;
   return { mesa: String(mesa), pedidos: lista, total: total };
@@ -1433,7 +1467,7 @@ function cuentaPublica_(mesa, codigo) {
   if (!m || !esSi_(m.activa) || !codigoMesaOk_(m, codigo)) return { ok: false, error: 'Código de mesa no válido.' };
   var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
   c.ok = true;
-  c.pedidos.forEach(function (p) { delete p.nombre; delete p.mozo; });
+  c.pedidos.forEach(function (p) { delete p.nombre; delete p.mozo; delete p.id; });
   return c;
 }
 /** Para el panel: mesas con cuenta abierta. */
@@ -1450,8 +1484,7 @@ function cerrarCuentaMesa(sesion, mesa) {
   var cab = asegurarColumnas_(h, COLS.mesas);
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
   if (!m) throw new Error('Mesa no encontrada.');
-  h.getRange(m._fila, cab.indexOf('abierta_desde') + 1).setValue(new Date(Date.now() + 1000));
-  PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+  cerrarCuentaDeMesa_(m, 'panel');
   return cuentasMesas(sesion);
 }
 function marcarComprobante(sesion, numero, estado) {

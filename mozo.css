@@ -68,11 +68,65 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
 .mesa .s{font-size:13px;color:var(--gris)}
 .mesa.libre{background:var(--papel);border-style:dashed}.mesa.libre .t{color:var(--verde);font-size:15px}
 .mesa.ocupada{border-color:var(--oro)}
+/* estados automáticos de la mesa */
+.mesa.sentada{border-color:#d9a326;background:#fff8e5}
+.mesa.cocina{border-color:var(--azul);background:#f1f6fb}
+.mesa.listo{border-color:var(--verde);background:#e8f6ea;box-shadow:0 0 0 3px rgba(47,122,58,.3);animation:late 1.4s infinite}
+.mesa.servida{border-color:#7a5aa8;background:#f5f1fa}
+.mesa.ajena{opacity:.62;background-image:repeating-linear-gradient(135deg,transparent 0 10px,rgba(0,0,0,.035) 10px 20px)}
+.mesa .who{font-size:12.5px;font-weight:800;color:var(--vino)}
+.mesa .who.zona{color:var(--gris);font-weight:600}
+.mesa .who.yo{color:var(--verde)}
 .mesa.llama{border-color:var(--rojo);box-shadow:0 0 0 3px rgba(182,35,42,.25);animation:late 1.2s infinite}
 .mesa.cuenta{border-color:var(--azul);box-shadow:0 0 0 3px rgba(45,95,138,.25)}
 .mesa .ic{position:absolute;top:10px;right:10px;font-size:22px}
 .mesa .borr{position:absolute;top:10px;right:10px;background:var(--oro);color:#fff;border-radius:999px;font-size:12px;font-weight:800;padding:2px 8px}
 .mesa.inactiva{opacity:.4}
+.salon__cab{display:flex;align-items:center;gap:8px;padding:10px 12px 0;flex-wrap:wrap}
+.salon__cab .titulo{padding:0}
+.salon__cuerpo{display:block}
+@media (min-width:1000px){.salon__cuerpo{display:grid;grid-template-columns:1fr 380px;align-items:start}.servir{position:sticky;top:calc(var(--top) + 10px)}}
+.seg{display:inline-flex;background:#fff;border:1px solid var(--linea);border-radius:11px;padding:3px;gap:2px}
+.seg button{padding:9px 13px;border-radius:9px;font-weight:800;font-size:14px;color:var(--gris)}
+.seg button.on{background:var(--vino);color:#fff}
+/* plano del salón */
+.plano{position:relative;margin:12px;max-height:72vh;background:var(--papel) radial-gradient(circle,#e3d6bb 1px,transparent 1.5px) 0 0/22px 22px;border:1px solid var(--linea);border-radius:var(--r);aspect-ratio:2/1;min-height:300px;overflow:hidden}
+.mesa.pm{position:absolute;transform:translate(-50%,-50%);min-height:0;width:9%;min-width:62px;aspect-ratio:1;padding:4px;align-items:center;justify-content:center;text-align:center;gap:0}
+.mesa.pm b{font-size:20px}.mesa.pm small{font-size:11px;font-weight:700;color:var(--gris);white-space:nowrap;overflow:hidden;max-width:100%}
+.mesa.pm.f-redonda{border-radius:50%}.mesa.pm.f-larga{width:16%;aspect-ratio:2}.mesa.pm.f-barra{width:24%;aspect-ratio:4;border-radius:6px}
+/* por servir */
+.servir{margin:12px;background:#fff;border:1px solid var(--linea);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:10px}
+.servir h3{font-size:15px;color:var(--vino);text-transform:uppercase;letter-spacing:.04em}
+.srv{border:1px solid var(--linea);border-radius:11px;padding:8px;display:flex;flex-direction:column;gap:6px;background:#fff}
+.srv.listo{border:2px solid var(--verde);background:#f1faf2}
+.srv.hecho{opacity:.6}
+.srv__cab{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gris);font-weight:700;flex-wrap:wrap}
+.srv__mesa{background:var(--vino);color:#fff;border-radius:8px;padding:6px 10px;font-weight:800;font-size:14px}
+.srv__est{padding:3px 8px;border-radius:999px;background:var(--papel);font-weight:800;color:var(--tinta)}
+.srv__est.e-listo{background:var(--verde);color:#fff}.srv__est.e-enpreparacion{background:#dbe8f5;color:var(--azul)}
+.srv__l{display:flex;align-items:center;gap:10px;text-align:left;min-height:46px;padding:6px 8px;border-radius:9px;background:var(--papel);font-weight:700;font-size:15.5px}
+.srv__l i{flex:none;width:28px;height:28px;border-radius:8px;border:2px solid var(--linea);background:#fff;display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:900;color:#fff}
+.srv__l small{display:block;font-weight:500;font-size:12.5px;color:var(--gris)}
+.srv__l.ok{background:#eef7ef;color:var(--gris)}.srv__l.ok span{text-decoration:line-through}
+.srv__l.ok i{background:var(--verde);border-color:var(--verde)}
+.btn.ok{background:var(--verde);border-color:var(--verde);color:#fff}
+.orden__cab{flex-wrap:wrap}.orden__cab .btn{white-space:nowrap}
+.orden__est{order:3;flex-basis:100%;font-size:12.5px;font-weight:800;color:var(--gris)}
+.orden__acc{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border-bottom:1px solid var(--linea)}
+.orden__acc .btn{flex:1 1 auto}
+.top__cats{width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,.14);font-size:22px;flex:none}
+.cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.cats button{min-height:64px;border-radius:12px;background:var(--papel);border:2px solid var(--linea);font-weight:800;font-size:16px;text-align:left;padding:10px 12px;color:var(--vino)}
+.cats button small{display:block;font-size:12px;color:var(--gris);font-weight:600}
+.qrpago{width:220px;max-width:70%;margin:4px auto;border-radius:10px;border:1px solid var(--linea)}
+.vuelto{white-space:nowrap;color:var(--verde)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--papel);border-radius:10px;padding:10px;text-align:center}.kpi b{display:block;font-size:20px;color:var(--vino)}.kpi span{font-size:12px;color:var(--gris)}
+.fila-t{display:flex;justify-content:space-between;padding:8px 2px;border-bottom:1px solid var(--linea);font-weight:700}
+.aviso-ef{background:#fff3d6;border-radius:10px;padding:10px;font-weight:800}
+.menu-yo p{padding:6px 2px 10px;color:var(--gris)}
+.mesasel button.ajena{opacity:.55}
+.av.otro{background:#8c5a5d}
 .titulo{padding:14px 12px 0;font-size:14px;font-weight:800;color:var(--gris);text-transform:uppercase;letter-spacing:.06em;display:flex;gap:8px;align-items:center}
 
 /* ---------- carta ---------- */
@@ -188,7 +242,7 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
   .av button{padding:8px 10px;font-size:14px}
   .toast{bottom:96px}
   .pago .fila .btn{flex:none}
-  .top__yo{max-width:44px;padding:0;font-size:0}.top__yo::before{content:"☰";font-size:22px}
+  .top__yo{max-width:44px;padding:0;font-size:0}.top__yo::before{content:"👤";font-size:20px}
   .modal .orden{display:flex;border:0}
 }
 @media (max-width:420px){.top__mesa{padding:0 10px;font-size:16px}.mesas{grid-template-columns:repeat(2,1fr)}}

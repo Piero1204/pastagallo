@@ -3,6 +3,16 @@
 (function () {
   "use strict";
   var C = window.CARTA, CFG = C.pedidos || {}, GRUPOS = C.opciones || {};
+  /* "Yape" y "Plin" son UNA sola opción ("Yape o Plin": un solo QR, el de Plin, que se paga desde cualquiera de los dos).
+     En la mesa no se ofrece transferencia. */
+  var YP = "Yape o Plin";
+  function unirMetodos(l, salon) {
+    var r = [];
+    (l || []).forEach(function (m) { m = /^(yape|plin)$/i.test(m) ? YP : m; if (salon && /^transf/i.test(m)) return; if (r.indexOf(m) < 0) r.push(m); });
+    return r;
+  }
+  CFG.metodosPago = unirMetodos(CFG.metodosPago, false);
+  CFG.metodosPagoMesa = unirMetodos(CFG.metodosPagoMesa, true);
   var I = window.PG_I18N, t = I.t, tx = I.tx;
   var MODO = window.MODO === "mesa" ? "mesa" : "delivery";
   var params = new URLSearchParams(location.search);
@@ -632,6 +642,7 @@
   /* ---------- cobro anticipado: QR, número y captura del pago ---------- */
   function cobroDe(m) {
     var c = CFG.cobro || {}, k = String(m || "").toLowerCase();
+    if (/yape o plin/.test(k)) return c[YP] || (c.Plin && (c.Plin.qr || c.Plin.numero) ? c.Plin : c.Yape) || null;
     if (/^yape/.test(k)) return c.Yape || null;
     if (/^plin/.test(k)) return c.Plin || null;
     if (/^transf/.test(k)) return c.Transferencia || null;
@@ -662,6 +673,7 @@
       w.appendChild(monto);
     }
     if (c.qr) { var q = h("img", "cobro__qr"); q.src = c.qr; q.alt = "QR " + metodo; q.onerror = function () { q.remove(); }; w.appendChild(q); }
+    if (/yape o plin/i.test(metodo) && c.qr) w.appendChild(h("p", "hoja__ayuda", t("yapePlinQr")));
     if (c.numero) w.appendChild(filaCopiar(t("numeroA"), c.numero));
     if (c.titular) w.appendChild(h("p", "cobro__tit", t("titular") + " " + c.titular));
     if (c.texto) w.appendChild(h("p", "cobro__banco", c.texto));
@@ -960,7 +972,7 @@
     if (metodosMesa.length) {
       c.appendChild(h("h3", "hoja__sub", t("comoPagar")));
       var cobroMesa = h("div");
-      c.appendChild(opcionesUI("pagoCuenta", metodosMesa.map(function (m) { return { valor: m, texto: m }; }), false, function (v) { sel.pago = v[0]; pintarCobro(cobroMesa, sel.pago, false); }));
+      c.appendChild(opcionesUI("pagoCuenta", metodosMesa.map(function (m) { return { valor: m, texto: m, extra: m === YP ? "⚡ " + t("masRapido") : "" }; }), false, function (v) { sel.pago = v[0]; pintarCobro(cobroMesa, sel.pago, false); }));
       c.appendChild(cobroMesa);
     }
     var tipos = (CFG.comprobantes || []).filter(function (x) { return x === "Boleta" || x === "Factura"; });
