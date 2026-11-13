@@ -253,6 +253,11 @@ tr.oculto td{opacity:.5}
 .det__l.ok{color:var(--gris);text-decoration:line-through}.det__l.ok i{background:var(--ok);border-color:var(--ok)}
 .det__pie{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;border-top:1px solid var(--linea)}
 #lMozos{grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.pm-olv{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:#c46a12;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center}
+.pm.olvidada{box-shadow:0 0 0 4px rgba(196,106,18,.45)}
+.chip.c-olv{background:#c46a12;color:#fff}
+.olv-txt{color:#c46a12;font-weight:700;font-size:13px}
+.rank{width:100%;border-collapse:collapse;font-size:13px}.rank th{text-align:left;}.rank th.n{text-align:right}.rank th{color:var(--gris);font-size:11px;text-transform:uppercase;padding:4px 6px}.rank td{padding:6px;border-top:1px solid var(--linea)}.rank td.n{text-align:right;white-space:nowrap}
 .diasM{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0}
 .diasM button{width:34px;height:32px;border-radius:7px;border:1px solid var(--linea);background:#fff;font-weight:700;color:var(--gris)}
 .diasM button.on{background:var(--vino);color:#fff;border-color:var(--vino)}
@@ -367,6 +372,7 @@ tr.oculto td{opacity:.5}
       <div class="panel" style="grid-column:1/-1"><h3>Ventas por día</h3><div class="barras" id="gDias"></div><div class="ejes" id="eDias"></div></div>
       <div class="panel"><h3>Productos más vendidos</h3><div class="filas" id="gTop"></div></div>
       <div class="panel"><h3>Por canal</h3><div class="filas" id="gCanal"></div><h3 style="margin-top:18px">Pedidos por hora</h3><div class="barras" id="gHora" style="height:110px"></div><div class="ejes" id="eHora"></div></div>
+      <div class="panel" style="grid-column:1/-1"><h3>Mozos (salón, según cobros registrados)</h3><div id="gMozos"></div><p class="nota" style="margin-top:6px">Ticket por persona = consumo ÷ personas, solo de las mesas donde el mozo anotó cuántas personas eran.</p></div>
       <div class="panel"><h3>Ventas por día de la semana</h3><div class="filas" id="gSemana"></div><p class="nota" style="margin-top:8px">Sirve para decidir qué días necesitan promoción: los días flojos son los candidatos.</p></div>
       <div class="panel"><h3>Promociones</h3><div class="filas" id="gPromos"></div><h3 style="margin-top:18px">Ticket con promo vs. sin promo</h3><div class="filas" id="gCompara"></div><h3 style="margin-top:18px">¿De dónde vienen los pedidos?</h3><div class="filas" id="gOrigen"></div><p class="nota" style="margin-top:6px">"ig" = enlaces de Instagram con ?o=ig · "directo" = sin enlace marcado.</p></div>
     </div>
@@ -861,6 +867,8 @@ function pintarSalon(){
   var ocup = mesas.filter(function(m){ return m.estado !== 'libre'; }).length;
   var servir = mesas.reduce(function(a, m){ return a + (m.porServir || 0); }, 0);
   var listos = mesas.filter(function(m){ return m.estado === 'listo'; }).length;
+  var olvidadas = mesas.filter(function(m){ return m.alerta; }).length;
+  var personasT = mesas.reduce(function(a, m){ return a + (m.personas || 0); }, 0);
   var vista = el('div', {class:'seg'}, [['plano','🗺 Plano'],['lista','▦ Tarjetas']].map(function(x){
     return el('button', {class: VISTA_SALON === x[0] ? 'on' : '', text:x[1], onclick:function(){ VISTA_SALON = x[0]; EDITANDO = false; try { localStorage.setItem('pg-vsalon', x[0]); } catch(e) {} pintarSalon(); }});
   }));
@@ -869,6 +877,8 @@ function pintarSalon(){
     el('span', {class:'chip', text: ocup + ' de ' + mesas.length + ' mesas ocupadas'}),
     servir ? el('span', {class:'chip', text:'🍽 ' + servir + ' plato(s) por servir'}) : null,
     listos ? el('span', {class:'chip c-listo', text:'🔔 ' + listos + ' mesa(s) con pedido listo'}) : null,
+    olvidadas ? el('span', {class:'chip c-olv', text:'⏰ ' + olvidadas + ' mesa(s) olvidada(s)'}) : null,
+    personasT ? el('span', {class:'chip', text:'👥 ' + personasT + ' persona(s) en el salón'}) : null,
     el('span', {class:'esp'}), vista,
     VISTA_SALON === 'plano' ? el('button', {class:'btn' + (EDITANDO ? ' prim' : ''), text: EDITANDO ? '✓ Listo' : '✏️ Acomodar plano', onclick: alternarEdicion}) : null
   ]));
@@ -888,18 +898,23 @@ function planoSalon(mesas){
   mesas.forEach(function(m, i){
     if (m.x == null || m.y == null) { var d = posDefecto(i); m.x = d.x; m.y = d.y; m._def = true; }
     var e = estadoPanel(m), at = m.atiende;
-    var n = el('div', {class:'pm e-' + e + ' f-' + (m.forma || 'cuadrada') + (mesaDeMozoF(m) ? '' : ' tenue') + (String(MESA_SEL) === String(m.mesa) ? ' sel' : ''),
+    var n = el('div', {class:'pm e-' + e + ' f-' + (m.forma || 'cuadrada') + (m.alerta ? ' olvidada' : '') + (mesaDeMozoF(m) ? '' : ' tenue') + (String(MESA_SEL) === String(m.mesa) ? ' sel' : ''),
       style:'left:' + m.x + '%;top:' + m.y + '%', title:'Mesa ' + m.mesa + ' · ' + TXT_MESA[e]}, [
       el('b', {text:m.mesa}),
       el('small', {text: m.estado === 'libre' ? (m.zona && mozosFiltro().length > 1 ? 'zona ' + m.zona.nombre.split(' ')[0] : '') : (at ? '🤵 ' + at.nombre.split(' ')[0] : 'sin mozo')}),
       m.n ? el('small', {text: soles(m.total)}) : null,
-      m.estado !== 'libre' ? el('small', {class:'min', text: minDesdeTs(m.ts) + ' min' + (m.porServir ? ' · faltan ' + m.porServir : '')}) : null
+      m.estado !== 'libre' ? el('small', {class:'min', text: minDesdeTs(m.ts) + ' min' + (m.personas ? ' · 👥' + m.personas : '') + (m.porServir ? ' · faltan ' + m.porServir : '')}) : null,
+      m.alerta ? el('span', {class:'pm-olv', title: textoOlvido(m), text:'⏰'}) : null
     ]);
     n.addEventListener('click', function(){ if (EDITANDO) return; MESA_SEL = String(MESA_SEL) === String(m.mesa) ? '' : m.mesa; pintarSalon(); });
     arrastrable(n, m, p);
     p.appendChild(n);
   });
   return p;
+}
+function textoOlvido(m){
+  var a = m.alerta; if (!a) return '';
+  return a.tipo === 'listo' ? 'Pedido #' + a.numero + ' listo hace ' + a.min + ' min y nadie lo lleva' : a.min + ' min sentados sin pedir';
 }
 function minDesdeTs(ts){ return ts ? Math.max(0, Math.floor((ahora() - ts) / 60000)) : 0; }
 function tarjetasSalon(mesas){
@@ -910,7 +925,8 @@ function tarjetasSalon(mesas){
       el('div', {class:'cuenta__t'}, [el('b', {text:'Mesa ' + m.mesa}), el('span', {text: TXT_MESA[e]})]),
       el('div', {class:'nota', text: m.atiende ? '🤵 ' + m.atiende.nombre : (m.estado === 'libre' ? (m.zona ? 'Zona de ' + m.zona.nombre : '') : 'Sin mozo')}),
       m.n ? el('div', {class:'cuenta__tot', text: soles(m.total)}) : null,
-      m.estado !== 'libre' ? el('div', {class:'nota', text:'Desde ' + m.desde + ' · ' + minDesdeTs(m.ts) + ' min' + (m.porServir ? ' · faltan ' + m.porServir + ' plato(s)' : '')}) : null
+      m.estado !== 'libre' ? el('div', {class:'nota', text:'Desde ' + m.desde + ' · ' + minDesdeTs(m.ts) + ' min' + (m.personas ? ' · 👥 ' + m.personas : '') + (m.porServir ? ' · faltan ' + m.porServir + ' plato(s)' : '')}) : null,
+      m.alerta ? el('div', {class:'olv-txt', text:'⏰ ' + textoOlvido(m)}) : null
     ]));
   });
   return g;
@@ -960,6 +976,12 @@ function detalleMesa(m){
   sel.value = m.atiende ? m.atiende.id : '';
   if (m.estado === 'libre') sel.disabled = true;
   cuerpo.push(el('div', {class:'det__fila'}, [el('b', {text:'Atiende:'}), sel]));
+  if (m.alerta) cuerpo.push(el('div', {class:'olv-txt', text:'⏰ ' + textoOlvido(m)}));
+  var selP = el('select', {class:'txt', onchange:function(){ var v = this.value, s2 = this; if (!v) return; s2.disabled = true;
+    run('personasPanel', m.mesa, Number(v)).then(function(){ toast('Mesa ' + m.mesa + ': ' + v + ' persona(s)'); cargarPedidos(); }).catch(function(err){ s2.disabled = false; error(err); }); }},
+    [el('option', {value:'', text: m.personas ? '' : '—'})].concat(Array.apply(null, Array(20)).map(function(x, i){ return el('option', {value:String(i + 1), text:String(i + 1)}); })));
+  selP.value = m.personas ? String(m.personas) : '';
+  cuerpo.push(el('div', {class:'det__fila'}, [el('b', {text:'👥 Personas:'}), selP]));
   if (m.estado === 'libre') cuerpo.push(el('p', {class:'nota', text: m.zona ? 'Mesa libre · zona de ' + m.zona.nombre + '. Se asigna sola cuando un mozo la sienta o toma su pedido.' : 'Mesa libre.'}));
   else cuerpo.push(el('p', {class:'nota', text:'Desde las ' + m.desde + ' (' + minDesdeTs(m.ts) + ' min)' + (m.n ? ' · ' + m.n + ' pedido(s)' : ' · todavía sin pedido')}));
   AVISOS.filter(function(a){ return String(a.mesa) === String(m.mesa); }).forEach(function(a){
@@ -1008,7 +1030,7 @@ function pintarAvisos(){
     w.appendChild(el('div', {class:'avm ' + a.motivo}, [
       el('span', {style:'font-size:28px', text: a.motivo === 'cuenta' ? '🧾' : '🙋'}),
       el('b', {text:'Mesa ' + a.mesa}),
-      el('span', {text: a.texto + (a.detalle ? ' · ' + a.detalle : '')}),
+      el('span', {text: a.texto + (a.detalle ? ' · ' + a.detalle : '') + (a.division && a.division.length > 1 ? ' · por persona: ' + a.division.map(soles).join(' / ') : '')}),
       el('span', {class:'nota', text: a.hora + ' · ' + hace(m)}),
       el('span', {class:'esp'}),
       a.motivo === 'cuenta' ? el('button', {class:'btn peq', text:'🖨 Imprimir cuenta', onclick:function(){ imprimirCuentaMesa(a.mesa); }}) : null,
@@ -1252,7 +1274,7 @@ function barras(cont, ejes, datos, fmt){
 }
 function pintarDash(r){
   var k = $('#kpis'); k.textContent = '';
-  [['Ventas', soles(r.ventas)], ['Pedidos', r.pedidos], ['Ticket promedio', soles(r.ticket)], ['Tiempo prom. de atención', r.tiempoProm != null ? r.tiempoProm + ' min' : '—'], ['Cancelados', r.cancelados]].forEach(function(x){
+  [['Ventas', soles(r.ventas)], ['Pedidos', r.pedidos], ['Ticket promedio', soles(r.ticket)], ['Ticket por persona (salón)', r.salon && r.salon.ticketPersona ? soles(r.salon.ticketPersona) : '—'], ['Tiempo prom. de atención', r.tiempoProm != null ? r.tiempoProm + ' min' : '—'], ['Cancelados', r.cancelados]].forEach(function(x){
     k.appendChild(el('div', {class:'kpi'}, [el('span', {text:x[0]}), el('strong', {text:String(x[1])})]));
   });
   barras($('#gDias'), $('#eDias'), r.dias.map(function(d){ return [d[0].slice(8) + '/' + d[0].slice(5,7), d[1]]; }), soles);
@@ -1271,6 +1293,18 @@ function pintarDash(r){
     if (!lista.length) { cont.appendChild(el('p', {class:'nota', text: vacio})); return; }
     var mx = Math.max.apply(null, lista.map(function(x){ return x[1]; }).concat([1]));
     lista.forEach(function(x){ cont.appendChild(el('div', {class:'fila'}, [el('span', {text:x[0]}), el('i', {style:'width:' + (x[1] / mx * 100) + '%'}), el('span', {text:x[2]})])); });
+  }
+  var gm = $('#gMozos'); gm.textContent = '';
+  var rm = (r.salon && r.salon.mozos) || [];
+  if (!rm.length) gm.appendChild(el('p', {class:'nota', text:'Aún no hay cobros de mozos en este periodo.'}));
+  else {
+    var tb = el('tbody');
+    rm.forEach(function(m, i){
+      tb.appendChild(el('tr', null, [el('td', {text:(i === 0 && rm.length > 1 ? '🥇 ' : (i + 1) + '. ') + m.nombre}), el('td', {class:'n', text:soles(m.ventas)}), el('td', {class:'n', text:String(m.mesas)}),
+        el('td', {class:'n', text:soles(m.ticketMesa)}), el('td', {class:'n', text: m.personas ? soles(m.ticketPersona) + ' (' + m.personas + ' p.)' : '—'}),
+        el('td', {class:'n', text:soles(m.propinas) + (m.propinaPct ? ' · ' + m.propinaPct + '%' : '')})]));
+    });
+    gm.appendChild(el('table', {class:'rank'}, [el('thead', null, [el('tr', null, ['Mozo','Vendido','Mesas','Ticket por mesa','Ticket por persona','Propinas'].map(function(x, i){ return el('th', {class: i ? 'n' : '', text:x}); }))]), tb]));
   }
   if (r.porSemana) filasDe($('#gSemana'), [1,2,3,4,5,6,0].map(function(d){ var x = r.porSemana[d]; return [DIAS_N[d], x.ventas, x.pedidos + ' ped. · ' + soles(x.ventas)]; }), 'Sin datos.');
   if (r.promos) filasDe($('#gPromos'), r.promos.map(function(x){ return [x.nombre, x.cant, x.cant + ' u · ' + soles(x.ventas)]; }), 'Aún no se vendieron promociones en este periodo.');
@@ -1825,8 +1859,23 @@ function pintarReglas(){
   ck.addEventListener('change', function(){ run('reglasSalon', { autoconfirmar: ck.checked }).then(function(x){ MOZOS = x; toast('Guardado'); }).catch(error); });
   w.appendChild(el('div', {class:'aviso', style:'margin-bottom:12px;display:flex;flex-direction:column;gap:6px'}, [
     el('label', {style:'display:flex;gap:8px;align-items:center;font-weight:600'}, [ck, 'Los pedidos que hace el cliente desde el QR de su mesa pasan solos a cocina (sin confirmar en el panel)']),
+    filaAlertas(),
     el('div', {class:'nota', text:'Lo que envía el mozo siempre entra directo a cocina. Turnos: cada mozo solo puede usar su panel en sus días (o si lo activas "hoy"). Mesas asignadas: son su zona por defecto; si hoy trabaja un solo mozo, todas las mesas son suyas. Otro mozo puede igual atender una mesa: el sistema la pasa a su nombre si él lo elige.'})
   ]));
+}
+function filaAlertas(){
+  var m0 = MOZOS[0] || {};
+  function campo(clave, val, txt){
+    var i = el('input', {type:'number', min:'0', max:'120', class:'txt', style:'width:70px', value: val == null ? '' : val});
+    i.addEventListener('change', function(){ var o = {}; o[clave] = i.value; run('reglasSalon', o).then(function(x){ MOZOS = x; toast('Guardado'); }).catch(error); });
+    return el('label', {style:'display:flex;gap:6px;align-items:center'}, [i, txt]);
+  }
+  return el('div', {style:'display:flex;flex-wrap:wrap;gap:14px;align-items:center'}, [
+    el('b', {text:'⏰ Mesa olvidada (suena solo en el celular del mozo; aquí se ve sin sonido):'}),
+    campo('mozo_alerta_sin_pedido', m0.alertaSinPedido == null ? 15 : m0.alertaSinPedido, 'min sentada sin pedir'),
+    campo('mozo_alerta_listo', m0.alertaListo == null ? 10 : m0.alertaListo, 'min con un plato listo sin llevar'),
+    el('span', {class:'nota', text:'0 = apagado'})
+  ]);
 }
 function pintarMozos(){
   pintarReglas();

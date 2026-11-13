@@ -483,3 +483,16 @@ body.con-carrito .repetir{display:none}
   .hoja,.capa{transition:none}
 }
 .js .rev.ya.it--otrodia .foto{opacity:.6}
+
+/* dividir la cuenta (QR de la mesa) */
+.div{display:grid;gap:10px;margin-top:8px}
+.div__step{display:flex;align-items:center;gap:12px;font-weight:700}
+.div__step b{min-width:24px;text-align:center;font-size:1.2rem}
+.div__b{width:42px;height:42px;border:1px solid rgba(169,128,63,.55);background:#fff8ec;font-size:1.3rem;font-weight:700;color:var(--vino)}
+.div__lin{display:grid;gap:6px;padding:8px 0;border-bottom:1px dashed rgba(169,128,63,.4)}
+.div__t{font-weight:600}
+.div__chips{display:flex;flex-wrap:wrap;gap:6px}
+.div__chips button{min-width:40px;height:38px;padding:0 10px;border:1px solid rgba(169,128,63,.55);background:#fff8ec;font-weight:700;color:var(--tinta)}
+.div__chips button.on{background:var(--vino);border-color:var(--vino);color:#fff}
+.div__res{display:grid;gap:4px;background:#fff8ec;border:1px solid rgba(169,128,63,.55);padding:10px 12px}
+.div__res div{display:flex;justify-content:space-between}

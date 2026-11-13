@@ -620,6 +620,25 @@
       if (it && PED) PED.abrirDetalle(it, sec);
     }, 250);
   }
-  function iniciar() { construir(); abrirEnlace(); }
+  /* Agotados en vivo: el local puede marcar un plato como agotado (panel o celular del mozo) y la carta publicada
+     tarda 1-2 minutos en actualizarse; aquí se pregunta al sistema y se marca al instante. */
+  function agotadosEnVivo() {
+    var api = (C.pedidos || {}).api; if (!api || !window.fetch) return;
+    fetch(api + "?estado=1").then(function (r) { return r.json(); }).then(function (r) {
+      if (!r || !r.ok || !Array.isArray(r.agotados)) return;
+      var lista = r.agotados;
+      (C.salsas || []).forEach(function (x) { x.agotado = lista.indexOf(x.id) >= 0; });
+      C.secciones.forEach(function (s) { s.grupos.forEach(function (g) { g.items.forEach(function (it) {
+        var ag = lista.indexOf(it.id) >= 0; if (!!it.agotado === ag) return;
+        it.agotado = ag;
+        var art = document.getElementById("p-" + it.id); if (!art) return;
+        art.classList.toggle("it--agotado", ag);
+        var b = art.querySelector(":scope > .agotado");
+        if (ag && !b) art.appendChild(h("span", "agotado", t(it.tipo === "salsa" ? "noDisponible" : "agotado")));
+        if (!ag && b) b.remove();
+      }); }); });
+    }).catch(function () {});
+  }
+  function iniciar() { construir(); abrirEnlace(); agotadosEnVivo(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
 })();

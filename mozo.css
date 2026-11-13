@@ -246,3 +246,15 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
   .modal .orden{display:flex;border:0}
 }
 @media (max-width:420px){.top__mesa{padding:0 10px;font-size:16px}.mesas{grid-template-columns:repeat(2,1fr)}}
+
+/* agotados, personas y mesas olvidadas */
+.agot{display:flex;flex-direction:column;gap:6px}
+.agot__f{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:50px;padding:8px 12px;border-radius:10px;background:var(--papel);border:1px solid var(--linea);font-weight:700;text-align:left}
+.agot__f b{white-space:nowrap;font-size:13px;color:var(--verde)}
+.agot__f.on{background:#fbe7e7;border-color:var(--rojo)}.agot__f.on b{color:var(--rojo)}
+.link-agot{color:var(--rojo);font-weight:700;text-decoration:underline;padding:6px 0;text-align:left}
+.mesa .pers{font-size:12.5px;font-weight:700;color:var(--gris)}
+.mesa .olv{position:absolute;bottom:10px;right:10px;background:var(--naranja);color:#fff;border-radius:999px;font-size:12px;font-weight:800;padding:2px 8px}
+.mesa.olvidada{box-shadow:0 0 0 3px rgba(196,106,18,.45)}
+.av.olvido{background:var(--naranja)}
+.olvido-txt{flex-basis:100%;font-weight:800;color:var(--naranja);font-size:14px}

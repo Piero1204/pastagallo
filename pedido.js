@@ -946,9 +946,9 @@
   }
 
   /* ---------- llamar al mozo / pedir la cuenta ---------- */
-  function enviarAviso(motivo, detalle) {
+  function enviarAviso(motivo, detalle, division) {
     if (!CFG.api) return Promise.resolve({ ok: false, error: t("errCocina") });
-    return fetch(CFG.api, { method: "POST", body: JSON.stringify({ aviso: 1, motivo: motivo, detalle: detalle || "", mesa: MESA, codigo: CODIGO }) })
+    return fetch(CFG.api, { method: "POST", body: JSON.stringify({ aviso: 1, motivo: motivo, detalle: detalle || "", mesa: MESA, codigo: CODIGO, division: division || [] }) })
       .then(function (r) { return r.json(); })
       .catch(function () { return { ok: false, error: t("errCocina") }; });
   }
@@ -982,17 +982,20 @@
         return { valor: x, texto: t(x === "Boleta" ? "boleta" : "factura") };
       })), false, function (v) { sel.comp = v[0]; }));
     }
+    var zonaDiv = h("div"); c.appendChild(zonaDiv);
     var err = h("p", "hoja__err"); c.appendChild(err);
     var b = boton(t("pedirCuenta"), "btn-ped", function () {
       b.disabled = true; b.textContent = t("enviando");
-      var det = [sel.pago ? "Pago: " + sel.pago : "", sel.comp ? sel.comp : ""].filter(Boolean).join(" · ");
-      enviarAviso("cuenta", det).then(function (r) {
+      var div = sel.division ? sel.division() : [];
+      var det = [sel.pago ? "Pago: " + sel.pago : "", sel.comp ? sel.comp : "", div.length > 1 ? "Dividir en " + div.length : ""].filter(Boolean).join(" · ");
+      enviarAviso("cuenta", det, div).then(function (r) {
         b.disabled = false; b.textContent = t("pedirCuenta");
         if (!r || !r.ok) { err.textContent = (r && r.error) || t("errCocina"); return; }
         var ok = h("div", "hoja__cuerpo exito");
         ok.appendChild(h("div", "exito__ic", "✓"));
         ok.appendChild(h("h3", null, t("cuentaPedida")));
         ok.appendChild(h("p", null, sel.comp ? t("cuentaPedidaComp") : t("cuentaPedidaTxt")));
+        if (div.length > 1) ok.appendChild(h("p", null, t("divNota") + " " + div.map(function (x, i) { return t("persona", { n: i + 1 }) + ": " + soles(x); }).join(" · ")));
         ok.appendChild(boton(t("volver"), "btn-ped", cerrarHoja));
         abrirHoja(ok, t("mesa") + MESA);
       });
@@ -1000,8 +1003,66 @@
     c.appendChild(b);
     abrirHoja(c, t("pedirCuenta") + " · " + t("mesa") + MESA);
     if (!CFG.api) { resumen.textContent = ""; return; }
-    leerCuenta().then(function (r) { resumen.textContent = ""; pintarCuenta(resumen, r); })
+    leerCuenta().then(function (r) { resumen.textContent = ""; if (pintarCuenta(resumen, r)) dividirUI(zonaDiv, r, sel); })
       .catch(function () { resumen.textContent = ""; });
+  }
+
+  /* ---------- dividir la cuenta (desde el QR): partes iguales o cada uno lo suyo ----------
+     Se manda al mozo como montos por persona; él ya ve los pagos separados al cobrar. */
+  function repartir(cent, n) {   // reparte céntimos en n partes casi iguales
+    var base = Math.floor(cent / n), resto = cent - base * n, r = [];
+    for (var i = 0; i < n; i++) r.push(base + (i < resto ? 1 : 0));
+    return r;
+  }
+  function dividirUI(w, r, sel) {
+    var total = Math.round(r.total * 100);
+    var lineas = [];
+    r.pedidos.forEach(function (p) { (p.lineas || []).forEach(function (l) { lineas.push({ t: l.t, d: l.d, c: Math.round((l.s || 0) * 100), quien: 0 }); }); });
+    var porLinea = lineas.length && lineas.every(function (l) { return l.c > 0; }) && Math.abs(lineas.reduce(function (a, l) { return a + l.c; }, 0) - total) <= 1;
+    var modo = "", n = 2, cuerpo = h("div", "div");
+    function montos() {
+      if (modo === "iguales") return repartir(total, n);
+      if (modo !== "cada") return [];
+      var r2 = []; for (var i = 0; i < n; i++) r2.push(0);
+      lineas.forEach(function (l) {
+        if (l.quien > 0 && l.quien <= n) r2[l.quien - 1] += l.c;
+        else repartir(l.c, n).forEach(function (x, i) { r2[i] += x; });
+      });
+      return r2;
+    }
+    sel.division = function () { return montos().map(function (x) { return x / 100; }); };
+    function pintar() {
+      cuerpo.textContent = "";
+      if (!modo) return;
+      var st = h("div", "div__step");
+      st.appendChild(h("span", null, t("personas")));
+      st.appendChild(boton("−", "div__b", function () { if (n > 2) { n--; pintar(); } }));
+      st.appendChild(h("b", null, String(n)));
+      st.appendChild(boton("+", "div__b", function () { if (n < 12) { n++; pintar(); } }));
+      cuerpo.appendChild(st);
+      if (modo === "cada") {
+        cuerpo.appendChild(h("p", "hoja__ayuda", t("divAyuda")));
+        lineas.forEach(function (l) {
+          if (l.quien > n) l.quien = 0;
+          var f = h("div", "div__lin");
+          f.appendChild(h("span", "div__t", l.t));
+          var ch = h("div", "div__chips");
+          for (var i = 0; i <= n; i++) (function (k) {
+            ch.appendChild(boton(k ? String(k) : t("compartido"), l.quien === k ? "on" : "", function () { l.quien = k; pintar(); }));
+          })(i);
+          f.appendChild(ch);
+          cuerpo.appendChild(f);
+        });
+      }
+      var res = h("div", "div__res");
+      montos().forEach(function (x, i) { var d = h("div"); d.appendChild(h("span", null, t("persona", { n: i + 1 }))); d.appendChild(h("b", null, soles(x / 100))); res.appendChild(d); });
+      cuerpo.appendChild(res);
+    }
+    var ops = [{ valor: "", texto: t("divNo"), marcado: true }, { valor: "iguales", texto: t("divIguales") }];
+    if (porLinea) ops.push({ valor: "cada", texto: t("divCada") });
+    w.appendChild(h("h3", "hoja__sub", t("dividir")));
+    w.appendChild(opcionesUI("dividir", ops, false, function (v) { modo = v[0]; pintar(); }));
+    w.appendChild(cuerpo);
   }
 
   /* ---------- repetir el último pedido (delivery) ---------- */

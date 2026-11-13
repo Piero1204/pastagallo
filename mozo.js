@@ -53,8 +53,19 @@
   function guardarCarros() { Object.keys(carros).forEach(function (m) { if (!carros[m].length) delete carros[m]; }); guardar(K.carros, carros); }
 
   /* ---------- catálogo (solo lo que se puede pedir en mesa) ---------- */
-  var SECS = [], PROD = {}, SALSAS = (C.salsas || []).filter(function (s) { return !s.agotado; }), SALSA = {};
-  SALSAS.forEach(function (s) { SALSA[s.id] = s; });
+  var SECS = [], PROD = {}, SALSAS_TODAS = (C.salsas || []).slice(), SALSAS = SALSAS_TODAS.filter(function (s) { return !s.agotado; }), SALSA = {};
+  SALSAS_TODAS.forEach(function (s) { SALSA[s.id] = s; });
+  /* agotados en vivo (el servidor manda la lista en cada sondeo; la carta publicada tarda 1-2 min) */
+  var firmaAgot = null;
+  function aplicarAgotados(lista) {
+    var f = (lista || []).slice().sort().join(",");
+    if (f === firmaAgot) return false;
+    firmaAgot = f;
+    Object.keys(PROD).forEach(function (k) { PROD[k].agotado = lista.indexOf(k) >= 0; });
+    SALSAS_TODAS.forEach(function (x) { x.agotado = lista.indexOf(x.id) >= 0; });
+    SALSAS = SALSAS_TODAS.filter(function (x) { return !x.agotado; });
+    return true;
+  }
   (C.secciones || []).forEach(function (s) {
     if (!s.mesa) return;
     var grupos = [];
@@ -211,7 +222,11 @@
   }
 
   /* =========================== SONDEO (cada 12 s) =========================== */
-  var timer = null, avisosVistos = {}, ultimoPitido = 0, listosVistos = null;
+  var timer = null, avisosVistos = {}, ultimoPitido = 0, listosVistos = null, olvVistas = {}, ultimoOlv = 0;
+  function textoAlerta(m) {
+    var a = m.alerta; if (!a) return "";
+    return a.tipo === "listo" ? "Mesa " + m.mesa + ": pedido #" + a.numero + " listo hace " + a.min + " min sin entregar" : "Mesa " + m.mesa + ": " + a.min + " min sentados sin pedir";
+  }
   function detenerSondeo() { clearTimeout(timer); timer = null; }
   function sondear() {
     detenerSondeo();
@@ -225,6 +240,7 @@
         if (r.metodos && r.metodos.length) S.metodos = unirMetodos(r.metodos);
         if (S.mesa) { var mm = mesaDe(S.mesa); S.cuenta = mm ? { mesa: mm.mesa, pedidos: mm.pedidos || [], total: mm.total } : S.cuenta; }
       }
+      if (r.agotados && aplicarAgotados(r.agotados) && document.querySelector(".prods") && !capa.classList.contains("on")) pintarProductos();
       revisarAlertas();
       refrescar();
     }).catch(function (e) { if (S.t) toast("Sin conexión: reintentando…", "mal"); }).then(function () {
@@ -252,6 +268,10 @@
       if (nl.length) { pitar(2, 1320); toast("🔔 Mesa " + nl[0].m + ": pedido #" + nl[0].n + " listo para servir", "ok"); }
     } else listosVistos = {};
     listos.forEach(function (x) { listosVistos[x.k] = true; });
+    // mesas olvidadas (solo las mías): suena al aparecer y repite cada 2 minutos
+    var olv = S.mesas.filter(function (m) { return m.alerta && esMia(m); });
+    var nuevasOlv = olv.filter(function (m) { var k = m.mesa + m.alerta.tipo + (m.alerta.numero || ""); if (olvVistas[k]) return false; olvVistas[k] = true; return true; });
+    if (nuevasOlv.length || (olv.length && Date.now() - ultimoOlv > 120000)) { if (olv.length) { pitar(3, 740); ultimoOlv = Date.now(); } }
     // cierre de cocina: un aviso a los 30 y otro a los 15 minutos (una vez por día)
     var hz = S.horario; if (!hz || !hz.cocina) return;
     var hoy = new Date(Date.now() + S.desfase - 5 * 3600000).toISOString().slice(0, 10), hechas = leer(K.alertas, {});
@@ -293,6 +313,7 @@
   /* En la carta solo se actualizan la hora, los avisos y (si cambió) la cuenta: así no se pierde lo que el mozo
      está escribiendo ni dónde estaba de la carta. En la vista de mesas se redibuja todo. */
   var ultimaCocina = null, ultimaMesaN = "";
+  function firmaMesa(m) { return m ? [m.n, m.total, m.porServir, m.estado, m.atiende ? m.atiende.id : "", m.personas, m.alerta ? m.alerta.tipo + m.alerta.min : ""].join("|") : "-"; }
   function refrescar() {
     var carta = document.querySelector(".carta");
     if (!(S.vista === "carta" && S.mesa && carta && S.horario && S.horario.panel && !(S.turno && !S.turno.trabaja))) {
@@ -306,9 +327,9 @@
     var av = document.querySelector(".avisos"), avn = barraAvisos();
     if (av) { av.replaceWith(avn); document.documentElement.style.setProperty("--avisos", avn.offsetHeight + "px"); }
     var m = S.mesas.filter(function (x) { return String(x.mesa) === String(S.mesa); })[0];
-    var firma = m ? m.n + "|" + m.total + "|" + m.porServir + "|" + m.estado + "|" + (m.atiende ? m.atiende.id : "") : "";
+    var firma = firmaMesa(m);
     var escribiendo = document.activeElement && document.activeElement.closest && document.activeElement.closest(".orden");
-    if (firma !== ultimaMesaN && ultimaMesaN !== "" && !escribiendo) pintarOrden();
+    if (firma !== ultimaMesaN && !escribiendo) pintarOrden();
     else if (ultimaCocina !== null && ultimaCocina !== S.horario.cocina && !escribiendo) pintarOrden();
     ultimaMesaN = firma; ultimaCocina = S.horario.cocina;
   }
@@ -344,8 +365,15 @@
       var otro = a.para && a.para !== yo();
       var d = h("div", "av" + (a.motivo === "cuenta" ? " cuenta" : "") + (otro ? " otro" : ""));
       d.appendChild(h("span", null, (a.motivo === "cuenta" ? "🧾 " : "🙋 ") + "Mesa " + a.mesa + " · " + (a.motivo === "cuenta" ? "Cuenta" : "Llama") + (a.detalle ? " (" + a.detalle + ")" : "") + " · " + a.hora + (otro ? " · de " + a.paraNombre : "")));
-      if (a.motivo === "cuenta") d.appendChild(btn("Cobrar", "", function () { abrirMesa(a.mesa, function () { cobrar(a.detalle); }); }));
+      if (a.division && a.division.length > 1) d.firstChild.textContent += " · dividir en " + a.division.length;
+      if (a.motivo === "cuenta") d.appendChild(btn("Cobrar", "", function () { abrirMesa(a.mesa, function () { cobrar(a.detalle, false, a.division); }); }));
       d.appendChild(btn("✓ Atendido", a.motivo === "cuenta" ? "sec" : "", function () { atender(a); }));
+      w.appendChild(d);
+    });
+    S.mesas.filter(function (m) { return m.alerta && esMia(m); }).forEach(function (m) {
+      var d = h("div", "av olvido");
+      d.appendChild(h("span", null, "⏰ " + textoAlerta(m)));
+      d.appendChild(btn("Ver", "", function () { tocarMesa(m); }));
       w.appendChild(d);
     });
     if (hz && hz.panel && !hz.cocina && !hz.cocinaEn) {
@@ -366,6 +394,7 @@
     c.appendChild(btn((fotos === false ? "📷 Mostrar fotos de los platos" : "📷 Ocultar fotos (más rápido)"), "", function () {
       fotos = fotos === false; guardar(K.fotos, fotos); document.body.classList.toggle("sinfotos", fotos === false); cerrarModal();
     }));
+    c.appendChild(btn("🚫 Marcar agotados", "", function () { cerrarModal(); ventanaAgotados(); }));
     c.appendChild(btn("📊 Mi turno de hoy (cobros y propinas)", "", miTurno));
     c.appendChild(btn("🔔 Probar sonido", "", function () { audio(); pitar(2); }));
     c.appendChild(btn("🔄 Actualizar ahora", "", function () { cerrarModal(); S.v = ""; sondear(); }));
@@ -427,13 +456,15 @@
   }
   function botonMesa(m, cls) {
     var e = estadoMesa(m), d = duenio(m), mia = esMia(m);
-    var b = btn("", "mesa " + e + (mia ? "" : " ajena") + (cls ? " " + cls : ""), function () { tocarMesa(m); });
+    var b = btn("", "mesa " + e + (mia ? "" : " ajena") + (m.alerta ? " olvidada" : "") + (cls ? " " + cls : ""), function () { tocarMesa(m); });
     b.appendChild(h("b", null, (cls ? "" : "Mesa ") + m.mesa));
     if (cls) { if (m.forma) b.classList.add("f-" + m.forma); return b; }
     var lin = TXT_ESTADO[e] || "";
     if (m.estado !== "libre") lin += (lin ? " · " : "") + minDesde(m.ts) + " min";
     b.appendChild(h("span", "s", lin));
     if (m.n) b.appendChild(h("span", "t", soles(m.total) + (m.porServir ? " · faltan " + m.porServir : "")));
+    if (m.personas) b.appendChild(h("span", "pers", "👥 " + m.personas));
+    if (m.alerta) b.appendChild(h("span", "olv", "⏰ " + m.alerta.min + " min"));
     if (variosMozos() || (d && d.id !== yo())) {
       if (m.atiende) b.appendChild(h("span", "who" + (mia ? " yo" : ""), "🤵 " + (m.atiende.id === yo() ? "Tú" : m.atiende.nombre)));
       else if (m.estado !== "libre") b.appendChild(h("span", "who", "Sin mozo"));
@@ -553,13 +584,31 @@
     }
     abrirMesa(m.mesa);
   }
-  function ocupar(mesa, forzar, luego) {
-    api({ mz: "ocupar", t: S.t, mesa: mesa, forzar: !!forzar }).then(function (r) {
+  /* ¿cuántas personas? (para el ticket por persona). fn(n) con n = 0 si se omite */
+  function pedirPersonas(mesa, fn, conOmitir) {
+    var g = h("div", "mesasel");
+    for (var i = 1; i <= 12; i++) (function (n) { g.appendChild(btn(String(n), "", function () { cerrarModal(); fn(n); })); })(i);
+    var otro = btn("Más…", "", function () { var n = parseInt(prompt("¿Cuántas personas?", "14"), 10); if (n > 0 && n <= 60) { cerrarModal(); fn(n); } });
+    g.appendChild(otro);
+    abrirModal("👥 ¿Cuántas personas en la mesa " + mesa + "?", [g], conOmitir ? [btn("Omitir", "btn", function () { cerrarModal(); fn(0); })] : null);
+  }
+  function guardarPersonas(mesa, n) {
+    var m = mesaDe(mesa); if (m) { m.personas = n; if (m.estado === "libre") { m.estado = "sentada"; m.atiende = m.atiende || S.mozo; } }
+    api({ mz: "personas", t: S.t, mesa: mesa, personas: n }).then(function (r) { if (!r.ok) toast(r.error || "No se pudo guardar.", "mal"); S.v = ""; sondear(); })
+      .catch(function () { toast("Sin conexión.", "mal"); });
+    if (S.vista === "carta") pintarOrden(); else pintar();
+  }
+  function sentar(mesa) { pedirPersonas(mesa, function (n) { ocupar(mesa, false, null, n); }, true); }
+  function ocupar(mesa, forzar, luego, personas) {
+    api({ mz: "ocupar", t: S.t, mesa: mesa, forzar: !!forzar, personas: personas || 0 }).then(function (r) {
       if (!r.ok) {
-        if (r.ocupadaPor && confirm(r.error + " ¿Pasarla a tu nombre?")) return ocupar(mesa, true, luego);
+        if (r.ocupadaPor && confirm(r.error + " ¿Pasarla a tu nombre?")) return ocupar(mesa, true, luego, personas);
         if (!r.ocupadaPor) toast(r.error || "No se pudo.", "mal");
         return;
       }
+      var mm = mesaDe(mesa);
+      if (mm) { if (mm.estado === "libre") { mm.estado = "sentada"; mm.ts = Date.now() + S.desfase; } mm.atiende = S.mozo; if (personas) mm.personas = personas; }
+      if (S.vista === "carta") pintarOrden(); else pintar();
       toast("✓ Mesa " + mesa + " a tu nombre", "ok"); S.v = ""; sondear(); if (luego) luego();
     }).catch(function () { toast("Sin conexión.", "mal"); });
   }
@@ -594,9 +643,9 @@
     abrirModal("Elige la mesa", [g]);
   }
   function abrirMesa(mesa, luego) {
-    ultimaMesaN = ""; ultimaCocina = null;
+    ultimaCocina = null;
     S.mesa = String(mesa); S.vista = "carta"; S.q = "";
-    var m = mesaDe(mesa); S.cuenta = m ? { mesa: m.mesa, pedidos: m.pedidos || [], total: m.total } : null;
+    var m = mesaDe(mesa); ultimaMesaN = firmaMesa(m); S.cuenta = m ? { mesa: m.mesa, pedidos: m.pedidos || [], total: m.total } : null;
     pintar(); window.scrollTo(0, 0);
     if (S.cuenta) { if (luego) setTimeout(luego, 0); return Promise.resolve(); }
     return cargarCuenta().then(function () { if (luego) luego(); });
@@ -619,7 +668,7 @@
       b.appendChild(document.createTextNode(s.titulo)); b.appendChild(h("small", null, n + (n === 1 ? " plato" : " platos")));
       g.appendChild(b);
     });
-    abrirModal("Categorías", [g]);
+    abrirModal("Categorías", [g], [btn("🚫 Agotados", "btn", function () { cerrarModal(); ventanaAgotados(); })]);
   }
   function irSeccion(id) {
     var prods = document.querySelector(".prods"), secs = document.querySelector(".secs");
@@ -650,7 +699,10 @@
     });
   }
   function tarjeta(it) {
-    var no = motivoNo(it), b = btn("", "prod" + (no ? " no" : ""), function () { if (no) { toast(it.n + ": " + no.toLowerCase(), "mal"); return; } tocarProducto(it, b); });
+    var no = motivoNo(it), b = btn("", "prod" + (no ? " no" : ""), function () {
+      if (it.agotado) { if (confirm(it.n + " está agotado. ¿Volvió a haber? (marcar disponible)")) cambiarAgotado(it, false); return; }
+      if (no) { toast(it.n + ": " + no.toLowerCase(), "mal"); return; } tocarProducto(it, b);
+    });
     if (it.foto) { var f = h("div", "ft"), u = String(it.foto); if (!/^(https?:|data:|\/)/.test(u)) u = "/" + u; f.style.backgroundImage = "url('" + u.replace(/'/g, "%27") + "')"; b.appendChild(f); }
     var tx = h("div", "tx");
     tx.appendChild(h("span", "n", it.n));
@@ -781,7 +833,43 @@
       if (volverAlPedido) abrirPedidoCelular();
     });
     pintarBoton();
+    if (!linea) cuerpo.push(btn("🚫 Marcar " + it.n + " como agotado", "link-agot", function () { cerrarModal(); cambiarAgotado(it, true); }));
     abrirModal(it.n + (it.g ? " · " + it.g : ""), cuerpo, [step, add]);
+  }
+
+  /* ---------- agotados: se marcan desde aquí y se aplican al instante (mozo, QR, delivery) ---------- */
+  function ventanaAgotados() {
+    var bus = h("input", "campo"); bus.type = "search"; bus.placeholder = "Buscar plato o salsa…";
+    var lista = h("div", "agot");
+    var todos = Object.keys(PROD).map(function (k) { return PROD[k]; }).concat(SALSAS_TODAS.map(function (x) { return { id: x.id, n: "Salsa " + (x.n || (PROD[x.id] || {}).n || x.id), _salsa: x }; }));
+    function estaAgot(it) { return it._salsa ? !!it._salsa.agotado : !!it.agotado; }
+    function pintarL() {
+      lista.textContent = "";
+      var q = norm(bus.value).trim();
+      var ver = todos.filter(function (it) { return !q || norm(it.n + " " + (it.g || "")).indexOf(q) >= 0; })
+        .sort(function (a, b) { return (estaAgot(b) - estaAgot(a)); });
+      ver.slice(0, 80).forEach(function (it) {
+        var ag = estaAgot(it);
+        var f = btn("", "agot__f" + (ag ? " on" : ""), function () { cambiarAgotado(it, !ag, pintarL); });
+        f.appendChild(h("span", null, it.n + (it.g ? " · " + it.g : "")));
+        f.appendChild(h("b", null, ag ? "🚫 Agotado" : "Disponible"));
+        lista.appendChild(f);
+      });
+    }
+    bus.addEventListener("input", pintarL); pintarL();
+    abrirModal("🚫 Agotados", [h("p", "vacio", "Toca para marcar o desmarcar. Se aplica al instante en tu panel, en los pedidos por QR y en delivery."), bus, lista]);
+  }
+  function cambiarAgotado(it, agotado, luego) {
+    if (agotado && !confirm("¿Marcar " + it.n + " como AGOTADO? Nadie podrá pedirlo (mesa, QR ni delivery) hasta que lo desmarques.")) return;
+    if (it._salsa) it._salsa.agotado = agotado; else it.agotado = agotado;
+    SALSAS = SALSAS_TODAS.filter(function (x) { return !x.agotado; });
+    firmaAgot = null;
+    if (luego) luego();
+    if (document.querySelector(".prods")) pintarProductos();
+    api({ mz: "agotado", t: S.t, id: it.id, agotado: agotado }).then(function (r) {
+      if (!r.ok) { toast(r.error || "No se pudo guardar.", "mal"); return; }
+      toast((agotado ? "🚫 " + it.n + " agotado" : "✓ " + it.n + " disponible otra vez"), "ok"); S.v = "";
+    }).catch(function () { toast("Sin conexión: no se guardó.", "mal"); });
   }
 
   /* ---------- columna del pedido ---------- */
@@ -793,7 +881,9 @@
     w.appendChild(cab);
     // acciones de la mesa
     var acc = h("div", "orden__acc");
-    if (m && m.estado === "libre") acc.appendChild(btn("🪑 Sentar clientes", "btn peq", function () { ocupar(S.mesa, false); }));
+    if (m && m.estado === "libre") acc.appendChild(btn("🪑 Sentar clientes", "btn peq", function () { sentar(S.mesa); }));
+    if (m && m.estado !== "libre") acc.appendChild(btn("👥 " + (m.personas ? m.personas + " personas" : "¿Cuántos son?"), "btn peq", function () { var me = S.mesa; pedirPersonas(me, function (n) { guardarPersonas(me, n); }); }));
+    if (m && m.alerta) acc.appendChild(h("div", "olvido-txt", "⏰ " + textoAlerta(m)));
     if (m && m.estado !== "libre" && (!m.atiende || m.atiende.id !== yo())) acc.appendChild(btn("🔁 Pasar a mí", "btn peq", function () { ocupar(S.mesa, true); }));
     if (m && m.estado !== "libre" && m.atiende && m.atiende.id === yo() && variosMozos()) acc.appendChild(btn("🔁 Pasar a otro mozo", "btn peq", pasarA));
     if (m && m.estado === "sentada") acc.appendChild(btn("🆓 Liberar mesa", "btn peq", liberar));
@@ -875,9 +965,15 @@
     modalPedido = true;
   }
 
+  var omitidas = {};
   function enviar() {
     var c = carro(); if (!c.length || S.enviando) return;
-    var mesa = S.mesa;
+    var mesa = S.mesa, mm0 = mesaDe(mesa);
+    // primer pedido de la mesa: preguntar cuántas personas son (se puede omitir)
+    if (mm0 && !mm0.personas && !mm0.n && !omitidas[mesa]) {
+      pedirPersonas(mesa, function (n) { if (n) { mm0.personas = n; api({ mz: "personas", t: S.t, mesa: mesa, personas: n }).catch(function () {}); } else omitidas[mesa] = true; enviar(); }, true);
+      return;
+    }
     S.enviando = true; pintarOrden();
     var cuerpo = { mz: "pedido", t: S.t, mesa: mesa, notas: carros["_n" + mesa] || "",
       items: c.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {} }; }) };
@@ -904,14 +1000,17 @@
   }
 
   /* ---------- cobrar la mesa ---------- */
-  function cobrar(sugerido, reintento) {
-    if (!S.cuenta) { if (!reintento) cargarCuenta().then(function () { cobrar(sugerido, true); }); return; }
+  function cobrar(sugerido, reintento, division) {
+    if (!division) { var avc = S.avisos.filter(function (a) { return a.motivo === "cuenta" && String(a.mesa) === String(S.mesa) && a.division && a.division.length > 1; })[0]; if (avc) { division = avc.division; sugerido = sugerido || avc.detalle; } }
+    if (!S.cuenta) { if (!reintento) cargarCuenta().then(function () { cobrar(sugerido, true, division); }); return; }
     if (!S.cuenta.pedidos.length) { toast("La mesa " + S.mesa + " no tiene cuenta abierta.", "mal"); return; }
     if (carro().length && !confirm("Hay platos sin enviar a cocina en esta mesa. ¿Cobrar igual? (no se incluyen en la cuenta)")) return;
     var total = S.cuenta.total, metodos = S.metodos;
     var inicial = metodos.filter(function (m) { return sugerido && norm(sugerido).indexOf(norm(m)) >= 0; })[0] || "";
     if (!inicial && /yape|plin/i.test(sugerido || "") && metodos.indexOf(YP) >= 0) inicial = YP;
     var pagos = [{ metodo: inicial, monto: total, propina: 0 }];
+    var divOk = division && division.length > 1 && Math.abs(division.reduce(function (a, x) { return a + x; }, 0) - total) < 0.05;
+    if (divOk) pagos = division.map(function (x, i) { return { metodo: inicial, monto: i === division.length - 1 ? r2(total - division.slice(0, -1).reduce(function (a, y) { return a + y; }, 0)) : x, propina: 0 }; });
     var zona = h("div"), resumen = h("div", "resumen"), err = h("p", "err");
     zona.style.display = "flex"; zona.style.flexDirection = "column"; zona.style.gap = "10px";
     function restante() { return r2(total - pagos.reduce(function (a, p) { return a + (Number(p.monto) || 0); }, 0)); }
@@ -975,6 +1074,8 @@
       resumen.appendChild(h("span", null, prop ? "Propina " + soles(prop) : ""));
     }
     var cab = h("div", "tot"); cab.appendChild(h("span", null, "Total de la mesa")); cab.appendChild(h("span", null, soles(total)));
+    var notaDiv = division && division.length > 1 ? h("p", "aviso-ef", divOk ? "👥 El cliente pidió dividir la cuenta en " + division.length + ": " + division.map(soles).join(" · ") + ". Ya está separada abajo; elige el método de cada uno."
+      : "👥 El cliente pidió dividir en " + division.length + ", pero la cuenta cambió desde entonces. Divide a mano.") : null;
     var ok = btn("✓ Registrar cobro", "btn azul", function () {
       if (pagos.some(function (p) { return !p.metodo; })) { err.textContent = "Elige el método de cada pago."; return; }
       if (Math.abs(restante()) >= 0.01) { err.textContent = "Los montos deben sumar " + soles(total) + "."; return; }
@@ -991,7 +1092,7 @@
       }).catch(function () { ok.disabled = false; ok.textContent = "✓ Registrar cobro"; err.textContent = "Sin conexión. Intenta de nuevo."; });
     });
     pintarPagos();
-    abrirModal("💳 Cobrar mesa " + S.mesa, [cab, zona, resumen, err], [ok]);
+    abrirModal("💳 Cobrar mesa " + S.mesa, [cab, notaDiv, zona, resumen, err], [ok]);
   }
 
   /* =========================== ARRANQUE =========================== */

@@ -24,10 +24,10 @@ var COLS = {
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
     'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
     'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura', 'mozo', 'entregado'],
-  mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde', 'codigo_anterior', 'atiende_id', 'ocupada_desde', 'x', 'y', 'forma'],
+  mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde', 'codigo_anterior', 'atiende_id', 'ocupada_desde', 'x', 'y', 'forma', 'personas'],
   opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo'],
   /* llamadas desde la mesa: "mozo" (llamar al mozo) o "cuenta" (pedir la cuenta) */
-  avisos: ['id', 'fecha', 'mesa', 'motivo', 'detalle', 'estado', 'atendido'],
+  avisos: ['id', 'fecha', 'mesa', 'motivo', 'detalle', 'estado', 'atendido', 'division'],
   /* registro de boletas y facturas emitidas (la emisión se hace en el sistema de SUNAT) */
   comprobantes: ['id', 'fecha', 'tipo', 'serie', 'numero', 'doc', 'razon', 'correo', 'whatsapp', 'total', 'pedido', 'detalle',
     'estado', 'enviado', 'notas', 'registrado_por', 'modo', 'gravada', 'igv', 'hash', 'sunat', 'items_json']
@@ -701,7 +701,14 @@ function doGet(e) {
   }
   var cfg = leerConfig_();
   var momento = momentoActual_(cfg);
-  return json_({ ok: true, servicio: 'Pasta Gallo', abierto: estaAbierto_(cfg, momento), pedidos: esSi_(cfg.pedidos_activos) });
+  var agotados = [];
+  try { agotados = idsAgotados_(); } catch (err) { /* no es crítico */ }
+  return json_({ ok: true, servicio: 'Pasta Gallo', abierto: estaAbierto_(cfg, momento), pedidos: esSi_(cfg.pedidos_activos), agotados: agotados });
+}
+/** Productos marcados como agotados ahora mismo (la web los marca al instante, antes de que se publique la carta). */
+function idsAgotados_() {
+  return (leerCatalogo_().productos || []).filter(function (p) { return esSi_(p.visible) && !esSi_(p.disponible); })
+    .map(function (p) { return String(p.id); });
 }
 
 function doPost(e) {
@@ -1084,6 +1091,7 @@ function dashboard(sesion, periodo) {
     if (lista.indexOf(k) < 0) lista.push(k);
   }
   r.dias = lista.map(function (k) { return [k, Math.round((r.porDia[k] || 0) * 100) / 100]; });
+  try { r.salon = rankingMozos_(desde, hasta); } catch (e) { console.error(e); }
   return r;
 }
 
@@ -1299,8 +1307,10 @@ function githubPut_(ruta, base64, mensaje) {
   return JSON.parse(r.getContentText());
 }
 
-function publicarCarta(sesion) {
-  var email = exigirAdmin_(sesion);
+function publicarCarta(sesion) { return publicarCarta_(exigirAdmin_(sesion)); }
+/** quien = correo o nombre de quien publica (el panel del mozo también publica al marcar agotados). */
+function publicarCarta_(email) {
+  email = String(email || 'panel');
   var cfg = leerConfig_();
   var carta = construirCarta_(cfg, leerTabla_(HOJA.secciones), leerTabla_(HOJA.productos), leerTabla_(HOJA.opciones));
   var zona = cfg.zona_horaria || 'America/Lima';
@@ -1454,6 +1464,7 @@ function cuentaMesa_(mesa, m, pedidos, zona) {
     var lineas = lineasCortas_(p.items_json), est = celdaTexto_(p.estado);
     var ent = est === 'Entregado' ? lineas.map(function (x, i) { return i; }) : indicesEntregados_(p.entregado, lineas.length);
     return { numero: Number(p.num_dia) || p.numero, id: Number(p.numero), hora: Utilities.formatDate(p.fecha, zona, 'HH:mm'), ts: p.fecha.getTime(),
+      act: p.actualizado instanceof Date ? p.actualizado.getTime() : p.fecha.getTime(),
       detalle: celdaTexto_(p.detalle), total: Number(p.total) || 0, estado: est, nombre: celdaTexto_(p.nombre), mozo: celdaTexto_(p.mozo),
       lineas: lineas, entregado: ent, falta: lineas.length - ent.length };
   });
@@ -1515,6 +1526,10 @@ function registrarAviso_(body) {
   if (n >= 6) return { ok: false, error: 'Ya avisamos a tu mozo varias veces; en un momento te atiende.' };
   cache.put(k, String(n + 1), 600);
   var detalle = texto_(body.detalle, 80);
+  // División de la cuenta pedida por el cliente: montos por persona (máx. 12)
+  var division = (Array.isArray(body.division) ? body.division : []).slice(0, 12).map(function (x) { return Math.round((num_(x) || 0) * 100) / 100; })
+    .filter(function (x) { return x > 0 && x < 20000; });
+  if (motivo !== 'cuenta' || division.length < 2) division = [];
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -1527,8 +1542,9 @@ function registrarAviso_(body) {
     })[0];
     if (igual) {
       if (detalle) h.getRange(igual._fila, cab.indexOf('detalle') + 1).setValue(protegerCelda_(detalle));
+      h.getRange(igual._fila, cab.indexOf('division') + 1).setValue(division.join(';'));
     } else {
-      var fila = { id: Utilities.getUuid().slice(0, 8), fecha: new Date(), mesa: mesa, motivo: motivo, detalle: detalle, estado: 'Pendiente', atendido: '' };
+      var fila = { id: Utilities.getUuid().slice(0, 8), fecha: new Date(), mesa: mesa, motivo: motivo, detalle: detalle, estado: 'Pendiente', atendido: '', division: division.join(';') };
       h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
     }
     PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
@@ -1545,7 +1561,8 @@ function avisosPendientes_(zona) {
     return a.estado === 'Pendiente' && a.fecha instanceof Date && a.fecha.getTime() >= limite;
   }).map(function (a) {
     return { id: String(a.id), mesa: celdaTexto_(a.mesa), motivo: String(a.motivo), texto: MOTIVOS_AVISO[a.motivo] || String(a.motivo),
-      detalle: celdaTexto_(a.detalle), hora: Utilities.formatDate(a.fecha, zona, 'HH:mm'), ts: a.fecha.getTime() };
+      detalle: celdaTexto_(a.detalle), hora: Utilities.formatDate(a.fecha, zona, 'HH:mm'), ts: a.fecha.getTime(),
+      division: String(a.division == null ? '' : a.division).split(';').map(Number).filter(function (x) { return x > 0; }) };
   });
 }
 
