@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T12:59:43-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T14:13:59-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -747,7 +747,7 @@ window.CARTA = {
  "secciones": [
   {
    "id": "promociones",
-   "titulo": "Le Proposte della Casa",
+   "titulo": "Le Nostre Proposte",
    "subtitulo": "Para llevar · cada día, su propuesta",
    "intro": "Delivery o recojo en el local.",
    "pie": "",
@@ -983,7 +983,7 @@ window.CARTA = {
      ]
     }
    ],
-   "titulo_en": "Le Proposte della Casa",
+   "titulo_en": "Le Nostre Proposte",
    "subtitulo_en": "To take away · every day has its own",
    "intro_en": "Delivery or pick-up.",
    "pie_en": ""
@@ -3191,5 +3191,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T12:59:43-05:00"
+ "publicado": "2026-11-13T14:13:59-05:00"
 };
