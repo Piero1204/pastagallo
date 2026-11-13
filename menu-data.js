@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T22:51:15-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T22:52:41-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2435,17 +2435,6 @@ window.CARTA = {
        "d_en": "Beef steak."
       },
       {
-       "id": "parrillas-pollo-a-la-plancha",
-       "n": "Pollo a la Plancha",
-       "g": "Con papas fritas y ensalada",
-       "d": "Pollo a la plancha, servido con papas fritas y ensalada.",
-       "p": 30,
-       "foto": "https://images.unsplash.com/photo-1670398564097-0762e1b30b3a?w=700&q=70&auto=format&fit=crop",
-       "n_en": "Grilled Chicken",
-       "g_en": "With French fries and salad",
-       "d_en": "Grilled chicken, served with French fries and salad."
-      },
-      {
        "id": "parrillas-chuleta",
        "n": "Chuleta",
        "g": "Con ensalada y papas fritas",
@@ -2455,6 +2444,17 @@ window.CARTA = {
        "n_en": "Pork Chop",
        "g_en": "With salad and French fries",
        "d_en": "Pork chop."
+      },
+      {
+       "id": "parrillas-pollo-a-la-plancha",
+       "n": "Pollo a la Plancha",
+       "g": "Con papas fritas y ensalada",
+       "d": "Pollo a la plancha, servido con papas fritas y ensalada.",
+       "p": 30,
+       "foto": "https://images.unsplash.com/photo-1670398564097-0762e1b30b3a?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Grilled Chicken",
+       "g_en": "With French fries and salad",
+       "d_en": "Grilled chicken, served with French fries and salad."
       },
       {
        "id": "parrillas-milanesa-de-pollo",
@@ -3080,5 +3080,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-12T22:51:15-05:00"
+ "publicado": "2026-11-12T22:52:41-05:00"
 };
