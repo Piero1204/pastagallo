@@ -2,24 +2,66 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Pasta Gallo · Equipo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pasta Gallo</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#4a1519">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PG Mozo">
-<script>if(!/^\/[a-z2-9]{12}\/?$/.test(location.pathname))location.replace("/");</script>
-<link rel="manifest" href="/mozo.webmanifest">
 <link rel="icon" href="/favicon.png" type="image/png">
-<link rel="apple-touch-icon" href="/mozo-192.png">
-<link rel="stylesheet" href="/mozo.css">
+<script>
+/* Enlaces secretos de Pasta Gallo (Cloudflare sirve esta página para cualquier ruta que no existe):
+   /<12 caracteres a-z 2-9>        → panel del mozo (equipo vinculado)
+   /<20 caracteres A-Z a-z 2-9>    → carta de una mesa (QR). No dice "mesa" ni el número: el servidor lo resuelve.
+   Cualquier otra ruta → la carta. */
+(function () {
+  var p = location.pathname;
+  var mozo = /^\/[a-z2-9]{12}\/?$/.test(p), mesa = (p.match(/^\/([A-Za-z0-9]{20})\/?$/) || [])[1];
+  if (!mozo && !mesa) { location.replace("/"); return; }
+  function css(href) { var l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); }
+  function cadena(srcs, fin) {
+    if (!srcs.length) { if (fin) fin(); return; }
+    var s = document.createElement("script"); s.src = srcs[0];
+    s.onload = function () { cadena(srcs.slice(1), fin); };
+    s.onerror = function () { aviso("No se pudo cargar. Revisa tu conexión y vuelve a abrir el enlace."); };
+    document.head.appendChild(s);
+  }
+  function aviso(t) {
+    var go = function () { document.body.innerHTML = '<p style="font:18px/1.5 Georgia,serif;padding:80px 24px;text-align:center;color:#4a1519">' + t + "</p>"; };
+    if (document.body) go(); else document.addEventListener("DOMContentLoaded", go);
+  }
+  function contenedor(tag) {
+    var poner = function () { var e = document.createElement(tag); e.id = "app"; document.body.appendChild(e); };
+    if (document.body) poner(); else document.addEventListener("DOMContentLoaded", poner);
+  }
+  if (mozo) {
+    document.title = "Pasta Gallo · Equipo";
+    var m = document.createElement("link"); m.rel = "manifest"; m.href = "/mozo.webmanifest"; document.head.appendChild(m);
+    var a = document.createElement("link"); a.rel = "apple-touch-icon"; a.href = "/mozo-192.png"; document.head.appendChild(a);
+    [["apple-mobile-web-app-capable", "yes"], ["mobile-web-app-capable", "yes"], ["apple-mobile-web-app-title", "PG Mozo"], ["apple-mobile-web-app-status-bar-style", "black-translucent"]].forEach(function (x) {
+      var me = document.createElement("meta"); me.name = x[0]; me.content = x[1]; document.head.appendChild(me);
+    });
+    document.querySelector('meta[name=viewport]').content += ", user-scalable=no";
+    css("/mozo.css"); contenedor("div");
+    document.addEventListener("DOMContentLoaded", function () { cadena(["/menu-data.js", "/mozo.js"]); });
+    return;
+  }
+  /* mesa: primero se pregunta al servidor qué mesa es; recién entonces se carga la carta en modo mesa */
+  document.title = "Pasta Gallo · Carta";
+  css("/estilos.css"); contenedor("main");
+  document.addEventListener("DOMContentLoaded", function () {
+    cadena(["/menu-data.js"], function () {
+      var api = window.CARTA && CARTA.pedidos && CARTA.pedidos.api;
+      if (!api) { aviso("La carta no está disponible en este momento."); return; }
+      fetch(api + "?qr=1&cod=" + encodeURIComponent(mesa)).then(function (r) { return r.json(); }).then(function (r) {
+        if (!r.ok) { aviso(r.error || "Este QR ya no es válido. Pide ayuda a tu mozo."); return; }
+        window.MODO = "mesa"; window.PG_MESA = { m: r.mesa, c: mesa };
+        cadena(["/i18n.js", "/pedido.js", "/app.js"]);
+      }).catch(function () { aviso("Sin conexión. Revisa tu internet y vuelve a escanear el QR."); });
+    });
+  });
+})();
+</script>
 </head>
 <body>
-<noscript><p style="padding:40px;text-align:center">Activa JavaScript para usar el panel del mozo.</p></noscript>
-<div id="app"></div>
-<script src="/menu-data.js"></script>
-<script src="/mozo.js"></script>
+<noscript><p style="padding:40px;text-align:center">Activa JavaScript para ver la carta de Pasta Gallo.</p></noscript>
 </body>
 </html>

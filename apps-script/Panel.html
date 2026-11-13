@@ -1500,6 +1500,14 @@ function pintarMesas(){
   var l = $('#lMesas'); l.textContent = '';
   $('#avisoSitio').textContent = '';
   if (!INFO.sitio) $('#avisoSitio').appendChild(el('div', {class:'aviso mal', text:'Falta el "Link público de la carta" en Ajustes. Sin él no se pueden generar los QR.'}));
+  if (MESAS.some(function(m){ return m.viejoActivo; })) $('#avisoSitio').appendChild(el('div', {class:'aviso'}, [
+    el('div', {text:'🔐 Las mesas ya tienen QR nuevos (enlace de 20 caracteres al azar, sin "mesa" ni número). Los QR impresos ANTES siguen funcionando para no cortar la atención.'}),
+    el('div', {text:'Cuando tengas los nuevos impresos y colocados, toca el botón: los QR viejos dejarán de servir.', style:'margin-top:4px'}),
+    el('button', {class:'btn peq prim', style:'margin-top:8px', text:'Ya puse los QR nuevos: desactivar los viejos', onclick: function(){
+      if (!confirm('¿Ya están colocados los QR nuevos en todas las mesas?\n\nLos QR viejos dejarán de funcionar al instante.')) return;
+      run('desactivarQrViejos').then(function(x){ MESAS = x; pintarMesas(); toast('QR viejos desactivados'); }).catch(error);
+    }})
+  ]));
   MESAS.forEach(function(m){
     var qr = el('div', {class:'qr'});
     if (m.link && window.QRCode) new QRCode(qr, { text: m.link, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.M });

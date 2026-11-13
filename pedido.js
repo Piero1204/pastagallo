@@ -6,8 +6,11 @@
   var I = window.PG_I18N, t = I.t, tx = I.tx;
   var MODO = window.MODO === "mesa" ? "mesa" : "delivery";
   var params = new URLSearchParams(location.search);
-  var MESA = MODO === "mesa" ? (params.get("m") || "").slice(0, 6) : "";
-  var CODIGO = MODO === "mesa" ? (params.get("c") || "").slice(0, 20) : "";
+  // QR nuevo: pastagallo.pages.dev/<código> (404.html ya preguntó al servidor qué mesa es → window.PG_MESA).
+  // QR viejo (impreso): /mesa?m=5&c=xxxxxx, sigue sirviendo hasta que se desactive en el panel.
+  var PGM = window.PG_MESA || null;
+  var MESA = MODO === "mesa" ? String(PGM ? PGM.m : (params.get("m") || "")).slice(0, 6) : "";
+  var CODIGO = MODO === "mesa" ? String(PGM ? PGM.c : (params.get("c") || "")).slice(0, 20) : "";
   var CLAVE = "pg-carrito-" + MODO + (MESA ? "-" + MESA : "");
   var carrito = [];
   var P, h; // utilidades de app.js

@@ -24,7 +24,7 @@ var COLS = {
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
     'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
     'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura', 'mozo'],
-  mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde'],
+  mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde', 'codigo_anterior'],
   opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo'],
   /* llamadas desde la mesa: "mozo" (llamar al mozo) o "cuenta" (pedir la cuenta) */
   avisos: ['id', 'fecha', 'mesa', 'motivo', 'detalle', 'estado', 'atendido'],
@@ -212,7 +212,7 @@ function leerCatalogo_() {
     secciones: leerTabla_(HOJA.secciones),
     productos: leerTabla_(HOJA.productos),
     opciones: leerTabla_(HOJA.opciones),
-    mesas: leerTabla_(HOJA.mesas).map(function (m) { return { mesa: String(m.mesa), codigo: String(m.codigo), activa: m.activa }; })
+    mesas: leerTabla_(HOJA.mesas).map(function (m) { return { mesa: String(m.mesa), codigo: String(m.codigo), activa: m.activa, codigo_anterior: String(m.codigo_anterior || '') }; })
   };
   try { cache.put('catalogo', JSON.stringify(cat), 120); } catch (e) { /* demasiado grande: sin caché */ }
   return cat;
@@ -396,7 +396,7 @@ function calcularPedido_(body, cat, cfg, momento, porMozo) {
     mesa = texto_(body.mesa, 6);
     var cod = texto_(body.codigo, 20);
     var m = (cat.mesas || []).filter(function (x) { return String(x.mesa) === mesa; })[0];
-    if (!m || !esSi_(m.activa) || (!porMozo && String(m.codigo) !== cod)) return { ok: false, error: 'Este código QR no es válido. Pide ayuda a tu mozo.' };
+    if (!m || !esSi_(m.activa) || (!porMozo && !codigoMesaOk_(m, cod))) return { ok: false, error: 'Este código QR no es válido. Pide ayuda a tu mozo.' };
     programado = '';
   } else if (!abierto) {
     if (!esSi_(cfg.pedidos_fuera_de_horario)) return { ok: false, error: 'En este momento estamos cerrados. Revisa nuestro horario.' };
@@ -683,11 +683,15 @@ function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
 
 /* =========================== API PÚBLICA (web) =========================== */
 function doGet(e) {
-  if (!(e && e.parameter && (e.parameter.estado || e.parameter.cuenta))) {
+  if (!(e && e.parameter && (e.parameter.estado || e.parameter.cuenta || e.parameter.qr))) {
     var t = HtmlService.createTemplateFromFile('Panel');
     t.modoWeb = true;
     return t.evaluate().setTitle('Panel · Pasta Gallo')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+  if (e.parameter.qr) {
+    try { return json_(mesaPorCodigo_(e.parameter.cod)); }
+    catch (err) { return json_({ ok: false, error: 'No pudimos leer el QR.' }); }
   }
   if (e.parameter.cuenta) {
     // "cod": Google responde error 400 cuando /exec recibe un parámetro "c" con letras.
@@ -1304,15 +1308,54 @@ function subirFoto(sesion, id, base64) {
 }
 
 /* ---------- mesas ---------- */
+/* ---------- QR de las mesas ----------
+   Enlace: https://pastagallo.pages.dev/<20 caracteres al azar> (no dice "mesa" ni el número; la web lo sirve con 404.html).
+   Transición: al pasar a códigos de 20 caracteres, el código viejo (6 letras, ya impreso) se guarda en "codigo_anterior"
+   y sigue funcionando hasta tocar "Desactivar QR viejos" en el panel. "Cambiar código" de una mesa apaga los dos. */
+var ALFABETO_MESA = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; // sin 0, O, 1, l, I
 function codigoMesa_() {
-  var a = 'abcdefghjkmnpqrstuvwxyz23456789', s = '';
-  for (var i = 0; i < 6; i++) s += a.charAt(Math.floor(Math.random() * a.length));
+  var b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, Utilities.getUuid() + Utilities.getUuid() + Date.now(), Utilities.Charset.UTF_8);
+  var s = '';
+  for (var i = 0; i < 20; i++) s += ALFABETO_MESA.charAt((b[i] + 256) % 256 % ALFABETO_MESA.length);
   return s;
 }
-
+function codigoMesaOk_(m, cod) {
+  cod = String(cod || '');
+  if (cod.length < 6) return false;
+  return cod === String(m.codigo || '') || (!!String(m.codigo_anterior || '') && cod === String(m.codigo_anterior));
+}
 function linkMesa_(cfg, mesa, codigo) {
   var base = String(cfg.sitio_url || '').replace(/\/+$/, '');
-  return base ? base + '/mesa?m=' + encodeURIComponent(mesa) + '&c=' + encodeURIComponent(codigo) : '';
+  if (!base) return '';
+  return String(codigo).length >= 20 ? base + '/' + codigo : base + '/mesa?m=' + encodeURIComponent(mesa) + '&c=' + encodeURIComponent(codigo);
+}
+/** Pasa las mesas con código corto (viejo) a 20 caracteres; el viejo queda en codigo_anterior (los QR impresos siguen sirviendo). */
+function migrarCodigosMesas_() {
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.mesas);
+  if (!h || h.getLastRow() < 2) return;
+  var cab = asegurarColumnas_(h, COLS.mesas);
+  leerTabla_(HOJA.mesas).forEach(function (m) {
+    if (!String(m.mesa).trim() || String(m.codigo).length >= 20) return;
+    if (!String(m.codigo_anterior || '')) h.getRange(m._fila, cab.indexOf('codigo_anterior') + 1).setValue(String(m.codigo));
+    h.getRange(m._fila, cab.indexOf('codigo') + 1).setValue(codigoMesa_());
+  });
+}
+/** Para la web: desde el código del enlace, qué mesa es. Solo códigos nuevos (20 caracteres). */
+function mesaPorCodigo_(cod) {
+  cod = String(cod || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 20);
+  var cache = CacheService.getScriptCache(), fallos = Number(cache.get('qr-fallos') || 0);
+  if (fallos >= 40) return { ok: false, error: 'Demasiados intentos. Espera unos minutos.' };
+  var m = cod.length === 20 ? leerTabla_(HOJA.mesas).filter(function (x) { return String(x.codigo) === cod; })[0] : null;
+  if (!m || !esSi_(m.activa)) { cache.put('qr-fallos', String(fallos + 1), 600); return { ok: false, error: 'Este QR ya no es válido. Pide ayuda a tu mozo.' }; }
+  return { ok: true, mesa: String(m.mesa) };
+}
+function desactivarQrViejos(sesion) {
+  exigirAdmin_(sesion);
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.mesas);
+  var cab = asegurarColumnas_(h, COLS.mesas);
+  leerTabla_(HOJA.mesas).forEach(function (m) { if (String(m.codigo_anterior || '')) h.getRange(m._fila, cab.indexOf('codigo_anterior') + 1).setValue(''); });
+  limpiarCache_();
+  return listarMesas(sesion);
 }
 
 function actualizarLinksMesas_() {
@@ -1327,8 +1370,9 @@ function actualizarLinksMesas_() {
 
 function listarMesas(sesion) {
   exigirAdmin_(sesion);
+  migrarCodigosMesas_();
   actualizarLinksMesas_();
-  return leerTabla_(HOJA.mesas).map(function (m) { return { mesa: String(m.mesa), codigo: String(m.codigo), activa: esSi_(m.activa), link: m.link }; });
+  return leerTabla_(HOJA.mesas).map(function (m) { return { mesa: String(m.mesa), codigo: String(m.codigo), activa: esSi_(m.activa), link: m.link, viejoActivo: !!String(m.codigo_anterior || '') }; });
 }
 
 function nuevaMesa(sesion, nombre) {
@@ -1348,7 +1392,9 @@ function cambiarCodigoMesa(sesion, nombre) {
   exigirAdmin_(sesion);
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(nombre); })[0];
   if (!m) throw new Error('Mesa no encontrada.');
-  SpreadsheetApp.getActive().getSheetByName(HOJA.mesas).getRange(m._fila, 2).setValue(codigoMesa_());
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.mesas), cab = asegurarColumnas_(h, COLS.mesas);
+  h.getRange(m._fila, cab.indexOf('codigo') + 1).setValue(codigoMesa_());
+  h.getRange(m._fila, cab.indexOf('codigo_anterior') + 1).setValue(''); // el QR viejo de esa mesa también deja de servir
   return listarMesas(sesion);
 }
 
@@ -1384,7 +1430,7 @@ function cuentaMesa_(mesa, m, pedidos, zona) {
 function cuentaPublica_(mesa, codigo) {
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
-  if (!m || !esSi_(m.activa) || String(m.codigo) !== String(codigo)) return { ok: false, error: 'Código de mesa no válido.' };
+  if (!m || !esSi_(m.activa) || !codigoMesaOk_(m, codigo)) return { ok: false, error: 'Código de mesa no válido.' };
   var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
   c.ok = true;
   c.pedidos.forEach(function (p) { delete p.nombre; delete p.mozo; });
@@ -1430,7 +1476,7 @@ function registrarAviso_(body) {
   var mesa = texto_(body.mesa, 6), codigo = texto_(body.codigo, 20), motivo = String(body.motivo || '');
   if (!MOTIVOS_AVISO[motivo]) return { ok: false, error: 'Aviso no válido.' };
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
-  if (!m || !esSi_(m.activa) || String(m.codigo) !== String(codigo)) return { ok: false, error: 'Código de mesa no válido. Pide ayuda a tu mozo.' };
+  if (!m || !esSi_(m.activa) || !codigoMesaOk_(m, codigo)) return { ok: false, error: 'Código de mesa no válido. Pide ayuda a tu mozo.' };
   var cache = CacheService.getScriptCache(), k = 'aviso:' + mesa;
   var n = Number(cache.get(k) || 0);
   if (n >= 6) return { ok: false, error: 'Ya avisamos a tu mozo varias veces; en un momento te atiende.' };
