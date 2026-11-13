@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T12:57:05-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T12:59:43-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -3017,7 +3017,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1769140243164-b677642e9279?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-ca-bianca-1794592770876.jpg",
        "n_en": "Ca' Bianca Asti DOCG",
        "g_en": "sweet sparkling · Piedmont",
        "d_en": "A sweet sparkling wine from Piedmont, made from Moscato Bianco grapes in the hills of Asti by Tenimenti Ca' Bianca in Alice Bel Colle. Bright straw-yellow in the glass, with a fine, lasting bead. The nose opens to acacia blossom, sage, ripe peach and honey; the palate is sweet, fresh and light, with all the perfume of freshly picked grapes. Serve well chilled, 6–8 °C, with tiramisù, panettone or simply for a toast."
@@ -3031,7 +3031,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1602800268804-4a850d622360?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-cavicchioli-1794592779256.jpg",
        "n_en": "Cavicchioli Lambrusco Grasparossa Amabile",
        "g_en": "sparkling red, off-dry · Emilia-Romagna",
        "d_en": "Cavicchioli has been making Lambrusco since 1928 in San Prospero, just outside Modena. Grasparossa takes its name from the grape stalks, which turn red in autumn, and it is the fullest, deepest-coloured Lambrusco. A sparkling red with violet foam and deep ruby colour; aromas of red berries, blackberry and violet. Amabile means gently sweet: fresh, lively and easy on the palate. The classic partner for cured meats, pizza and pasta with meat sauce. Serve cool, 10–12 °C."
@@ -3045,6 +3045,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
+       "foto": "fotos/vini-ca-bianca-barbera-dasti-1794592777262.jpg",
        "n_en": "Ca' Bianca Barbera d'Asti Superiore DOCG",
        "g_en": "dry red · Piedmont · 2022",
        "d_en": "Barbera is Piedmont's best-loved grape, and Superiore means longer ageing, partly in wood, before release. 2022 vintage. Deep ruby with violet hints; aromas of ripe cherry, plum and gentle spice. Vibrant acidity, medium body and soft tannins make it a natural match for Italian food: pizza, pasta al pomodoro or lasagna. Serve at 16–18 °C."
@@ -3064,7 +3065,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1706106591925-8818b8bf7fc0?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-spumante-brut-tabernero-1794592752760.jpg",
        "n_en": "Tabernero Brut",
        "g_en": "brut sparkling · Peru",
        "d_en": "A Peruvian sparkling wine from Bodega Tabernero, founded in 1897 in Chincha by a family of Italian origin. Made by the Charmat method, with the second fermentation in tank to keep its fruit fresh. Pale yellow with a fine bead; notes of green apple, citrus and a hint of toast. Dry, fresh and elegant: perfect for a toast or with starters, seafood and white pizzas. Serve at 6–8 °C."
@@ -3078,7 +3079,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1771583102699-f79a6c6d08c8?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-tabernero-tuyo-1794592768969.jpg",
        "n_en": "Tabernero Tuyo Gran Rosé",
        "g_en": "lightly sparkling rosé · Chincha",
        "d_en": "A rosé from Tabernero in the Chincha valley, lightly sparkling and low in alcohol (6.5%). Bright pink, with aromas of strawberry, raspberry and fruit candy; sweet, fresh and softly fizzy. For aperitivo, dessert or any celebration. Serve well chilled, 6–8 °C."
@@ -3092,7 +3093,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1585553616435-2dc0a54e271d?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-gran-blanco-1794592754494.jpg",
        "n_en": "Tabernero Gran Blanco",
        "g_en": "off-dry white · Ica · 2025",
        "d_en": "A fruity off-dry white from Bodega Tabernero, with grapes from the Ica valley, 2025 vintage. Bright green-tinged yellow; aromas of tropical fruit, peach and white flowers. Gently sweet, refreshing, with a fruity finish. Perfect with cream-sauce pastas, chicken and salads, or simply well chilled. Serve at 7–9 °C."
@@ -3106,7 +3107,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1641759756543-20168fcab299?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-victoria-1794592758329.jpg",
        "n_en": "Vittoria Terroir Chardonnay",
        "g_en": "Chardonnay · Ica, Peru · 2023",
        "d_en": "From Bodega Tabernero's Vittoria range, with grapes from the Ica valley, 2023 vintage. A golden-yellow Chardonnay with aromas of pineapple, peach, apple and a floral touch. Dry, medium-bodied, fresh and rounded. Pairs with fish, cream or pesto pastas and cheese pizzas. Serve at 8–10 °C."
@@ -3120,7 +3121,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1474722883778-792e7990302f?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-tabernero-borgona-1794592763971.jpg",
        "n_en": "Tabernero Borgoña",
        "g_en": "off-dry red · Ica · 2024",
        "d_en": "Peru's classic off-dry red, 2024 vintage. In Peru the Isabella grape is called borgoña, with its unmistakable aroma of fresh grapes and strawberry. Ruby red, gently sweet with a fruity finish; easy to drink and a family-table favourite. Serve cool, 12–14 °C, with pasta, pizza and meat."
@@ -3134,7 +3135,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1786384243745-c6d779c13e7d?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-tacama-seco-1794592756466.jpg",
        "n_en": "Tacama Gran Tinto Las Tablas",
        "g_en": "Malbec-Tannat · Ica, Peru",
        "d_en": "From Viña Tacama in the Ica valley, one of the oldest wineries in South America. A Malbec–Tannat blend, deep violet-red, with aromas of plum, blackberry and a hint of spice. Dry and medium-bodied, with noticeable tannins and a fruity finish. Pairs with meat, grills and pasta with ragù. Serve at 16–18 °C."
@@ -3148,7 +3149,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1630369160812-26c7604cbd8c?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-frontera-1794592766990.jpg",
        "n_en": "Frontera Cabernet Sauvignon",
        "g_en": "Cabernet Sauvignon · Chile",
        "d_en": "From Chile's renowned Concha y Toro. Robust and balanced, as the label says: ruby red, with aromas of cassis, plum and a touch of spice; medium body and soft tannins. A versatile red for pasta with ragù, pizza and meat. Serve at 16–18 °C."
@@ -3162,7 +3163,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1578911373434-0cb395d2cbfb?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-patrillo-1794592760292.jpg",
        "n_en": "Padrillos Malbec",
        "g_en": "Malbec · Mendoza · 2022",
        "d_en": "From Ernesto Catena Vineyards in Mendoza's Uco Valley: high-altitude vineyards at the foot of the Andes. 2022 vintage. Malbec, Argentina's signature grape, shows deep violet-red here, with aromas of plum, black cherry and violet; juicy on the palate, with soft tannins and a fresh finish. Ideal with grilled meats, lasagna and bold pizzas. Serve at 16–18 °C."
@@ -3176,7 +3177,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "https://images.unsplash.com/photo-1611575189074-9dfbbceb258a?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/vini-prisionero-1794592762166.jpg",
        "n_en": "Prisionero Cabernet Sauvignon",
        "g_en": "Cabernet Sauvignon · Mendoza",
        "d_en": "From Colosso Wines in Mendoza, with grapes from Luján de Cuyo and Maipú. A deep ruby Cabernet Sauvignon with aromas of cassis, black fruit, a hint of bell pepper and oak. Dry and full-bodied, with firm tannins and a long finish. For red meat, grills and aged cheeses. Serve at 16–18 °C."
@@ -3190,5 +3191,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T12:57:05-05:00"
+ "publicado": "2026-11-13T12:59:43-05:00"
 };
