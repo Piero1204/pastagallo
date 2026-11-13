@@ -145,6 +145,38 @@
     document.body.classList.add("sin-scroll");
     setTimeout(function () { x.focus(); }, 60);
   }
+  /* ---------- compartir el enlace de un producto (menú nativo del celular) ---------- */
+  function enlaceProducto(it) {
+    var base = location.origin + location.pathname.replace(/[^\/]*$/, "");
+    return base + "?p=" + encodeURIComponent(it.id) + "&o=compartido";
+  }
+  function avisoBreve(texto) {
+    var a = h("div", "aviso-copia", texto); document.body.appendChild(a);
+    setTimeout(function () { a.classList.add("on"); }, 10);
+    setTimeout(function () { a.classList.remove("on"); setTimeout(function () { a.remove(); }, 300); }, 2200);
+  }
+  function copiarTexto(txt) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt);
+    return new Promise(function (ok, mal) {
+      var ta = h("textarea"); ta.value = txt; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy") ? ok() : mal(); } catch (e) { mal(e); } ta.remove();
+    });
+  }
+  function compartirProducto(it) {
+    var url = enlaceProducto(it), nombre = tx(it, "n");
+    var datos = { title: nombre + " · Pasta Gallo", text: nombre + " — Pasta Gallo", url: url };
+    if (navigator.share) { navigator.share(datos).catch(function () {}); return; }
+    copiarTexto(url).then(function () { avisoBreve(t("enlaceCopiado")); }, function () { window.prompt(t("copiaEnlace"), url); });
+  }
+  function botonCompartir(it) {
+    var cab = hoja.querySelector(".hoja__cab"), x = cab && cab.querySelector(".hoja__x"); if (!x) return;
+    var b = h("button", "hoja__x hoja__compartir"); b.type = "button";
+    b.setAttribute("aria-label", t("compartir")); b.title = t("compartir");
+    b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+    b.addEventListener("click", function () { compartirProducto(it); });
+    var grupo = h("div", "hoja__acc"); cab.insertBefore(grupo, x); grupo.appendChild(b); grupo.appendChild(x);
+  }
   function cerrarHoja() {
     capa.classList.remove("on");
     document.body.classList.remove("sin-scroll");
@@ -217,7 +249,7 @@
       }
       if (it.tipo !== "salsa") c.appendChild(h("p", "detalle__aviso", motivo || (MODO === "mesa" ? t("cerradoMesa") : t("cerradoAviso"))));
       c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
-      abrirHoja(c, tx(it, "n"), "hoja--detalle");
+      abrirHoja(c, tx(it, "n"), "hoja--detalle"); botonCompartir(it);
       return;
     }
 
@@ -297,7 +329,7 @@
     pie.appendChild(add);
     c.appendChild(pie);
     pintar();
-    abrirHoja(c, tx(it, "n"), "hoja--detalle");
+    abrirHoja(c, tx(it, "n"), "hoja--detalle"); botonCompartir(it);
   }
 
   function textoOpciones(it, sel, en) {

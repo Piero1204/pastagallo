@@ -229,6 +229,9 @@ tr.oculto td{opacity:.5}
 .ok-emitido h3{font:700 22px var(--serif);color:var(--vino);margin:0 0 6px}
 #v-comp .tabla{display:table}
 @media (max-width:800px){#v-comp .tabla{display:block;overflow-x:auto}}
+.acc-fila{display:flex;gap:6px;align-items:center}
+.btn.ico{display:inline-grid;place-items:center;padding:6px 8px}
+.btn.ico svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 </style>
 </head>
 <body>
@@ -1041,9 +1044,37 @@ function pintarCarta(){
       el('td', {text: precio}),
       el('td', {class:'min'}, [sw(p, 'disponible')]),
       el('td', {class:'min'}, [sw(p, 'visible')]),
-      el('td', {class:'min'}, [el('button', {class:'btn peq', text:'Editar', onclick: function(){ editar(p); }})])
+      el('td', {class:'min'}, [el('div', {class:'acc-fila'}, [
+        el('button', {class:'btn peq', text:'Editar', onclick: function(){ editar(p); }}),
+        p.tipo === 'salsa' ? null : botonCompartirProd(p)
+      ])])
     ]));
   });
+}
+/* compartir el enlace directo de un producto (abre la carta con su ficha) */
+function linkProducto(p){
+  var base = String(INFO.sitio || '').replace(/\/+$/, '');
+  return base ? base + '/?p=' + encodeURIComponent(p.id) + '&o=compartido' : '';
+}
+function copiarEnlace(url){
+  var listo = function(){ toast('Enlace copiado: ' + url); };
+  var viejo = function(){
+    var ta = el('textarea'); ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select();
+    var ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove();
+    if (ok) listo(); else window.prompt('Copia este enlace:', url);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(listo, viejo); else viejo();
+}
+function botonCompartirProd(p){
+  var b = el('button', {class:'btn peq ico', title:'Compartir enlace del producto', 'aria-label':'Compartir enlace de ' + p.nombre});
+  b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+  b.addEventListener('click', function(){
+    var url = linkProducto(p);
+    if (!url) { toast('Falta el "Link público de la carta" en Ajustes.', true); return; }
+    if (navigator.share) navigator.share({ title: p.nombre + ' · Pasta Gallo', text: p.nombre + ' — Pasta Gallo', url: url }).catch(function(e){ if (!e || e.name !== 'AbortError') copiarEnlace(url); });
+    else copiarEnlace(url);
+  });
+  return b;
 }
 function sw(p, campo){
   var b = el('button', {class:'sw' + (p[campo] === 'SI' ? ' on' : ''), title: campo === 'disponible' ? 'Apágalo cuando se agote' : 'Ocultar de la carta'});

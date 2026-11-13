@@ -944,7 +944,7 @@ function importarFotosTmp() {
    - Además deja fijas en la hoja las fotos reales de FOTOS_REALES.
    ===================================================================== */
 var MIGRACION_V4C = {
-  seccion: { titulo: 'Le Proposte della Casa', titulo_en: 'Le Proposte della Casa',
+  seccion: { titulo: 'Le Nostre Proposte', titulo_en: 'Le Nostre Proposte',
     subtitulo: 'Para llevar · cada día, su propuesta', subtitulo_en: 'To take away · every day has its own',
     intro: 'Delivery o recojo en el local.', intro_en: 'Delivery or pick-up.' },
   nombres: {
@@ -1189,4 +1189,23 @@ function actualizarV7() {
   marcarPendiente_();
   var r = publicarCarta('');
   return 'v7 aplicada: ' + (hecho.join(', ') || 'textos al día') + '. ' + r.mensaje;
+}
+
+/* =====================================================================
+   PASTA GALLO · v7b (13-nov-2026): la sección de promociones se llama "Le Nostre Proposte".
+   Función "actualizarV7b". Se puede repetir. Cambia solo el título (celda por celda).
+   ===================================================================== */
+function actualizarV7b() {
+  exigirAdmin_('');
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.secciones);
+  var cab = asegurarColumnas_(h, COLS.secciones);
+  var hecho = 0;
+  leerTabla_(HOJA.secciones).forEach(function (s) {
+    if (String(s.id) !== 'promociones') return;
+    ['titulo', 'titulo_en'].forEach(function (c) {
+      if (String(s[c]) !== 'Le Nostre Proposte') { h.getRange(s._fila, cab.indexOf(c) + 1).setValue('Le Nostre Proposte'); hecho++; }
+    });
+  });
+  limpiarCache_(); marcarPendiente_();
+  return 'v7b: ' + hecho + ' celdas. ' + publicarCarta('').mensaje;
 }

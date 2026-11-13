@@ -426,6 +426,30 @@
     seccionesVisibles.forEach(function (s) {
       var a = h("a", "chip", tx(s, "titulo")); a.href = "#" + s.id; a.setAttribute("data-id", s.id); ch.appendChild(a);
     });
+    /* menú hamburguesa: todas las secciones a la vista */
+    var hb = h("button", "hamb"); hb.type = "button"; hb.setAttribute("aria-label", t("menuSecciones"));
+    hb.setAttribute("aria-expanded", "false"); hb.setAttribute("aria-controls", "menu-sec");
+    hb.innerHTML = '<span></span><span></span><span></span>';
+    var menu = h("div", "menu-sec"); menu.id = "menu-sec";
+    var ul = h("ul");
+    seccionesVisibles.forEach(function (s) {
+      var li = h("li"), a = h("a", null, tx(s, "titulo")); a.href = "#" + s.id;
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault(); cerrarMenu();
+        var chip = ch.querySelector('[data-id="' + s.id + '"]'); if (chip) chip.click();
+      });
+      li.appendChild(a); ul.appendChild(li);
+    });
+    menu.appendChild(ul);
+    function cerrarMenu() { menu.classList.remove("abierto"); hb.classList.remove("on"); hb.setAttribute("aria-expanded", "false"); }
+    hb.addEventListener("click", function () {
+      var ab = !menu.classList.contains("abierto");
+      menu.classList.toggle("abierto", ab); hb.classList.toggle("on", ab); hb.setAttribute("aria-expanded", ab ? "true" : "false");
+      if (ab) { var on = q(".chip.on"); menu.querySelectorAll("a").forEach(function (x) { x.classList.toggle("on", !!on && x.getAttribute("href") === "#" + on.getAttribute("data-id")); }); }
+    });
+    document.addEventListener("click", function (ev) { if (!nav.contains(ev.target)) cerrarMenu(); });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") cerrarMenu(); });
+    in_.appendChild(hb);
     in_.appendChild(ch);
     var lupa = h("button", "lupa"); lupa.type = "button"; lupa.setAttribute("aria-label", t("buscarAria"));
     var sv = document.createElementNS(NS, "svg"); sv.setAttribute("viewBox", "0 0 24 24");
@@ -437,6 +461,7 @@
     var b = h("div", "busca"); b.id = "busca";
     var inp = h("input"); inp.type = "search"; inp.id = "q"; inp.placeholder = t("buscar"); inp.setAttribute("aria-label", t("buscar")); inp.autocomplete = "off";
     b.appendChild(inp); nav.appendChild(b);
+    nav.appendChild(menu);
     lupa.addEventListener("click", function () {
       b.classList.toggle("abierta");
       if (b.classList.contains("abierta")) inp.focus(); else { inp.value = ""; filtrar(""); }
