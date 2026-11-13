@@ -254,6 +254,7 @@ tr.oculto td{opacity:.5}
     <button data-v="carta">🍕 Carta y precios</button>
     <button data-v="opciones">➕ Opciones y adicionales</button>
     <button data-v="mesas">🔳 Mesas y QR</button>
+    <button data-v="mozos">🤵 Mozos</button>
     <button data-v="ajustes">⚙️ Ajustes</button>
   </nav>
 </header>
@@ -374,6 +375,23 @@ tr.oculto td{opacity:.5}
     <div class="mesas" id="lMesas"></div>
   </section>
 
+  <section class="vista" id="v-mozos">
+    <div class="barra">
+      <h2 class="tit" style="margin:0 8px 0 0">Mozos</h2>
+      <button class="btn prim" id="nuevoMozo">+ Agregar mozo</button>
+      <span class="nota">Panel del mozo: <b id="linkMozo"></b> · se instala en la tablet o el celular ("Agregar a pantalla de inicio").</span>
+    </div>
+    <div class="mesas" id="lMozos"></div>
+    <div class="barra" style="margin-top:18px">
+      <h2 class="tit" style="margin:0 8px 0 0">Cobros y propinas</h2>
+      <div class="seg" id="filtroMozos"><button data-p="hoy" class="on">Hoy</button><button data-p="7">7 días</button><button data-p="mes">Este mes</button><button data-p="30">30 días</button></div>
+    </div>
+    <p class="nota" style="margin-bottom:10px">Propinas por Yape, Plin o tarjeta entran a la cuenta del negocio: <b>hay que pagárselas al mozo</b>. En efectivo, el mozo se queda con su propina y <b>entrega el consumo</b> a caja. "Pendiente" suma todo lo no liquidado, aunque sea de días anteriores.</p>
+    <div class="mesas" id="rMozos"></div>
+    <h3 class="cuentas__tit" style="margin-top:16px">Detalle de cobros</h3>
+    <table class="tabla"><thead><tr><th>Fecha</th><th>Mesa</th><th>Mozo</th><th>Método</th><th>Monto</th><th>Propina</th><th>Liquidado</th></tr></thead><tbody id="tCobros"></tbody></table>
+  </section>
+
   <section class="vista" id="v-ajustes">
     <h2 class="tit">Ajustes</h2>
     <div id="ajustesForm"></div>
@@ -478,6 +496,7 @@ $('#tabs').addEventListener('click', function(e){
   if (b.dataset.v === 'promos') cargarPromos();
   if (b.dataset.v === 'opciones') cargarGrupos();
   if (b.dataset.v === 'mesas') cargarMesas();
+  if (b.dataset.v === 'mozos') cargarMozos();
   if (b.dataset.v === 'ajustes') cargarAjustes();
 });
 function marcarSeg(sel, val){ document.querySelectorAll(sel + ' button').forEach(function(x){ x.classList.toggle('on', (x.dataset.c||'') === val); }); }
@@ -917,6 +936,7 @@ function siguienteImpresion(){
   if (p.telefono) add('div', 'Cel: ' + p.telefono);
   if (p.direccion) add('div', 'Dir: ' + p.direccion + (p.referencia ? ' (' + p.referencia + ')' : ''));
   if (p.pago) add('div', 'Pago: ' + p.pago);
+  if (p.mozo) add('div', 'Mozo: ' + p.mozo, 'g');
   if (p.comprobante) {
     b.appendChild(d.createElement('hr'));
     add('div', p.comprobante.toUpperCase() + ': ' + p.doc, 'g');
@@ -1520,6 +1540,78 @@ $('#imprimirQR').addEventListener('click', function(){
   });
   setTimeout(function(){ f.contentWindow.focus(); f.contentWindow.print(); setTimeout(function(){ f.remove(); }, 2000); }, 300);
 });
+
+/* ---------- mozos ---------- */
+var MOZOS = [], perMozos = 'hoy';
+function fechaIsoLocal(d){ return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2); }
+function rangoMozos(){
+  var h = new Date(ahora()), hasta = fechaIsoLocal(h), d = new Date(h);
+  if (perMozos === '7') d.setDate(d.getDate() - 6);
+  else if (perMozos === '30') d.setDate(d.getDate() - 29);
+  else if (perMozos === 'mes') d.setDate(1);
+  return [fechaIsoLocal(d), hasta];
+}
+function cargarMozos(){
+  $('#linkMozo').textContent = (INFO.sitio || 'https://pastagallo.pages.dev').replace(/\/$/, '') + '/mozo';
+  run('listarMozos').then(function(m){ MOZOS = m; pintarMozos(); }).catch(error);
+  cargarReporteMozos();
+}
+function cargarReporteMozos(){ var r = rangoMozos(); run('reporteMozos', r[0], r[1]).then(pintarReporteMozos).catch(error); }
+$('#filtroMozos').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; perMozos = b.dataset.p; this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); }); cargarReporteMozos(); });
+function pintarMozos(){
+  var l = $('#lMozos'); l.textContent = '';
+  if (!MOZOS.length) l.appendChild(el('p', {class:'nota', text:'Todavía no hay mozos. Agrega uno con su PIN para que pueda entrar al panel del mozo.'}));
+  MOZOS.forEach(function(m){
+    l.appendChild(el('div', {class:'mesa' + (m.activo ? '' : ' inactiva'), style:'text-align:left'}, [
+      el('h3', {text:'🤵 ' + m.nombre}),
+      el('div', {class:'nota', text: (m.activo ? 'Activo' : 'Desactivado') + ' · último ingreso: ' + (m.ultimo ? new Date(m.ultimo).toLocaleString('es-PE') : '—')}),
+      el('div', {class:'pie', style:'flex-wrap:wrap;margin-top:8px'}, [
+        el('button', {class:'btn peq', text:'Editar / cambiar PIN', onclick: function(){ editarMozo(m); }}),
+        el('button', {class:'btn peq', text: m.activo ? 'Desactivar' : 'Activar', onclick: function(){
+          if (m.activo && !confirm('¿Desactivar a ' + m.nombre + '? Se cerrará su sesión en todos sus equipos.')) return;
+          run('guardarMozo', { id:m.id, nombre:m.nombre, activo:!m.activo }).then(function(x){ MOZOS = x; pintarMozos(); }).catch(error);
+        }})
+      ])
+    ]));
+  });
+}
+function editarMozo(m){
+  var nombre = prompt('Nombre del mozo (como aparecerá en la comanda):', m ? m.nombre : '');
+  if (nombre == null) return;
+  var pin = prompt(m ? 'Nuevo PIN de 4 a 6 números (déjalo vacío para no cambiarlo).\nAl cambiarlo se cierran sus sesiones abiertas.' : 'PIN de 4 a 6 números para ' + nombre + ':', '');
+  if (pin == null) return;
+  run('guardarMozo', { id: m ? m.id : '', nombre: nombre, pin: pin.trim(), activo: m ? m.activo : true })
+    .then(function(x){ MOZOS = x; pintarMozos(); toast('Mozo guardado'); }).catch(error);
+}
+$('#nuevoMozo').addEventListener('click', function(){ editarMozo(null); });
+function pintarReporteMozos(r){
+  var l = $('#rMozos'); l.textContent = '';
+  if (!r.mozos.length) l.appendChild(el('p', {class:'nota', text:'Sin cobros registrados todavía.'}));
+  r.mozos.forEach(function(m){
+    var filas = [];
+    Object.keys(m.porMetodo).forEach(function(k){ filas.push(el('div', {text: k + ': ' + soles(m.porMetodo[k]) + (m.propinas[k] ? ' · propina ' + soles(m.propinas[k]) : '')})); });
+    Object.keys(m.propinas).forEach(function(k){ if (m.porMetodo[k] == null) filas.push(el('div', {text: k + ': propina ' + soles(m.propinas[k])})); });
+    var pend = m.efectivoPorEntregar > 0.009 || m.propinasPorPagar > 0.009;
+    l.appendChild(el('div', {class:'mesa', style:'text-align:left'}, [
+      el('h3', {text:'🤵 ' + m.nombre}),
+      el('div', {text: m.mesas + ' mesas · cobrado ' + soles(m.ventas) + ' · propinas ' + soles(m.propinaTotal)}),
+      el('div', {class:'nota', style:'margin:6px 0'}, filas),
+      pend ? el('div', {class:'aviso', style:'margin-top:6px'}, [
+        m.efectivoPorEntregar > 0.009 ? el('div', {text:'💵 Efectivo que debe entregar: ' + soles(m.efectivoPorEntregar)}) : null,
+        m.propinasPorPagar > 0.009 ? el('div', {text:'🎁 Propinas (Yape/Plin/tarjeta) por pagarle: ' + soles(m.propinasPorPagar)}) : null,
+        el('button', {class:'btn peq prim', style:'margin-top:6px', text:'✓ Liquidar (entregó el efectivo y se le pagaron las propinas)', onclick: function(){
+          if (!confirm('¿Confirmas que ' + m.nombre + ' entregó ' + soles(m.efectivoPorEntregar) + ' en efectivo y que se le pagaron ' + soles(m.propinasPorPagar) + ' de propinas?')) return;
+          run('liquidarMozo', m.id).then(function(){ toast('Liquidado'); cargarReporteMozos(); }).catch(error);
+        }})
+      ]) : el('div', {class:'nota', text:'✓ Nada pendiente'})
+    ]));
+  });
+  var t = $('#tCobros'); t.textContent = '';
+  r.cobros.forEach(function(c){
+    t.appendChild(el('tr', null, [el('td', {text:c.fecha}), el('td', {text:c.mesa}), el('td', {text:c.mozo}), el('td', {text:c.metodo}),
+      el('td', {text:soles(c.monto)}), el('td', {text:c.propina ? soles(c.propina) : '—'}), el('td', {class:'nota', text:c.liquidado || '—'})]));
+  });
+}
 
 /* ---------- comprobantes ---------- */
 var COMP = { comprobantes:[], pendientes:[], series:[], hoy:'' }, compPer = 'hoy', compTipo = '';
