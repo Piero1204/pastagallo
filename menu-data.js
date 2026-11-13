@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T16:24:42-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T16:25:51-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2083,6 +2083,7 @@ window.CARTA = {
        "d": "Anchas cintas de tradición toscana, hechas para salsas con carácter.",
        "p": 32,
        "salsa": true,
+       "agotado": true,
        "al": [
         "gluten",
         "huevo"
@@ -3192,5 +3193,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T16:24:42-05:00"
+ "publicado": "2026-11-13T16:25:51-05:00"
 };
