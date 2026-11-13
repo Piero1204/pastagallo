@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T02:05:23-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T02:05:43-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -864,9 +864,6 @@ window.CARTA = {
        "promo": {
         "dias": [
          4
-        ],
-        "excluir": [
-         "2026-11-19"
         ]
        }
       },
@@ -3159,5 +3156,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T02:05:23-05:00"
+ "publicado": "2026-11-13T02:05:43-05:00"
 };
