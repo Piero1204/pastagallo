@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T19:55:11-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T19:56:16-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -94,12 +94,12 @@ window.CARTA = {
    "Yape": {
     "numero": "948 323 337",
     "titular": "Edit Varela García",
-    "qr": ""
+    "qr": "fotos/pago-yape.jpg"
    },
    "Plin": {
     "numero": "948 323 337",
     "titular": "Edit Varela García",
-    "qr": ""
+    "qr": "fotos/pago-plin.jpg"
    },
    "Transferencia": {
     "texto": "",
@@ -3069,5 +3069,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-12T19:55:11-05:00"
+ "publicado": "2026-11-12T19:56:16-05:00"
 };
