@@ -1288,3 +1288,31 @@ function restaurarPreciosNuevos() {
   Logger.log('restaurados ' + n + ' valores');
   return 'Precios nuevos restaurados (' + n + ' cambios). ' + r.mensaje;
 }
+
+/* =====================================================================
+   PASTA GALLO · v8b (13-nov-2026): canales de vinos y jugos
+   - Vinos en BOTELLA: también por delivery y recojo (la sección Vini se abre a delivery).
+   - Copa de vino y Sangría: solo en el local.
+   - Limonada y Maracuyá: por ahora solo en el local.
+   Función "actualizarV8b". Se puede repetir.
+   ===================================================================== */
+function actualizarV8b() {
+  exigirAdmin_('');
+  var ss = SpreadsheetApp.getActive(), hecho = [];
+  var hs = ss.getSheetByName(HOJA.secciones), cs = asegurarColumnas_(hs, COLS.secciones);
+  leerTabla_(HOJA.secciones).forEach(function (s) {
+    if (String(s.id) === 'vini' && String(s.delivery) !== 'SI') { hs.getRange(s._fila, cs.indexOf('delivery') + 1).setValue('SI'); hecho.push('sección vini → delivery'); }
+  });
+  var hp = ss.getSheetByName(HOJA.productos), cp = asegurarColumnas_(hp, COLS.productos), cC = cp.indexOf('canal') + 1;
+  var soloLocal = ['vini-calice-di-vino', 'vini-sangria', 'caffe-limonata', 'caffe-maracuya'];
+  leerTabla_(HOJA.productos).forEach(function (p) {
+    var id = String(p.id), quiere = null;
+    if (soloLocal.indexOf(id) >= 0) quiere = 'local';
+    else if (String(p.seccion) === 'vini') quiere = 'todos';
+    if (quiere && String(p.canal || 'todos') !== quiere) { hp.getRange(p._fila, cC).setValue(quiere); hecho.push(id + ' → ' + quiere); }
+  });
+  limpiarCache_(); marcarPendiente_();
+  var r = publicarCarta('');
+  Logger.log('v8b: ' + (hecho.join(', ') || 'sin cambios'));
+  return 'v8b: ' + hecho.length + ' cambios. ' + r.mensaje;
+}
