@@ -358,7 +358,7 @@
     seccionesVisibles.push(sec);
     var n = seccionesVisibles.length;
     var s = h("section", "sec " + (sec.id === "promociones" ? "sec--promo" : (n % 2 ? "sec--a" : "sec--b"))); s.id = sec.id;
-    var cab = h("header", "sec__cab");
+    var cab = h("header", "sec__cab anim");
     cab.appendChild(h("div", "m"));
     var c = h("div");
     c.appendChild(h("div", "num", ROMANOS[n - 1] || String(n)));
@@ -373,7 +373,7 @@
     grupos.forEach(function (g) {
       var gr = h("div", "grupo");
       if (g.titulo) {
-        var gc = h("div", "grupo__cab");
+        var gc = h("div", "grupo__cab anim");
         gc.appendChild(h("h3", null, g.titulo));
         if (g.nota) gc.appendChild(h("p", null, g.nota));
         gc.appendChild(ornamento());
@@ -584,16 +584,23 @@
       document.querySelectorAll(".sec").forEach(function (s) { io.observe(s); });
 
       var rv = new IntersectionObserver(function (es) {
-        es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("ya"); rv.unobserve(e.target); } });
+        var k = 0;
+        es.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          /* los que entran juntos aparecen en cascada (máx. 0.32 s de espera) */
+          e.target.style.transitionDelay = Math.min(k++ * 70, 320) + "ms";
+          e.target.classList.add("ya"); rv.unobserve(e.target);
+          setTimeout(function () { e.target.style.transitionDelay = ""; }, 1400);
+        });
       }, { rootMargin: "0px 0px -6% 0px" });
-      document.querySelectorAll(".rev").forEach(function (x) { rv.observe(x); });
+      document.querySelectorAll(".rev, .anim").forEach(function (x) { rv.observe(x); });
 
       var pt = new IntersectionObserver(function (es) {
         es.forEach(function (e) { fab.classList.toggle("ver", !e.isIntersecting); });
       });
       pt.observe(q("#inicio"));
     } else {
-      document.querySelectorAll(".rev").forEach(function (x) { x.classList.add("ya"); });
+      document.querySelectorAll(".rev, .anim").forEach(function (x) { x.classList.add("ya"); });
       fab.classList.add("ver");
     }
   }

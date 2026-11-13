@@ -142,6 +142,7 @@
     hoja.setAttribute("aria-label", titulo);
     hoja.scrollTop = 0;
     capa.classList.add("on");
+    requestAnimationFrame(function () { hoja.classList.add("entra"); });
     document.body.classList.add("sin-scroll");
     setTimeout(function () { x.focus(); }, 60);
   }
