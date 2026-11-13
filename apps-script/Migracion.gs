@@ -1077,3 +1077,116 @@ function actualizarV4d() {
   var pub = publicarCarta('');
   return 'v4d aplicada. Nuevos: ' + (creados.join(', ') || 'ninguno') + '. ' + pub.mensaje;
 }
+
+/* =====================================================================
+   PASTA GALLO · v7: carta de vinos sincronizada con las botellas reales (13-nov-2026)
+   Función "actualizarV7". Se puede repetir (escribe celda por celda, no reescribe la hoja).
+   - Quedan activos solo los 14 vinos que hay en el local (fotos de Piero del 12-nov).
+   - Nombres, glosas y descripciones de catador (ES/EN), grupo y orden de cada uno.
+   - Se crean 3 filas nuevas de Ca' Bianca (Barbera, Nebbiolo, Moscato d'Asti).
+   - Nebbiolo y Moscato d'Asti quedan OCULTOS hasta que la dueña confirme su precio.
+   - Se apagan los vinos que ya no están (visible NO, disponible NO). No se borra nada.
+   - No toca precios existentes; solo pone S/ 95 a la Barbera (lista manuscrita de la dueña).
+   ===================================================================== */
+var V7_IT_ = 'Vini Italiani', V7_SA_ = 'Vini Sudamericani';
+var MIGRACION_V7 = {
+  vinos: {
+    'vini-ca-bianca': { grupo: V7_IT_, orden: 100, nombre: "Ca' Bianca Asti DOCG", nombre_en: "Ca' Bianca Asti DOCG",
+      glosa: 'espumante dulce · Piemonte', glosa_en: 'sweet sparkling · Piedmont',
+      descripcion: "Espumante dulce del Piamonte, elaborado con uva Moscato Bianco en las colinas de Asti por Tenimenti Ca' Bianca, en Alice Bel Colle. En la copa es amarillo pajizo brillante, de burbuja fina y persistente. En nariz se abre a flores de acacia, salvia, durazno maduro y miel; en boca es dulce, fresco y ligero, con el aroma intacto de la uva recién cortada. Sírvelo muy frío, entre 6 y 8 °C, con el tiramisú, un panettone o simplemente para brindar.",
+      descripcion_en: "A sweet sparkling wine from Piedmont, made from Moscato Bianco grapes in the hills of Asti by Tenimenti Ca' Bianca in Alice Bel Colle. Bright straw-yellow in the glass, with a fine, lasting bead. The nose opens to acacia blossom, sage, ripe peach and honey; the palate is sweet, fresh and light, with all the perfume of freshly picked grapes. Serve well chilled, 6–8 °C, with tiramisù, panettone or simply for a toast." },
+    'vini-ca-bianca-moscato-dasti': { grupo: V7_IT_, orden: 105, nombre: "Ca' Bianca Moscato d'Asti DOCG", nombre_en: "Ca' Bianca Moscato d'Asti DOCG",
+      glosa: 'frizzante dulce · Piemonte', glosa_en: 'sweet frizzante · Piedmont',
+      descripcion: "El hermano más delicado del Asti: un frizzante apenas burbujeante y de baja graduación, hecho con Moscato Bianco del Piamonte. Dorado pálido, con aromas de durazno blanco, albaricoque y azahar. Dulce, fresco y muy fácil de beber; perfecto con postres de fruta, dulces italianos o como cierre de la comida. Servir a 6–8 °C.",
+      descripcion_en: "Asti's gentler sibling: a softly fizzing, low-alcohol frizzante made from Piedmont's Moscato Bianco. Pale gold, with aromas of white peach, apricot and orange blossom. Sweet, fresh and effortless to drink; lovely with fruit desserts, Italian sweets or to close the meal. Serve at 6–8 °C." },
+    'vini-cavicchioli': { grupo: V7_IT_, orden: 110, nombre: 'Cavicchioli Lambrusco Grasparossa Amabile', nombre_en: 'Cavicchioli Lambrusco Grasparossa Amabile',
+      glosa: 'tinto espumoso amabile · Emilia-Romagna', glosa_en: 'sparkling red, off-dry · Emilia-Romagna',
+      descripcion: "Cavicchioli elabora Lambrusco desde 1928 en San Prospero, muy cerca de Módena. El Grasparossa debe su nombre al raspón de la uva, que se enrojece en otoño, y es el Lambrusco de más cuerpo y color. Tinto espumoso de espuma violácea y rubí intenso; aromas de frutos rojos, mora y violeta. Amabile quiere decir ligeramente dulce: fresco, vivaz y muy amable en boca. Es el compañero clásico de los embutidos, la pizza y las pastas con salsa de carne. Servir fresco, a 10–12 °C.",
+      descripcion_en: "Cavicchioli has been making Lambrusco since 1928 in San Prospero, just outside Modena. Grasparossa takes its name from the grape stalks, which turn red in autumn, and it is the fullest, deepest-coloured Lambrusco. A sparkling red with violet foam and deep ruby colour; aromas of red berries, blackberry and violet. Amabile means gently sweet: fresh, lively and easy on the palate. The classic partner for cured meats, pizza and pasta with meat sauce. Serve cool, 10–12 °C." },
+    'vini-ca-bianca-barbera-dasti': { grupo: V7_IT_, orden: 120, nombre: "Ca' Bianca Barbera d'Asti Superiore DOCG", nombre_en: "Ca' Bianca Barbera d'Asti Superiore DOCG",
+      glosa: 'tinto seco · Piemonte · 2022', glosa_en: 'dry red · Piedmont · 2022',
+      descripcion: "La Barbera es la uva más querida del Piamonte, y la mención Superiore indica una crianza más prolongada, con paso por madera, antes de salir a la venta. Cosecha 2022. Rubí intenso con matices violáceos; aromas de cereza madura, ciruela y especias suaves. En boca tiene acidez vibrante, cuerpo medio y taninos amables: es el vino pensado para la cocina italiana, con pizza, pastas al pomodoro o lasagna. Servir a 16–18 °C.",
+      descripcion_en: "Barbera is Piedmont's best-loved grape, and Superiore means longer ageing, partly in wood, before release. 2022 vintage. Deep ruby with violet hints; aromas of ripe cherry, plum and gentle spice. Vibrant acidity, medium body and soft tannins make it a natural match for Italian food: pizza, pasta al pomodoro or lasagna. Serve at 16–18 °C." },
+    'vini-ca-bianca-langhe-nebbiolo': { grupo: V7_IT_, orden: 130, nombre: "Ca' Bianca Langhe Nebbiolo DOC", nombre_en: "Ca' Bianca Langhe Nebbiolo DOC",
+      glosa: 'tinto seco · Piemonte · 2023', glosa_en: 'dry red · Piedmont · 2023',
+      descripcion: "Nebbiolo, la uva noble del Barolo y el Barbaresco, en una versión más joven y accesible de las colinas de las Langhe, en el Piamonte. Cosecha 2023. Rubí claro con reflejos granate; en nariz rosas, violetas, cereza y un toque especiado. En boca es seco, de buena acidez y taninos firmes pero finos, con un final largo. Acompaña muy bien las carnes a la parrilla, la lasagna y las pastas con ragú. Servir a 16–18 °C.",
+      descripcion_en: "Nebbiolo, the noble grape of Barolo and Barbaresco, in a younger, more approachable style from the Langhe hills of Piedmont. 2023 vintage. Light ruby with garnet glints; roses, violets, cherry and a touch of spice on the nose. Dry, with fresh acidity and firm yet fine tannins and a long finish. Excellent with grilled meats, lasagna and pasta with ragù. Serve at 16–18 °C." },
+    'vini-spumante-brut-tabernero': { grupo: V7_SA_, orden: 200, nombre: 'Tabernero Brut', nombre_en: 'Tabernero Brut',
+      glosa: 'espumante brut · Perú', glosa_en: 'brut sparkling · Peru',
+      descripcion: "Espumante peruano de Bodega Tabernero, casa fundada en 1897 en Chincha por una familia de origen italiano. Se elabora por método Charmat, con la segunda fermentación en tanque, lo que conserva su fruta fresca. Amarillo pálido de burbuja fina; notas de manzana verde, cítricos y un ligero pan tostado. Seco, fresco y elegante: ideal para brindar o para acompañar entradas, mariscos y pizzas blancas. Servir a 6–8 °C.",
+      descripcion_en: "A Peruvian sparkling wine from Bodega Tabernero, founded in 1897 in Chincha by a family of Italian origin. Made by the Charmat method, with the second fermentation in tank to keep its fruit fresh. Pale yellow with a fine bead; notes of green apple, citrus and a hint of toast. Dry, fresh and elegant: perfect for a toast or with starters, seafood and white pizzas. Serve at 6–8 °C." },
+    'vini-tabernero-tuyo': { grupo: V7_SA_, orden: 205, nombre: 'Tabernero Tuyo Gran Rosé', nombre_en: 'Tabernero Tuyo Gran Rosé',
+      glosa: 'rosé semiespumante · Chincha', glosa_en: 'lightly sparkling rosé · Chincha',
+      descripcion: "Rosado de Tabernero, del valle de Chincha, ligeramente espumante y de baja graduación (6.5 %). Rosa brillante, con aromas de fresa, frambuesa y caramelo de fruta; en boca es dulce, fresco y de burbuja suave. Para el aperitivo, los postres o cualquier celebración. Servir bien frío, 6–8 °C.",
+      descripcion_en: "A rosé from Tabernero in the Chincha valley, lightly sparkling and low in alcohol (6.5%). Bright pink, with aromas of strawberry, raspberry and fruit candy; sweet, fresh and softly fizzy. For aperitivo, dessert or any celebration. Serve well chilled, 6–8 °C." },
+    'vini-gran-blanco': { grupo: V7_SA_, orden: 210, nombre: 'Tabernero Gran Blanco', nombre_en: 'Tabernero Gran Blanco',
+      glosa: 'blanco semiseco · Ica · 2025', glosa_en: 'off-dry white · Ica · 2025',
+      descripcion: "Blanco semiseco afrutado de Bodega Tabernero, con uvas del valle de Ica, cosecha 2025. Amarillo verdoso brillante; aromas de fruta tropical, durazno y flores blancas. Dulzor suave, frescura agradable y final frutal. Perfecto con pastas en salsa blanca, pollo y ensaladas, o simplemente bien frío. Servir a 7–9 °C.",
+      descripcion_en: "A fruity off-dry white from Bodega Tabernero, with grapes from the Ica valley, 2025 vintage. Bright green-tinged yellow; aromas of tropical fruit, peach and white flowers. Gently sweet, refreshing, with a fruity finish. Perfect with cream-sauce pastas, chicken and salads, or simply well chilled. Serve at 7–9 °C." },
+    'vini-victoria': { grupo: V7_SA_, orden: 215, nombre: 'Vittoria Terroir Chardonnay', nombre_en: 'Vittoria Terroir Chardonnay',
+      glosa: 'Chardonnay · Ica, Perú · 2023', glosa_en: 'Chardonnay · Ica, Peru · 2023',
+      descripcion: "De la línea Vittoria de Bodega Tabernero, con uvas del valle de Ica, cosecha 2023. Chardonnay de color amarillo dorado; aromas de piña, durazno, manzana y un toque floral. Seco, de cuerpo medio, fresco y redondo. Acompaña pescados, pastas en salsa blanca o al pesto y pizzas de queso. Servir a 8–10 °C.",
+      descripcion_en: "From Bodega Tabernero's Vittoria range, with grapes from the Ica valley, 2023 vintage. A golden-yellow Chardonnay with aromas of pineapple, peach, apple and a floral touch. Dry, medium-bodied, fresh and rounded. Pairs with fish, cream or pesto pastas and cheese pizzas. Serve at 8–10 °C." },
+    'vini-tabernero-borgona': { grupo: V7_SA_, orden: 220, nombre: 'Tabernero Borgoña', nombre_en: 'Tabernero Borgoña',
+      glosa: 'tinto semiseco · Ica · 2024', glosa_en: 'off-dry red · Ica · 2024',
+      descripcion: "El clásico tinto semiseco peruano, cosecha 2024. En el Perú se llama borgoña a la uva Isabella, de aroma inconfundible a uva fresca y fresa. Rojo rubí, de dulzor suave y final frutal; fácil de beber y muy querido en la mesa familiar. Servir fresco, a 12–14 °C, con pastas, pizzas y carnes.",
+      descripcion_en: "Peru's classic off-dry red, 2024 vintage. In Peru the Isabella grape is called borgoña, with its unmistakable aroma of fresh grapes and strawberry. Ruby red, gently sweet with a fruity finish; easy to drink and a family-table favourite. Serve cool, 12–14 °C, with pasta, pizza and meat." },
+    'vini-tacama-seco': { grupo: V7_SA_, orden: 225, nombre: 'Tacama Gran Tinto Las Tablas', nombre_en: 'Tacama Gran Tinto Las Tablas',
+      glosa: 'Malbec-Tannat · Ica, Perú', glosa_en: 'Malbec-Tannat · Ica, Peru',
+      descripcion: "De Viña Tacama, en el valle de Ica, una de las viñas más antiguas de Sudamérica. Ensamblaje de Malbec y Tannat de color rojo violáceo profundo, con aromas de ciruela, mora y un toque especiado. Seco, de cuerpo medio, con taninos presentes y final frutal. Acompaña carnes, parrillas y pastas con ragú. Servir a 16–18 °C.",
+      descripcion_en: "From Viña Tacama in the Ica valley, one of the oldest wineries in South America. A Malbec–Tannat blend, deep violet-red, with aromas of plum, blackberry and a hint of spice. Dry and medium-bodied, with noticeable tannins and a fruity finish. Pairs with meat, grills and pasta with ragù. Serve at 16–18 °C." },
+    'vini-frontera': { grupo: V7_SA_, orden: 230, nombre: 'Frontera Cabernet Sauvignon', nombre_en: 'Frontera Cabernet Sauvignon',
+      glosa: 'Cabernet Sauvignon · Chile', glosa_en: 'Cabernet Sauvignon · Chile',
+      descripcion: "De la reconocida bodega chilena Concha y Toro. Robusto y balanceado, como dice su etiqueta: rojo rubí, aromas de cassis, ciruela y un toque especiado; cuerpo medio y taninos amables. Un tinto versátil para pastas con ragú, pizzas y carnes. Servir a 16–18 °C.",
+      descripcion_en: "From Chile's renowned Concha y Toro. Robust and balanced, as the label says: ruby red, with aromas of cassis, plum and a touch of spice; medium body and soft tannins. A versatile red for pasta with ragù, pizza and meat. Serve at 16–18 °C." },
+    'vini-patrillo': { grupo: V7_SA_, orden: 240, nombre: 'Padrillos Malbec', nombre_en: 'Padrillos Malbec',
+      glosa: 'Malbec · Mendoza · 2022', glosa_en: 'Malbec · Mendoza · 2022',
+      descripcion: "De Ernesto Catena Vineyards, en el Valle de Uco, Mendoza: viñedos de altura al pie de los Andes. Cosecha 2022. El Malbec, uva emblema de Argentina, da aquí un rojo violáceo intenso, con aromas de ciruela, cereza negra y violeta; en boca es jugoso, de taninos suaves y final fresco. Ideal con carnes a la parrilla, lasagna y pizzas intensas. Servir a 16–18 °C.",
+      descripcion_en: "From Ernesto Catena Vineyards in Mendoza's Uco Valley: high-altitude vineyards at the foot of the Andes. 2022 vintage. Malbec, Argentina's signature grape, shows deep violet-red here, with aromas of plum, black cherry and violet; juicy on the palate, with soft tannins and a fresh finish. Ideal with grilled meats, lasagna and bold pizzas. Serve at 16–18 °C." },
+    'vini-prisionero': { grupo: V7_SA_, orden: 250, nombre: 'Prisionero Cabernet Sauvignon', nombre_en: 'Prisionero Cabernet Sauvignon',
+      glosa: 'Cabernet Sauvignon · Mendoza', glosa_en: 'Cabernet Sauvignon · Mendoza',
+      descripcion: "De Colosso Wines, en Mendoza, con uvas de Luján de Cuyo y Maipú. Cabernet Sauvignon de rojo rubí profundo; aromas de cassis, frutos negros, un toque de pimiento y notas de roble. Seco, con cuerpo, taninos firmes y final largo. Para carnes rojas, parrillas y quesos maduros. Servir a 16–18 °C.",
+      descripcion_en: "From Colosso Wines in Mendoza, with grapes from Luján de Cuyo and Maipú. A deep ruby Cabernet Sauvignon with aromas of cassis, black fruit, a hint of bell pepper and oak. Dry and full-bodied, with firm tannins and a long finish. For red meat, grills and aged cheeses. Serve at 16–18 °C." }
+  },
+  nuevos: {
+    'vini-ca-bianca-barbera-dasti': { precio: 95, visible: 'SI' },
+    'vini-ca-bianca-langhe-nebbiolo': { precio: '', visible: 'NO' },   // falta precio
+    'vini-ca-bianca-moscato-dasti': { precio: '', visible: 'NO' }      // falta precio
+  },
+  apagar: ['vini-tabernero-moscato', 'vini-frontera-malbec', 'vini-tabernero-gran-tinto', 'vini-tacama-semiseco', 'vini-casillero-del-diablo', 'vini-barbera'],
+  encender: ['vini-spumante-brut-tabernero', 'vini-gran-blanco']
+};
+
+function actualizarV7() {
+  exigirAdmin_('');
+  var M = MIGRACION_V7, ss = SpreadsheetApp.getActive(), h = ss.getSheetByName(HOJA.productos);
+  var cab = asegurarColumnas_(h, COLS.productos);
+  var col = function (c) { return cab.indexOf(c) + 1; };
+  var porId = {}; leerTabla_(HOJA.productos).forEach(function (p) { porId[String(p.id)] = p; });
+  var hecho = [];
+  var poner = function (p, c, v) { if (String(p[c]) === String(v)) return; h.getRange(p._fila, col(c)).setValue(v); p[c] = v; };
+
+  // filas nuevas (al final de la hoja; no se reescribe nada existente)
+  Object.keys(M.nuevos).forEach(function (id) {
+    if (porId[id]) return;
+    var p = { id: id, seccion: 'vini', canal: 'todos', disponible: 'SI', alergenos: 'sulfitos', tipo: 'plato', requiere_salsa: 'NO' };
+    Object.keys(M.nuevos[id]).forEach(function (k) { p[k] = M.nuevos[id][k]; });
+    Object.keys(M.vinos[id]).forEach(function (k) { p[k] = M.vinos[id][k]; });
+    h.appendRow(cab.map(function (c) { return p[c] == null ? '' : p[c]; }));
+    hecho.push('nuevo ' + p.nombre);
+  });
+  porId = {}; leerTabla_(HOJA.productos).forEach(function (p) { porId[String(p.id)] = p; });
+
+  Object.keys(M.vinos).forEach(function (id) {
+    var p = porId[id]; if (!p) { hecho.push('FALTA ' + id); return; }
+    Object.keys(M.vinos[id]).forEach(function (c) { poner(p, c, M.vinos[id][c]); });
+    if (!String(p.alergenos || '').trim()) poner(p, 'alergenos', 'sulfitos');
+  });
+  M.encender.forEach(function (id) { var p = porId[id]; if (p) { poner(p, 'visible', 'SI'); poner(p, 'disponible', 'SI'); } });
+  M.apagar.forEach(function (id) { var p = porId[id]; if (p) { poner(p, 'visible', 'NO'); poner(p, 'disponible', 'NO'); hecho.push('apagado ' + id); } });
+
+  limpiarCache_();
+  marcarPendiente_();
+  var r = publicarCarta('');
+  return 'v7 aplicada: ' + (hecho.join(', ') || 'textos al día') + '. ' + r.mensaje;
+}
