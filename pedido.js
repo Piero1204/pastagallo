@@ -458,15 +458,19 @@
         f.appendChild(opcionesUI("canal", [
           { valor: "delivery", texto: t("delivery"), marcado: form.canal === "delivery" },
           { valor: "recojo", texto: t("recojo"), marcado: form.canal === "recojo" }
-        ], false, function (v) { form.canal = v[0]; pintarZona(); }));
+        ], false, function (v) { form.canal = v[0]; pintarZona(); if (cajaCobro) pintarCobro(cajaCobro, form.pago, true); }));
       }
       f.appendChild(zona);
       f.appendChild(campo("nombre", t("nombre"), "text", { max: 60, auto: "name" }));
       f.appendChild(campo("telefono", t("celular"), "tel", { max: 16, auto: "tel", modo: "tel", ph: "9XX XXX XXX" }));
       if (CFG.metodosPago && CFG.metodosPago.length) {
         f.appendChild(h("h3", "hoja__sub", t("comoPagar")));
+        if (CFG.metodosPago.indexOf(form.pago) < 0) form.pago = "";
+        var cajaCobro = h("div");
         f.appendChild(opcionesUI("pago", CFG.metodosPago.map(function (m) { return { valor: m, texto: m, marcado: form.pago === m }; }),
-          false, function (v) { form.pago = v[0]; }));
+          false, function (v) { form.pago = v[0]; pintarCobro(cajaCobro, form.pago, true); }));
+        f.appendChild(cajaCobro);
+        pintarCobro(cajaCobro, form.pago, true);
       }
       var vent = ventanaPedido();
       if (vent) {
@@ -549,18 +553,123 @@
     var enviar = h("button", "btn-ped" + (MODO === "mesa" ? "" : " btn-ped--wa"), MODO === "mesa" ? t("enviarCocina") : t("enviarWaDirecto"));
     enviar.type = "submit";
     f.appendChild(enviar);
-    f.addEventListener("submit", function (ev) {
-      ev.preventDefault();
-      var e = validar();
-      if (e) { err.textContent = e; return; }
-      if (MODO !== "mesa") { enviarPorWhatsapp(hp.value); return; }
+    // Mesa: antes de mandar a cocina se confirma, porque ya no se puede cambiar
+    var confirmar = h("div", "confirma");
+    f.appendChild(confirmar);
+    function mandarCocina() {
+      confirmar.textContent = ""; enviar.style.display = "";
       enviar.disabled = true; enviar.textContent = t("enviando");
       enviarPedido(hp.value).then(function (r) {
         enviar.disabled = false; enviar.textContent = t("enviarCocina");
         if (r && r.error) err.textContent = r.error;
       });
+    }
+    f.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var e = validar();
+      if (e) { err.textContent = e; return; }
+      if (MODO !== "mesa") {
+        if (form.captura) {
+          enviar.disabled = true; enviar.textContent = t("subiendo");
+          enviarConCaptura(hp.value).then(function (r) {
+            enviar.disabled = false; enviar.textContent = t("enviarWaDirecto");
+            if (r && r.error) err.textContent = r.error;
+          });
+          return;
+        }
+        enviarPorWhatsapp(hp.value); return;
+      }
+      enviar.style.display = "none"; confirmar.textContent = "";
+      confirmar.appendChild(h("p", "confirma__t", t("confirmarCocina")));
+      confirmar.appendChild(h("p", "hoja__ayuda", t("confirmarCocinaTxt", { n: unidades(), m: soles(total()) })));
+      confirmar.appendChild(boton(t("siEnviar"), "btn-ped", mandarCocina));
+      confirmar.appendChild(boton(t("revisar"), "btn-ped btn-ped--linea", function () {
+        confirmar.textContent = ""; enviar.style.display = "";
+        var ini = f.parentNode && f.parentNode.firstChild; if (ini && ini.scrollIntoView) ini.scrollIntoView({ block: "start", behavior: "smooth" });
+      }));
+      confirmar.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
     return f;
+  }
+
+  /* ---------- cobro anticipado: QR, número y captura del pago ---------- */
+  function cobroDe(m) {
+    var c = CFG.cobro || {}, k = String(m || "").toLowerCase();
+    if (/^yape/.test(k)) return c.Yape || null;
+    if (/^plin/.test(k)) return c.Plin || null;
+    if (/^transf/.test(k)) return c.Transferencia || null;
+    return null;
+  }
+  function filaCopiar(etq, valor) {
+    var d = h("div", "cobro__fila");
+    d.appendChild(h("span", null, etq));
+    d.appendChild(h("b", null, valor));
+    var b = boton(t("copiar"), "cobro__copiar", function () {
+      var hecho = function () { b.textContent = t("copiado"); setTimeout(function () { b.textContent = t("copiar"); }, 1800); };
+      try { navigator.clipboard.writeText(String(valor).replace(/\s/g, "")).then(hecho, hecho); } catch (e) { hecho(); }
+    });
+    d.appendChild(b);
+    return d;
+  }
+  // conCaptura = true en delivery/recojo (se puede subir la captura); en mesa solo se muestran los datos
+  function pintarCobro(w, metodo, conCaptura) {
+    w.textContent = ""; w.className = "";
+    var c = cobroDe(metodo);
+    if (!c) { if (conCaptura) form.captura = ""; return; }
+    w.className = "cobro";
+    if (conCaptura) {   // en mesa el monto es el de la cuenta (se muestra arriba), no el del carrito
+      var monto = h("p", "cobro__monto");
+      monto.appendChild(h("span", null, t("montoPagar") + " "));
+      monto.appendChild(h("b", null, soles(total())));
+      if (form.canal === "delivery") monto.appendChild(h("span", "cobro__nota", " " + t("deliveryAparte")));
+      w.appendChild(monto);
+    }
+    if (c.qr) { var q = h("img", "cobro__qr"); q.src = c.qr; q.alt = "QR " + metodo; q.onerror = function () { q.remove(); }; w.appendChild(q); }
+    if (c.numero) w.appendChild(filaCopiar(t("numeroA"), c.numero));
+    if (c.titular) w.appendChild(h("p", "cobro__tit", t("titular") + " " + c.titular));
+    if (c.texto) w.appendChild(h("p", "cobro__banco", c.texto));
+    if (!conCaptura) { w.appendChild(h("p", "hoja__ayuda", t("pagoMesaQr"))); return; }
+    w.appendChild(h("p", "hoja__ayuda", t("pagoAnticipado")));
+    var lb = h("label", "cobro__subir");
+    var inp = h("input"); inp.type = "file"; inp.accept = "image/*";
+    var txt = h("span", null, form.captura ? "✓ " + t("capturaLista") + " · " + t("cambiarCaptura") : "📎 " + t("subirCaptura"));
+    var prev = h("img", "cobro__prev"); prev.alt = ""; if (form.captura) prev.src = form.captura; else prev.style.display = "none";
+    var est = h("span", "hoja__ayuda", t("capturaAyuda"));
+    inp.addEventListener("change", function () {
+      var file = inp.files && inp.files[0]; if (!file) return;
+      txt.textContent = t("enviando");
+      comprimirImagen(file).then(function (d) {
+        form.captura = d; prev.src = d; prev.style.display = "";
+        txt.textContent = "✓ " + t("capturaLista") + " · " + t("cambiarCaptura");
+      }).catch(function () { form.captura = ""; prev.style.display = "none"; txt.textContent = "📎 " + t("subirCaptura"); est.textContent = t("errCaptura"); });
+    });
+    lb.appendChild(inp); lb.appendChild(txt);
+    w.appendChild(lb); w.appendChild(prev); w.appendChild(est);
+  }
+  // reduce la captura a JPEG liviano (el servidor acepta hasta ~300 KB)
+  function comprimirImagen(file) {
+    return new Promise(function (ok, ko) {
+      var r = new FileReader();
+      r.onerror = ko;
+      r.onload = function () {
+        var img = new Image();
+        img.onerror = ko;
+        img.onload = function () {
+          var lado = 1280, calidad = 0.72, d = "";
+          for (var i = 0; i < 6; i++) {
+            var esc = Math.min(1, lado / Math.max(img.width, img.height));
+            var cv = document.createElement("canvas"); cv.width = Math.round(img.width * esc); cv.height = Math.round(img.height * esc);
+            var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height);
+            d = cv.toDataURL("image/jpeg", calidad);
+            if (d.length < 380000) return ok(d);
+            lado = Math.round(lado * 0.8); calidad = Math.max(0.5, calidad - 0.06);
+          }
+          ko(new Error("grande"));
+        };
+        img.src = r.result;
+      };
+      r.readAsDataURL(file);
+    });
   }
 
   function rucValido(r) {
@@ -626,7 +735,7 @@
       if (form.referencia) L.push("Referencia: " + form.referencia);
       if (form.ubicacion) L.push("Ubicación: " + form.ubicacion);
     }
-    if (form.pago) L.push("Pago: " + form.pago);
+    if (form.pago) L.push("Pago: " + form.pago + (cobroDe(form.pago) ? (form.capturaSubida ? " (ya subí la captura en la web)" : " (te envío la captura por aquí)") : ""));
     L.push("Para: " + (form.programado ? (form.programadoTxt || "las " + form.programado) : "lo antes posible"));
     if (form.notas) L.push("Comentarios: " + form.notas);
     if (form.comprobante) {
@@ -669,6 +778,46 @@
     pintarRepetir();
     abrirHoja(c, t("tuPedido"));
     if (!w) setTimeout(function () { location.href = url; }, 50);
+  }
+
+  /* Con captura: se espera a que el pedido (con la imagen) llegue al panel y recién se ofrece WhatsApp.
+     Si falla la subida, se envía igual sin captura y se pide mandarla por WhatsApp. */
+  function enviarConCaptura(trampa) {
+    if (!CFG.api) { form.captura = ""; enviarPorWhatsapp(trampa); return Promise.resolve({}); }
+    form.ref = codigoCorto();
+    var cuerpo = cuerpoPedido(trampa); cuerpo.captura = form.captura;
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var tm = setTimeout(function () { if (ctrl) ctrl.abort(); }, 40000);
+    return fetch(CFG.api, { method: "POST", body: JSON.stringify(cuerpo), signal: ctrl ? ctrl.signal : undefined })
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        clearTimeout(tm);
+        if (!r || !r.ok) { form.ref = ""; return { error: (r && r.error) || t("errEnvio") }; }
+        form.capturaSubida = true;
+        var url = mensajeWhatsapp(r.numero, r.total, null);
+        var c = h("div", "hoja__cuerpo exito");
+        c.appendChild(h("div", "exito__ic", "✓"));
+        c.appendChild(h("h3", null, t("recibidoPago", { n: r.numero })));
+        c.appendChild(h("p", null, t("recibidoPagoTxt")));
+        c.appendChild(h("p", "hoja__ayuda", t("codigoPedido") + form.ref));
+        var a = h("a", "btn-ped btn-ped--wa", t("abrirWa")); a.href = url; a.target = "_blank"; a.rel = "noopener";
+        c.appendChild(a);
+        c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
+        recordarCliente();
+        guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
+        carrito = []; guardar(); pintarBarra();
+        form.ref = ""; form.ubicacion = ""; form.captura = ""; form.capturaSubida = false;
+        pintarRepetir();
+        abrirHoja(c, t("tuPedido"));
+        return {};
+      })
+      .catch(function () {
+        clearTimeout(tm);
+        // sin conexión estable: se manda el pedido sin la imagen y la captura va por WhatsApp
+        form.captura = ""; form.capturaSubida = false; form.ref = "";
+        enviarPorWhatsapp(trampa);
+        return {};
+      });
   }
 
   function enviarPedido(trampa) {
@@ -770,9 +919,12 @@
     var resumen = h("div"); resumen.appendChild(h("p", "hoja__desc", t("cargando")));
     c.appendChild(resumen);
     var sel = { pago: "", comp: "" };
-    if (CFG.metodosPago && CFG.metodosPago.length) {
+    var metodosMesa = CFG.metodosPagoMesa && CFG.metodosPagoMesa.length ? CFG.metodosPagoMesa : (CFG.metodosPago || []);
+    if (metodosMesa.length) {
       c.appendChild(h("h3", "hoja__sub", t("comoPagar")));
-      c.appendChild(opcionesUI("pagoCuenta", CFG.metodosPago.map(function (m) { return { valor: m, texto: m }; }), false, function (v) { sel.pago = v[0]; }));
+      var cobroMesa = h("div");
+      c.appendChild(opcionesUI("pagoCuenta", metodosMesa.map(function (m) { return { valor: m, texto: m }; }), false, function (v) { sel.pago = v[0]; pintarCobro(cobroMesa, sel.pago, false); }));
+      c.appendChild(cobroMesa);
     }
     var tipos = (CFG.comprobantes || []).filter(function (x) { return x === "Boleta" || x === "Factura"; });
     if (tipos.length) {

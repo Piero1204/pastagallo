@@ -92,6 +92,14 @@ textarea.txt{min-height:72px;resize:vertical}
 .cuenta__tot{font:700 22px var(--serif)}
 .vacio{padding:44px;text-align:center;color:var(--gris);background:#fff;border:1px dashed var(--linea);border-radius:var(--r);font:italic 18px var(--serif)}
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
+.pago{background:#fde8e8;border:2px solid #d9534f;border-radius:8px;padding:8px 10px;font-size:13px;margin:4px 0}.pago--ok{background:#e9f5ec;border:1px solid #b5dcc0;font-weight:600}
+.ficha{margin:6px 0 10px}.ficha .fd{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid #eee;font-size:14px}.ficha .fd>span{color:var(--gris);min-width:150px;font-size:13px}.ficha .fd>b{flex:1}
+.tabla.lc td.cp{cursor:pointer}.tabla.lc td.cp:hover{background:#fff6dc}.grupoTasa{margin:10px 0 4px;font-weight:700}
+.cap{text-align:center;min-height:80px}.cap img{max-width:100%;max-height:70vh;border-radius:8px;border:1px solid #ddd}
+.qrs{display:flex;gap:14px;flex-wrap:wrap}.qrslot{display:flex;flex-direction:column;gap:6px;width:200px;font-size:13px}.qrslot img{width:180px;height:180px;object-fit:contain;border:1px solid #ddd;border-radius:8px;background:#fff}
+.sonOpc label{display:flex;gap:8px;align-items:center;padding:4px 0;font-size:14px}
+.aviso-prueba{background:#fff3cd;border:2px dashed #b8860b;color:#6b4e00;font-weight:700;padding:8px 12px;border-radius:8px;margin:0 0 10px}
+.lineasComp{margin-top:14px}.lc th{font-size:11px}.lc td{padding:4px}.lc .txt{width:100%}.lc-acc{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}.lc-tot{font-size:14px}
 .kpi{background:#fff;border:1px solid var(--linea);border-radius:var(--r);padding:14px}
 .kpi span{display:block;font-size:11px;color:var(--gris);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
 .kpi strong{font:600 30px/1.2 var(--serif);color:var(--vino)}
@@ -262,11 +270,9 @@ tr.oculto td{opacity:.5}
       </div>
       <input class="txt" id="buscaPed" placeholder="Buscar # pedido, cliente, mesa…" style="width:220px">
       <span class="esp"></span>
-      <button class="btn son" id="autoImp" title="Imprime la comanda al confirmar un pedido y al llegar un pedido de mesa">🖨 Impresión automática</button>
+      <button class="btn son" id="autoImp" title="Imprime la comanda apenas llega cada pedido nuevo (mesa, delivery y recojo)">🖨 Impresión automática</button>
       <button class="btn son" id="sonido">🔔 Sonido</button>
-      <select class="txt tonoSel" id="tonoSel" title="Tipo de sonido (al cambiarlo suena de prueba)">
-        <option value="campana">🔔 Campana (recomendado)</option><option value="timbre">🛎 Timbre de mostrador</option><option value="fuerte">📢 Alarma fuerte</option>
-      </select>
+      <button class="btn" id="sonCfg" title="Tipo de sonido, volumen y qué pedidos hacen sonar el parlante">🎚 Sonidos</button>
       <button class="btn" id="recargar">↻ Actualizar</button>
       <span class="nota" id="ultimaAct"></span>
     </div>
@@ -283,13 +289,10 @@ tr.oculto td{opacity:.5}
       <input class="txt" id="compBusca" placeholder="Buscar número, DNI/RUC, cliente…" style="width:230px">
       <span class="esp"></span>
       <button class="btn" id="compCsv">⬇ Descargar para Excel</button>
-      <button class="btn prim" id="compNuevo">＋ Registrar comprobante</button>
+      <button class="btn" id="compSunat">⚙ SUNAT</button>
+      <button class="btn prim" id="compNuevo">＋ Nuevo comprobante</button>
     </div>
-    <ol class="pasosComp">
-      <li>Emite la boleta o factura como siempre en el sistema de SUNAT (usa <b>📋 Copiar datos</b> para no reescribir nada).</li>
-      <li>Pulsa <b>🧾 Emitir</b> en el pedido y anota la serie y el número que te dio SUNAT: queda guardado aquí y ligado al pedido.</li>
-      <li>Envíaselo al cliente por <b>WhatsApp</b> o <b>correo</b> con un toque (el PDF de SUNAT lo adjuntas tú).</li>
-    </ol>
+    <p class="nota" id="compHint" style="margin:6px 0 10px"></p>
     <div class="kpis" id="compKpis"></div>
     <h3 class="cuentas__tit" id="compPendTit"></h3>
     <div class="pend-comp" id="compPend"></div>
@@ -492,8 +495,11 @@ function pintarPub(){
 function marcarPendiente(){ INFO.pendientes = false; pintarPub(); }
 
 /* ---------- sonido ---------- */
-var ctxAudio, TONO = 'campana';
-try { TONO = localStorage.getItem('pg-tono') || 'campana'; } catch(e) {}
+var ctxAudio, TONO = 'suave', VOLUMEN = 0.6, SON_CANAL = { delivery: true, recojo: true, mesa: false, aviso: true };
+try {
+  TONO = localStorage.getItem('pg-tono2') || 'suave'; VOLUMEN = Number(localStorage.getItem('pg-vol')) || 0.6;
+  var sc0 = JSON.parse(localStorage.getItem('pg-soncanal') || 'null'); if (sc0) SON_CANAL = sc0;
+} catch(e) {}
 function audio(){
   ctxAudio = ctxAudio || new (window.AudioContext || window.webkitAudioContext)();
   if (ctxAudio.state === 'suspended') ctxAudio.resume();
@@ -506,13 +512,18 @@ function golpe(c, t0, frec, dur, vol, parciales, onda){
     var o = c.createOscillator(), g = c.createGain();
     o.type = onda || 'sine'; o.frequency.value = frec * pa[0];
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol * pa[1], t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * pa[1] * VOLUMEN), t0 + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + (pa[0] > 2 ? dur * .55 : dur));
     o.connect(g); g.connect(c._sal); o.start(t0); o.stop(t0 + dur + .05);
   });
 }
-var CAMPANA = [[1,1],[2,.45],[3,.22],[4.2,.1]], TIMBRE = [[1,1],[2.76,.5],[5.4,.25],[8.93,.1]];
+var CAMPANA = [[1,1],[2,.45],[3,.22],[4.2,.1]], TIMBRE = [[1,1],[2.76,.5],[5.4,.25],[8.93,.1]], SUAVE = [[1,1],[3.93,.07]];
 var PATRONES = {
+  suave: {     // tipo marimba: dos notas medias, cortas y bajitas; se oye en el local sin molestar a los clientes
+    nuevo: function(c,t){ golpe(c, t, 659, .9, .2, SUAVE); golpe(c, t + .2, 880, 1.2, .2, SUAVE); },
+    tarde: function(c,t){ golpe(c, t, 880, .8, .22, SUAVE); golpe(c, t + .2, 659, .8, .22, SUAVE); golpe(c, t + .4, 880, 1.1, .22, SUAVE); },
+    aviso: function(c,t){ golpe(c, t, 784, 1.2, .22, SUAVE); golpe(c, t + .38, 659, 1.4, .22, SUAVE); }
+  },
   campana: {   // tres notas que suben (do-mi-sol), dos veces: claro, agradable y fácil de reconocer
     nuevo: function(c,t){ [[1047,0],[1319,.16],[1568,.32],[1047,1.1],[1319,1.26],[1568,1.42]].forEach(function(n){ golpe(c, t + n[1], n[0], 1.2, .35, CAMPANA); }); },
     tarde: function(c,t){ for (var i = 0; i < 4; i++) { golpe(c, t + i*.42, 880, .5, .4, CAMPANA, 'triangle'); golpe(c, t + i*.42 + .21, 698, .5, .4, CAMPANA, 'triangle'); } },
@@ -531,16 +542,36 @@ var PATRONES = {
 };
 function sonar(tipo, forzar){
   if (!sonido && !forzar) return;
-  try { var c = audio(); (PATRONES[TONO] || PATRONES.campana)[tipo](c, c.currentTime + .05); } catch(e) {}
+  try { var c = audio(); (PATRONES[TONO] || PATRONES.suave)[tipo](c, c.currentTime + .05); } catch(e) {}
 }
 function sonidoNuevo(){ sonar('nuevo'); }
 function sonidoTarde(){ sonar('tarde'); }
-function sonidoAviso(){ sonar('aviso'); }
-$('#tonoSel').value = PATRONES[TONO] ? TONO : 'campana';
-$('#tonoSel').addEventListener('change', function(){
-  TONO = this.value; try { localStorage.setItem('pg-tono', TONO); } catch(e) {}
-  sonar('nuevo', true);
-});
+function sonidoAviso(){ if (SON_CANAL.aviso !== false) sonar('aviso'); }
+/* qué pedidos hacen sonar el parlante (se guarda en esta computadora) */
+function suenaCanal(p){ return SON_CANAL[p.canal === 'mesa' ? 'mesa' : p.canal === 'recojo' ? 'recojo' : 'delivery'] !== false; }
+function guardarSon(){ try { localStorage.setItem('pg-tono2', TONO); localStorage.setItem('pg-vol', String(VOLUMEN)); localStorage.setItem('pg-soncanal', JSON.stringify(SON_CANAL)); } catch(e) {} }
+$('#sonCfg').addEventListener('click', configSonido);
+function configSonido(){
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'Sonidos del panel'}));
+  caja.appendChild(el('p', {class:'nota', text:'Se guarda en esta computadora. Cada cambio suena de prueba por el parlante.'}));
+  var f = el('div', {class:'form'});
+  f.appendChild(campo('Tipo de sonido', 'tono', PATRONES[TONO] ? TONO : 'suave', 'select', {opciones:[['suave','🎵 Suave (recomendado con clientes en el salón)'],['campana','🔔 Campana'],['timbre','🛎 Timbre de mostrador'],['fuerte','📢 Alarma fuerte (cocina con mucho ruido)']]}));
+  f.appendChild(campo('Volumen', 'vol', VOLUMEN >= 1 ? '1' : VOLUMEN <= 0.3 ? '0.3' : '0.6', 'select', {opciones:[['0.3','Bajo'],['0.6','Medio'],['1','Alto']]}));
+  caja.appendChild(f);
+  var op = el('div', {class:'sonOpc'}, [el('b', {text:'¿Qué hace sonar el parlante?'})]);
+  [['delivery','🛵 Pedidos de delivery'],['recojo','🛍 Pedidos para recojo'],['mesa','🍽 Pedidos del salón (mesas)'],['aviso','🙋 Mesas que llaman al mozo o piden la cuenta']].forEach(function(o){
+    var ch = el('input', {type:'checkbox'}); ch.checked = SON_CANAL[o[0]] !== false;
+    ch.addEventListener('change', function(){ SON_CANAL[o[0]] = this.checked; guardarSon(); if (this.checked) sonar(o[0] === 'aviso' ? 'aviso' : 'nuevo', true); });
+    op.appendChild(el('label', null, [ch, o[1]]));
+  });
+  op.appendChild(el('p', {class:'nota', text:'Lo que no suena igual aparece en pantalla y se imprime. Los pedidos atrasados vuelven a sonar cada 2 minutos (solo los que tienen sonido).'}));
+  caja.appendChild(op);
+  f.querySelector('[name=tono]').addEventListener('change', function(){ TONO = this.value; guardarSon(); sonar('nuevo', true); });
+  f.querySelector('[name=vol]').addEventListener('change', function(){ VOLUMEN = Number(this.value); guardarSon(); sonar('nuevo', true); });
+  caja.appendChild(el('div', {class:'pie'}, [el('button', {class:'btn', type:'button', text:'▶ Probar', onclick:function(){ sonar('nuevo', true); }}), el('span', {class:'esp'}), el('button', {class:'btn prim', type:'button', text:'Listo', onclick: cerrarModal})]));
+  $('#modal').classList.add('on');
+}
 function pintarSonido(){
   $('#sonido').classList.toggle('on', sonido); $('#sonido').textContent = sonido ? '🔔 Sonido activado' : '🔕 Sonido apagado';
   $('#sonidoAviso').classList.toggle('on', !sonido);
@@ -575,6 +606,8 @@ function minutosDe(p){
   return Math.max(0, Math.floor((ahora() - base) / 60000));
 }
 function esTarde(p){ return ACTIVOS.indexOf(p.estado) >= 0 && !!p.ts && minutosDe(p) >= (INFO.minutosAlerta || 45); }
+/* número que se muestra: el del día (nd); el interno (numero) solo sirve de clave */
+function nro(p){ return p && p.nd != null && p.nd !== '' ? p.nd : (p ? p.numero : ''); }
 function hace(m){ if (m < 1) return 'recién'; if (m < 60) return 'hace ' + m + ' min'; return 'hace ' + Math.floor(m/60) + ' h ' + (m%60) + ' min'; }
 
 function cargarPedidos(){
@@ -592,11 +625,12 @@ function cargarPedidos(){
       toast('🙋 Mesa ' + avNuevos[0].mesa + ': ' + avNuevos[0].texto.toLowerCase() + (avNuevos[0].detalle ? ' (' + avNuevos[0].detalle + ')' : ''));
     }
     pintarPedidos(primera ? [] : nuevos.map(function(p){ return p.numero; }));
-    if (!primera && autoImp) nuevos.filter(function(p){ return p.canal === 'mesa'; }).forEach(imprimirComanda);
+    // delivery/recojo con pago por verificar: la comanda sale recién cuando se confirma el pago
+    if (!primera && autoImp) nuevos.forEach(function(p){ if (!IMPRESOS[p.numero] && p.pagoEstado !== 'Por verificar') imprimirComanda(p); });
     if (!primera && nuevos.length) {
-      sonidoNuevo(); document.title = '(' + nuevos.length + ') Nuevo pedido';
+      if (nuevos.some(suenaCanal)) sonidoNuevo(); document.title = '(' + nuevos.length + ') Nuevo pedido';
       var n0 = nuevos[0];
-      toast(n0.canal === 'mesa' ? 'Nuevo pedido · Mesa ' + n0.mesa + ' (#' + n0.numero + ')' : 'Nuevo pedido para llevar #' + n0.numero + ' (' + (n0.canal === 'recojo' ? 'recojo' : 'delivery') + ')');
+      toast(n0.canal === 'mesa' ? 'Nuevo pedido · Mesa ' + n0.mesa + ' (#' + nro(n0) + ')' : 'Nuevo pedido para llevar #' + nro(n0) + ' (' + (n0.canal === 'recojo' ? 'recojo' : 'delivery') + ')');
     }
     $('#ultimaAct').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
   }).catch(error);
@@ -656,7 +690,7 @@ function pintarPedidos(destacar){
   pintarResumen(base);
   var q = norm($('#buscaPed').value);
   var lista = base.filter(function(p){
-    if (q && norm([p.numero, p.nombre, p.telefono, p.mesa ? 'mesa ' + p.mesa : '', p.direccion, p.detalle].join(' ')).indexOf(q) < 0) return false;
+    if (q && norm([p.numero, '#' + nro(p), p.nombre, p.telefono, p.mesa ? 'mesa ' + p.mesa : '', p.direccion, p.detalle].join(' ')).indexOf(q) < 0) return false;
     if (RES === 'nuevo') return p.estado === 'Nuevo';
     if (RES === 'cocina') return p.estado === 'Confirmado' || p.estado === 'En preparación';
     if (RES === 'listo') return p.estado === 'Listo' || p.estado === 'En camino';
@@ -748,7 +782,7 @@ function tarjeta(p, flash){
     el('div', {class:'ped__barra'}),
     el('div', {class:'ped__in'}, [
       el('div', {class:'ped__cab'}, [
-        el('span', {class:'ped__num', text:'#' + p.numero}),
+        el('span', {class:'ped__num', text:'#' + nro(p)}),
         el('span', {class:'chip c-' + p.canal, text: canalTxt}),
         el('span', {class:'chip reloj', title:'Llegó: ' + p.fecha, text: '⏱ ' + (activo ? hace(m) : p.hora)})
       ]),
@@ -759,7 +793,8 @@ function tarjeta(p, flash){
       p.nombre ? el('div', {class:'ped__dato'}, [el('b', {text:'Cliente: '}), p.nombre]) : null,
       p.telefono ? el('div', {class:'ped__dato'}, [el('b', {text:'Celular: '}), el('a', {href:'https://wa.me/' + telWa(p.telefono), target:'_blank', rel:'noopener', text:p.telefono})]) : null,
       p.direccion ? el('div', {class:'ped__dato'}, [el('b', {text:'Dirección: '}), p.direccion + (p.referencia ? ' (' + p.referencia + ')' : '')]) : null,
-      p.pago ? el('div', {class:'ped__dato'}, [el('b', {text:'Pago: '}), p.pago]) : null,
+      p.pago && !p.pagoEstado ? el('div', {class:'ped__dato'}, [el('b', {text:'Pago: '}), p.pago]) : null,
+      p.pagoEstado ? bloquePago(p) : null,
       p.ref ? el('div', {class:'ped__dato'}, [el('b', {text:'Código del cliente: '}), p.ref]) : null,
       p.comprobante ? bloqueComp(p) : null,
       el('div', {class:'ped__tot', text: soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '')}),
@@ -776,23 +811,57 @@ function bloqueComp(p){
     el('div', {style:'display:flex;gap:6px;margin-top:4px;flex-wrap:wrap'}, emitido ? [
       el('button', {class:'btn peq', text:'Ver en Comprobantes', onclick:function(){ irA('comp'); }})
     ] : [
-      el('button', {class:'btn peq', text:'📋 Copiar datos', onclick:function(){ copiar(textoSunat(p), 'Datos copiados: pégalos en el sistema de SUNAT'); }}),
-      el('button', {class:'btn peq ok', text:'🧾 Emitir', onclick:function(){ emitirComp(p); }})
+      el('button', {class:'btn peq', text:'👁 Ver datos', onclick:function(){ verDatosComp(p); }}),
+      modoReal() ? el('button', {class:'btn peq ok', text:'🧾 Emitir', onclick:function(){ emitirComp(p); }}) : null
     ])
   ]);
+}
+
+/* ---------- pago anticipado (delivery y recojo) ---------- */
+function bloquePago(p){
+  if (p.pagoEstado === 'Confirmado') return el('div', {class:'pago pago--ok', text:'💳 Pago confirmado · ' + p.pago});
+  return el('div', {class:'pago'}, [
+    el('div', null, [el('b', {text:'💳 PAGO POR VERIFICAR'}), ' · ' + p.pago + ' · ' + soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '')]),
+    el('div', {class:'nota', text: p.captura ? 'El cliente subió la captura. Revisa en la app del banco que el dinero llegó antes de confirmar.' : 'No subió captura en la web: la enviará por WhatsApp. Revisa en la app del banco que el dinero llegó.'}),
+    el('div', {style:'display:flex;gap:6px;margin-top:4px;flex-wrap:wrap'}, [
+      p.captura ? el('button', {class:'btn peq', text:'👁 Ver captura', onclick:function(){ verCaptura(p); }}) : null,
+      el('button', {class:'btn peq ok', text:'✓ Pago recibido', onclick:function(){ confirmarPagoP(p); }})
+    ])
+  ]);
+}
+function confirmarPagoP(p){
+  if (!confirm('¿Confirmas que el pago del pedido #' + nro(p) + ' (' + p.pago + ', ' + soles(p.total) + ') YA llegó a la cuenta?\n\nAl confirmar se imprime la comanda y el pedido pasa a cocina.')) return;
+  run('confirmarPago', p.numero).then(function(){
+    toast('Pago confirmado · pedido #' + nro(p));
+    if (autoImp && !IMPRESOS[p.numero]) imprimirComanda(p);
+    delete AVISADOS[p.numero]; cargarPedidos();
+  }).catch(error);
+}
+function verCaptura(p){
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'Captura del pago · pedido #' + nro(p)}));
+  caja.appendChild(el('p', {class:'nota', text: p.pago + ' · ' + soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '') + (p.nombre ? ' · ' + p.nombre : '') + (p.telefono ? ' · ' + p.telefono : '')}));
+  var w = el('div', {class:'cap', text:'Cargando la captura…'}); caja.appendChild(w);
+  caja.appendChild(el('div', {class:'pie'}, [el('span', {class:'esp'}), el('button', {class:'btn', type:'button', text:'Cerrar', onclick: cerrarModal}),
+    p.pagoEstado === 'Por verificar' ? el('button', {class:'btn prim', type:'button', text:'✓ Pago recibido', onclick:function(){ cerrarModal(); confirmarPagoP(p); }}) : null]));
+  $('#modal').classList.add('on');
+  run('verCaptura', p.captura).then(function(src){ w.textContent = ''; w.appendChild(el('img', {src: src, alt:'Captura del pago'})); })
+    .catch(function(e){ w.textContent = 'No se pudo cargar la captura: ' + (e && e.message || e); });
 }
 
 function acciones(p){
   var w = el('div', {class:'ped__acc'});
   (SIG[p.estado] || []).forEach(function(s){
     if (s === 'En camino' && p.canal !== 'delivery') return;
+    if (s === 'Confirmado' && p.pagoEstado === 'Por verificar') return;   // se confirma con "✓ Pago recibido"
     w.appendChild(el('button', {class:'btn ' + (s === 'Confirmado' ? 'ok' : 'prim') + ' peq', text: s === 'Confirmado' ? '✓ Confirmar' : '→ ' + s, onclick: function(){ cambiar(p, s); }}));
   });
-  if (p.estado !== 'Cancelado' && p.estado !== 'Entregado') w.appendChild(el('button', {class:'btn mal peq', text:'Cancelar', onclick: function(){ if (confirm('¿Cancelar el pedido #' + p.numero + '?')) cambiar(p, 'Cancelado'); }}));
+  if (p.estado !== 'Cancelado' && p.estado !== 'Entregado') w.appendChild(el('button', {class:'btn mal peq', text:'Cancelar', onclick: function(){ if (confirm('¿Cancelar el pedido #' + nro(p) + '?')) cambiar(p, 'Cancelado'); }}));
   w.appendChild(el('button', {class:'btn peq', text:'🖨 Comanda', onclick: function(){ imprimirComanda(p); }}));
+  if (p.compEstado !== 'Emitido') w.appendChild(el('button', {class:'btn peq', title:'Eliminar del todo (para pedidos de prueba)', text:'🗑', onclick: function(){ eliminar(p); }}));
   if (!p.comprobante && p.estado !== 'Cancelado') w.appendChild(el('button', {class:'btn peq', title:'Registrar una boleta o factura para este pedido', text:'🧾', onclick: function(){ emitirComp(p); }}));
   if (p.telefono && (p.estado === 'Nuevo' || p.estado === 'Confirmado')) {
-    var msg = 'Hola ' + (p.nombre||'') + ', somos Pasta Gallo. Confirmamos tu pedido #' + p.numero + ' por ' + soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '') + '. ¡Gracias!';
+    var msg = 'Hola ' + (p.nombre||'') + ', somos Pasta Gallo. Confirmamos tu pedido #' + nro(p) + ' por ' + soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '') + '. ¡Gracias!';
     w.appendChild(el('a', {class:'btn peq', href:'https://wa.me/' + telWa(p.telefono) + '?text=' + encodeURIComponent(msg), target:'_blank', rel:'noopener', text:'WhatsApp'}));
   }
   var sel = el('select', {title:'Cambiar a cualquier estado', onchange: function(){ if (this.value) cambiar(p, this.value); }}, [el('option', {value:'', text:'Estado…'})]);
@@ -802,15 +871,21 @@ function acciones(p){
 }
 
 function cambiar(p, estado){
-  if (estado === 'Confirmado' && autoImp && p.canal !== 'mesa') imprimirComanda(p);
-  run('cambiarEstado', p.numero, estado).then(function(){ toast('Pedido #' + p.numero + ': ' + estado); document.title = 'Panel · Pasta Gallo'; delete AVISADOS[p.numero]; cargarPedidos(); }).catch(error);
+  if (estado === 'Confirmado' && p.pagoEstado === 'Por verificar') { confirmarPagoP(p); return; }
+  if (estado === 'Confirmado' && autoImp && !IMPRESOS[p.numero]) imprimirComanda(p);
+  run('cambiarEstado', p.numero, estado).then(function(){ toast('Pedido #' + nro(p) + ': ' + estado); document.title = 'Panel · Pasta Gallo'; delete AVISADOS[p.numero]; cargarPedidos(); }).catch(error);
+}
+
+function eliminar(p){
+  if (!confirm('¿ELIMINAR del todo el pedido #' + nro(p) + '?\n\nÚsalo solo para pedidos de prueba: se borra de la hoja, de las ventas y del historial, y no se puede deshacer.')) return;
+  run('eliminarPedido', p.numero).then(function(){ toast('Pedido #' + nro(p) + ' eliminado'); cargarPedidos(); }).catch(error);
 }
 
 /* ---------- comanda para impresora térmica 80 mm (hoja 80 × 210 mm, letra grande) ----------
    Para que imprima sin preguntar: abrir el panel en Chrome con la opción --kiosk-printing
    y la térmica como impresora predeterminada (ver instrucciones de Piero). */
 var colaImpresion = [], imprimiendo = false;
-function imprimirComanda(p){ colaImpresion.push(p); siguienteImpresion(); }
+function imprimirComanda(p){ marcarImpreso(p.numero); colaImpresion.push(p); siguienteImpresion(); }
 function siguienteImpresion(){
   if (imprimiendo || !colaImpresion.length) return;
   imprimiendo = true;
@@ -828,7 +903,7 @@ function siguienteImpresion(){
   var add = function(tag, t, cls){ var e = d.createElement(tag); e.textContent = t; if (cls) e.className = cls; b.appendChild(e); return e; };
   add('div', 'PASTA GALLO', 'c p');
   add('h1', p.canal === 'mesa' ? 'MESA ' + p.mesa : (p.canal === 'recojo' ? 'RECOJO' : 'DELIVERY'));
-  add('h2', 'Pedido #' + p.numero + (p.ref ? ' · ' + p.ref : ''));
+  add('h2', 'Pedido #' + nro(p) + (p.ref ? ' · ' + p.ref : ''));
   add('div', p.fecha, 'c');
   if (p.programado) add('div', '>> PARA LAS ' + p.programado + ' <<', 'c g');
   b.appendChild(d.createElement('hr'));
@@ -851,6 +926,10 @@ function siguienteImpresion(){
   }, 120);
 }
 var autoImp = true;
+/* pedidos ya impresos en este equipo (para no imprimir dos veces la misma comanda) */
+var IMPRESOS = {};
+try { JSON.parse(localStorage.getItem('pg-impresos') || '[]').forEach(function(n){ IMPRESOS[n] = true; }); } catch(e) {}
+function marcarImpreso(n){ IMPRESOS[n] = true; try { localStorage.setItem('pg-impresos', JSON.stringify(Object.keys(IMPRESOS).slice(-300))); } catch(e) {} }
 try { autoImp = localStorage.getItem('pg-autoimp') !== '0'; } catch(e) {}
 function pintarAutoImp(){ var b = $('#autoImp'); if (b) { b.classList.toggle('on', autoImp); b.textContent = autoImp ? '🖨 Impresión automática' : '🖨 Impresión manual'; } }
 
@@ -868,14 +947,15 @@ function revisarAtrasos(){
   var tardes = PEDIDOS.filter(esTarde), nuevosSin = PEDIDOS.filter(function(p){ return p.estado === 'Nuevo'; });
   var recien = tardes.filter(function(p){ return !AVISADOS[p.numero]; });
   recien.forEach(function(p){ AVISADOS[p.numero] = true; });
+  var tardesS = tardes.filter(suenaCanal), nuevosS = nuevosSin.filter(suenaCanal);
   if (recien.length) {
-    sonidoTarde(); ultimoRecordatorio = Date.now();
-    toast('⚠ Pedido #' + recien[0].numero + ' lleva más de ' + (INFO.minutosAlerta||45) + ' minutos', true);
-  } else if ((tardes.length || nuevosSin.length) && Date.now() - ultimoRecordatorio > 120000) {
+    if (recien.some(suenaCanal)) sonidoTarde(); ultimoRecordatorio = Date.now();
+    toast('⚠ Pedido #' + nro(recien[0]) + ' lleva más de ' + (INFO.minutosAlerta||45) + ' minutos', true);
+  } else if ((tardesS.length || nuevosS.length) && Date.now() - ultimoRecordatorio > 120000) {
     ultimoRecordatorio = Date.now();       // recordatorio cada 2 minutos mientras haya atrasados o sin confirmar
-    if (tardes.length) sonidoTarde(); else sonidoNuevo();
+    if (tardesS.length) sonidoTarde(); else sonidoNuevo();
   }
-  if (AVISOS.length && Date.now() - ultimoAvisoSon > 60000) { ultimoAvisoSon = Date.now(); sonidoAviso(); }
+  if (AVISOS.length && Date.now() - ultimoAvisoSon > 60000) { ultimoAvisoSon = Date.now(); sonidoAviso(); }   // respeta el ajuste de sonido de llamadas
   document.title = AVISOS.length ? '🙋 ' + AVISOS.length + ' mesa(s) llamando · Pasta Gallo' : tardes.length ? '⚠ ' + tardes.length + ' atrasado(s) · Pasta Gallo' : (nuevosSin.length ? '(' + nuevosSin.length + ') Nuevo pedido' : 'Panel · Pasta Gallo');
 }
 setInterval(revisarAtrasos, 20000);
@@ -1418,6 +1498,7 @@ $('#compPer').addEventListener('click', function(e){ var b = e.target.closest('b
 $('#compTipo').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; compTipo = b.dataset.t; this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); }); pintarComp(); });
 $('#compBusca').addEventListener('input', function(){ pintarComp(); });
 $('#compNuevo').addEventListener('click', function(){ emitirComp({ comprobante:'Boleta' }); });
+$('#compSunat').addEventListener('click', function(){ (COMP.hoy ? Promise.resolve() : run('listarComprobantes').then(function(r){ COMP = r; })).then(configSunat).catch(error); });
 $('#compCsv').addEventListener('click', function(){
   var filas = [['Fecha','Tipo','Serie','Numero','DNI/RUC','Cliente','Correo','WhatsApp','Total','Pedido','Estado','Enviado','Notas']];
   compFiltrados().forEach(function(c){ filas.push([c.fecha, c.tipo, c.serie, c.numero, c.doc, c.razon, c.correo, c.whatsapp, c.total.toFixed(2), c.pedido, c.estado, c.enviado, c.notas]); });
@@ -1442,24 +1523,27 @@ function compFiltrados(){
   });
 }
 function pintarComp(){
-  var lista = compFiltrados(), validos = lista.filter(function(c){ return c.estado !== 'Anulado'; });
+  var lista = compFiltrados(), validos = lista.filter(function(c){ return c.estado !== 'Anulado' && c.estado !== 'Prueba'; });
+  var SM = (COMP.sunat || {}).modo || 'apagado';
+  $('#compHint').textContent = SM === 'produccion' ? 'Emisión electrónica ACTIVA: 🧾 Emitir envía la boleta o factura directo a SUNAT, con PDF e impresión.' :
+    'Por ahora las boletas y facturas se emiten en SOL (SUNAT). 👁 Ver datos muestra lo que dio el cliente y cada producto con su valor sin IGV, listo para pasarlo a SOL. Después anota ahí la serie y el número.';
   var k = $('#compKpis'); k.textContent = '';
   [['Boletas', validos.filter(function(c){ return c.tipo === 'Boleta'; }).length],
    ['Facturas', validos.filter(function(c){ return c.tipo === 'Factura'; }).length],
    ['Total emitido', soles(validos.reduce(function(a,c){ return a + c.total; }, 0))],
-   ['Anulados', lista.length - validos.length],
+   ['Anulados', lista.filter(function(c){ return c.estado === 'Anulado'; }).length],
    ['Por emitir', COMP.pendientes.length]].forEach(function(x){ k.appendChild(el('div', {class:'kpi'}, [el('span', {text:x[0]}), el('strong', {text:String(x[1])})])); });
   $('#cComp').textContent = COMP.pendientes.length || '';
   var pd = $('#compPend'); pd.textContent = '';
   $('#compPendTit').textContent = COMP.pendientes.length ? 'Pedidos que pidieron comprobante y falta emitir (' + COMP.pendientes.length + ')' : 'No hay comprobantes por emitir ✓';
   COMP.pendientes.forEach(function(p){
     pd.appendChild(el('div', {class:'pc'}, [
-      el('div', null, [el('b', {text:'#' + p.numero}), ' · ' + (p.canal === 'mesa' ? 'Mesa ' + p.mesa : p.canal) + ' · ' + p.fecha]),
+      el('div', null, [el('b', {text:'#' + nro(p)}), ' · ' + (p.canal === 'mesa' ? 'Mesa ' + p.mesa : p.canal) + ' · ' + p.fecha]),
       el('div', null, [el('strong', {text:p.comprobante + ': '}), p.doc + ' — ' + p.razon]),
       el('div', {class:'nota', text: p.correo + (p.telefono ? ' · ' + p.telefono : '')}),
       el('div', {style:'display:flex;gap:6px;align-items:center;flex-wrap:wrap'}, [el('strong', {text:soles(p.total)}), el('span', {class:'esp'}),
-        el('button', {class:'btn peq', text:'📋 Copiar datos', onclick:function(){ copiar(textoSunat(p), 'Datos copiados: pégalos en el sistema de SUNAT'); }}),
-        el('button', {class:'btn peq ok', text:'🧾 Emitir', onclick:function(){ emitirComp(p); }})])
+        el('button', {class:'btn peq', text:'👁 Ver datos', onclick:function(){ verDatosComp(p); }}),
+        modoReal() ? el('button', {class:'btn peq ok', text:'🧾 Emitir', onclick:function(){ emitirComp(p); }}) : null])
     ]));
   });
   var t = $('#compT'); t.textContent = '';
@@ -1468,15 +1552,17 @@ function pintarComp(){
     var anulado = c.estado === 'Anulado';
     t.appendChild(el('tr', {class: anulado ? 'anulado' : ''}, [
       el('td', {text:c.fecha}),
-      el('td', null, [el('span', {class:'cod', text:c.codigo}), el('br'), el('span', {class:'nota', text:c.tipo + (anulado ? ' · ANULADO' : '')})]),
+      el('td', null, [el('a', {class:'cod', href:'#', title:'Ver detalle', text:c.codigo, onclick:function(e){ e.preventDefault(); verComprobante(c); }}), el('br'), el('span', {class:'nota', text:c.tipo + (anulado ? ' · ANULADO' : '') + (c.estado === 'Prueba' ? ' · PRUEBA' : '') + (c.electronico ? ' · panel' : ' · SOL')})]),
       el('td', null, [c.razon || '—', el('br'), el('span', {class:'nota', text:c.doc || 'sin documento'})]),
       el('td', {class:'cod', text:soles(c.total)}),
       el('td', {text: c.pedido ? (/^\d+$/.test(c.pedido) ? '#' + c.pedido : c.pedido) : '—'}),
       el('td', {class:'nota', text:c.enviado || '—'}),
       el('td', null, [el('div', {class:'acc'}, [
+        c.electronico ? el('button', {class:'btn peq', text:'🖨', title:'Imprimir', onclick:function(){ imprimirComp(c); }}) : null,
+        c.electronico ? el('button', {class:'btn peq', text:'PDF', title:'Descargar PDF', onclick:function(){ descargarPdfComp(c); }}) : null,
         c.whatsapp && !anulado ? el('button', {class:'btn peq', text:'WhatsApp', onclick:function(){ enviarCompWa(c); }}) : null,
         c.correo && !anulado ? el('button', {class:'btn peq', text:'Correo', onclick:function(){ enviarCompCorreo(c); }}) : null,
-        el('button', {class:'btn peq', text:'📋', title:'Copiar datos', onclick:function(){ copiar(c.tipo + ' ' + c.codigo + '\n' + (c.doc ? c.doc + ' · ' : '') + c.razon + '\nTotal ' + soles(c.total), 'Copiado'); }}),
+        el('button', {class:'btn peq', text:'👁 Ver', title:'Ver todos los datos del comprobante', onclick:function(){ verComprobante(c); }}),
         el('button', {class:'btn peq ' + (anulado ? '' : 'mal'), text: anulado ? 'Reactivar' : 'Anular', onclick:function(){
           if (!anulado && !confirm('¿Marcar ' + c.codigo + ' como ANULADO en este registro?\n\nOjo: esto no lo anula ante SUNAT. La anulación (comunicación de baja o nota de crédito) se hace en el sistema de SUNAT.')) return;
           run('actualizarComprobante', c.id, {estado: anulado ? 'Emitido' : 'Anulado'}).then(function(r){ COMP = r; pintarComp(); }).catch(error);
@@ -1484,6 +1570,122 @@ function pintarComp(){
       ])])
     ]));
   });
+}
+/* ---------- 👁 Ver datos: todo lo que dio el cliente y el detalle para SOL ---------- */
+function modoReal(){ return ((COMP && COMP.sunat) || {}).modo === 'produccion'; }
+function verDatosComp(p){
+  p = p || {};
+  var ref = p.numero ? { numero: p.numero } : (/^Mesa /.test(p.pedidoRef || '') ? { mesa: String(p.pedidoRef).replace(/^Mesa /, '') } : null);
+  (ref ? run('datosEmision', ref) : Promise.resolve({ lineas: [] })).then(function(d){
+    d = d || {}; var cli = d.cliente || {};
+    var tRest = Number((d.sunat || COMP.sunat || {}).tasaRestaurante) || 10.5;
+    var L = (d.lineas || []).map(function(l){ return { descripcion: l.descripcion, cantidad: Number(l.cantidad), precio: Number(l.precio), tasa: Number(l.tasa) }; });
+    if (!L.length && Number(p.total) > 0) L = [{ descripcion: 'POR CONSUMO', cantidad: 1, precio: Number(p.total), tasa: tRest }];
+    var tipo = (p.comprobante || cli.comprobante) === 'Factura' ? 'Factura' : 'Boleta';
+    fichaComp({
+      titulo: tipo + ' por emitir · ' + (p.numero ? 'pedido #' + nro(p) : (p.pedidoRef || '')),
+      tipo: tipo, doc: p.doc || cli.doc || '', razon: p.razon || cli.razon || p.nombre || '',
+      correo: p.correo || cli.correo || '', whatsapp: p.telefono || cli.whatsapp || '', direccion: p.direccion || '',
+      pago: p.pago || '', fecha: p.fecha || '', porEmitir: true, lineas: L, sinDetalle: !(d.lineas || []).length, detalleTxt: p.detalle || ''
+    }, [
+      el('button', {class:'btn', type:'button', text:'✓ Ya lo emití en SOL: anotar serie y número', onclick:function(){
+        formularioComp(p, { lineas: L, sunat: { modo: 'apagado', tasaRestaurante: tRest }, cliente: cli }); }}),
+      modoReal() ? el('button', {class:'btn prim', type:'button', text:'🧾 Emitir en SUNAT', onclick:function(){ emitirComp(p); }}) : null
+    ]);
+  }).catch(error);
+}
+function verComprobante(c){
+  var L = [];
+  try { L = JSON.parse(c.itemsJson || '[]').map(function(x){ return { descripcion: x.d, cantidad: Number(x.c), precio: Number(x.p), tasa: Number(x.t) }; }); } catch(e) { L = []; }
+  fichaComp({
+    titulo: c.tipo + ' ' + c.codigo + (c.estado === 'Anulado' ? ' · ANULADO' : c.estado === 'Prueba' ? ' · PRUEBA' : ''),
+    tipo: c.tipo, doc: c.doc, razon: c.razon, correo: c.correo, whatsapp: c.whatsapp, fecha: c.fecha,
+    pedido: c.pedido ? (/^\d+$/.test(c.pedido) ? 'Pedido #' + c.pedido : c.pedido) : '',
+    lineas: L, sinDetalle: !L.length, detalleTxt: c.detalle, total: c.total, sunatTxt: c.sunat, enviado: c.enviado, notas: c.notas
+  }, [
+    c.electronico ? el('button', {class:'btn', type:'button', text:'🖨 Imprimir', onclick:function(){ imprimirComp(c); }}) : null,
+    c.electronico ? el('button', {class:'btn', type:'button', text:'PDF', onclick:function(){ descargarPdfComp(c); }}) : null
+  ]);
+}
+/* o: {titulo, tipo, doc, razon, correo, whatsapp, direccion, pago, fecha, pedido, lineas:[{descripcion,cantidad,precio,tasa}], sinDetalle, detalleTxt, total} */
+function fichaComp(o, extras){
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text: o.titulo}));
+  var doc = String(o.doc || ''), esRuc = doc.length === 11;
+  var fd = function(lbl, val, copiable){
+    if (!val) return null;
+    return el('div', {class:'fd'}, [el('span', {text:lbl}), el('b', {text:String(val)}),
+      copiable ? el('button', {class:'btn peq', type:'button', text:'📋', title:'Copiar', onclick:function(){ copiar(String(val), lbl + ' copiado'); }}) : null]);
+  };
+  var datos = el('div', {class:'ficha'}, [
+    fd(esRuc ? 'RUC' : 'DNI', doc || (o.tipo === 'Factura' ? '' : 'Sin documento (boleta simple)'), !!doc),
+    fd(o.tipo === 'Factura' ? 'Razón social' : 'Nombre', o.razon, true)
+  ]);
+  caja.appendChild(datos);
+
+  /* productos: valor unitario SIN IGV (lo que se escribe en SOL) agrupado por tasa: SUNAT pide una sola tasa por comprobante */
+  var L = (o.lineas || []).filter(function(l){ return Number(l.cantidad) > 0 && Number(l.precio) > 0; });
+  var tasas = []; L.forEach(function(l){ if (tasas.indexOf(l.tasa) < 0) tasas.push(l.tasa); });
+  var totG = { gravada: 0, igv: 0, total: 0 };
+  caja.appendChild(el('h3', {text:'Productos', style:'margin:12px 0 2px'}));
+  caja.appendChild(el('p', {class:'nota', text:'En SOL escribe el VALOR UNITARIO SIN IGV (clic en el número para copiarlo). SUNAT calcula el IGV y debe llegar al mismo importe.'}));
+  if (tasas.length > 1 && o.porEmitir) caja.appendChild(el('p', {class:'aviso-prueba', text:'Tiene productos con IGV distinto: SUNAT pide un comprobante por cada tasa. Emite uno por cada grupo de abajo.'}));
+  tasas.forEach(function(t, gi){
+    var Lt = L.filter(function(l){ return l.tasa === t; }), tot = calcLineas(Lt);
+    totG.gravada += tot.gravada; totG.igv += tot.igv; totG.total += tot.total;
+    if (tasas.length > 1) caja.appendChild(el('div', {class:'grupoTasa', text:(o.porEmitir ? 'Comprobante ' + (gi + 1) + ' · ' : '') + 'IGV ' + t + '%'}));
+    var tb = el('table', {class:'tabla lc'});
+    tb.appendChild(el('tr', null, ['Cant.', 'Descripción', 'V. unit. sin IGV', 'IGV', 'Importe (con IGV)'].map(function(x){ return el('th', {text:x}); })));
+    Lt.forEach(function(l){
+      var vu = valorUnitSol(Number(l.cantidad), Number(l.precio), Number(l.tasa));
+      tb.appendChild(el('tr', null, [
+        el('td', {class:'cod', text:String(l.cantidad)}),
+        el('td', {class:'cp', title:'Copiar descripción', text:String(l.descripcion || '').toUpperCase(), onclick:function(){ copiar(String(l.descripcion || '').toUpperCase(), 'Descripción copiada'); }}),
+        el('td', {class:'cod cp', title:'Copiar valor sin IGV', text:vu, onclick:function(){ copiar(vu, 'Valor sin IGV copiado: ' + vu); }}),
+        el('td', {text:l.tasa + '%'}),
+        el('td', {class:'cod', text:soles(l._imp)})
+      ]));
+    });
+    caja.appendChild(tb);
+    caja.appendChild(el('div', {class:'lc-acc'}, [el('span', {class:'esp'}),
+      el('span', {class:'lc-tot', text:'Op. gravada ' + soles(tot.gravada) + ' · IGV ' + soles(tot.igv) + ' · '}), el('b', {class:'lc-tot', text:'Total ' + soles(tot.total)})]));
+  });
+  if (o.sinDetalle && o.detalleTxt) caja.appendChild(el('pre', {text:o.detalleTxt, style:'white-space:pre-wrap;font-size:13px;background:#f7f4ee;padding:8px;border-radius:8px'}));
+  ['gravada','igv','total'].forEach(function(k){ totG[k] = Math.round(totG[k] * 100) / 100; });
+  var total = totG.total || Number(o.total) || 0;
+  caja.appendChild(el('div', {class:'ficha'}, [
+    tasas.length > 1 ? fd('Op. gravada (total)', soles(totG.gravada)) : null,
+    tasas.length > 1 ? fd('IGV (total)', soles(totG.igv)) : null,
+    fd('TOTAL', soles(total), false),
+    fd('Correo', o.correo, true),
+    fd('WhatsApp', o.whatsapp, true),
+    fd('Dirección', o.direccion, false),
+    fd('Pago', o.pago, false),
+    fd('Pedido', o.pedido, false),
+    fd('Fecha', o.fecha, false),
+    fd('Enviado', o.enviado, false),
+    fd('Respuesta SUNAT', o.sunatTxt, false),
+    fd('Notas', o.notas, false)
+  ]));
+  var todo = function(){
+    var out = [o.tipo.toUpperCase()];
+    if (doc) out.push((esRuc ? 'RUC: ' : 'DNI: ') + doc);
+    if (o.razon) out.push((o.tipo === 'Factura' ? 'Razón social: ' : 'Nombre: ') + o.razon);
+    out.push('');
+    tasas.forEach(function(t, gi){
+      if (tasas.length > 1) out.push('— Comprobante ' + (gi + 1) + ' (IGV ' + t + '%) —');
+      L.filter(function(l){ return l.tasa === t; }).forEach(function(l){
+        out.push(l.cantidad + ' x ' + String(l.descripcion || '').toUpperCase() + ' · valor unit. sin IGV ' + valorUnitSol(Number(l.cantidad), Number(l.precio), Number(l.tasa)) + ' · IGV ' + l.tasa + '%');
+      });
+    });
+    out.push(''); out.push('TOTAL: ' + soles(total));
+    if (o.correo) out.push('Correo: ' + o.correo);
+    if (o.whatsapp) out.push('WhatsApp: ' + o.whatsapp);
+    return out.join('\n');
+  };
+  caja.appendChild(el('div', {class:'pie'}, [el('button', {class:'btn', type:'button', text:'📋 Copiar todo', onclick:function(){ copiar(todo(), 'Datos copiados'); }})]
+    .concat(extras || []).concat([el('span', {class:'esp'}), el('button', {class:'btn prim', type:'button', text:'Cerrar', onclick: cerrarModal})])));
+  $('#modal').classList.add('on');
 }
 function textoSunat(p){
   var L = [(p.comprobante || 'Boleta').toUpperCase()];
@@ -1498,50 +1700,145 @@ function serieSugerida(tipo){
   return s ? { serie: s.serie, numero: s.siguiente } : { serie: '', numero: '' };
 }
 function emitirComp(p){
+  p = p || {};
   var asegurar = COMP.hoy ? Promise.resolve() : run('listarComprobantes').then(function(r){ COMP = r; });
-  asegurar.catch(function(){}).then(function(){ formularioComp(p || {}); });
+  asegurar.then(function(){
+    var ref = p.numero ? { numero: p.numero } : (/^Mesa /.test(p.pedidoRef || '') ? { mesa: String(p.pedidoRef).replace(/^Mesa /, '') } : null);
+    return ref ? run('datosEmision', ref) : { lineas: [], sunat: COMP.sunat, cliente: {} };
+  }).then(function(d){ formularioComp(p, d || {}); }).catch(error);
 }
-function formularioComp(p){
+
+/* valor unitario sin IGV con los decimales justos para que SUNAT llegue al mismo importe */
+function valorUnitSol(cant, precio, tasa){
+  var objetivo = Math.round(cant * precio * 100), t = tasa / 100;
+  for (var dec = 2; dec <= 10; dec++) {
+    var v = Number((precio / (1 + t)).toFixed(dec));
+    if (Math.round(cant * v * (1 + t) * 100 + 1e-6) === objetivo) return v.toFixed(dec);
+  }
+  return (precio / (1 + t)).toFixed(10);
+}
+function calcLineas(L){
+  var tot = { gravada: 0, igv: 0, total: 0, tasas: {} };
+  L.forEach(function(l){
+    var imp = Math.round((Number(l.cantidad) || 0) * (Number(l.precio) || 0) * 100) / 100, t = Number(l.tasa) || 0;
+    var v = Math.round(imp / (1 + t / 100) * 100) / 100, i = Math.round((imp - v) * 100) / 100;
+    l._imp = imp; tot.gravada += v; tot.igv += i; tot.total += imp; tot.tasas[t] = 1;
+  });
+  ['gravada','igv','total'].forEach(function(k){ tot[k] = Math.round(tot[k] * 100) / 100; });
+  return tot;
+}
+
+function formularioComp(p, d){
+  var S = d.sunat || COMP.sunat || { modo: 'apagado' }, electronico = S.modo === 'beta' || S.modo === 'produccion';
+  var tRest = Number(S.tasaRestaurante) || 10.5, cli = d.cliente || {};
   var caja = $('#caja'); caja.textContent = '';
-  var ref = p.numero ? '#' + p.numero : (p.pedidoRef || '');
-  caja.appendChild(el('h2', {text: 'Emitir boleta / factura' + (ref ? ' · ' + (p.numero ? 'pedido ' : '') + ref : '')}));
-  caja.appendChild(el('ol', {class:'pasosComp'}, [
-    el('li', null, ['Copia los datos y emite el comprobante en el sistema de SUNAT, como siempre.']),
-    el('li', null, ['Escribe aquí la ', el('b', {text:'serie y el número'}), ' que te dio SUNAT y guarda.']),
-    el('li', null, ['Envíaselo al cliente por WhatsApp o correo (el PDF lo adjuntas tú).'])
-  ]));
+  var ref = p.numero ? '#' + nro(p) : (p.pedidoRef || '');
+  caja.appendChild(el('h2', {text: (electronico ? 'Emitir boleta / factura' : 'Boleta / factura (SOL)') + (ref ? ' · ' + (p.numero ? 'pedido ' : '') + ref : '')}));
+  if (S.modo === 'beta') caja.appendChild(el('div', {class:'aviso-prueba', text:'MODO PRUEBA · se envía al ambiente de pruebas de SUNAT. No tiene validez tributaria.'}));
+  if (!electronico) caja.appendChild(el('p', {class:'nota', text:'1) Copia el detalle y emítelo en SOL (el valor unitario ya va sin IGV). 2) Escribe aquí la serie y el número que te dio SUNAT y guarda.'}));
   var f = el('form', {class:'form'});
-  var tipo0 = p.comprobante === 'Factura' ? 'Factura' : 'Boleta', sug = serieSugerida(tipo0);
+  var tipo0 = (p.comprobante || cli.comprobante) === 'Factura' ? 'Factura' : 'Boleta';
   f.appendChild(campo('Tipo', 'tipo', tipo0, 'select', {opciones:[['Boleta','Boleta de venta'],['Factura','Factura']]}));
-  f.appendChild(campo('Serie', 'serie', sug.serie, 'text', {ayuda: sug.serie ? 'La última que usaste para este tipo.' : 'Ej.: B001, EB01 (boleta) · F001, E001 (factura). Se recordará para la próxima.'}));
-  f.appendChild(campo('Número que dio SUNAT', 'numero', sug.numero, 'number', {ayuda: sug.numero ? 'Sugerido: el último registrado + 1. Corrígelo si SUNAT te dio otro.' : 'Solo el número, sin ceros a la izquierda.'}));
-  f.appendChild(campo('Total (S/)', 'total', p.total != null ? Number(p.total).toFixed(2) : '', 'text', {ayuda: p.canal === 'delivery' ? 'Si cobraste el delivery, súmalo aquí.' : ''}));
-  f.appendChild(campo('DNI o RUC', 'doc', p.doc || '', 'text', {ayuda:'Factura: RUC de 11 dígitos. Boleta: DNI, RUC o vacío.'}));
-  f.appendChild(campo('Nombre o razón social', 'razon', p.razon || p.nombre || ''));
-  f.appendChild(campo('Correo del cliente', 'correo', p.correo || '', 'email'));
-  f.appendChild(campo('WhatsApp del cliente', 'whatsapp', p.telefono || '', 'tel'));
-  f.appendChild(campo('Notas (opcional)', 'notas', '', 'text', {ancho:true}));
-  if (p.detalle) f.appendChild(el('div', {class:'ancho'}, [el('div', {class:'nota', text:'Detalle del pedido'}), el('pre', {style:'white-space:pre-wrap;background:var(--papel);padding:10px;border-radius:8px;font-size:12.5px;max-height:220px;overflow:auto', text:p.detalle})]));
+  f.appendChild(campo('DNI o RUC', 'doc', p.doc || cli.doc || '', 'text', {ayuda:'Factura: RUC de 11 dígitos. Boleta: DNI (obligatorio si pasa de S/ 700) o vacío.'}));
+  f.appendChild(campo('Nombre o razón social', 'razon', p.razon || cli.razon || p.nombre || ''));
+  f.appendChild(campo('Dirección del cliente (opcional)', 'direccion', ''));
+  f.appendChild(campo('Correo del cliente', 'correo', p.correo || cli.correo || '', 'email'));
+  f.appendChild(campo('WhatsApp del cliente', 'whatsapp', p.telefono || cli.whatsapp || '', 'tel'));
+  var sug = serieSugerida(tipo0);
+  if (!electronico) {
+    f.appendChild(campo('Serie (de SOL)', 'serie', sug.serie, 'text', {ayuda:'Ej.: EB01 (boleta) · E001 (factura).'}));
+    f.appendChild(campo('Número que dio SUNAT', 'numero', sug.numero, 'number', {ayuda: sug.numero ? 'Sugerido: el último + 1. Corrígelo si SUNAT te dio otro.' : 'Solo el número.'}));
+  }
   caja.appendChild(f);
-  var serieTocada = false;
-  f.serie.addEventListener('input', function(){ serieTocada = true; this.value = this.value.toUpperCase(); });
-  f.tipo.addEventListener('change', function(){ if (serieTocada) return; var s = serieSugerida(this.value); f.serie.value = s.serie; f.numero.value = s.numero; });
+
+  /* ---- detalle ---- */
+  var L = (d.lineas || []).map(function(l){ return { descripcion: l.descripcion, cantidad: l.cantidad, precio: l.precio, tasa: l.tasa }; });
+  if (!L.length && Number(p.total) > 0) L = [{ descripcion: 'POR CONSUMO', cantidad: 1, precio: Number(p.total), tasa: tRest }];
+  if (!L.length) L = [{ descripcion: '', cantidad: 1, precio: '', tasa: tRest }];
+  var box = el('div', {class:'lineasComp'}); caja.appendChild(box);
+  function pintarL(){
+    box.textContent = '';
+    var tot = calcLineas(L);
+    var t = el('table', {class:'tabla lc'});
+    t.appendChild(el('tr', null, ['Cant.', 'Descripción', 'Precio unit. (con IGV)', 'IGV', 'V. unit. sin IGV', 'Importe', ''].map(function(x){ return el('th', {text:x}); })));
+    L.forEach(function(l, i){
+      var inp = function(k, w, tipo){ var e = el('input', {class:'txt', type: tipo || 'text', style:'width:' + w}); e.value = l[k] == null ? '' : l[k];
+        e.addEventListener('change', function(){ l[k] = tipo === 'number' ? Number(this.value) : this.value; pintarL(); }); return e; };
+      var sel = el('select', {class:'txt'}); [[tRest, tRest + '% restaurante'], [18, '18% productos']].forEach(function(o){ sel.appendChild(el('option', {value:o[0], text:o[1]})); });
+      sel.value = String(l.tasa); sel.addEventListener('change', function(){ l.tasa = Number(this.value); pintarL(); });
+      t.appendChild(el('tr', null, [
+        el('td', null, [inp('cantidad', '58px', 'number')]), el('td', null, [inp('descripcion', '100%')]), el('td', null, [inp('precio', '78px')]),
+        el('td', null, [sel]),
+        el('td', {class:'cod', text: Number(l.cantidad) > 0 && Number(l.precio) > 0 ? valorUnitSol(Number(l.cantidad), Number(l.precio), Number(l.tasa)) : '—'}),
+        el('td', {class:'cod', text: soles(l._imp)}),
+        el('td', null, [el('button', {class:'btn peq', type:'button', text:'✕', title:'Quitar', onclick:function(){ L.splice(i, 1); if (!L.length) L.push({ descripcion:'', cantidad:1, precio:'', tasa:tRest }); pintarL(); }})])
+      ]));
+    });
+    box.appendChild(t);
+    box.appendChild(el('div', {class:'lc-acc'}, [
+      el('button', {class:'btn peq', type:'button', text:'＋ Agregar línea', onclick:function(){ L.push({ descripcion:'', cantidad:1, precio:'', tasa:tRest }); pintarL(); }}),
+      el('button', {class:'btn peq', type:'button', text:'Todo en una línea "POR CONSUMO"', onclick:function(){
+        var tt = calcLineas(L).total; L = [{ descripcion:'POR CONSUMO', cantidad:1, precio:tt, tasa:tRest }]; pintarL(); }}),
+      el('span', {class:'esp'}),
+      el('span', {class:'lc-tot', text:'Op. gravada ' + soles(tot.gravada) + ' · IGV ' + soles(tot.igv) + ' · '}), el('b', {class:'lc-tot', text:'Total ' + soles(tot.total)})
+    ]));
+    if (Object.keys(tot.tasas).length > 1) box.appendChild(el('p', {class:'aviso-prueba', text:'SUNAT pide una sola tasa de IGV por comprobante. ' + (electronico ? 'Al emitir se separa solo: primero lo de ' + tRest + '% y luego te abre otro comprobante con lo de 18%.' : 'Quita aquí los productos al 18% y regístralos en otro comprobante.')}));
+  }
+  pintarL();
+
   var datos = function(){ var o = {}; f.querySelectorAll('[name]').forEach(function(i){ o[i.name] = i.value; }); return o; };
-  var copia = el('button', {class:'btn', type:'button', text:'📋 Copiar datos para SUNAT', onclick:function(){
-    var o = datos(); copiar(textoSunat({ comprobante:o.tipo, doc:o.doc, razon:o.razon, correo:o.correo, detalle:p.detalle, total:o.total }), 'Datos copiados: pégalos en el sistema de SUNAT');
-  }});
-  var guardar = el('button', {class:'btn prim', text:'Guardar comprobante', onclick:function(){
-    var o = datos(); o.pedido = p.numero ? String(p.numero) : (p.pedidoRef || ''); o.detalle = p.detalle || '';
-    guardar.disabled = true;
+  var lineasValidas = function(){ return L.filter(function(l){ return String(l.descripcion || '').trim() && Number(l.cantidad) > 0 && Number(l.precio) > 0; }); };
+  var textoSol = function(){
+    var o = datos(), tot = calcLineas(lineasValidas());
+    var out = [o.tipo.toUpperCase() + (o.doc ? ' · ' + (String(o.doc).length === 11 ? 'RUC ' : 'DNI ') + o.doc : '') + (o.razon ? ' · ' + o.razon : '')];
+    lineasValidas().forEach(function(l, i){
+      out.push((i + 1) + ') ' + l.cantidad + ' UNIDAD · ' + String(l.descripcion).toUpperCase() + ' · valor unit. sin IGV ' + valorUnitSol(Number(l.cantidad), Number(l.precio), Number(l.tasa)) + ' · IGV ' + l.tasa + '% · importe ' + soles(l._imp));
+    });
+    out.push('Op. gravada ' + soles(tot.gravada) + ' · IGV ' + soles(tot.igv) + ' · TOTAL ' + soles(tot.total));
+    return out.join('\n');
+  };
+  var pedidoRef = p.numero ? String(p.numero) : (p.pedidoRef || '');
+  var btnCopiar = el('button', {class:'btn', type:'button', text:'📋 Copiar detalle para SOL', onclick:function(){ copiar(textoSol(), 'Detalle copiado (valor unitario sin IGV)'); }});
+  var registrarManual = function(){
+    var o = datos(), tot = calcLineas(lineasValidas());
+    if (!f.serie) { manualConSerie(); return; }
+    o.total = tot.total.toFixed(2); o.pedido = pedidoRef; o.detalle = textoSol();
+    o.items = lineasValidas().map(function(l){ return { descripcion: l.descripcion, cantidad: Number(l.cantidad), precio: Number(l.precio), tasa: Number(l.tasa) }; });
+    btnGuardar.disabled = true;
     run('registrarComprobante', o).then(function(r){
-      COMP = r;
-      var c = COMP.comprobantes[0];
-      exitoComp(c);
-      cargarPedidos(); if ($('#v-comp').classList.contains('on')) pintarComp(); else $('#cComp').textContent = COMP.pendientes.length || '';
-    }).catch(error).then(function(){ guardar.disabled = false; });
-  }});
-  caja.appendChild(el('div', {class:'pie'}, [copia, el('span', {class:'esp'}), el('button', {class:'btn', text:'Cancelar', onclick: cerrarModal}), guardar]));
+      COMP = r; exitoComp(COMP.comprobantes[0]); refrescarComp();
+    }).catch(error).then(function(){ btnGuardar.disabled = false; });
+  };
+  var manualConSerie = function(){
+    if (f.serie) return;
+    f.appendChild(campo('Serie (de SOL)', 'serie', sug.serie, 'text', {ayuda:'Ej.: EB01 (boleta) · E001 (factura).'}));
+    f.appendChild(campo('Número que dio SUNAT', 'numero', sug.numero, 'number'));
+    f.serie.focus(); toast('Escribe la serie y el número que te dio SOL, y vuelve a guardar');
+  };
+  var btnGuardar = el('button', {class:'btn ' + (electronico ? '' : 'prim'), type:'button', text: electronico ? 'Lo emití en SOL: registrar' : 'Guardar comprobante', onclick: registrarManual});
+  var btnEmitir = electronico ? el('button', {class:'btn prim', type:'button', text: S.modo === 'beta' ? 'Emitir PRUEBA en SUNAT' : 'Emitir en SUNAT', onclick:function(){
+    var o = datos(), Lv = lineasValidas(), resto = [];
+    if (!Lv.length) { toast('Agrega al menos un producto con precio', true); return; }
+    if (Object.keys(calcLineas(Lv).tasas).length > 1) {
+      var t0 = Lv.some(function(l){ return Number(l.tasa) === tRest; }) ? tRest : Number(Lv[0].tasa);
+      resto = Lv.filter(function(l){ return Number(l.tasa) !== t0; }); Lv = Lv.filter(function(l){ return Number(l.tasa) === t0; });
+    }
+    var tot = calcLineas(Lv);
+    var cod = (o.tipo === 'Factura' ? S.serieFactura : S.serieBoleta) + '-' + (o.tipo === 'Factura' ? S.siguienteFactura : S.siguienteBoleta);
+    if (!confirm((S.modo === 'beta' ? '[PRUEBA] ' : '') + '¿Emitir ' + o.tipo.toUpperCase() + ' ' + cod + ' por ' + soles(tot.total) + '?' + (S.modo === 'produccion' ? '\n\nSe envía a SUNAT y no se puede deshacer (solo anular con nota de crédito).' : ''))) return;
+    o.items = Lv.map(function(l){ return { descripcion: l.descripcion, cantidad: Number(l.cantidad), precio: Number(l.precio), tasa: Number(l.tasa) }; });
+    o.pedido = pedidoRef;
+    btnEmitir.disabled = true; btnEmitir.textContent = 'Enviando a SUNAT…';
+    run('emitirElectronico', o).then(function(r){
+      COMP = r.lista; exitoCompE(r, resto.length ? function(){ formularioComp(p, { lineas: resto, sunat: S, cliente: { comprobante: o.tipo, doc: o.doc, razon: o.razon, correo: o.correo, whatsapp: o.whatsapp } }); } : null); refrescarComp();
+    }).catch(function(e){ error(e); btnEmitir.disabled = false; btnEmitir.textContent = 'Emitir en SUNAT'; });
+  }}) : null;
+  caja.appendChild(el('div', {class:'pie'}, [btnCopiar, el('span', {class:'esp'}), el('button', {class:'btn', type:'button', text:'Cancelar', onclick: cerrarModal}), btnGuardar, btnEmitir]));
   $('#modal').classList.add('on');
+}
+function refrescarComp(){
+  cargarPedidos();
+  if ($('#v-comp').classList.contains('on')) pintarComp(); else $('#cComp').textContent = COMP.pendientes.length || '';
 }
 function exitoComp(c){
   var caja = $('#caja'); caja.textContent = '';
@@ -1555,6 +1852,73 @@ function exitoComp(c){
     c.correo ? el('button', {class:'btn', text:'Enviar por correo', onclick:function(){ enviarCompCorreo(c); }}) : null,
     el('button', {class:'btn prim', text:'Listo', onclick: cerrarModal})
   ]));
+}
+function exitoCompE(r, siguiente){
+  var c = r.comprobante, caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('div', {class:'ok-emitido'}, [
+    el('h3', {text:'✓ ' + c.tipo + ' ' + c.codigo + (c.modo === 'produccion' ? ' aceptada por SUNAT' : ' · PRUEBA aceptada por SUNAT (sin validez)')}),
+    el('div', {text: (c.razon || 'Clientes varios') + (c.doc ? ' · ' + c.doc : '') + ' · ' + soles(c.total)}),
+    r.observaciones && r.observaciones.length ? el('p', {class:'nota', text:'Observaciones de SUNAT: ' + r.observaciones.join(' · ')}) : null,
+    siguiente ? el('p', {class:'aviso-prueba', text:'Faltan los productos con otra tasa de IGV: emítelos en el siguiente comprobante.'}) : null
+  ]));
+  caja.appendChild(el('div', {class:'pie'}, [
+    el('button', {class:'btn', text:'🖨 Imprimir', onclick:function(){ imprimirHtml(r.html); }}),
+    el('button', {class:'btn', text:'⬇ PDF', onclick:function(){ descargarPdfComp(c); }}),
+    c.whatsapp ? el('button', {class:'btn ok', text:'WhatsApp', onclick:function(){ enviarCompWa(c); }}) : null,
+    c.correo ? el('button', {class:'btn', text:'Correo', onclick:function(){ enviarCompCorreo(c); }}) : null,
+    el('span', {class:'esp'}),
+    siguiente ? el('button', {class:'btn prim', text:'Emitir el siguiente →', onclick: siguiente}) : el('button', {class:'btn prim', text:'Listo', onclick: cerrarModal})
+  ]));
+}
+function imprimirHtml(html){
+  var fr = el('iframe', {style:'position:fixed;width:0;height:0;border:0'}); document.body.appendChild(fr);
+  var d = fr.contentDocument; d.open(); d.write(html); d.close();
+  setTimeout(function(){ try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch(e) {} setTimeout(function(){ fr.remove(); }, 2000); }, 300);
+}
+function imprimirComp(c){ run('comprobanteImpreso', c.id).then(imprimirHtml).catch(error); }
+function descargarPdfComp(c){
+  toast('Preparando PDF…');
+  run('comprobantePdf', c.id).then(function(r){
+    var bin = atob(r.b64), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([arr], {type:'application/pdf'}));
+    var a = el('a', {href:url, download:r.nombre}); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+  }).catch(error);
+}
+
+/* ---------- configuración SUNAT ---------- */
+function configSunat(){
+  var S = COMP.sunat || {};
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'⚙ Facturación electrónica (SUNAT)'}));
+  caja.appendChild(el('p', {class:'nota', text:'APAGADO: se emite en SOL y aquí solo se registra. PRUEBAS: envía al ambiente de pruebas de SUNAT (sin validez). REAL: comprobantes válidos; necesita el certificado digital y el usuario secundario SOL.'}));
+  var f = el('form', {class:'form'});
+  f.appendChild(campo('Modo', 'modo', S.modo || 'apagado', 'select', {opciones:[['apagado','Apagado (emitir en SOL)'],['beta','PRUEBAS (ambiente de pruebas de SUNAT)'],['produccion','REAL (producción)']]}));
+  f.appendChild(campo('RUC', 'ruc', S.ruc));
+  f.appendChild(campo('Razón social (como en SUNAT)', 'razon', S.razon));
+  f.appendChild(campo('Nombre comercial', 'comercial', S.comercial));
+  f.appendChild(campo('Dirección fiscal', 'direccion', S.direccion, 'text', {ancho:true}));
+  f.appendChild(campo('Ubigeo', 'ubigeo', S.ubigeo, 'text', {ayuda:'Trujillo = 130101'}));
+  f.appendChild(campo('Distrito', 'distrito', S.distrito));
+  f.appendChild(campo('Provincia', 'provincia', S.provincia));
+  f.appendChild(campo('Departamento', 'departamento', S.departamento));
+  f.appendChild(campo('Serie de boletas (panel)', 'serieBoleta', S.serieBoleta, 'text', {ayuda:'Distinta a la de SOL (EB01). Ej.: B001'}));
+  f.appendChild(campo('Serie de facturas (panel)', 'serieFactura', S.serieFactura, 'text', {ayuda:'Distinta a la de SOL (E001). Ej.: F001'}));
+  f.appendChild(campo('IGV restaurante (%)', 'tasaRestaurante', S.tasaRestaurante, 'text', {ayuda:'Confírmalo con el contador. Productos envasados: 18%.'}));
+  f.appendChild(campo('Secciones al 18% (separadas por comas)', 'secciones18', S.secciones18, 'text', {ayuda:'Ej.: italia (Prodotti d\'Italia)'}));
+  f.appendChild(el('h4', {text:'Solo para modo REAL'}));
+  f.appendChild(campo('Usuario secundario SOL (sin el RUC)', 'usuario', S.usuario));
+  f.appendChild(campo('Clave del usuario secundario', 'clave', '', 'password', {ayuda: S.tieneClave ? 'Ya guardada. Déjala vacía para no cambiarla.' : 'Todavía no hay clave guardada.'}));
+  f.appendChild(el('label', {class:'ancho'}, ['Certificado digital: ' + (S.tieneCert ? '✓ cargado ' + (S.certInfo || '') : 'todavía no cargado (se carga con Piero cuando lo descarguen de SOL)')]));
+  caja.appendChild(f);
+  var datos = function(){ var o = {}; f.querySelectorAll('[name]').forEach(function(i){ o[i.name] = i.value; }); return o; };
+  var g = el('button', {class:'btn prim', text:'Guardar', onclick:function(){
+    g.disabled = true;
+    run('guardarSunatConfig', datos()).then(function(s){ COMP.sunat = s; toast('Configuración de SUNAT guardada'); cerrarModal(); pintarComp(); }).catch(error).then(function(){ g.disabled = false; });
+  }});
+  caja.appendChild(el('div', {class:'pie'}, [el('button', {class:'btn', text:'Cancelar', onclick: cerrarModal}), g]));
+  $('#modal').classList.add('on');
 }
 function mensajeComp(c){
   return 'Hola' + (c.razon ? ' ' + c.razon : '') + ', gracias por tu compra en Pasta Gallo. Te enviamos tu ' + c.tipo.toLowerCase() + ' electrónica ' + c.codigo +
@@ -1572,7 +1936,9 @@ function enviarCompCorreo(c){
 
 /* ---------- ajustes ---------- */
 var GRUPOS_AJ = [
-  ['Pedidos', [['minutos_alerta','Minutos para marcar un pedido como atrasado (tarjeta roja parpadeante y sonido)'],['pedidos_activos','Recibir pedidos por la web','si'],['pedidos_mesa_activos','Pedidos desde la mesa (QR)','si'],['recojo_activo','Permitir recojo en local','si'],['pedidos_fuera_de_horario','Aceptar pedidos programados estando cerrado','si'],['metodos_pago','Métodos de pago (separados por comas)'],['comprobantes','Comprobantes que puede pedir el cliente: Boleta, Factura (en Nuevo RUS solo Boleta; vacío = no se ofrece)'],['texto_delivery','Texto sobre el costo de delivery','area']]],
+  ['Cobros (Yape, Plin y transferencia)', [['yape_numero','Número de Yape'],['yape_titular','Nombre que aparece en Yape'],['plin_numero','Número de Plin'],['plin_titular','Nombre que aparece en Plin'],['banco_texto','Datos para transferencia (banco, cuenta, CCI y titular)','area']],
+   'El cliente de delivery o recojo ve estos datos al elegir cómo pagar y puede subir la captura. El pedido llega como "PAGO POR VERIFICAR" y la comanda se imprime recién cuando tocas "✓ Pago recibido".'],
+  ['Pedidos', [['minutos_alerta','Minutos para marcar un pedido como atrasado (tarjeta roja parpadeante y sonido)'],['pedidos_activos','Recibir pedidos por la web','si'],['pedidos_mesa_activos','Pedidos desde la mesa (QR)','si'],['recojo_activo','Permitir recojo en local','si'],['pedidos_fuera_de_horario','Aceptar pedidos programados estando cerrado','si'],['metodos_pago','Métodos de pago para DELIVERY y RECOJO (pago anticipado, sin efectivo). Ej.: Yape, Plin, Transferencia'],['metodos_pago_mesa','Métodos de pago en el SALÓN (al pedir la cuenta). Ej.: Yape, Plin, Efectivo, Tarjeta'],['comprobantes','Comprobantes que puede pedir el cliente: Boleta, Factura (en Nuevo RUS solo Boleta; vacío = no se ofrece)'],['texto_delivery','Texto sobre el costo de delivery','area']]],
   ['Horario', [['horario_texto','Texto del horario para el cliente'],['cerrado_texto','Texto de días cerrados'],['horario_lunes','Lunes'],['horario_martes','Martes'],['horario_miercoles','Miércoles'],['horario_jueves','Jueves'],['horario_viernes','Viernes'],['horario_sabado','Sábado'],['horario_domingo','Domingo']], 'Formato 18:00-23:00 o la palabra cerrado. La web detecta sola si está abierto.'],
   ['Negocio', [['nombre','Nombre'],['desde','Texto bajo el logo'],['direccion','Dirección'],['telefono','Teléfono visible'],['whatsapp','WhatsApp (51 + número, sin espacios)'],['mensaje_whatsapp','Mensaje inicial de WhatsApp'],['instagram','Instagram (sin @)'],['tiktok','TikTok (sin @)'],['facebook_url','Link de Facebook']]],
   ['Nuestra historia', [['historia_eyebrow','Título pequeño'],['historia_titulo','Título'],['historia_texto','Texto (párrafos separados por una línea en blanco)','area']]],
@@ -1589,6 +1955,7 @@ function cargarAjustes(){
         else f.appendChild(campo(c[1], c[0], c[0] === 'minutos_alerta' ? (a[c[0]] || 45) : a[c[0]], c[2] === 'area' ? 'area' : (c[0] === 'minutos_alerta' ? 'number' : 'text'), {ancho: c[2] === 'area'}));
       });
       w.appendChild(el('div', {class:'grupo'}, [el('h3', {text:g[0]}), g[2] ? el('p', {class:'nota', text:g[2], style:'margin-bottom:8px'}) : null, f]));
+      if (/^Cobros/.test(g[0])) w.appendChild(grupoQr(a));
     });
     $('#estadoToken').textContent = INFO.tokenListo ? '✓ GitHub está conectado.' : '✗ Falta conectar GitHub: sin esto no se puede publicar la carta ni subir fotos.';
   }).catch(error);
@@ -1605,6 +1972,29 @@ $('#guardarToken').addEventListener('click', function(){
   run('guardarTokenGithub', $('#token').value).then(function(r){ toast(r.mensaje); $('#token').value = ''; INFO.tokenListo = true; $('#estadoToken').textContent = '✓ GitHub está conectado.'; })
     .catch(error).then(function(){ b.disabled = false; });
 });
+/* QR de Yape / Plin / transferencia: se suben a la web (son públicos a propósito, el cliente los escanea) */
+function grupoQr(a){
+  var f = el('div', {class:'qrs'});
+  [['yape','Yape'],['plin','Plin'],['transferencia','transferencia (opcional)']].forEach(function(m){
+    var ruta = a[m[0] + '_qr'];
+    var img = el('img', {alt:'QR de ' + m[1]}); if (ruta) img.src = fotoUrl(ruta); else img.style.display = 'none';
+    var vacio = el('span', {class:'nota', text:'Sin QR'}); if (ruta) vacio.style.display = 'none';
+    var inp = el('input', {type:'file', accept:'image/*'});
+    inp.addEventListener('change', function(){
+      var file = this.files[0]; if (!file) return;
+      toast('Subiendo el QR de ' + m[1] + '…');
+      reducir(file, 900, .92).then(function(d){ img.src = d; img.style.display = ''; vacio.style.display = 'none'; return run('subirQrPago', m[0], d); })
+        .then(function(){ toast('QR de ' + m[1] + ' guardado. La web se actualiza en 1 a 2 minutos.'); }).catch(error);
+    });
+    var quitar = el('button', {class:'btn peq', type:'button', text:'Quitar', onclick:function(){
+      if (!confirm('¿Quitar el QR de ' + m[1] + ' de la web?')) return;
+      run('subirQrPago', m[0], '').then(function(){ img.style.display = 'none'; vacio.style.display = ''; toast('QR quitado'); }).catch(error);
+    }});
+    f.appendChild(el('div', {class:'qrslot'}, [el('b', {text:'QR de ' + m[1]}), img, vacio, inp, quitar]));
+  });
+  return el('div', {class:'grupo'}, [el('h3', {text:'QR de pago'}),
+    el('p', {class:'nota', text:'Sube la imagen del QR que te da la app (Yape → Mi QR → Descargar; Plin igual). Se le muestra al cliente cuando elige ese método.', style:'margin-bottom:8px'}), f]);
+}
 function avisoApi(){
   var w = $('#avisoApi'); w.textContent = '';
   if (!INFO.api) w.appendChild(el('div', {class:'aviso mal', text:'La web todavía no envía pedidos aquí: falta la "URL de la aplicación web" en Ajustes → Conexiones.'}));

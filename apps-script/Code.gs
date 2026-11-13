@@ -23,14 +23,14 @@ var COLS = {
     'incluye', 'incluye_en', 'promo_dias', 'promo_desde', 'promo_hasta', 'promo_horas', 'promo_excluir', 'promo_extra'],
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
     'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
-    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero'],
+    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura'],
   mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde'],
   opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo'],
   /* llamadas desde la mesa: "mozo" (llamar al mozo) o "cuenta" (pedir la cuenta) */
   avisos: ['id', 'fecha', 'mesa', 'motivo', 'detalle', 'estado', 'atendido'],
   /* registro de boletas y facturas emitidas (la emisión se hace en el sistema de SUNAT) */
   comprobantes: ['id', 'fecha', 'tipo', 'serie', 'numero', 'doc', 'razon', 'correo', 'whatsapp', 'total', 'pedido', 'detalle',
-    'estado', 'enviado', 'notas', 'registrado_por']
+    'estado', 'enviado', 'notas', 'registrado_por', 'modo', 'gravada', 'igv', 'hash', 'sunat', 'items_json']
 };
 var CANALES = ['todos', 'local', 'delivery'];
 var ESTADOS = ['Nuevo', 'Confirmado', 'En preparación', 'Listo', 'En camino', 'Entregado', 'Cancelado'];
@@ -617,6 +617,8 @@ function construirCarta_(cfg, secciones, productos, opciones) {
       api: cfg.api_url || '', activos: esSi_(cfg.pedidos_activos), fueraHorario: esSi_(cfg.pedidos_fuera_de_horario),
       mesaActivos: esSi_(cfg.pedidos_mesa_activos), recojo: esSi_(cfg.recojo_activo),
       metodosPago: String(cfg.metodos_pago || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean),
+      metodosPagoMesa: String(cfg.metodos_pago_mesa || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean),
+      cobro: datosCobro_(cfg),
       textoDelivery: cfg.texto_delivery || '', textoDelivery_en: cfg.texto_delivery_en || '',
       comprobantes: listaComprobantes_(cfg)
     },
@@ -721,6 +723,21 @@ function momentoActual_(cfg) {
   return { dia: u % 7, min: minutos_(hm), fecha: Utilities.formatDate(ahora, zona, 'yyyy-MM-dd') };
 }
 
+/** Número del pedido en el día: empieza en 1 cada día (hora de Lima). Los pedidos cancelados y los eliminados
+ *  no cuentan: si se cancela o elimina el último, su número se vuelve a usar. */
+function siguienteNumeroDia_(ahora, cfg) {
+  var zona = cfg.zona_horaria || 'America/Lima';
+  var hoy = Utilities.formatDate(ahora, zona, 'yyyy-MM-dd');
+  var max = 0;
+  leerTabla_(HOJA.pedidos).forEach(function (p) {
+    if (!(p.fecha instanceof Date) || String(p.estado) === 'Cancelado') return;
+    if (Utilities.formatDate(p.fecha, zona, 'yyyy-MM-dd') !== hoy) return;
+    var n = Number(p.num_dia) || 0;
+    if (n > max) max = n;
+  });
+  return max + 1;
+}
+
 function registrarPedido_(body) {
   if (body && body.web) return { ok: true, numero: 0 }; // trampa para robots
   if (JSON.stringify(body).length > 20000) return { ok: false, error: 'Pedido demasiado grande.' };
@@ -735,6 +752,15 @@ function registrarPedido_(body) {
   var cat = leerCatalogo_();
   var r = calcularPedido_(body, cat, cfg, momentoActual_(cfg));
   if (!r.ok) return r;
+
+  // Pago anticipado (delivery y recojo): queda "Por verificar" hasta que el local lo confirme en el panel
+  var captura = '';
+  if (r.canal !== 'mesa' && body.captura) {
+    captura = String(body.captura);
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(captura)) return { ok: false, error: 'La captura del pago no es una imagen válida.' };
+    if (captura.length > 400000) return { ok: false, error: 'La captura del pago es muy pesada. Intenta con otra.' };
+  }
+  var pagoEstado = r.canal !== 'mesa' && /^(yape|plin|transferencia)/i.test(r.cliente.pago) ? 'Por verificar' : '';
 
   if (r.canal !== 'mesa') {
     var kt = 'tel:' + r.cliente.telefono;
@@ -752,9 +778,10 @@ function registrarPedido_(body) {
   lock.waitLock(20000);
   try {
     var props = PropertiesService.getScriptProperties();
-    var numero = Number(props.getProperty('ULTIMO_PEDIDO') || 0) + 1;
+    var numero = Number(props.getProperty('ULTIMO_PEDIDO') || 0) + 1; // id interno (no se reinicia)
     props.setProperty('ULTIMO_PEDIDO', String(numero));
     var ahora = new Date();
+    var numDia = siguienteNumeroDia_(ahora, cfg); // el número que ven el cliente y la cocina
     var fila = {
       numero: numero, fecha: ahora, canal: r.canal, mesa: r.mesa, nombre: r.cliente.nombre,
       telefono: r.cliente.telefono, direccion: r.cliente.direccion, referencia: r.cliente.referencia,
@@ -762,7 +789,8 @@ function registrarPedido_(body) {
       notas: r.cliente.notas, items_json: JSON.stringify(r.lineas), actualizado: ahora, historial: 'Nuevo ' + fmt_(ahora, 'HH:mm'),
       origen: r.origen,
       ref: r.ref, comprobante: r.comp.tipo, doc: r.comp.doc ? "'" + r.comp.doc : '', razon: r.comp.razon, correo: r.comp.correo,
-      comp_estado: r.comp.tipo ? 'Pendiente' : ''
+      comp_estado: r.comp.tipo ? 'Pendiente' : '', num_dia: numDia, pago_estado: pagoEstado,
+      captura: captura ? guardarCaptura_(captura, numero) : ''
     };
     var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
     var cab = asegurarColumnas_(h, COLS.pedidos);
@@ -771,7 +799,7 @@ function registrarPedido_(body) {
   } finally {
     lock.releaseLock();
   }
-  return { ok: true, numero: numero, total: r.total, detalle: r.detalle, lineas: r.lineas };
+  return { ok: true, numero: numDia, id: numero, total: r.total, detalle: r.detalle, lineas: r.lineas, pagoEstado: pagoEstado, conCaptura: !!captura };
 }
 
 function listaComprobantes_(cfg) {
@@ -862,7 +890,7 @@ function celdaTexto_(v, formato) {
 
 function pedidoAObjeto_(p, zona) {
   return {
-    numero: p.numero, fecha: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'dd/MM HH:mm') : String(p.fecha),
+    numero: p.numero, nd: Number(p.num_dia) || p.numero, fecha: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'dd/MM HH:mm') : String(p.fecha),
     hora: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'HH:mm') : '',
     dia: p.fecha instanceof Date ? Utilities.formatDate(p.fecha, zona, 'yyyy-MM-dd') : '',
     canal: celdaTexto_(p.canal), mesa: celdaTexto_(p.mesa), nombre: celdaTexto_(p.nombre), telefono: celdaTexto_(p.telefono),
@@ -872,7 +900,8 @@ function pedidoAObjeto_(p, zona) {
     ref: celdaTexto_(p.ref), comprobante: celdaTexto_(p.comprobante), doc: celdaTexto_(p.doc), razon: celdaTexto_(p.razon),
     correo: celdaTexto_(p.correo), compEstado: celdaTexto_(p.comp_estado), compNumero: celdaTexto_(p.comp_numero),
     ts: p.fecha instanceof Date ? p.fecha.getTime() : 0,
-    act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0
+    act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0,
+    pagoEstado: celdaTexto_(p.pago_estado), captura: celdaTexto_(p.captura)
   };
 }
 
@@ -915,6 +944,89 @@ function cambiarEstado(sesion, numero, estado) {
     }
   }
   throw new Error('No se encontró el pedido #' + numero);
+}
+
+/* ---------- pago anticipado: capturas y confirmación ---------- */
+var COLS_CAPTURAS = ['id', 'fecha', 'pedido', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9'];
+
+/** Guarda la captura del pago en la hoja "Capturas" (privada; NO en GitHub, que es público). Devuelve su id. */
+function guardarCaptura_(dataUrl, numero) {
+  var ss = SpreadsheetApp.getActive();
+  var h = obtenerHoja_(ss, 'Capturas', COLS_CAPTURAS);
+  var cab = asegurarColumnas_(h, COLS_CAPTURAS);
+  var id = 'cap-' + Utilities.getUuid().slice(0, 8), fila = { id: id, fecha: new Date(), pedido: numero };
+  // cada trozo va con un '~' delante para que Sheets nunca lo tome como fórmula (base64 puede empezar con + o =)
+  for (var i = 0; i < 9; i++) { var t = dataUrl.slice(i * 45000, (i + 1) * 45000); fila['p' + (i + 1)] = t ? '~' + t : ''; }
+  h.appendRow(cab.map(function (c) { return fila[c] == null ? '' : fila[c]; }));
+  return id;
+}
+
+function verCaptura(sesion, id) {
+  exigirAdmin_(sesion);
+  var c = leerTabla_('Capturas').filter(function (x) { return String(x.id) === String(id); })[0];
+  if (!c) throw new Error('No se encontró la captura.');
+  var s = '';
+  for (var i = 1; i <= 9; i++) s += String(c['p' + i] || '').replace(/^~/, '');
+  return s;
+}
+
+/** El local verificó el pago (en Yape/Plin/banco): el pedido pasa a Confirmado y el panel imprime la comanda. */
+function confirmarPago(sesion, numero) {
+  exigirAdmin_(sesion);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var p = leerTabla_(HOJA.pedidos).filter(function (x) { return String(x.numero) === String(numero); })[0];
+    if (!p) throw new Error('No se encontró el pedido.');
+    var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), cab = asegurarColumnas_(h, COLS.pedidos);
+    h.getRange(p._fila, cab.indexOf('pago_estado') + 1).setValue('Confirmado');
+  } finally {
+    lock.releaseLock();
+  }
+  if (String(p.estado) === 'Nuevo') cambiarEstado(sesion, numero, 'Confirmado');
+  else PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+  return true;
+}
+
+/** Datos de cobro que ve el cliente (número, titular y QR de Yape/Plin; datos de la cuenta para transferencia). */
+function datosCobro_(cfg) {
+  return {
+    Yape: { numero: String(cfg.yape_numero || ''), titular: cfg.yape_titular || '', qr: cfg.yape_qr || '' },
+    Plin: { numero: String(cfg.plin_numero || ''), titular: cfg.plin_titular || '', qr: cfg.plin_qr || '' },
+    Transferencia: { texto: cfg.banco_texto || '', qr: cfg.transferencia_qr || '' }
+  };
+}
+
+/** Sube el QR de Yape, Plin o transferencia a la web (es público a propósito: el cliente lo escanea). */
+function subirQrPago(sesion, metodo, base64) {
+  exigirAdmin_(sesion);
+  metodo = String(metodo || '').toLowerCase();
+  if (['yape', 'plin', 'transferencia'].indexOf(metodo) < 0) throw new Error('Método no válido.');
+  if (!base64) { guardarClave_(metodo + '_qr', ''); autoPublicar_(sesion); return ''; }
+  base64 = String(base64).replace(/^data:image\/\w+;base64,/, '');
+  if (base64.length > 2500000) throw new Error('La imagen es demasiado grande.');
+  var ruta = 'fotos/pago-' + metodo + '-' + Date.now() + '.jpg';
+  githubPut_(ruta, base64, 'QR de pago ' + metodo);
+  guardarClave_(metodo + '_qr', ruta);
+  autoPublicar_(sesion);
+  return ruta;
+}
+
+/** Borra un pedido de la hoja (pensado para pedidos de prueba). No se puede deshacer. */
+function eliminarPedido(sesion, numero) {
+  exigirAdmin_(sesion);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var p = leerTabla_(HOJA.pedidos).filter(function (x) { return String(x.numero) === String(numero); })[0];
+    if (!p) throw new Error('No se encontró el pedido.');
+    if (celdaTexto_(p.comp_estado) === 'Emitido') throw new Error('Este pedido tiene una boleta o factura emitida: no se puede eliminar. Cancélalo.');
+    SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos).deleteRow(p._fila);
+    PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function dashboard(sesion, periodo) {
@@ -1089,12 +1201,13 @@ var CLAVES_EDITABLES = ['nombre', 'desde', 'direccion', 'telefono', 'whatsapp', 
   'pedidos_activos', 'pedidos_fuera_de_horario', 'pedidos_mesa_activos', 'metodos_pago', 'recojo_activo', 'texto_delivery',
   'api_url', 'sitio_url', 'github_repo', 'github_rama', 'admins', 'minutos_alerta',
   'historia_eyebrow_en', 'historia_titulo_en', 'historia_texto_en', 'texto_delivery_en', 'horario_texto_en', 'cerrado_texto_en',
-  'comprobantes'];
+  'comprobantes', 'metodos_pago_mesa', 'yape_numero', 'yape_titular', 'plin_numero', 'plin_titular', 'banco_texto'];
 
 function leerAjustes(sesion) {
   exigirAdmin_(sesion);
   var cfg = leerConfig_(), o = {};
   CLAVES_EDITABLES.forEach(function (k) { o[k] = cfg[k] == null ? '' : String(cfg[k]); });
+  ['yape_qr', 'plin_qr', 'transferencia_qr'].forEach(function (k) { o[k] = cfg[k] == null ? '' : String(cfg[k]); });
   return o;
 }
 
@@ -1259,7 +1372,7 @@ function cuentaMesa_(mesa, m, pedidos, zona) {
   var lista = pedidos.filter(function (p) {
     return String(p.mesa) === String(mesa) && p.canal === 'mesa' && p.fecha instanceof Date && p.fecha.getTime() >= desde && p.estado !== 'Cancelado';
   }).map(function (p) {
-    return { numero: p.numero, hora: Utilities.formatDate(p.fecha, zona, 'HH:mm'), detalle: celdaTexto_(p.detalle),
+    return { numero: Number(p.num_dia) || p.numero, hora: Utilities.formatDate(p.fecha, zona, 'HH:mm'), detalle: celdaTexto_(p.detalle),
       total: Number(p.total) || 0, estado: celdaTexto_(p.estado), nombre: celdaTexto_(p.nombre) };
   });
   var total = Math.round(lista.reduce(function (a, p) { return a + p.total; }, 0) * 100) / 100;
@@ -1383,7 +1496,9 @@ function comprobanteAObjeto_(c, zona) {
     codigo: celdaTexto_(c.serie) + '-' + ('0000000' + (Number(c.numero) || 0)).slice(-8),
     doc: celdaTexto_(c.doc), razon: celdaTexto_(c.razon), correo: celdaTexto_(c.correo), whatsapp: celdaTexto_(c.whatsapp),
     total: Number(c.total) || 0, pedido: celdaTexto_(c.pedido), detalle: celdaTexto_(c.detalle), estado: celdaTexto_(c.estado),
-    enviado: celdaTexto_(c.enviado), notas: celdaTexto_(c.notas)
+    enviado: celdaTexto_(c.enviado), notas: celdaTexto_(c.notas),
+    modo: celdaTexto_(c.modo), gravada: Number(c.gravada) || 0, igv: Number(c.igv) || 0, hash: celdaTexto_(c.hash),
+    sunat: celdaTexto_(c.sunat), itemsJson: celdaTexto_(c.items_json), electronico: !!celdaTexto_(c.hash)
   };
 }
 
@@ -1405,7 +1520,8 @@ function listarComprobantes(sesion) {
   var pendientes = leerTabla_(HOJA.pedidos).filter(function (p) {
     return celdaTexto_(p.comprobante) && celdaTexto_(p.comp_estado) !== 'Emitido' && p.estado !== 'Cancelado';
   }).map(function (p) { return pedidoAObjeto_(p, zona); }).slice(-60).reverse();
-  return { comprobantes: lista.slice(-500).reverse(), pendientes: pendientes, series: siguientesNumeros_(lista),
+  return { comprobantes: lista.slice(-500).reverse(), pendientes: pendientes, series: siguientesNumeros_(lista.filter(function (c) { return !c.electronico; })),
+    sunat: sunatPublico_(),
     hoy: Utilities.formatDate(new Date(), zona, 'yyyy-MM-dd') };
 }
 
@@ -1439,7 +1555,10 @@ function registrarComprobante(sesion, o) {
       id: Utilities.getUuid().slice(0, 8), fecha: new Date(), tipo: tipo, serie: serie, numero: numero,
       doc: doc ? "'" + doc : '', razon: texto_(o.razon, 120), correo: correo, whatsapp: String(o.whatsapp || '').replace(/\D/g, '').slice(0, 15),
       total: Math.round(total * 100) / 100, pedido: texto_(o.pedido, 12), detalle: String(o.detalle || '').slice(0, 2000),
-      estado: 'Emitido', enviado: '', notas: texto_(o.notas, 200), registrado_por: String(quien || '')
+      estado: 'Emitido', enviado: '', notas: texto_(o.notas, 200), registrado_por: String(quien || ''),
+      items_json: (Object.prototype.toString.call(o.items) === '[object Array]' ? JSON.stringify(o.items.slice(0, 60).map(function (l) {
+        return { d: texto_(l.descripcion, 200), c: Number(l.cantidad) || 0, p: Number(l.precio) || 0, t: Number(l.tasa) || 0 };
+      })) : '').slice(0, 45000)
     };
     h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
     h.getRange(h.getLastRow(), cab.indexOf('numero') + 1).setNumberFormat('0');
