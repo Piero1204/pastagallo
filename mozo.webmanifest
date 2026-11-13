@@ -1,10 +1,8 @@
 {
-  "name": "Pasta Gallo · Mozo",
+  "name": "Pasta Gallo · Salón",
   "short_name": "PG Mozo",
   "description": "Panel del mozo de Pasta Gallo: mesas, pedidos y cobros.",
-  "start_url": "/mozo",
   "scope": "/",
-  "id": "/mozo",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#4a1519",

@@ -1,9 +1,9 @@
 /* Service worker del panel del mozo: permite instalarlo como app y abrirlo aunque la señal falle un momento.
    Siempre intenta primero la red (precios y disponibilidad al día); solo usa la copia guardada si no hay conexión.
    Nunca toca los pedidos (van a script.google.com con POST). */
-var CACHE = "pg-mozo-v1";
+var CACHE = "pg-mozo-v2";
 self.addEventListener("install", function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(["/mozo", "/mozo.css", "/mozo.js", "/menu-data.js", "/mozo-192.png"]); }).catch(function () {}));
+  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(["/mozo.css", "/mozo.js", "/menu-data.js", "/mozo-192.png"]); }).catch(function () {}));
   self.skipWaiting();
 });
 self.addEventListener("activate", function (e) {

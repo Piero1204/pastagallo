@@ -27,7 +27,7 @@
   function api(o) {
     if (!API) return Promise.reject(new Error("Falta el enlace del sistema (api) en la carta publicada."));
     return fetch(API, { method: "POST", body: JSON.stringify(o) }).then(function (r) { return r.json(); }).then(function (r) {
-      if (r && r.sesion === false) { salir(true); throw new Error(r.error); }
+      if (r && r.sesion === false) { salir(); throw new Error(r.error); }
       return r;
     });
   }
@@ -124,71 +124,75 @@
   }
   function cerrarModal() { capa.classList.remove("on"); capa.textContent = ""; modalPedido = false; }
 
-  /* =========================== LOGIN =========================== */
+  /* =========================== VINCULAR ESTE EQUIPO ===========================
+     El enlace /<código> solo sirve UNA vez: el primer equipo que toca "Vincular" recibe una llave secreta
+     que queda guardada solo en este navegador. Si se borra (o el administrador desvincula), hace falta un enlace nuevo. */
+  var CODIGO = (location.pathname.match(/^\/([a-z2-9]{12})\/?$/) || [])[1] || "";
+  var esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var instalada = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  var MARCAS = [[/^SM-|^GT-|Galaxy/i, "Samsung"], [/^Redmi|^M2\d|^2\d{3}|Xiaomi|POCO/i, "Xiaomi"], [/^moto|XT\d/i, "Motorola"], [/^Pixel/i, "Google"],
+    [/^CPH|OPPO/i, "OPPO"], [/^RMX|realme/i, "realme"], [/^V\d{4}|vivo/i, "vivo"], [/HUAWEI|^[A-Z]{3}-L\d/i, "Huawei"], [/^Infinix|^X6\d{2}/i, "Infinix"], [/^TECNO/i, "Tecno"], [/^LM-|LG/i, "LG"], [/^Nokia|^TA-/i, "Nokia"], [/^HONOR|^[A-Z]{3}-NX\d/i, "Honor"]];
+  function describirEquipo() {
+    var ua = navigator.userAgent, nav = /Edg\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Firefox|FxiOS/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "navegador";
+    var base;
+    if (esIOS) {
+      var v = (ua.match(/OS (\d+)[_.](\d+)/) || []);
+      base = (/iPad/.test(ua) || !/iPhone|iPod/.test(ua) ? "Apple iPad" : "Apple iPhone") + (v[1] ? " · iOS " + v[1] + "." + v[2] : "");
+    } else if (/Android/.test(ua)) {
+      var mod = (ua.match(/Android [\d.]+; ([^;)]+)/) || [])[1] || "";
+      base = "Android" + (mod && mod !== "K" ? " · " + mod : "") + " · Android " + ((ua.match(/Android ([\d.]+)/) || [])[1] || "");
+    } else if (/Windows/.test(ua)) base = "PC Windows";
+    else if (/Mac OS X/.test(ua)) base = "Mac";
+    else base = navigator.platform || "Equipo";
+    var desc = base + " · " + nav + (instalada ? " (app)" : "");
+    if (!(navigator.userAgentData && navigator.userAgentData.getHighEntropyValues)) return Promise.resolve(desc);
+    return navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]).then(function (d) {
+      if (!d.model) return desc;
+      var marca = ""; MARCAS.forEach(function (x) { if (!marca && x[0].test(d.model)) marca = x[1]; });
+      return (marca ? marca + " " : "") + d.model + " · " + d.platform + " " + String(d.platformVersion || "").split(".")[0] + " · " + nav + (instalada ? " (app)" : "");
+    }).catch(function () { return desc; });
+  }
   function pantallaLogin(msg) {
     app.textContent = ""; detenerSondeo();
     var w = h("div", "login");
-    var img = h("img"); img.src = "gallo-oro.png"; img.alt = ""; w.appendChild(img);
-    w.appendChild(h("h1", null, "Panel del mozo"));
-    var zona = h("div"); zona.style.width = "100%"; zona.style.display = "flex"; zona.style.flexDirection = "column"; zona.style.alignItems = "center"; zona.style.gap = "16px";
-    w.appendChild(zona);
+    var img = h("img"); img.src = "/gallo-oro.png"; img.alt = ""; w.appendChild(img);
     app.appendChild(w);
-    zona.appendChild(h("p", null, "Cargando…"));
-    api({ mz: "lista" }).then(function (r) {
-      zona.textContent = "";
-      if (!r.ok) { zona.appendChild(h("p", "err", r.error || "No se pudo cargar.")); return; }
-      if (!r.mozos.length) { zona.appendChild(h("p", null, "Todavía no hay mozos. Créalos en el panel principal → 🤵 Mozos.")); return; }
-      var ultimo = leer(K.ultimo, "");
-      var una = r.mozos.filter(function (m) { return m.id === ultimo; })[0];
-      if (r.mozos.length === 1) una = r.mozos[0];
-      if (una) pedirPin(zona, una, r.mozos.length > 1 ? function () { elegir(zona, r.mozos); } : null, msg);
-      else elegir(zona, r.mozos, msg);
-    }).catch(function (e) {
-      zona.textContent = "";
-      zona.appendChild(h("p", "err", "Sin conexión. " + (e && e.message || "")));
-      zona.appendChild(btn("Reintentar", "btn", function () { pantallaLogin(); }));
-    });
-  }
-  function elegir(zona, mozos, msg) {
-    zona.textContent = "";
-    zona.appendChild(h("p", null, "¿Quién eres?"));
-    if (msg) zona.appendChild(h("p", "err", msg));
-    var g = h("div", "nombres");
-    mozos.forEach(function (m) { g.appendChild(btn(m.nombre, "", function () { pedirPin(zona, m, function () { elegir(zona, mozos); }); })); });
-    zona.appendChild(g);
-  }
-  function pedirPin(zona, mozo, volver, msg) {
-    zona.textContent = "";
-    zona.appendChild(h("p", null, "Hola, " + mozo.nombre + ". Ingresa tu PIN"));
-    var pin = "", puntos = h("div", "pin"), err = h("p", "err", msg || "");
-    function pintar() { puntos.textContent = ""; for (var i = 0; i < Math.max(4, pin.length); i++) puntos.appendChild(h("i", i < pin.length ? "on" : "")); }
-    pintar();
-    var tec = h("div", "teclado");
-    function entrar() {
-      if (pin.length < 4) { err.textContent = "El PIN tiene al menos 4 números."; return; }
-      err.textContent = "Verificando…";
-      audio();
-      api({ mz: "login", id: mozo.id, pin: pin }).then(function (r) {
-        if (!r.ok) { err.textContent = r.error || "PIN incorrecto."; pin = ""; pintar(); return; }
-        S.t = r.t; S.mozo = r.mozo; guardar(K.t, r.t); guardar(K.mozo, r.mozo); guardar(K.ultimo, r.mozo.id);
-        iniciar();
-      }).catch(function () { err.textContent = "Sin conexión. Intenta de nuevo."; });
+    if (!CODIGO) {
+      w.appendChild(h("h1", null, "Equipo no vinculado"));
+      w.appendChild(h("p", null, msg || "Para usar el panel del salón, abre el enlace que te dio el administrador."));
+      return;
     }
-    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "Entrar"].forEach(function (k) {
-      tec.appendChild(btn(k, k === "Entrar" ? "ok" : "", function () {
-        if (k === "⌫") pin = pin.slice(0, -1);
-        else if (k === "Entrar") return entrar();
-        else if (pin.length < 6) pin += k;
-        err.textContent = ""; pintar();
-      }));
-    });
-    zona.appendChild(puntos); zona.appendChild(tec); zona.appendChild(err);
-    if (volver) zona.appendChild(btn("No soy " + mozo.nombre, "link", volver));
+    w.appendChild(h("h1", null, "Vincular este equipo"));
+    if (msg) w.appendChild(h("p", "err", msg));
+    var info = h("p", null, "Detectando el equipo…"); w.appendChild(info);
+    var err = h("p", "err");
+    if (esIOS && !instalada) {
+      info.textContent = "En iPhone o iPad, primero instálalo: toca Compartir (□↑) → “Agregar a inicio”. Luego ábrelo desde el ícono nuevo y vincúlalo ahí.";
+      w.appendChild(h("p", null, "Si lo vinculas aquí en Safari, el ícono de inicio no quedará vinculado y necesitarás un enlace nuevo."));
+      w.appendChild(btn("Vincular aquí de todas formas", "link", function () { this.remove(); paso(); }));
+      w.appendChild(err);
+      return;
+    }
+    paso();
+    function paso() {
+      describirEquipo().then(function (eq) {
+        info.textContent = "Equipo detectado: " + eq + ". Este enlace solo funciona en UN equipo: si lo vinculas aquí, no servirá en otro.";
+        var b = btn("Vincular este equipo", "btn prim", function () {
+          b.disabled = true; b.textContent = "Vinculando…"; err.textContent = ""; audio();
+          api({ mz: "vincular", codigo: CODIGO, equipo: eq }).then(function (r) {
+            if (!r.ok) { err.textContent = r.error; b.remove(); return; }
+            S.t = r.t; S.mozo = r.mozo; guardar(K.t, r.t); guardar(K.mozo, r.mozo); guardar("pg-mozo-equipo", eq);
+            iniciar(); toast("✓ Equipo vinculado a " + r.mozo.nombre, "ok");
+          }).catch(function () { b.disabled = false; b.textContent = "Vincular este equipo"; err.textContent = "Sin conexión. Intenta de nuevo."; });
+        });
+        b.style.minWidth = "260px";
+        w.appendChild(b); w.appendChild(err);
+      });
+    }
   }
-  function salir(vencida) {
-    if (!vencida && S.t) api({ mz: "salir", t: S.t }).catch(function () {});
+  function salir() {
     S.t = ""; S.mozo = null; guardar(K.t, ""); guardar(K.mozo, null);
-    cerrarModal(); pantallaLogin(vencida ? "Tu sesión terminó. Vuelve a entrar." : "");
+    cerrarModal(); pantallaLogin("Este equipo fue desvinculado por el administrador. Pide un enlace nuevo.");
   }
 
   /* =========================== SONDEO (cada 12 s) =========================== */
@@ -327,7 +331,7 @@
     }));
     c.appendChild(btn("🔔 Probar sonido", "", function () { audio(); pitar(2); }));
     c.appendChild(btn("🔄 Actualizar ahora", "", function () { cerrarModal(); S.v = ""; sondear(); }));
-    c.appendChild(btn("👤 Cambiar de mozo / Salir", "", function () { salir(false); }));
+    c.appendChild(h("p", "vacio", "📱 Este equipo: " + (leer("pg-mozo-equipo", "") || "vinculado") + ". Para usarlo con otro mozo, el administrador debe desvincularlo."));
     abrirModal(S.mozo ? "🤵 " + S.mozo.nombre : "Menú", [c]);
   }
 
@@ -426,7 +430,7 @@
   }
   function tarjeta(it) {
     var no = motivoNo(it), b = btn("", "prod" + (no ? " no" : ""), function () { if (no) { toast(it.n + ": " + no.toLowerCase(), "mal"); return; } tocarProducto(it, b); });
-    if (it.foto) { var f = h("div", "ft"); f.style.backgroundImage = "url('" + String(it.foto).replace(/'/g, "%27") + "')"; b.appendChild(f); }
+    if (it.foto) { var f = h("div", "ft"), u = String(it.foto); if (!/^(https?:|data:|\/)/.test(u)) u = "/" + u; f.style.backgroundImage = "url('" + u.replace(/'/g, "%27") + "')"; b.appendChild(f); }
     var tx = h("div", "tx");
     tx.appendChild(h("span", "n", it.n));
     if (it.g) tx.appendChild(h("span", "g", it.g));

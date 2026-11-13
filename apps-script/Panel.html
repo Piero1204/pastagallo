@@ -379,7 +379,7 @@ tr.oculto td{opacity:.5}
     <div class="barra">
       <h2 class="tit" style="margin:0 8px 0 0">Mozos</h2>
       <button class="btn prim" id="nuevoMozo">+ Agregar mozo</button>
-      <span class="nota">Panel del mozo: <b id="linkMozo"></b> · se instala en la tablet o el celular ("Agregar a pantalla de inicio").</span>
+      <span class="nota">Cada mozo recibe un <b>enlace secreto</b> que solo funciona en <b>un equipo</b>: el primero que lo abre y toca "Vincular". Para cambiar de equipo, toca "Desvincular": se genera un enlace nuevo y el anterior deja de servir.</span>
     </div>
     <div class="mesas" id="lMozos"></div>
     <div class="barra" style="margin-top:18px">
@@ -1552,7 +1552,6 @@ function rangoMozos(){
   return [fechaIsoLocal(d), hasta];
 }
 function cargarMozos(){
-  $('#linkMozo').textContent = (INFO.sitio || 'https://pastagallo.pages.dev').replace(/\/$/, '') + '/mozo';
   run('listarMozos').then(function(m){ MOZOS = m; pintarMozos(); }).catch(error);
   cargarReporteMozos();
 }
@@ -1560,30 +1559,42 @@ function cargarReporteMozos(){ var r = rangoMozos(); run('reporteMozos', r[0], r
 $('#filtroMozos').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; perMozos = b.dataset.p; this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); }); cargarReporteMozos(); });
 function pintarMozos(){
   var l = $('#lMozos'); l.textContent = '';
-  if (!MOZOS.length) l.appendChild(el('p', {class:'nota', text:'Todavía no hay mozos. Agrega uno con su PIN para que pueda entrar al panel del mozo.'}));
+  if (!MOZOS.length) l.appendChild(el('p', {class:'nota', text:'Todavía no hay mozos. Agrega uno y envíale su enlace (o muéstrale el QR) para vincular su tablet o celular.'}));
   MOZOS.forEach(function(m){
-    l.appendChild(el('div', {class:'mesa' + (m.activo ? '' : ' inactiva'), style:'text-align:left'}, [
-      el('h3', {text:'🤵 ' + m.nombre}),
-      el('div', {class:'nota', text: (m.activo ? 'Activo' : 'Desactivado') + ' · último ingreso: ' + (m.ultimo ? new Date(m.ultimo).toLocaleString('es-PE') : '—')}),
-      el('div', {class:'pie', style:'flex-wrap:wrap;margin-top:8px'}, [
-        el('button', {class:'btn peq', text:'Editar / cambiar PIN', onclick: function(){ editarMozo(m); }}),
-        el('button', {class:'btn peq', text: m.activo ? 'Desactivar' : 'Activar', onclick: function(){
-          if (m.activo && !confirm('¿Desactivar a ' + m.nombre + '? Se cerrará su sesión en todos sus equipos.')) return;
-          run('guardarMozo', { id:m.id, nombre:m.nombre, activo:!m.activo }).then(function(x){ MOZOS = x; pintarMozos(); }).catch(error);
-        }})
-      ])
-    ]));
+    var cuerpo = [];
+    if (!m.activo) cuerpo.push(el('div', {class:'nota', text:'Desactivado: no tiene enlace. Actívalo para generar uno nuevo.'}));
+    else if (m.vinculado) {
+      cuerpo.push(el('div', {class:'aviso', style:'margin:6px 0', text:'📱 Vinculado: ' + m.equipo}));
+      cuerpo.push(el('div', {class:'nota', text:'Desde ' + (m.desde ? new Date(m.desde).toLocaleString('es-PE') : '—') + ' · último uso: ' + (m.ultimo ? new Date(m.ultimo).toLocaleString('es-PE') : '—')}));
+    } else {
+      var qr = el('div', {class:'qr', style:'margin:8px auto'});
+      if (window.QRCode && m.link) new QRCode(qr, { text: m.link, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.M });
+      cuerpo.push(el('div', {class:'aviso', style:'margin:6px 0', text:'🔗 Esperando que un equipo abra el enlace y toque "Vincular".'}));
+      cuerpo.push(qr);
+      cuerpo.push(el('div', {class:'lnk', style:'word-break:break-all', text: m.link}));
+      cuerpo.push(el('button', {class:'btn peq', style:'margin-top:6px', text:'Copiar enlace', onclick: function(){ copiar(m.link, 'Enlace copiado: envíalo solo a ' + m.nombre); }}));
+    }
+    var acciones = [
+      el('button', {class:'btn peq', text:'Cambiar nombre', onclick: function(){
+        var n = prompt('Nombre del mozo (como sale en la comanda):', m.nombre); if (n == null) return;
+        run('guardarMozo', { id:m.id, nombre:n, activo:m.activo }).then(function(x){ MOZOS = x; pintarMozos(); }).catch(error);
+      }})
+    ];
+    if (m.activo) acciones.push(el('button', {class:'btn peq', text: m.vinculado ? '🔓 Desvincular (enlace nuevo)' : '🔄 Generar otro enlace', onclick: function(){
+      if (!confirm(m.vinculado ? '¿Desvincular el equipo de ' + m.nombre + ' (' + m.equipo + ')?\n\nEse equipo deja de funcionar al instante y se genera un enlace NUEVO para vincular otro (o el mismo) equipo.' : '¿Reemplazar el enlace de ' + m.nombre + '? El enlace actual dejará de servir.')) return;
+      run('nuevoEnlaceMozo', m.id).then(function(x){ MOZOS = x; pintarMozos(); toast('Enlace nuevo generado'); }).catch(error);
+    }}));
+    acciones.push(el('button', {class:'btn peq', text: m.activo ? 'Desactivar' : 'Activar', onclick: function(){
+      if (m.activo && !confirm('¿Desactivar a ' + m.nombre + '? Su equipo deja de funcionar al instante.')) return;
+      run('guardarMozo', { id:m.id, nombre:m.nombre, activo:!m.activo }).then(function(x){ MOZOS = x; pintarMozos(); }).catch(error);
+    }}));
+    l.appendChild(el('div', {class:'mesa' + (m.activo ? '' : ' inactiva'), style:'text-align:left'}, [el('h3', {text:'🤵 ' + m.nombre})].concat(cuerpo).concat([el('div', {class:'pie', style:'flex-wrap:wrap;margin-top:8px'}, acciones)])));
   });
 }
-function editarMozo(m){
-  var nombre = prompt('Nombre del mozo (como aparecerá en la comanda):', m ? m.nombre : '');
-  if (nombre == null) return;
-  var pin = prompt(m ? 'Nuevo PIN de 4 a 6 números (déjalo vacío para no cambiarlo).\nAl cambiarlo se cierran sus sesiones abiertas.' : 'PIN de 4 a 6 números para ' + nombre + ':', '');
-  if (pin == null) return;
-  run('guardarMozo', { id: m ? m.id : '', nombre: nombre, pin: pin.trim(), activo: m ? m.activo : true })
-    .then(function(x){ MOZOS = x; pintarMozos(); toast('Mozo guardado'); }).catch(error);
-}
-$('#nuevoMozo').addEventListener('click', function(){ editarMozo(null); });
+$('#nuevoMozo').addEventListener('click', function(){
+  var n = prompt('Nombre del mozo (como saldrá en la comanda):', ''); if (n == null || !n.trim()) return;
+  run('guardarMozo', { id:'', nombre:n, activo:true }).then(function(x){ MOZOS = x; pintarMozos(); toast('Mozo creado: copia su enlace o muéstrale el QR'); }).catch(error);
+});
 function pintarReporteMozos(r){
   var l = $('#rMozos'); l.textContent = '';
   if (!r.mozos.length) l.appendChild(el('p', {class:'nota', text:'Sin cobros registrados todavía.'}));
