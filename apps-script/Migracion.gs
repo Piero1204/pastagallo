@@ -1209,3 +1209,82 @@ function actualizarV7b() {
   limpiarCache_(); marcarPendiente_();
   return 'v7b: ' + hecho + ' celdas. ' + publicarCarta('').mensaje;
 }
+
+/* =====================================================================
+   PASTA GALLO · v8 (13-nov-2026): precios de vuelta a la CARTA ORIGINAL (la física)
+   mientras la carta nueva está en preparación.
+   - "volverPreciosCartaOriginal": guarda los precios actuales (nuevos) en la hoja
+     "precios_guardados" y pone los de la carta física. Solo toca los productos que
+     están en la carta física; los demás (promos, Prodotti d'Italia, vinos nuevos...) quedan igual.
+   - "restaurarPreciosNuevos": cuando Piero diga, vuelve a poner los precios guardados.
+   Ambas se pueden repetir sin riesgo (la primera no pisa lo ya guardado).
+   ===================================================================== */
+var PRECIOS_ORIGINALES = {
+  tam: {
+    'pizze-napoletana': [22, 33, 50], 'pizze-americana': [25, 35, 55],
+    'pizze-arrabbiata': [30, 40, 60], 'pizze-speciale': [30, 40, 60], 'pizze-tentazione': [30, 40, 60],
+    'pizze-vegetariana': [30, 40, 60], 'pizze-ghiottona': [30, 40, 60],
+    'pizze-hawaiana': [32, 42, 62], 'pizze-campagnola': [32, 42, 62], 'pizze-primavera': [32, 42, 65],
+    'pizze-quattro-stagioni': [35, 45, 66], 'pizze-piemontese': [35, 45, 66], 'pizze-quattro-formaggi': [35, 45, 70],
+    'pizze-la-peruanita': [32, 45, 75], 'pizze-abbuffata': [35, 45, 70], 'pizze-la-chama': [35, 45, 70]
+  },
+  precio: {
+    'pasta-fonte-di-ravioli': 60, 'pasta-fonte-di-ravioli-di-carne': 60, 'pasta-fonte-di-fettuccine': 50,
+    'pasta-tris-di-pasta': 34, 'pasta-fettuccine-allalfredo-con-lomo': 55, 'pasta-spaghetti-alla-huancaina-con-lomo': 60,
+    'pasta-spaghetti-ai-gamberoni': 60,
+    'pasta-fettuccine': 30, 'pasta-pappardelle': 30, 'pasta-spaghetti': 30, 'pasta-conchiglie': 30, 'pasta-gomiti': 30,
+    'pasta-maccheroni': 30, 'pasta-gnocchi-di-patate': 30,
+    'pasta-ravioli-di-carne': 32, 'pasta-ravioli-di-formaggio': 32, 'pasta-tortellini': 32,
+    'lasagne-lasagna-di-spinaci': 34, 'lasagne-lasagna-di-carne': 32, 'lasagne-lasagna-agli-asparagi': 36,
+    'parrillas-lomo-fino-a-la-plancha': 60, 'parrillas-churrasco-o-chuleta': 38, 'parrillas-chuleta': 38,
+    'parrillas-milanesa-de-pollo': 30,
+    'vini-calice-di-vino': 12, 'vini-tabernero-borgona': 45, 'vini-frontera': 48, 'vini-tacama-seco': 55,
+    'vini-patrillo': 120, 'vini-prisionero': 100
+  }
+};
+var HOJA_PRECIOS_GUARDADOS_ = 'precios_guardados';
+
+function volverPreciosCartaOriginal() {
+  exigirAdmin_('');
+  var ss = SpreadsheetApp.getActive(), h = ss.getSheetByName(HOJA.productos);
+  var cab = asegurarColumnas_(h, COLS.productos);
+  var cP = cab.indexOf('precio') + 1, cT = cab.indexOf('tamanos') + 1;
+  var g = ss.getSheetByName(HOJA_PRECIOS_GUARDADOS_);
+  if (!g) { g = ss.insertSheet(HOJA_PRECIOS_GUARDADOS_); g.appendRow(['id', 'nombre', 'precio_nuevo', 'tamanos_nuevo', 'precio_original', 'tamanos_original', 'guardado']); g.setFrozenRows(1); }
+  var yaGuardado = {}; g.getDataRange().getValues().slice(1).forEach(function (r) { yaGuardado[String(r[0])] = true; });
+  var M = PRECIOS_ORIGINALES, hecho = [], falta = [];
+  leerTabla_(HOJA.productos).forEach(function (p) {
+    var id = String(p.id), nuevoT = null, nuevoP = null;
+    if (M.tam[id]) {
+      var partes = String(p.tamanos || '').split(';').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (partes.length !== M.tam[id].length) { falta.push(id + ' (tamaños)'); return; }
+      nuevoT = partes.map(function (x, i) { return x.split('=')[0].trim() + '=' + M.tam[id][i]; }).join('; ');
+    } else if (M.precio[id] != null) nuevoP = M.precio[id];
+    else return;
+    if (!yaGuardado[id]) g.appendRow([id, p.nombre, p.precio, p.tamanos, nuevoP == null ? p.precio : nuevoP, nuevoT == null ? p.tamanos : nuevoT, new Date()]);
+    if (nuevoT != null && String(p.tamanos) !== nuevoT) { h.getRange(p._fila, cT).setValue(nuevoT); hecho.push(id); }
+    if (nuevoP != null && Number(p.precio) !== nuevoP) { h.getRange(p._fila, cP).setValue(nuevoP); hecho.push(id); }
+  });
+  limpiarCache_(); marcarPendiente_();
+  var r = publicarCarta('');
+  Logger.log('cambiados ' + hecho.length + ': ' + hecho.join(', ') + (falta.length ? ' | REVISAR: ' + falta.join(', ') : ''));
+  return 'Precios de la carta original: ' + hecho.length + ' productos. ' + r.mensaje;
+}
+
+function restaurarPreciosNuevos() {
+  exigirAdmin_('');
+  var ss = SpreadsheetApp.getActive(), h = ss.getSheetByName(HOJA.productos), g = ss.getSheetByName(HOJA_PRECIOS_GUARDADOS_);
+  if (!g) throw new Error('No hay precios guardados.');
+  var cab = asegurarColumnas_(h, COLS.productos), cP = cab.indexOf('precio') + 1, cT = cab.indexOf('tamanos') + 1;
+  var guard = {}; g.getDataRange().getValues().slice(1).forEach(function (r) { guard[String(r[0])] = { precio: r[2], tamanos: r[3] }; });
+  var n = 0;
+  leerTabla_(HOJA.productos).forEach(function (p) {
+    var x = guard[String(p.id)]; if (!x) return;
+    if (String(p.precio) !== String(x.precio)) { h.getRange(p._fila, cP).setValue(x.precio); n++; }
+    if (String(p.tamanos) !== String(x.tamanos)) { h.getRange(p._fila, cT).setValue(x.tamanos); n++; }
+  });
+  limpiarCache_(); marcarPendiente_();
+  var r = publicarCarta('');
+  Logger.log('restaurados ' + n + ' valores');
+  return 'Precios nuevos restaurados (' + n + ' cambios). ' + r.mensaje;
+}
