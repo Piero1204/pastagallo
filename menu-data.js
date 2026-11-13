@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T02:02:56-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T02:03:28-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -904,6 +904,45 @@ window.CARTA = {
          0,
          5,
          6
+        ]
+       }
+      },
+      {
+       "id": "promociones-il-classico",
+       "n": "Il Classico",
+       "g": "lasagna + pizza personal + pan al ajo + Pepsi",
+       "d": "Lo clásico de la casa en un solo pedido: lasagna di carne y una pizza personal, con pan al ajo y Pepsi. Puedes sumarle un wafer Tre Marie.",
+       "p": 55,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos"
+       ],
+       "foto": "fotos/ref-il-classico.jpg",
+       "canal": "delivery",
+       "op": [
+        "aggiungi-wafer",
+        "temp-bebida"
+       ],
+       "g_en": "lasagna + personal pizza + garlic bread + Pepsi",
+       "d_en": "The house classics in one order: beef lasagna and a personal pizza, with garlic bread and Pepsi. You can add a Tre Marie wafer.",
+       "inc": [
+        "Lasagna di carne",
+        "Pizza personal (sabor a consultar)",
+        "2 porciones de pan al ajo (4 rebanadas)",
+        "Pepsi de ½ litro"
+       ],
+       "inc_en": [
+        "Beef lasagna",
+        "Personal pizza (ask for flavours)",
+        "2 portions of garlic bread (4 slices)",
+        "½-litre Pepsi"
+       ],
+       "promo": {
+        "dias": [
+         2,
+         3,
+         4
         ]
        }
       },
@@ -3124,5 +3163,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T02:02:56-05:00"
+ "publicado": "2026-11-13T02:03:28-05:00"
 };
