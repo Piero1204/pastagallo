@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T02:02:42-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T02:02:56-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -915,10 +915,10 @@ window.CARTA = {
        "p": 99,
        "al": [
         "gluten",
-        "huevo",
-        "lacteos",
         "soya",
-        "frutosSecos"
+        "huevo",
+        "frutosSecos",
+        "lacteos"
        ],
        "foto": "fotos/ref-festa-italiana.jpg",
        "canal": "delivery",
@@ -944,8 +944,6 @@ window.CARTA = {
        ],
        "promo": {
         "dias": [
-         0,
-         5,
          6
         ]
        }
@@ -3126,5 +3124,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T02:02:42-05:00"
+ "publicado": "2026-11-13T02:02:56-05:00"
 };
