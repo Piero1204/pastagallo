@@ -450,7 +450,8 @@
     if (MODO === "mesa") {
       f.appendChild(campo("nombre", t("aNombre"), "text", { max: 60, auto: "given-name" }));
       f.appendChild(campo("notas", t("comentCocina"), "area", { max: 300 }));
-      f.appendChild(bloqueComprobante());
+      // En la mesa el pago y el comprobante se piden al final, con "Pedir la cuenta"
+      form.comprobante = "";
     } else {
       if (!form.canal || !CFG.recojo) form.canal = "delivery";
       if (CFG.recojo) {
@@ -691,7 +692,7 @@
   }
   function validar() {
     if (!carrito.length) return t("vacio");
-    if (MODO === "mesa") return validarComprobante();
+    if (MODO === "mesa") return "";
     if (!form.nombre || form.nombre.trim().length < 2) return t("errNombre");
     if (String(form.telefono || "").replace(/\D/g, "").length < 9) return t("errCel");
     if (form.canal === "delivery" && (!form.direccion || form.direccion.trim().length < 5)) return t("errDir");
