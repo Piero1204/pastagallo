@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T17:42:38-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T18:56:38-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -81,12 +81,10 @@ window.CARTA = {
   "mesaActivos": true,
   "recojo": true,
   "metodosPago": [
-   "Yape",
-   "Plin"
+   "Yape o Plin"
   ],
   "metodosPagoMesa": [
-   "Yape",
-   "Plin",
+   "Yape o Plin",
    "Efectivo",
    "Tarjeta"
   ],
@@ -104,6 +102,12 @@ window.CARTA = {
    "Transferencia": {
     "texto": "",
     "qr": ""
+   },
+   "Yape o Plin": {
+    "numero": "948 323 337",
+    "titular": "Edit Varela García",
+    "qr": "fotos/pago-plin.jpg",
+    "unico": true
    }
   },
   "textoDelivery": "El costo del delivery depende de tu zona y te lo confirmamos por WhatsApp.",
@@ -2770,6 +2774,7 @@ window.CARTA = {
        "d": "Fresca y cítrica. Helada, a temperatura ambiente o frozen.",
        "p": 18,
        "foto": "https://images.unsplash.com/photo-1575596510825-f748919a2bf7?w=700&q=70&auto=format&fit=crop",
+       "canal": "local",
        "op": [
         "temp-limonada"
        ],
@@ -2783,6 +2788,7 @@ window.CARTA = {
        "d": "El sabor tropical y vibrante del maracuyá. Helada, a temperatura ambiente o frozen.",
        "p": 18,
        "foto": "https://images.unsplash.com/photo-1546751706-81c567470489?w=700&q=70&auto=format&fit=crop",
+       "canal": "local",
        "op": [
         "temp-limonada"
        ],
@@ -2971,7 +2977,7 @@ window.CARTA = {
    "intro": "",
    "pie": "",
    "alcohol": true,
-   "delivery": false,
+   "delivery": true,
    "mesa": true,
    "grupos": [
     {
@@ -2988,6 +2994,7 @@ window.CARTA = {
         "sulfitos"
        ],
        "foto": "https://images.unsplash.com/photo-1553361371-9b22f78e8b1d?w=700&q=70&auto=format&fit=crop",
+       "canal": "local",
        "op": [
         "vino-copa"
        ],
@@ -3003,6 +3010,7 @@ window.CARTA = {
         "sulfitos"
        ],
        "foto": "https://images.unsplash.com/photo-1682423228933-0e8b8fc4f92a?w=700&q=70&auto=format&fit=crop",
+       "canal": "local",
        "g_en": "sangria"
       }
      ]
@@ -3194,5 +3202,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T17:42:38-05:00"
+ "publicado": "2026-11-13T18:56:38-05:00"
 };
