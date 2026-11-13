@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T02:02:08-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T02:02:15-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -943,6 +943,49 @@ window.CARTA = {
          2,
          3,
          4
+        ]
+       }
+      },
+      {
+       "id": "promociones-festa-italiana",
+       "n": "Festa Italiana",
+       "g": "Tris di Pasta + pizza personal + galletas Tre Marie + pan al ajo + Pepsi 1.5 L",
+       "d": "Una mesa completa para el fin de semana: nuestro Tris di Pasta, una pizza personal, pan al ajo para todos, Pepsi y galletas italianas Tre Marie para el final.",
+       "p": 99,
+       "al": [
+        "gluten",
+        "huevo",
+        "lacteos",
+        "soya",
+        "frutosSecos"
+       ],
+       "foto": "fotos/ref-festa-italiana.jpg",
+       "canal": "delivery",
+       "op": [
+        "tremarie-galleta",
+        "temp-bebida"
+       ],
+       "g_en": "Tris di Pasta + personal pizza + Tre Marie biscuits + garlic bread + 1.5 L Pepsi",
+       "d_en": "A complete weekend table: our Tris di Pasta, a personal pizza, garlic bread for everyone, Pepsi and Italian Tre Marie biscuits to finish.",
+       "inc": [
+        "Tris di Pasta (fettuccine, lasagna di carne y raviolini)",
+        "Pizza personal (sabor a consultar)",
+        "1 paquete de galletas Tre Marie a elección",
+        "5 porciones de pan al ajo (10 rebanadas)",
+        "Pepsi de 1.5 litros"
+       ],
+       "inc_en": [
+        "Tris di Pasta (fettuccine, beef lasagna and raviolini)",
+        "Personal pizza (ask for flavours)",
+        "1 pack of Tre Marie biscuits of your choice",
+        "5 portions of garlic bread (10 slices)",
+        "1.5-litre Pepsi"
+       ],
+       "promo": {
+        "dias": [
+         0,
+         5,
+         6
         ]
        }
       }
@@ -3122,5 +3165,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T02:02:08-05:00"
+ "publicado": "2026-11-13T02:02:15-05:00"
 };
