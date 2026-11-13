@@ -375,6 +375,9 @@ body.con-carrito .repetir{display:none}
 .detalle__foto{max-width:none;margin-left:-18px;margin-right:-18px}
 .detalle__foto--producto{object-fit:contain;background:#fff;height:280px;padding:14px}
 .foto.foto--producto{object-fit:contain;background:#fff}
+/* vinos: la botella entera, sin recortes (foto vertical 2:3) */
+.detalle__foto--botella{height:min(56vh,440px);max-height:none;padding:18px 0;box-sizing:border-box}
+.foto.foto--botella{padding:4px}
 
 /* cobro anticipado (Yape / Plin / transferencia) y confirmación de envío a cocina */
 .cobro{margin:4px 0 12px;padding:12px 14px;border:1px solid var(--oro);border-radius:4px;background:rgba(169,128,63,.08)}

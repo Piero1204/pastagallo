@@ -183,7 +183,7 @@
   function abrirDetalle(it, sec) {
     var c = h("div", "hoja__cuerpo");
     if (it.foto) {
-      var im = h("img", "detalle__foto" + (sec && sec.id === "italia" ? " detalle__foto--producto" : "")); im.src = it.foto; im.alt = tx(it, "n");
+      var im = h("img", "detalle__foto" + (sec && (sec.id === "italia" || (sec.id === "vini" && /^fotos\//.test(it.foto))) ? " detalle__foto--producto" + (sec.id === "vini" ? " detalle__foto--botella" : "") : "")); im.src = it.foto; im.alt = tx(it, "n");
       im.onerror = function () { im.remove(); };
       c.appendChild(im);
     }

@@ -325,7 +325,7 @@
       a.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && ev.target === a) { ev.preventDefault(); PED.abrirDetalle(it, sec); } });
     }
     if (tieneFoto) {
-      var im = h("img", "foto" + (sec && sec.id === "italia" ? " foto--producto" : "")); im.src = it.foto; im.alt = tx(it, "n"); im.loading = "lazy";
+      var im = h("img", "foto" + (sec && (sec.id === "italia" || (sec.id === "vini" && /^fotos\//.test(it.foto))) ? " foto--producto" + (sec.id === "vini" ? " foto--botella" : "") : "")); im.src = it.foto; im.alt = tx(it, "n"); im.loading = "lazy";
       im.onerror = function () { a.className = a.className.replace(" fcon", ""); im.remove(); };
       a.appendChild(im);
     }
