@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T20:44:11-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T21:13:00-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -764,7 +764,7 @@ window.CARTA = {
        "n": "Pizza per Uno",
        "g": "pizza personal + pan al ajo + Pepsi",
        "d": "Tu pizza personal, Hawaiana o Americana, con dos porciones de pan al ajo y una Pepsi helada.",
-       "p": 35,
+       "p": 30,
        "al": [
         "huevo",
         "gluten",
@@ -3069,5 +3069,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-12T20:44:11-05:00"
+ "publicado": "2026-11-12T21:13:00-05:00"
 };
