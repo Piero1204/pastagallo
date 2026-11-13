@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T11:32:16-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T19:55:11-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -81,10 +81,31 @@ window.CARTA = {
   "mesaActivos": true,
   "recojo": true,
   "metodosPago": [
-   "Efectivo",
    "Yape",
    "Plin"
   ],
+  "metodosPagoMesa": [
+   "Yape",
+   "Plin",
+   "Efectivo",
+   "Tarjeta"
+  ],
+  "cobro": {
+   "Yape": {
+    "numero": "948 323 337",
+    "titular": "Edit Varela García",
+    "qr": ""
+   },
+   "Plin": {
+    "numero": "948 323 337",
+    "titular": "Edit Varela García",
+    "qr": ""
+   },
+   "Transferencia": {
+    "texto": "",
+    "qr": ""
+   }
+  },
   "textoDelivery": "El costo del delivery depende de tu zona y te lo confirmamos por WhatsApp.",
   "textoDelivery_en": "The delivery fee depends on your area; we will confirm it by WhatsApp.",
   "comprobantes": [
@@ -3048,5 +3069,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-12T11:32:16-05:00"
+ "publicado": "2026-11-12T19:55:11-05:00"
 };
