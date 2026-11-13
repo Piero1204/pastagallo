@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T16:26:00-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T17:42:38-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -1456,15 +1456,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         24
+         22
         ],
         [
          "Media",
-         35
+         33
         ],
         [
          "Famiglia",
-         52
+         50
         ]
        ],
        "al": [
@@ -1484,15 +1484,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         27
+         25
         ],
         [
          "Media",
-         37
+         35
         ],
         [
          "Famiglia",
-         57
+         55
         ]
        ],
        "al": [
@@ -1512,15 +1512,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         32
+         30
         ],
         [
          "Media",
-         42
+         40
         ],
         [
          "Famiglia",
-         62
+         60
         ]
        ],
        "al": [
@@ -1540,15 +1540,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         32
+         30
         ],
         [
          "Media",
-         42
+         40
         ],
         [
          "Famiglia",
-         62
+         60
         ]
        ],
        "al": [
@@ -1568,15 +1568,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         32
+         30
         ],
         [
          "Media",
-         42
+         40
         ],
         [
          "Famiglia",
-         62
+         60
         ]
        ],
        "al": [
@@ -1596,15 +1596,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         34
+         32
         ],
         [
          "Media",
-         44
+         42
         ],
         [
          "Famiglia",
-         64
+         62
         ]
        ],
        "al": [
@@ -1624,15 +1624,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         32
+         30
         ],
         [
          "Media",
-         42
+         40
         ],
         [
          "Famiglia",
-         62
+         60
         ]
        ],
        "al": [
@@ -1653,15 +1653,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         32
+         30
         ],
         [
          "Media",
-         42
+         40
         ],
         [
          "Famiglia",
-         62
+         60
         ]
        ],
        "al": [
@@ -1683,15 +1683,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         34
+         32
         ],
         [
          "Media",
-         44
+         42
         ],
         [
          "Famiglia",
-         64
+         62
         ]
        ],
        "al": [
@@ -1712,15 +1712,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         34
+         32
         ],
         [
          "Media",
-         44
+         42
         ],
         [
          "Famiglia",
-         67
+         65
         ]
        ],
        "al": [
@@ -1741,15 +1741,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         37
+         35
         ],
         [
          "Media",
-         47
+         45
         ],
         [
          "Famiglia",
-         68
+         66
         ]
        ],
        "al": [
@@ -1771,15 +1771,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         37
+         35
         ],
         [
          "Media",
-         47
+         45
         ],
         [
          "Famiglia",
-         68
+         66
         ]
        ],
        "al": [
@@ -1800,15 +1800,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         37
+         35
         ],
         [
          "Media",
-         47
+         45
         ],
         [
          "Famiglia",
-         72
+         70
         ]
        ],
        "al": [
@@ -1829,15 +1829,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         34
+         32
         ],
         [
          "Media",
-         47
+         45
         ],
         [
          "Famiglia",
-         77
+         75
         ]
        ],
        "al": [
@@ -1859,15 +1859,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         37
+         35
         ],
         [
          "Media",
-         47
+         45
         ],
         [
          "Famiglia",
-         72
+         70
         ]
        ],
        "al": [
@@ -1888,15 +1888,15 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         37
+         35
         ],
         [
          "Media",
-         47
+         45
         ],
         [
          "Famiglia",
-         72
+         70
         ]
        ],
        "al": [
@@ -1936,7 +1936,7 @@ window.CARTA = {
        "n": "Fonte di Ravioli di Ricotta",
        "g": "fuente de ravioles de ricotta",
        "d": "Una fuente generosa de ravioles rellenos de ricotta, servida con la salsa de tu elección.",
-       "p": 65,
+       "p": 60,
        "salsa": true,
        "al": [
         "gluten",
@@ -1952,7 +1952,7 @@ window.CARTA = {
        "n": "Fonte di Ravioli di Carne",
        "g": "fuente de ravioles de carne",
        "d": "Una fuente generosa de ravioles rellenos de carne, servida con la salsa de tu elección.",
-       "p": 65,
+       "p": 60,
        "salsa": true,
        "al": [
         "gluten",
@@ -1967,7 +1967,7 @@ window.CARTA = {
        "n": "Fonte di Fettuccine",
        "g": "fuente de fettuccine",
        "d": "Una fuente generosa de fettuccine, clásicos o verdes (de espinaca), servida con la salsa de tu elección.",
-       "p": 55,
+       "p": 50,
        "salsa": true,
        "al": [
         "gluten",
@@ -1985,7 +1985,7 @@ window.CARTA = {
        "n": "Tris di Pasta",
        "g": "tres pastas en un plato",
        "d": "Un plato largo que reúne nuestros clásicos: fettuccine, lasagna de carne y raviolini di carne.",
-       "p": 36,
+       "p": 34,
        "salsa": true,
        "destacado": "tris",
        "al": [
@@ -2007,7 +2007,7 @@ window.CARTA = {
        "id": "pasta-fettuccine-allalfredo-con-lomo",
        "n": "Fettuccine all’Alfredo con Lomo",
        "d": "Fettuccine bañados en la cremosa salsa Alfredo y coronados con lomo, en el término que prefieras.",
-       "p": 67,
+       "p": 55,
        "al": [
         "gluten",
         "lacteos",
@@ -2024,7 +2024,7 @@ window.CARTA = {
        "n": "Spaghetti alla Huancaina con Lomo",
        "g": "spaghetti a la huancaína con lomo",
        "d": "Dos mundos en un plato: spaghetti italianos con la cremosa salsa huancaína peruana y lomo. Elige tu nivel de picante.",
-       "p": 72,
+       "p": 60,
        "al": [
         "gluten",
         "lacteos"
@@ -2041,7 +2041,7 @@ window.CARTA = {
        "n": "Spaghetti ai Gamberi",
        "g": "spaghetti con langostinos",
        "d": "Spaghetti con langostinos en salsa roja (de tomate) o blanca (bechamel), a tu elección, con el nivel de picante que prefieras.",
-       "p": 72,
+       "p": 60,
        "al": [
         "gluten",
         "mariscos",
@@ -2065,7 +2065,7 @@ window.CARTA = {
        "id": "pasta-fettuccine",
        "n": "Fettuccine",
        "d": "Cintas largas y planas, ideales para las salsas cremosas. Clásicos o verdes (de espinaca).",
-       "p": 32,
+       "p": 30,
        "salsa": true,
        "al": [
         "huevo",
@@ -2081,7 +2081,7 @@ window.CARTA = {
        "id": "pasta-pappardelle",
        "n": "Pappardelle",
        "d": "Anchas cintas de tradición toscana, hechas para salsas con carácter.",
-       "p": 32,
+       "p": 30,
        "salsa": true,
        "agotado": true,
        "al": [
@@ -2095,7 +2095,7 @@ window.CARTA = {
        "id": "pasta-spaghetti",
        "n": "Spaghetti",
        "d": "El clásico entre los clásicos, siempre bienvenido.",
-       "p": 32,
+       "p": 30,
        "salsa": true,
        "al": [
         "gluten"
@@ -2108,7 +2108,7 @@ window.CARTA = {
        "n": "Conchiglie",
        "g": "conchitas",
        "d": "Pasta en forma de concha que guarda la salsa en cada bocado.",
-       "p": 32,
+       "p": 30,
        "salsa": true,
        "al": [
         "gluten"
@@ -2122,7 +2122,7 @@ window.CARTA = {
        "n": "Gomiti",
        "g": "coditos",
        "d": "Pequeños codos de pasta: sencillos, simpáticos y muy queridos.",
-       "p": 32,
+       "p": 30,
        "salsa": true,
        "al": [
         "gluten"
@@ -2136,7 +2136,7 @@ window.CARTA = {
        "n": "Maccheroni",
        "g": "macarrones",
        "d": "Tubos cortos de pasta que abrazan la salsa.",
-       "p": 32,
+       "p": 30,
        "salsa": true,
        "al": [
         "gluten"
@@ -2156,7 +2156,7 @@ window.CARTA = {
        "n": "Ravioli di Carne",
        "g": "ravioles de carne",
        "d": "Ravioles rellenos de carne, con la salsa de tu elección.",
-       "p": 34,
+       "p": 32,
        "salsa": true,
        "al": [
         "gluten",
@@ -2171,7 +2171,7 @@ window.CARTA = {
        "n": "Ravioli di Ricotta",
        "g": "ravioles de ricotta",
        "d": "Ravioles rellenos de ricotta, suaves y cremosos.",
-       "p": 34,
+       "p": 32,
        "salsa": true,
        "al": [
         "gluten",
@@ -2202,7 +2202,7 @@ window.CARTA = {
        "n": "Tortellini di Carne",
        "g": "tortellini de carne",
        "d": "Pequeños anillos de pasta rellenos de carne, con el mismo relleno de nuestros ravioli di carne. Tradición de Emilia-Romaña.",
-       "p": 34,
+       "p": 32,
        "salsa": true,
        "al": [
         "gluten",
@@ -2217,7 +2217,7 @@ window.CARTA = {
        "n": "Gnocchi di Patate",
        "g": "ñoquis de papa",
        "d": "Suaves ñoquis de papa, tiernos como una nube.",
-       "p": 32,
+       "p": 30,
        "salsa": true,
        "agotado": true,
        "al": [
@@ -2414,7 +2414,7 @@ window.CARTA = {
        "n": "Lasagna di Spinaci",
        "g": "lasagna de espinaca",
        "d": "Capas de pasta y espinaca, gratinada hasta quedar dorada.",
-       "p": 38,
+       "p": 34,
        "al": [
         "gluten",
         "huevo",
@@ -2429,7 +2429,7 @@ window.CARTA = {
        "n": "Lasagna di Carne",
        "g": "lasagna de carne",
        "d": "La clásica de siempre: capas de pasta y carne, gratinada y reconfortante.",
-       "p": 36,
+       "p": 32,
        "al": [
         "gluten",
         "huevo",
@@ -2444,7 +2444,7 @@ window.CARTA = {
        "n": "Lasagna agli Asparagi",
        "g": "lasagna de espárragos",
        "d": "Capas de pasta con espárragos, delicada y gratinada.",
-       "p": 40,
+       "p": 36,
        "al": [
         "gluten",
         "huevo",
@@ -2492,7 +2492,7 @@ window.CARTA = {
        "n": "Lomo Fino a la Plancha",
        "g": "Con ensalada y papas fritas",
        "d": "Lomo fino de 350 gramos, sellado a la plancha y servido en el término que prefieras.",
-       "p": 70,
+       "p": 60,
        "foto": "https://images.unsplash.com/photo-1600891964092-4316c288032e?w=700&q=70&auto=format&fit=crop",
        "op": [
         "termino"
@@ -2506,7 +2506,7 @@ window.CARTA = {
        "n": "Churrasco",
        "g": "Con ensalada y papas fritas",
        "d": "Churrasco de res.",
-       "p": 40,
+       "p": 38,
        "agotado": true,
        "foto": "https://images.unsplash.com/photo-1662499754738-e0d6ac84f308?w=700&q=70&auto=format&fit=crop",
        "n_en": "Steak",
@@ -2518,7 +2518,7 @@ window.CARTA = {
        "n": "Chuleta",
        "g": "Con ensalada y papas fritas",
        "d": "Chuleta de cerdo.",
-       "p": 40,
+       "p": 38,
        "foto": "https://images.unsplash.com/photo-1612871689527-2a6145cc9e86?w=700&q=70&auto=format&fit=crop",
        "n_en": "Pork Chop",
        "g_en": "With salad and French fries",
@@ -2540,7 +2540,7 @@ window.CARTA = {
        "n": "Milanesa de Pollo",
        "g": "Con papas fritas",
        "d": "Pollo apanado, dorado y crocante.",
-       "p": 32,
+       "p": 30,
        "al": [
         "gluten",
         "huevo"
@@ -2983,7 +2983,7 @@ window.CARTA = {
        "n": "Calice di Vino",
        "g": "copa de vino",
        "d": "Copa de vino Frontera: Cabernet Sauvignon o Borgoña.",
-       "p": 14,
+       "p": 12,
        "al": [
         "sulfitos"
        ],
@@ -3120,7 +3120,7 @@ window.CARTA = {
        "n": "Tabernero Borgoña",
        "g": "tinto semiseco · Ica · 2024",
        "d": "El clásico tinto semiseco peruano, cosecha 2024. En el Perú se llama borgoña a la uva Isabella, de aroma inconfundible a uva fresca y fresa. Rojo rubí, de dulzor suave y final frutal; fácil de beber y muy querido en la mesa familiar. Servir fresco, a 12–14 °C, con pastas, pizzas y carnes.",
-       "p": 40,
+       "p": 45,
        "al": [
         "sulfitos"
        ],
@@ -3134,7 +3134,7 @@ window.CARTA = {
        "n": "Tacama Gran Tinto Las Tablas",
        "g": "Malbec-Tannat · Ica, Perú",
        "d": "De Viña Tacama, en el valle de Ica, una de las viñas más antiguas de Sudamérica. Ensamblaje de Malbec y Tannat de color rojo violáceo profundo, con aromas de ciruela, mora y un toque especiado. Seco, de cuerpo medio, con taninos presentes y final frutal. Acompaña carnes, parrillas y pastas con ragú. Servir a 16–18 °C.",
-       "p": 45,
+       "p": 55,
        "al": [
         "sulfitos"
        ],
@@ -3148,7 +3148,7 @@ window.CARTA = {
        "n": "Frontera Cabernet Sauvignon",
        "g": "Cabernet Sauvignon · Chile",
        "d": "De la reconocida bodega chilena Concha y Toro. Robusto y balanceado, como dice su etiqueta: rojo rubí, aromas de cassis, ciruela y un toque especiado; cuerpo medio y taninos amables. Un tinto versátil para pastas con ragú, pizzas y carnes. Servir a 16–18 °C.",
-       "p": 40,
+       "p": 48,
        "al": [
         "sulfitos"
        ],
@@ -3162,7 +3162,7 @@ window.CARTA = {
        "n": "Padrillos Malbec",
        "g": "Malbec · Mendoza · 2022",
        "d": "De Ernesto Catena Vineyards, en el Valle de Uco, Mendoza: viñedos de altura al pie de los Andes. Cosecha 2022. El Malbec, uva emblema de Argentina, da aquí un rojo violáceo intenso, con aromas de ciruela, cereza negra y violeta; en boca es jugoso, de taninos suaves y final fresco. Ideal con carnes a la parrilla, lasagna y pizzas intensas. Servir a 16–18 °C.",
-       "p": 150,
+       "p": 120,
        "al": [
         "sulfitos"
        ],
@@ -3176,7 +3176,7 @@ window.CARTA = {
        "n": "Prisionero Cabernet Sauvignon",
        "g": "Cabernet Sauvignon · Mendoza",
        "d": "De Colosso Wines, en Mendoza, con uvas de Luján de Cuyo y Maipú. Cabernet Sauvignon de rojo rubí profundo; aromas de cassis, frutos negros, un toque de pimiento y notas de roble. Seco, con cuerpo, taninos firmes y final largo. Para carnes rojas, parrillas y quesos maduros. Servir a 16–18 °C.",
-       "p": 130,
+       "p": 100,
        "al": [
         "sulfitos"
        ],
@@ -3194,5 +3194,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T16:26:00-05:00"
+ "publicado": "2026-11-13T17:42:38-05:00"
 };
