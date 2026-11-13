@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T21:13:00-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-12T22:51:15-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2425,14 +2425,14 @@ window.CARTA = {
       },
       {
        "id": "parrillas-churrasco-o-chuleta",
-       "n": "Churrasco o Chuleta",
+       "n": "Churrasco",
        "g": "Con ensalada y papas fritas",
-       "d": "A tu elección: churrasco o chuleta.",
+       "d": "Churrasco de res.",
        "p": 40,
        "foto": "https://images.unsplash.com/photo-1662499754738-e0d6ac84f308?w=700&q=70&auto=format&fit=crop",
-       "n_en": "Steak or Pork Chop",
+       "n_en": "Steak",
        "g_en": "With salad and French fries",
-       "d_en": "Your choice: steak or pork chop."
+       "d_en": "Beef steak."
       },
       {
        "id": "parrillas-pollo-a-la-plancha",
@@ -2444,6 +2444,17 @@ window.CARTA = {
        "n_en": "Grilled Chicken",
        "g_en": "With French fries and salad",
        "d_en": "Grilled chicken, served with French fries and salad."
+      },
+      {
+       "id": "parrillas-chuleta",
+       "n": "Chuleta",
+       "g": "Con ensalada y papas fritas",
+       "d": "Chuleta de cerdo.",
+       "p": 40,
+       "foto": "https://images.unsplash.com/photo-1612871689527-2a6145cc9e86?w=700&q=70&auto=format&fit=crop",
+       "n_en": "Pork Chop",
+       "g_en": "With salad and French fries",
+       "d_en": "Pork chop."
       },
       {
        "id": "parrillas-milanesa-de-pollo",
@@ -3069,5 +3080,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-12T21:13:00-05:00"
+ "publicado": "2026-11-12T22:51:15-05:00"
 };
