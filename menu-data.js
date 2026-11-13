@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T16:25:51-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T16:26:00-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2219,6 +2219,7 @@ window.CARTA = {
        "d": "Suaves ñoquis de papa, tiernos como una nube.",
        "p": 32,
        "salsa": true,
+       "agotado": true,
        "al": [
         "gluten"
        ],
@@ -3193,5 +3194,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T16:25:51-05:00"
+ "publicado": "2026-11-13T16:26:00-05:00"
 };
