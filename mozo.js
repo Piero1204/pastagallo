@@ -292,14 +292,37 @@
     guardar(K.alertas, hechas);
   }
 
-  /* La cuenta se imprime sola en la PC del local (la comanda completa de la mesa). */
-  function pedirCuenta(mesa) {
-    if (carro().length && !confirm("Hay platos sin enviar a cocina en esta mesa. ¿Pedir la cuenta igual? (no se incluyen)")) return;
-    api({ mz: "pedircuenta", t: S.t, mesa: mesa }).then(function (r) {
-      if (!r.ok) { toast(r.error || "No se pudo pedir la cuenta.", "mal"); return; }
-      toast(r.repetido ? "La cuenta de la mesa " + mesa + " ya estaba pedida" : "🧾 Cuenta de la mesa " + mesa + " enviada a imprimir", "ok");
+  /* ---------- Imprimir comanda (la cuenta completa de la mesa sale en la impresora del local) ----------
+     Va ANTES de cobrar: el botón grande es "Imprimir comanda"; después de imprimir, el principal pasa a ser "Cobrar".
+     Mientras se manda dice "Imprimiendo…" y queda bloqueado para no imprimir doble. */
+  var K_IMP = "pg-mozo-impresas", impresas = leer(K_IMP, {}), imprimiendoM = {};
+  function firmaCuenta() { return S.cuenta && S.cuenta.pedidos.length ? S.cuenta.pedidos.map(function (p) { return p.id || p.numero; }).join(",") + "|" + S.cuenta.total : ""; }
+  function comandaImpresa(mesa) {
+    if (S.avisos.some(function (a) { return String(a.mesa) === String(mesa) && a.motivo === "cuenta"; })) return true;
+    var f = firmaCuenta(); return !!f && impresas[mesa] === f;
+  }
+  function imprimirComanda(mesa) {
+    if (imprimiendoM[mesa]) return;
+    if (carro().length && !confirm("Hay platos sin enviar a cocina en esta mesa. ¿Imprimir la comanda igual? (no se incluyen)")) return;
+    var otra = comandaImpresa(mesa);
+    if (otra && !confirm("La comanda de la mesa " + mesa + " ya se mandó a imprimir. ¿Imprimirla otra vez?")) return;
+    imprimiendoM[mesa] = true; pintarOrden();
+    var firma = firmaCuenta();
+    api({ mz: "pedircuenta", t: S.t, mesa: mesa, otra: otra }).then(function (r) {
+      if (!r.ok) { toast(r.error || "No se pudo imprimir la comanda.", "mal"); return; }
+      impresas[mesa] = firma; guardar(K_IMP, impresas);
+      toast("🖨 Imprimiendo la comanda de la mesa " + mesa + " en el local", "ok");
+    }).catch(function () { toast("Sin conexión: no se imprimió. Vuelve a intentar.", "mal"); }).then(function () {
+      // unos segundos bloqueado para evitar el doble toque
+      setTimeout(function () { delete imprimiendoM[mesa]; pintarOrden(); }, 3000);
       S.v = ""; sondear();
-    }).catch(function () { toast("Sin conexión: no se pidió la cuenta. Vuelve a intentar.", "mal"); });
+    });
+  }
+  function botonImprimir(extra) {
+    var mesa = S.mesa;
+    if (imprimiendoM[mesa]) { var b = btn("🖨 Imprimiendo…", "btn imprimir " + (extra || "")); b.disabled = true; return b; }
+    if (comandaImpresa(mesa)) return btn("✓ Comanda impresa · reimprimir", "btn peq impresa " + (extra || ""), function () { imprimirComanda(mesa); });
+    return btn("🖨 Imprimir comanda", "btn imprimir " + (extra || ""), function () { imprimirComanda(mesa); });
   }
 
   /* =========================== PINTAR =========================== */
@@ -469,12 +492,37 @@
         met.forEach(function (m) { var f = h("div", "fila-t"); f.appendChild(h("span", null, m)); f.appendChild(h("span", null, soles(r.porMetodo[m]) + (r.propinas[m] ? " · propina " + soles(r.propinas[m]) : ""))); c.appendChild(f); });
       } else c.appendChild(h("p", "vacio", "Todavía no cobraste mesas hoy."));
       if (r.efectivoPorEntregar > 0.009) c.appendChild(h("p", "aviso-ef", "💵 Efectivo por entregar a caja: " + soles(r.efectivoPorEntregar)));
+      if (r.cobros && r.cobros.length) {
+        c.appendChild(h("div", "lbl", "Mis cobros de hoy · toca ✏️ si pagaron con otro método"));
+        r.cobros.forEach(function (x) {
+          var f = h("div", "fila-t cobro-h");
+          f.appendChild(h("span", null, x.hora + " · Mesa " + x.mesa));
+          f.appendChild(h("span", null, x.metodo + " · " + soles(x.monto) + (x.propina ? " + " + soles(x.propina) : "")));
+          if (!x.liquidado) f.appendChild(btn("✏️", "btn peq", function () { cambiarMetodo(x, r.metodos || S.metodos); }));
+          c.appendChild(f);
+        });
+      }
       c.appendChild(h("p", "vacio", "Las propinas por Yape o Plin y tarjeta te las paga el negocio; la de efectivo ya la tienes."));
     }).catch(function () { c.textContent = ""; c.appendChild(h("p", "err", "Sin conexión.")); });
   }
 
+  function cambiarMetodo(x, metodos) {
+    var g = h("div", "metodos-c");
+    metodos.forEach(function (mt) {
+      g.appendChild(btn(mt, "btn" + (mt === x.metodo ? " prim" : ""), function () {
+        if (mt === x.metodo) { cerrarModal(); return; }
+        g.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+        api({ mz: "metodo", t: S.t, id: x.id, metodo: mt }).then(function (r) {
+          if (!r.ok) { toast(r.error || "No se pudo cambiar.", "mal"); g.querySelectorAll("button").forEach(function (b) { b.disabled = false; }); return; }
+          toast("✓ Mesa " + x.mesa + ": " + x.metodo + " → " + mt, "ok"); miTurno();
+        }).catch(function () { toast("Sin conexión: no se cambió.", "mal"); g.querySelectorAll("button").forEach(function (b) { b.disabled = false; }); });
+      }));
+    });
+    abrirModal("✏️ Método de pago · Mesa " + x.mesa, [h("p", "vacio", x.hora + " · " + soles(x.monto) + (x.propina ? " + propina " + soles(x.propina) : "") + " · ahora: " + x.metodo), g]);
+  }
+
   /* ---------- mesas ---------- */
-  var TXT_ESTADO = { libre: "Libre", sentada: "Sentados · sin pedido", cocina: "En cocina", listo: "🔔 Listo para servir", servida: "Servida", llama: "🙋 Llama", cuenta: "🧾 Pide la cuenta" };
+  var TXT_ESTADO = { libre: "Libre", sentada: "Sentados · sin pedido", cocina: "En cocina", listo: "🔔 Listo para servir", servida: "Servida", llama: "🙋 Llama", cuenta: "🧾 Cuenta pedida" };
   function estadoMesa(m) {
     var av = S.avisos.filter(function (a) { return String(a.mesa) === String(m.mesa); });
     if (av.some(function (a) { return a.motivo === "mozo"; })) return "llama";
@@ -990,12 +1038,11 @@
     var w = h("div", "orden"), cab = h("div", "orden__cab"), m = mesaDe(S.mesa);
     cab.appendChild(h("h2", null, "Mesa " + S.mesa));
     if (m) cab.appendChild(h("span", "orden__est e-" + estadoMesa(m), TXT_ESTADO[estadoMesa(m)] + (m.atiende ? " · 🤵 " + (m.atiende.id === yo() ? "tú" : m.atiende.nombre) : "")));
-    if (S.cuenta && S.cuenta.pedidos.length) cab.appendChild(btn("💳 Cobrar", "btn azul peq", function () { cobrar(); }));
+    if (S.cuenta && S.cuenta.pedidos.length && comandaImpresa(S.mesa)) cab.appendChild(btn("💳 Cobrar", "btn azul peq", function () { cobrar(); }));
     w.appendChild(cab);
     // acciones de la mesa
     var acc = h("div", "orden__acc");
     if (m && m.estado === "libre") acc.appendChild(btn("🪑 Sentar clientes", "btn peq", function () { sentar(S.mesa); }));
-    if (S.cuenta && S.cuenta.pedidos.length) acc.appendChild(btn("🧾 Pedir la cuenta", "btn peq", function () { pedirCuenta(S.mesa); }));
     if (m && m.estado !== "libre") acc.appendChild(btn("👥 " + (m.personas ? m.personas + " personas" : "¿Cuántos son?"), "btn peq", function () { var me = S.mesa; pedirPersonas(me, function (n) { guardarPersonas(me, n); }); }));
     if (m && m.alerta) acc.appendChild(h("div", "olvido-txt", "⏰ " + textoAlerta(m)));
     if (m && m.estado !== "libre" && (!m.atiende || m.atiende.id !== yo())) acc.appendChild(btn("🔁 Pasar a mí", "btn peq", function () { ocupar(S.mesa, true); }));
@@ -1054,7 +1101,10 @@
       env.disabled = S.enviando || !cocina;
       pie.appendChild(env);
     } else if (S.cuenta && S.cuenta.pedidos.length) {
-      pie.appendChild(btn("💳 Cobrar mesa · " + soles(S.cuenta.total), "btn azul", function () { cobrar(); }));
+      var yaImp = comandaImpresa(S.mesa);
+      pie.appendChild(h("div", "pasos", yaImp ? "Paso 2 de 2 · cobrar" : "Paso 1 de 2 · imprime la comanda y llévala a la mesa"));
+      pie.appendChild(botonImprimir());
+      pie.appendChild(btn("💳 Cobrar mesa · " + soles(S.cuenta.total), yaImp ? "btn azul" : "btn peq cobrar-luego", function () { cobrar(); }));
     }
     w.appendChild(pie);
     return w;
@@ -1069,7 +1119,8 @@
       if (n) b.appendChild(btn("Ver pedido (" + n + ") · " + soles(totalCarro()), "btn cta", abrirPedidoCelular));
       else if (S.cuenta && S.cuenta.pedidos.length) {
         b.appendChild(btn("Cuenta · " + soles(S.cuenta.total), "btn cta", abrirPedidoCelular));
-        b.appendChild(btn("💳 Cobrar", "btn azul", function () { cobrar(); }));
+        if (comandaImpresa(S.mesa)) b.appendChild(btn("💳 Cobrar", "btn azul", function () { cobrar(); }));
+        else b.appendChild(botonImprimir());
       } else b.appendChild(btn("Mesa " + S.mesa + " · sin pedidos", "btn cta", abrirPedidoCelular));
     }
     if (modalPedido) { var m = capa.querySelector(".modal .orden"); if (m) m.replaceWith(contenidoOrden()); }
@@ -1120,6 +1171,7 @@
     if (!S.cuenta) { if (!reintento) cargarCuenta().then(function () { cobrar(sugerido, true, division); }); return; }
     if (!S.cuenta.pedidos.length) { toast("La mesa " + S.mesa + " no tiene cuenta abierta.", "mal"); return; }
     if (carro().length && !confirm("Hay platos sin enviar a cocina en esta mesa. ¿Cobrar igual? (no se incluyen en la cuenta)")) return;
+    if (!reintento && !comandaImpresa(S.mesa) && !confirm("Todavía no imprimiste la comanda de la mesa " + S.mesa + ". ¿Cobrar igual?")) return;
     var total = S.cuenta.total, metodos = S.metodos;
     var inicial = metodos.filter(function (m) { return sugerido && norm(sugerido).indexOf(norm(m)) >= 0; })[0] || "";
     if (!inicial && /yape|plin/i.test(sugerido || "") && metodos.indexOf(YP) >= 0) inicial = YP;

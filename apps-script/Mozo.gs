@@ -27,11 +27,12 @@ function respuestaMozo_(body) {
     if (a === 'estado') return estadoMozo_(mozo, String(body.v || ''));
     if (a === 'cuenta') return cuentaParaMozo_(texto_(body.mesa, 6));
     if (a === 'resumen') return resumenMozo_(mozo);
+    if (a === 'metodo') return cambiarMetodoCobro_(String(body.id || ''), body.metodo, mozo.nombre, mozo.id);
     // el resto solo en su día de turno (el administrador puede habilitarlo "hoy" desde el panel)
     var cfg = leerConfig_(), t = turno_(cfg, momentoActual_(cfg));
     if (!t.trabajan.some(function (x) { return x.id === mozo.id; })) return { ok: false, error: 'Hoy no tienes turno. Si sí vienes, pide al administrador que te active hoy en el panel (🤵 Mozos).' };
     if (a === 'pedido') return pedidoMozo_(mozo, body);
-    if (a === 'pedircuenta') { reclamarMesa_(texto_(body.mesa, 6), mozo); return avisoCuentaMozo_(texto_(body.mesa, 6), mozo.nombre); }
+    if (a === 'pedircuenta') { reclamarMesa_(texto_(body.mesa, 6), mozo); return avisoCuentaMozo_(texto_(body.mesa, 6), mozo.nombre, body.otra === true); }
     if (a === 'atender') { var av = leerTabla_(HOJA.avisos).filter(function (x) { return String(x.id) === String(body.id); })[0]; if (av) reclamarMesa_(celdaTexto_(av.mesa), mozo); atenderAvisoComo_(body.id, mozo.nombre); return { ok: true }; }
     if (a === 'cobrar') return cobrarMesa_(mozo, body);
     if (a === 'ocupar') { var ro = ocuparMesa_(mozo, texto_(body.mesa, 6), body.forzar === true, body.personas); if (ro.ok) cortesiaTrasPersonas_(texto_(body.mesa, 6), mozo.nombre); return ro; }
@@ -535,7 +536,7 @@ function entregarLineas_(id, lineas, valor, quien) {
 /** Resumen del turno del mozo (hoy): mesas cobradas, ventas y propinas por método. */
 function resumenMozo_(mozo) {
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima', dn = diaNegocio_(cfg, momentoActual_(cfg));
-  var r = { ok: true, dia: dn.iso, mesas: 0, ventas: 0, propinas: {}, propinaTotal: 0, porMetodo: {}, efectivoPorEntregar: 0 };
+  var r = { ok: true, dia: dn.iso, mesas: 0, ventas: 0, propinas: {}, propinaTotal: 0, porMetodo: {}, efectivoPorEntregar: 0, cobros: [] };
   if (!SpreadsheetApp.getActive().getSheetByName(HOJA_COBROS)) return r;
   var ini = Utilities.parseDate(dn.iso + ' 06:00:00', zona, 'yyyy-MM-dd HH:mm:ss').getTime();
   leerTabla_(HOJA_COBROS).forEach(function (c) {
@@ -546,7 +547,46 @@ function resumenMozo_(mozo) {
     if (Number(c.consumo)) r.mesas++;
     r.ventas += monto; r.porMetodo[met] = (r.porMetodo[met] || 0) + monto;
     if (prop) { r.propinas[met] = (r.propinas[met] || 0) + prop; r.propinaTotal += prop; }
+    r.cobros.push({ id: String(c.id), hora: Utilities.formatDate(c.fecha, zona, 'HH:mm'), mesa: celdaTexto_(c.mesa), metodo: met,
+      monto: monto, propina: prop, liquidado: !!String(c.liquidado || '') });
   });
+  r.cobros.reverse();
+  r.metodos = metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true);
+  return r;
+}
+
+/** Cambiar el método de pago de un cobro ya registrado (la mesa ya se cerró y el cliente pagó distinto).
+ *  El mozo solo puede cambiar sus cobros del día que aún no se liquidaron; el panel (mozoId vacío) puede cambiar cualquiera.
+ *  Queda anotado en "notas" qué método tenía antes, quién lo cambió y cuándo. */
+function cambiarMetodoCobro_(id, metodo, quien, mozoId) {
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var met = texto_(metodo, 30); if (/^(yape|plin)$/i.test(met)) met = YAPE_PLIN;
+  if (metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true).indexOf(met) < 0) return { ok: false, error: 'Método de pago no válido.' };
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var h = SpreadsheetApp.getActive().getSheetByName(HOJA_COBROS);
+    if (!h) return { ok: false, error: 'No hay cobros.' };
+    var cab = asegurarColumnas_(h, COLS_COBROS);
+    var c = leerTabla_(HOJA_COBROS).filter(function (x) { return String(x.id) === id; })[0];
+    if (!c) return { ok: false, error: 'No encontré ese cobro.' };
+    var antes = String(c.metodo);
+    if (antes === met) return { ok: true, igual: true };
+    if (mozoId) {
+      if (String(c.mozo_id) !== String(mozoId)) return { ok: false, error: 'Ese cobro es de otro mozo.' };
+      if (String(c.liquidado || '')) return { ok: false, error: 'Ese cobro ya se liquidó: pide al administrador que lo cambie desde el panel.' };
+      if (!(c.fecha instanceof Date) || Date.now() - c.fecha.getTime() > 36 * 3600000) return { ok: false, error: 'Solo puedes cambiar los cobros de hoy. Pide al administrador que lo cambie.' };
+    }
+    var nota = String(c.notas || ''), marca = 'Antes ' + antes + ' (cambió ' + String(quien || '').slice(0, 40) + ' ' + Utilities.formatDate(new Date(), zona, 'dd/MM HH:mm') + ')';
+    h.getRange(c._fila, cab.indexOf('metodo') + 1).setValue(met);
+    h.getRange(c._fila, cab.indexOf('notas') + 1).setValue(protegerCelda_((nota ? nota + ' · ' : '') + marca));
+    return { ok: true, antes: antes, metodo: met, liquidado: !!String(c.liquidado || '') };
+  } finally { lock.releaseLock(); }
+}
+/** Panel: cambiar el método de un cobro (cualquiera, también los ya liquidados). */
+function cambiarMetodoCobro(sesion, id, metodo) {
+  var quien = exigirAdmin_(sesion);
+  var r = cambiarMetodoCobro_(String(id || ''), metodo, quien || 'panel', '');
+  if (!r.ok) throw new Error(r.error);
   return r;
 }
 
@@ -720,9 +760,10 @@ function reporteMozos(sesion, desde, hasta) {
     r.porMetodo[metodo] = (r.porMetodo[metodo] || 0) + monto;
     if (prop) { r.propinas[metodo] = (r.propinas[metodo] || 0) + prop; r.propinaTotal += prop; }
     cobros.push({ id: String(c.id), fecha: Utilities.formatDate(c.fecha, zona, 'dd/MM HH:mm'), mesa: celdaTexto_(c.mesa), mozo: String(c.mozo),
-      metodo: metodo, monto: monto, propina: prop, liquidado: liq });
+      metodo: metodo, monto: monto, propina: prop, liquidado: liq, notas: celdaTexto_(c.notas) });
   });
-  return { mozos: Object.keys(porMozo).map(function (k) { return porMozo[k]; }), cobros: cobros.reverse().slice(0, 300) };
+  return { mozos: Object.keys(porMozo).map(function (k) { return porMozo[k]; }), cobros: cobros.reverse().slice(0, 300),
+    metodos: metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true) };
 }
 
 /** Marca como entregado/pagado todo lo pendiente de un mozo (efectivo a caja y propinas digitales al mozo). */

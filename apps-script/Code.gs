@@ -1640,13 +1640,19 @@ function registrarAviso_(body) {
 }
 
 /** El mozo pide la cuenta de una mesa (se imprime sola en la PC del local). */
-function avisoCuentaMozo_(mesa, quien) {
+function avisoCuentaMozo_(mesa, quien, otra) {
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
   if (!m || !esSi_(m.activa)) return { ok: false, error: 'Mesa no encontrada.' };
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     var h = obtenerHoja_(SpreadsheetApp.getActive(), HOJA.avisos, COLS.avisos), cab = asegurarColumnas_(h, COLS.avisos);
     var igual = leerTabla_(HOJA.avisos).filter(function (a) { return String(a.mesa) === String(mesa) && a.motivo === 'cuenta' && a.estado === 'Pendiente'; })[0];
+    // reimprimir: el aviso anterior se da por atendido y sale uno nuevo (el panel imprime una vez por aviso)
+    if (igual && otra) {
+      h.getRange(igual._fila, cab.indexOf('estado') + 1).setValue('Atendido');
+      h.getRange(igual._fila, cab.indexOf('atendido') + 1).setValue('Reimpresa por ' + String(quien || '').slice(0, 40));
+      igual = null;
+    }
     if (!igual) {
       var fila = { id: Utilities.getUuid().slice(0, 8), fecha: new Date(), mesa: mesa, motivo: 'cuenta', detalle: 'Pedida por ' + String(quien || 'el mozo').slice(0, 40), estado: 'Pendiente', atendido: '', division: '' };
       h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));

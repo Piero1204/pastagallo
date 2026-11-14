@@ -265,3 +265,14 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
 .salon--modal .mesa{min-height:96px;padding:10px}
 .salon--modal .plano{margin:0}
 .mesa.actual{outline:3px solid var(--vino);outline-offset:2px}
+
+/* imprimir comanda antes de cobrar */
+.btn.imprimir{background:#d9480f;border-color:#d9480f;color:#fff;height:66px;font-size:20px;box-shadow:0 4px 14px rgba(217,72,15,.35);animation:latido 2.2s ease-in-out infinite}
+.btn.imprimir:disabled{opacity:1;background:#9a5a3c;border-color:#9a5a3c;animation:none}
+@keyframes latido{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+.btn.impresa{background:#eef7f0;border-color:var(--verde);color:var(--verde)}
+.btn.cobrar-luego{opacity:.75}
+.pasos{font-size:13px;font-weight:800;color:var(--gris);text-transform:uppercase;letter-spacing:.03em;text-align:center}
+.cobro-h{align-items:center;gap:8px}.cobro-h .btn{height:36px;flex:0 0 auto}
+.metodos-c{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.barra-ped .btn.imprimir{height:54px;font-size:17px;flex:1.4}

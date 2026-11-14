@@ -458,7 +458,7 @@ tr.oculto td{opacity:.5}
     <p class="nota" style="margin-bottom:10px">Propinas por Yape, Plin o tarjeta entran a la cuenta del negocio: <b>hay que pagárselas al mozo</b>. En efectivo, el mozo se queda con su propina y <b>entrega el consumo</b> a caja. "Pendiente" suma todo lo no liquidado, aunque sea de días anteriores.</p>
     <div class="mesas" id="rMozos"></div>
     <h3 class="cuentas__tit" style="margin-top:16px">Detalle de cobros</h3>
-    <table class="tabla"><thead><tr><th>Fecha</th><th>Mesa</th><th>Mozo</th><th>Método</th><th>Monto</th><th>Propina</th><th>Liquidado</th></tr></thead><tbody id="tCobros"></tbody></table>
+    <table class="tabla"><thead><tr><th>Fecha</th><th>Mesa</th><th>Mozo</th><th>Método</th><th>Monto</th><th>Propina</th><th>Liquidado</th><th></th></tr></thead><tbody id="tCobros"></tbody></table>
   </section>
 
   <section class="vista" id="v-ajustes">
@@ -2177,9 +2177,30 @@ function pintarReporteMozos(r){
   });
   var t = $('#tCobros'); t.textContent = '';
   r.cobros.forEach(function(c){
-    t.appendChild(el('tr', null, [el('td', {text:c.fecha}), el('td', {text:c.mesa}), el('td', {text:c.mozo}), el('td', {text:c.metodo}),
-      el('td', {text:soles(c.monto)}), el('td', {text:c.propina ? soles(c.propina) : '—'}), el('td', {class:'nota', text:c.liquidado || '—'})]));
+    var tdMet = el('td', null, [el('span', {text:c.metodo})]);
+    if (/Antes /.test(c.notas || '')) tdMet.appendChild(el('div', {class:'nota', text:(c.notas.match(/Antes [^·]*$/) || [''])[0]}));
+    t.appendChild(el('tr', null, [el('td', {text:c.fecha}), el('td', {text:c.mesa}), el('td', {text:c.mozo}), tdMet,
+      el('td', {text:soles(c.monto)}), el('td', {text:c.propina ? soles(c.propina) : '—'}), el('td', {class:'nota', text:c.liquidado || '—'}),
+      el('td', null, [el('button', {class:'btn peq', title:'Cambiar el método de pago', text:'✏️ Método', onclick:function(){ cambiarMetodoCobroP(c, r.metodos || []); }})])]));
   });
+}
+/* Cambiar el método de pago de un cobro ya cerrado (el cliente pagó distinto o el mozo se equivocó). */
+function cambiarMetodoCobroP(c, metodos){
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'Cambiar método de pago'}));
+  caja.appendChild(el('p', {class:'nota', text:'Mesa ' + c.mesa + ' · ' + c.fecha + ' · ' + c.mozo + ' · ' + soles(c.monto) + (c.propina ? ' + propina ' + soles(c.propina) : '') + '. Ahora: ' + c.metodo + '.'}));
+  if (c.liquidado) caja.appendChild(el('p', {class:'nota', text:'⚠️ Este cobro ya se liquidó (' + c.liquidado + '). Si cambias entre efectivo y digital, revisa a mano la caja y las propinas del mozo.'}));
+  var g = el('div', {style:'display:flex;gap:8px;flex-wrap:wrap;margin:12px 0'});
+  metodos.forEach(function(m){
+    g.appendChild(el('button', {class:'btn' + (m === c.metodo ? ' prim' : ''), text:m, onclick:function(){
+      if (m === c.metodo) { cerrarModal(); return; }
+      g.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+      run('cambiarMetodoCobro', c.id, m).then(function(){ cerrarModal(); toast('Método cambiado: ' + c.metodo + ' → ' + m); cargarReporteMozos(); }).catch(function(e){ g.querySelectorAll('button').forEach(function(b){ b.disabled = false; }); error(e); });
+    }}));
+  });
+  caja.appendChild(g);
+  caja.appendChild(el('div', {class:'pie'}, [el('span', {class:'esp'}), el('button', {class:'btn', type:'button', text:'Cancelar', onclick:cerrarModal})]));
+  $('#modal').classList.add('on');
 }
 
 /* ---------- comprobantes ---------- */
