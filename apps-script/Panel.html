@@ -905,6 +905,7 @@ function pintarSalon(){
   var ley = el('div', {class:'leyenda'});
   ['libre','sentada','cocina','listo','servida','llama','cuenta'].forEach(function(k){ ley.appendChild(el('span', {class:'pm-ley e-' + k, text: TXT_MESA[k]})); });
   w.appendChild(ley);
+  w.appendChild(cobrosHoyBox());
 }
 function posDefecto(i){ return { x: 7 + (i % 8) * 12.3, y: 14 + Math.floor(i / 8) * 26 }; }
 function planoSalon(mesas){
@@ -925,6 +926,76 @@ function planoSalon(mesas){
     p.appendChild(n);
   });
   return p;
+}
+/* ---------- cobrar y cerrar una mesa desde el panel (con método de pago) ----------
+   El cobro queda a nombre del mozo que atiende la mesa (cuenta para su reporte y sus propinas). */
+function cobrarMesaP(m){
+  var metodos = (SALON && SALON.metodos) || ['Yape o Plin', 'Efectivo', 'Tarjeta'];
+  var total = Math.round((m.total || 0) * 100) / 100;
+  var av = AVISOS.filter(function(a){ return String(a.mesa) === String(m.mesa) && a.motivo === 'cuenta'; })[0];
+  var sug = av && av.detalle ? (metodos.filter(function(x){ return av.detalle.toLowerCase().indexOf(x.toLowerCase().split(' ')[0]) >= 0; })[0] || '') : '';
+  var div = av && av.division && av.division.length > 1 && Math.abs(av.division.reduce(function(a, x){ return a + x; }, 0) - total) < 0.05 ? av.division : null;
+  var pagos = div ? div.map(function(x){ return { metodo:sug || metodos[0], monto:x, propina:0 }; }) : [{ metodo:sug || metodos[0], monto:total, propina:0 }];
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'💳 Cobrar mesa ' + m.mesa + ' · ' + soles(total)}));
+  caja.appendChild(el('p', {class:'nota', text:'Atiende: ' + (m.atiende ? m.atiende.nombre : 'sin mozo (queda como "Caja")') + '. ' + (div ? 'El cliente pidió dividir la cuenta: ya está separada.' : 'Si pagaron con dos métodos, usa "+ Otro pago".')}));
+  var lista = el('div'), resumen = el('p', {class:'nota'}), err = el('p', {class:'nota', style:'color:#b3261e;font-weight:700'});
+  function pintar(){
+    lista.textContent = '';
+    pagos.forEach(function(p, i){
+      var sel = el('select', {class:'txt'}, metodos.map(function(x){ return el('option', {value:x, text:x}); })); sel.value = p.metodo;
+      sel.addEventListener('change', function(){ p.metodo = sel.value; });
+      var mo = el('input', {type:'number', step:'0.10', min:'0', class:'txt', style:'width:110px', value:String(p.monto)});
+      mo.addEventListener('input', function(){ p.monto = Number(mo.value) || 0; sumar(); });
+      var pr = el('input', {type:'number', step:'0.50', min:'0', class:'txt', style:'width:90px', placeholder:'0', value:p.propina ? String(p.propina) : ''});
+      pr.addEventListener('input', function(){ p.propina = Number(pr.value) || 0; });
+      lista.appendChild(el('div', {style:'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0'}, [
+        el('b', {text:'Pago ' + (i + 1)}), sel, el('span', {text:'S/'}), mo, el('span', {class:'nota', text:'propina'}), pr,
+        pagos.length > 1 ? el('button', {class:'btn peq', type:'button', text:'Quitar', onclick:function(){ pagos.splice(i, 1); pintar(); }}) : null]));
+    });
+    sumar();
+  }
+  function sumar(){
+    var s = Math.round(pagos.reduce(function(a, p){ return a + p.monto; }, 0) * 100) / 100, falta = Math.round((total - s) * 100) / 100;
+    resumen.textContent = 'Suma de pagos: ' + soles(s) + (Math.abs(falta) < 0.01 ? ' ✓' : falta > 0 ? ' · faltan ' + soles(falta) : ' · sobran ' + soles(-falta));
+  }
+  caja.appendChild(lista);
+  caja.appendChild(el('button', {class:'btn peq', type:'button', text:'+ Otro pago', onclick:function(){
+    var s = pagos.reduce(function(a, p){ return a + p.monto; }, 0); pagos.push({ metodo:metodos[0], monto:Math.max(0, Math.round((total - s) * 100) / 100), propina:0 }); pintar(); }}));
+  caja.appendChild(resumen); caja.appendChild(err);
+  var ok = el('button', {class:'btn prim', type:'button', text:'✓ Registrar cobro y cerrar la mesa', onclick:function(){
+    var s = Math.round(pagos.reduce(function(a, p){ return a + p.monto; }, 0) * 100) / 100;
+    if (Math.abs(s - total) > 0.009) { err.textContent = 'Los pagos deben sumar ' + soles(total) + '.'; return; }
+    ok.disabled = true; ok.textContent = 'Guardando…';
+    run('cobrarMesaPanel', m.mesa, { total:total, pagos:pagos }).then(function(){
+      cerrarModal(); toast('✓ Mesa ' + m.mesa + ' cobrada y libre'); MESA_SEL = ''; cargarPedidos(); cargarCobrosHoy();
+    }).catch(function(e){ ok.disabled = false; ok.textContent = '✓ Registrar cobro y cerrar la mesa'; err.textContent = String(e.message || e); });
+  }});
+  caja.appendChild(el('div', {class:'pie'}, [el('button', {class:'btn', type:'button', text:'Cancelar', onclick:cerrarModal}), el('span', {class:'esp'}), ok]));
+  pintar();
+  $('#modal').classList.add('on');
+}
+/* Mesas cobradas hoy (en el Salón): para revisar y corregir el método de pago */
+var COBROS_HOY = null, verCobros = false;
+function cargarCobrosHoy(){ return run('cobrosHoy').then(function(r){ COBROS_HOY = r; if (AREA === 'salon' && !ARRASTRANDO) pintarSalon(); }).catch(function(){}); }
+function cobrosHoyBox(){
+  var w = el('div', {class:'panel', style:'margin:4px 0 14px;padding:10px 12px'});
+  var n = COBROS_HOY ? COBROS_HOY.cobros.length : 0;
+  w.appendChild(el('div', {class:'barra'}, [el('b', {text:'🧾 Mesas cobradas hoy' + (COBROS_HOY ? ' (' + n + ' pago' + (n === 1 ? '' : 's') + ')' : '')}), el('span', {class:'esp'}),
+    el('button', {class:'btn peq', text: verCobros ? 'Ocultar' : 'Ver y editar método', onclick:function(){ verCobros = !verCobros; if (verCobros) cargarCobrosHoy(); pintarSalon(); }})]));
+  if (!verCobros) return w;
+  if (!COBROS_HOY) { w.appendChild(el('p', {class:'nota', text:'Cargando…'})); return w; }
+  if (!n) { w.appendChild(el('p', {class:'nota', text:'Todavía no se cobró ninguna mesa hoy.'})); return w; }
+  var tb = el('tbody');
+  COBROS_HOY.cobros.forEach(function(c){
+    var tdMet = el('td', null, [el('span', {text:c.metodo})]);
+    if (/Antes /.test(c.notas || '')) tdMet.appendChild(el('div', {class:'nota', text:(c.notas.match(/Antes [^·]*$/) || [''])[0]}));
+    tb.appendChild(el('tr', null, [el('td', {text:c.fecha}), el('td', {text:'Mesa ' + c.mesa}), el('td', {text:c.mozo}), tdMet,
+      el('td', {class:'n', text:soles(c.monto)}), el('td', {class:'n', text:c.propina ? soles(c.propina) : '—'}),
+      el('td', null, [el('button', {class:'btn peq', text:'✏️ Método', onclick:function(){ cambiarMetodoCobroP(c, COBROS_HOY.metodos || []); }})])]));
+  });
+  w.appendChild(el('table', {class:'rank'}, [el('thead', null, [el('tr', null, ['Hora','Mesa','Mozo','Método','Monto','Propina',''].map(function(x, i){ return el('th', {class: i === 4 || i === 5 ? 'n' : '', text:x}); }))]), tb]));
+  return w;
 }
 function textoOlvido(m){
   var a = m.alerta; if (!a) return '';
@@ -1023,7 +1094,8 @@ function detalleMesa(m){
     acc.push(el('button', {class:'btn peq', text:'🖨 Cuenta', onclick:function(){ imprimirCuenta(c); }}));
     acc.push(el('button', {class:'btn peq', text:'🧾 Comprobante', onclick:function(){ comprobanteMesa(m.mesa); }}));
   }
-  if (m.estado !== 'libre') acc.push(el('button', {class:'btn peq', text: m.n ? 'Cerrar cuenta sin cobro' : '🆓 Liberar mesa', title:'El cobro normal lo registra el mozo desde su celular (así quedan las propinas)', onclick:function(){
+  if (m.n) acc.unshift(el('button', {class:'btn prim peq', text:'💳 Cobrar y cerrar', onclick:function(){ cobrarMesaP(m); }}));
+  if (m.estado !== 'libre') acc.push(el('button', {class:'btn peq', text: m.n ? 'Cerrar sin registrar cobro' : '🆓 Liberar mesa', title:'Mejor usa "Cobrar y cerrar": así queda el método de pago y la propina', onclick:function(){
     if (!confirm(m.n ? '¿Cerrar la cuenta de la mesa ' + m.mesa + ' (' + soles(m.total) + ') SIN registrar el cobro?\n\nLo normal es que el mozo cobre desde su celular (así se registran el método y la propina).' : '¿Liberar la mesa ' + m.mesa + '?')) return;
     run('cerrarCuentaMesa', m.mesa).then(function(){ toast('Mesa ' + m.mesa + ' libre'); MESA_SEL = ''; cargarPedidos(); }).catch(error);
   }}));
@@ -2195,7 +2267,7 @@ function cambiarMetodoCobroP(c, metodos){
     g.appendChild(el('button', {class:'btn' + (m === c.metodo ? ' prim' : ''), text:m, onclick:function(){
       if (m === c.metodo) { cerrarModal(); return; }
       g.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
-      run('cambiarMetodoCobro', c.id, m).then(function(){ cerrarModal(); toast('Método cambiado: ' + c.metodo + ' → ' + m); cargarReporteMozos(); }).catch(function(e){ g.querySelectorAll('button').forEach(function(b){ b.disabled = false; }); error(e); });
+      run('cambiarMetodoCobro', c.id, m).then(function(){ cerrarModal(); toast('Método cambiado: ' + c.metodo + ' → ' + m); if ($('#v-mozos').classList.contains('on')) cargarReporteMozos(); cargarCobrosHoy(); }).catch(function(e){ g.querySelectorAll('button').forEach(function(b){ b.disabled = false; }); error(e); });
     }}));
   });
   caja.appendChild(g);

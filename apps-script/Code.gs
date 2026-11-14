@@ -837,7 +837,19 @@ function registrarPedido_(body, mozo) {
     // se confirma solo (Config mesa_autoconfirmar = NO para confirmarlo a mano en el panel).
     // Pan al ajo de cortesía: 1 por persona, una sola vez por cuenta de mesa (sale en el ticket de cocina)
     var mesaCort = null, nCort = 0, zonaC = cfg.zona_horaria || 'America/Lima';
-    if (r.canal === 'mesa') { try { mesaCort = filaMesa_(r.mesa); nCort = mesaCort ? cortesiaPendiente_(mesaCort, zonaC) : 0; } catch (e) { nCort = 0; } }
+    // El mozo manda las personas DENTRO del primer pedido (antes iban en otra petición en paralelo y, según cuál
+    // llegaba primero, la cortesía podía perderse). Se anotan aquí mismo, dentro del bloqueo.
+    if (r.canal === 'mesa' && mozo && Math.floor(num_(body.personas) || 0) >= 1) {
+      try {
+        var mp = filaMesa_(r.mesa), np = Math.min(60, Math.floor(num_(body.personas)));
+        if (mp && !(mesaValida_(mp, zonaC) && num_(mp.personas))) {
+          var cp = { personas: np };
+          if (!mesaValida_(mp, zonaC)) { cp.ocupada_desde = new Date(); cp.atiende_id = mozo.id; }
+          setMesa_(mp, cp);
+        }
+      } catch (e) { console.error('personas en pedido', e); }
+    }
+    if (r.canal === 'mesa') { try { mesaCort = filaMesa_(r.mesa); nCort = mesaCort ? cortesiaPendiente_(mesaCort, zonaC) : 0; } catch (e) { console.error('cortesia', e); nCort = 0; } }
     if (nCort > 0) agregarCortesia_(r, nCort);
     var estado0 = 'Nuevo', his0 = 'Nuevo ' + fmt_(ahora, 'HH:mm');
     if (r.canal === 'mesa' && mozo) { estado0 = 'En preparación'; his0 += ' · En preparación (' + mozo.nombre + ')'; }

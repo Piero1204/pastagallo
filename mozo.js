@@ -1131,22 +1131,23 @@
     modalPedido = true;
   }
 
-  var omitidas = {};
+  var omitidas = {}, personasPend = {};
   function enviar() {
     var c = carro(); if (!c.length || S.enviando) return;
     var mesa = S.mesa, mm0 = mesaDe(mesa);
     // primer pedido de la mesa: preguntar cuántas personas son (se puede omitir)
     if (mm0 && !mm0.personas && !mm0.n && !omitidas[mesa]) {
-      pedirPersonas(mesa, function (n) { if (n) { mm0.personas = n; api({ mz: "personas", t: S.t, mesa: mesa, personas: n }).catch(function () {}); } else omitidas[mesa] = true; enviar(); }, true);
+      // las personas viajan dentro del mismo pedido (así el servidor agrega el pan al ajo de cortesía sin falta)
+      pedirPersonas(mesa, function (n) { if (n) { mm0.personas = n; personasPend[mesa] = n; } else omitidas[mesa] = true; enviar(); }, true);
       return;
     }
     S.enviando = true; pintarOrden();
-    var cuerpo = { mz: "pedido", t: S.t, mesa: mesa, notas: carros["_n" + mesa] || "",
+    var cuerpo = { mz: "pedido", t: S.t, mesa: mesa, notas: carros["_n" + mesa] || "", personas: personasPend[mesa] || 0,
       items: c.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {}, mitad: l.mitad || "" }; }) };
     api(cuerpo).then(function (r) {
       S.enviando = false;
       if (!r.ok) { toast(r.error || "No se pudo enviar.", "mal"); pintarOrden(); return; }
-      carros[mesa] = []; delete carros["_n" + mesa]; guardarCarros();
+      carros[mesa] = []; delete carros["_n" + mesa]; guardarCarros(); delete personasPend[mesa];
       if (r.cuenta && mesa === S.mesa) S.cuenta = r.cuenta;
       // al instante: la mesa queda ocupada (a mi nombre si estaba libre); el sondeo trae el estado real
       var mm = mesaDe(mesa);

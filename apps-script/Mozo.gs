@@ -178,7 +178,7 @@ function pedidoMozo_(mozo, body) {
   var mesa = texto_(body.mesa, 6);
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === mesa; })[0];
   if (!m || !esSi_(m.activa)) return { ok: false, error: 'Esa mesa no existe o está desactivada.' };
-  var limpio = { canal: 'mesa', mesa: mesa, items: body.items, notas: body.notas, origen: 'mozo' };
+  var limpio = { canal: 'mesa', mesa: mesa, items: body.items, notas: body.notas, origen: 'mozo', personas: body.personas };
   var r = registrarPedido_(limpio, mozo);
   if (r && r.ok) r.cuenta = cuentaParaMozo_(mesa);
   return r;
@@ -379,6 +379,7 @@ function salonDatos_(cfg, t) {
   var duenos = {}; mesas.forEach(function (m) { duenos[m.mesa] = m.atiende || m.zona; });
   var avisos = avisosPendientes_(zona).map(function (a) { var d = duenos[a.mesa]; a.para = d ? d.id : ''; a.paraNombre = d ? d.nombre : ''; return a; });
   return { mesas: mesas, avisos: avisos, dia: t.dn.dia, alertas: { sinPedido: minSin, listo: minListo },
+    metodos: metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true),
     mozos: t.todos.filter(function (m) { return m.activo; }).map(function (m) {
       return { id: m.id, nombre: m.nombre, trabaja: t.trabajan.indexOf(m) >= 0, mesas: m.mesas };
     }) };
@@ -581,6 +582,31 @@ function cambiarMetodoCobro_(id, metodo, quien, mozoId) {
     h.getRange(c._fila, cab.indexOf('notas') + 1).setValue(protegerCelda_((nota ? nota + ' · ' : '') + marca));
     return { ok: true, antes: antes, metodo: met, liquidado: !!String(c.liquidado || '') };
   } finally { lock.releaseLock(); }
+}
+/** Panel: cobrar y cerrar la mesa indicando cómo pagaron. El cobro queda a nombre del mozo que atiende la mesa
+ *  (para sus propinas y su reporte); si no tiene mozo, a nombre de "Caja". */
+function cobrarMesaPanel(sesion, mesa, body) {
+  var quien = String(exigirAdmin_(sesion) || 'panel').split('@')[0];
+  mesa = texto_(mesa, 6); body = body || {};
+  var m = filaMesa_(mesa); if (!m) throw new Error('Mesa no encontrada.');
+  var mz = String(m.atiende_id || '') ? leerMozos_().filter(function (x) { return x.id === String(m.atiende_id); })[0] : null;
+  var r = cobrarMesa_(mz ? { id: mz.id, nombre: mz.nombre } : { id: '', nombre: 'Caja' },
+    { mesa: mesa, total: body.total, pagos: body.pagos, notas: 'Cobrado desde el panel (' + quien + ')' });
+  if (!r.ok) throw new Error(r.error);
+  return r;
+}
+/** Panel: cobros de hoy (mesas ya cerradas) para revisar o corregir el método de pago. */
+function cobrosHoy(sesion) {
+  exigirAdmin_(sesion);
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima', dn = diaNegocio_(cfg, momentoActual_(cfg));
+  var ini = Utilities.parseDate(dn.iso + ' 06:00:00', zona, 'yyyy-MM-dd HH:mm:ss').getTime();
+  var lista = [];
+  if (SpreadsheetApp.getActive().getSheetByName(HOJA_COBROS)) leerTabla_(HOJA_COBROS).forEach(function (c) {
+    if (!(c.fecha instanceof Date) || c.fecha.getTime() < ini) return;
+    lista.push({ id: String(c.id), fecha: Utilities.formatDate(c.fecha, zona, 'HH:mm'), mesa: celdaTexto_(c.mesa), mozo: String(c.mozo),
+      metodo: String(c.metodo), monto: Number(c.monto) || 0, propina: Number(c.propina) || 0, liquidado: String(c.liquidado || ''), notas: celdaTexto_(c.notas) });
+  });
+  return { cobros: lista.reverse(), metodos: metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true) };
 }
 /** Panel: cambiar el método de un cobro (cualquiera, también los ya liquidados). */
 function cambiarMetodoCobro(sesion, id, metodo) {
