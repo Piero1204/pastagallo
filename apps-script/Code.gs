@@ -1155,14 +1155,23 @@ function subirQrPago(sesion, metodo, base64) {
 
 /** Borra un pedido de la hoja (pensado para pedidos de prueba). No se puede deshacer. */
 function eliminarPedido(sesion, numero) {
-  exigirAdmin_(sesion);
+  var quienBorra = String(exigirAdmin_(sesion) || 'panel').split('@')[0];
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
     var p = leerTabla_(HOJA.pedidos).filter(function (x) { return String(x.numero) === String(numero); })[0];
     if (!p) throw new Error('No se encontró el pedido.');
     if (celdaTexto_(p.comp_estado) === 'Emitido') throw new Error('Este pedido tiene una boleta o factura emitida: no se puede eliminar. Cancélalo.');
-    SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos).deleteRow(p._fila);
+    // Va a la papelera (se puede recuperar). Si estaba en un cobro y era el único pedido de esa cuenta, el cobro se va
+    // con él (así no queda una venta "fantasma" en reportes, ranking y cuentas cerradas).
+    var zona = leerConfig_().zona_horaria || 'America/Lima', grupos = [{ hoja: HOJA.pedidos, filas: [p] }], extra = '';
+    try {
+      cobrosDelPedido_(p, zona).forEach(function (cb) {
+        if (!cb.otros) { grupos.push({ hoja: HOJA_COBROS, filas: cb.filas }); extra = ' + su cobro'; }
+      });
+    } catch (e) { console.error(e); }
+    aPapelera_(grupos, 'pedido', 'Pedido #' + (Number(p.num_dia) || p.numero) + ' · ' + (p.canal === 'mesa' ? 'Mesa ' + p.mesa : String(p.canal)) +
+      ' · ' + soles_(Number(p.total) || 0) + (p.fecha instanceof Date ? ' (' + Utilities.formatDate(p.fecha, zona, 'dd/MM HH:mm') + ')' : '') + extra, quienBorra);
     PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
     return true;
   } finally {

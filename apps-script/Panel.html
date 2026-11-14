@@ -270,6 +270,12 @@ tr.oculto td{opacity:.5}
 .chip.c-olv{background:#c46a12;color:#fff}
 .olv-txt{color:#c46a12;font-weight:700;font-size:13px}
 .rank{width:100%;border-collapse:collapse;font-size:13px}.rank th{text-align:left;}.rank th.n{text-align:right}.rank th{color:var(--gris);font-size:11px;text-transform:uppercase;padding:4px 6px}.rank td{padding:6px;border-top:1px solid var(--linea)}.rank td.n{text-align:right;white-space:nowrap}
+.ccs{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.cc{border:1px solid var(--linea);border-radius:10px;padding:8px 10px;background:#fff;display:flex;flex-direction:column;gap:5px}
+.cc--huerf{border-color:#c46a12;background:#fff8ef}
+.cc__cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cc__pagos{display:flex;gap:6px;flex-wrap:wrap}
+.cc__acc{display:flex;gap:6px;flex-wrap:wrap}
 .diasM{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0}
 .diasM button{width:34px;height:32px;border-radius:7px;border:1px solid var(--linea);background:#fff;font-weight:700;color:var(--gris)}
 .diasM button.on{background:var(--vino);color:#fff;border-color:var(--vino)}
@@ -344,6 +350,7 @@ tr.oculto td{opacity:.5}
       <button class="btn son" id="sonido">🔔 Sonido</button>
       <button class="btn" id="sonCfg" title="Tipo de sonido, volumen y qué pedidos hacen sonar el parlante">🎚 Sonidos</button>
       <button class="btn" id="recargar">↻ Actualizar</button>
+      <button class="btn" type="button" id="btnPapelera" title="Pedidos y cobros eliminados (se pueden recuperar)">🗑 Papelera</button>
       <span class="nota" id="ultimaAct"></span>
     </div>
     <div id="avisoApi"></div>
@@ -975,27 +982,136 @@ function cobrarMesaP(m){
   pintar();
   $('#modal').classList.add('on');
 }
-/* Mesas cobradas hoy (en el Salón): para revisar y corregir el método de pago */
-var COBROS_HOY = null, verCobros = false;
-function cargarCobrosHoy(){ return run('cobrosHoy').then(function(r){ COBROS_HOY = r; if (AREA === 'salon' && !ARRASTRANDO) pintarSalon(); }).catch(function(){}); }
+/* ---------- CUENTAS CERRADAS (Salón): ver, editar el cobro, reabrir la mesa o eliminar ----------
+   Una cuenta = un cobro de mesa (uno o varios pagos). Editar: métodos, montos, propinas, mozo y personas.
+   Reabrir: el cobro va a la papelera y los pedidos vuelven a la mesa (para corregirlos y volver a cobrar). */
+var CCERR = null, verCuentas = false, diaCuentas = '';
+function cargarCobrosHoy(){ return run('cuentasCerradas', diaCuentas).then(function(r){ CCERR = r; if (AREA === 'salon' && !ARRASTRANDO) pintarSalon(); }).catch(error); }
 function cobrosHoyBox(){
   var w = el('div', {class:'panel', style:'margin:4px 0 14px;padding:10px 12px'});
-  var n = COBROS_HOY ? COBROS_HOY.cobros.length : 0;
-  w.appendChild(el('div', {class:'barra'}, [el('b', {text:'🧾 Mesas cobradas hoy' + (COBROS_HOY ? ' (' + n + ' pago' + (n === 1 ? '' : 's') + ')' : '')}), el('span', {class:'esp'}),
-    el('button', {class:'btn peq', text: verCobros ? 'Ocultar' : 'Ver y editar método', onclick:function(){ verCobros = !verCobros; if (verCobros) cargarCobrosHoy(); pintarSalon(); }})]));
-  if (!verCobros) return w;
-  if (!COBROS_HOY) { w.appendChild(el('p', {class:'nota', text:'Cargando…'})); return w; }
-  if (!n) { w.appendChild(el('p', {class:'nota', text:'Todavía no se cobró ninguna mesa hoy.'})); return w; }
-  var tb = el('tbody');
-  COBROS_HOY.cobros.forEach(function(c){
-    var tdMet = el('td', null, [el('span', {text:c.metodo})]);
-    if (/Antes /.test(c.notas || '')) tdMet.appendChild(el('div', {class:'nota', text:(c.notas.match(/Antes [^·]*$/) || [''])[0]}));
-    tb.appendChild(el('tr', null, [el('td', {text:c.fecha}), el('td', {text:'Mesa ' + c.mesa}), el('td', {text:c.mozo}), tdMet,
-      el('td', {class:'n', text:soles(c.monto)}), el('td', {class:'n', text:c.propina ? soles(c.propina) : '—'}),
-      el('td', null, [el('button', {class:'btn peq', text:'✏️ Método', onclick:function(){ cambiarMetodoCobroP(c, COBROS_HOY.metodos || []); }})])]));
+  var n = CCERR ? CCERR.cuentas.length : 0;
+  var tot = CCERR ? CCERR.cuentas.reduce(function(a, c){ return a + c.consumo; }, 0) : 0;
+  var fecha = el('input', {type:'date', class:'txt', style:'width:150px', value: diaCuentas || (CCERR && CCERR.hoy) || ''});
+  fecha.addEventListener('change', function(){ diaCuentas = fecha.value; CCERR = null; pintarSalon(); cargarCobrosHoy(); });
+  w.appendChild(el('div', {class:'barra'}, [el('b', {text:'🧾 Cuentas cerradas' + (CCERR ? ' · ' + n + ' mesa' + (n === 1 ? '' : 's') + ' · ' + soles(tot) : '')}),
+    verCuentas ? fecha : null, el('span', {class:'esp'}),
+    el('button', {class:'btn peq', text:'🗑 Papelera', onclick:abrirPapelera}),
+    el('button', {class:'btn peq' + (verCuentas ? '' : ' prim'), text: verCuentas ? 'Ocultar' : 'Ver, editar o reabrir', onclick:function(){ verCuentas = !verCuentas; if (verCuentas) cargarCobrosHoy(); pintarSalon(); }})]));
+  if (!verCuentas) return w;
+  if (!CCERR) { w.appendChild(el('p', {class:'nota', text:'Cargando…'})); return w; }
+  if (!n) { w.appendChild(el('p', {class:'nota', text:'No hay mesas cobradas ese día.'})); return w; }
+  var g = el('div', {class:'ccs'});
+  CCERR.cuentas.forEach(function(c){
+    var prop = c.pagos.reduce(function(a, p){ return a + p.propina; }, 0);
+    var det = el('div', {class:'cc__det', style:'display:none'});
+    c.pedidos.forEach(function(p){
+      det.appendChild(el('div', {class:'nota', style:'font-weight:700;margin-top:4px', text:'#' + p.numero + ' · ' + p.hora + ' · ' + soles(p.total)}));
+      p.lineas.forEach(function(l){ det.appendChild(el('div', {class:'nota', text:l.t + (l.s ? '  ' + soles(l.s) : '') + (l.d ? ' · ' + l.d : '')})); });
+    });
+    g.appendChild(el('div', {class:'cc' + (c.sinPedidos ? ' cc--huerf' : '')}, [
+      el('div', {class:'cc__cab'}, [el('b', {text:'Mesa ' + c.mesa}), el('span', {class:'nota', text:c.hora + ' · ' + (c.mozo || '—') + (c.personas ? ' · 👥 ' + c.personas : '')}), el('span', {class:'esp'}), el('b', {text:soles(c.consumo)})]),
+      el('div', {class:'cc__pagos'}, c.pagos.map(function(p){ return el('span', {class:'chip', text:p.metodo + ' ' + soles(p.monto) + (p.propina ? ' + propina ' + soles(p.propina) : '') + (p.liquidado ? ' ✓liq.' : '')}); })),
+      c.sinPedidos ? el('div', {class:'olv-txt', text:'⚠ Sus pedidos ya no existen (se eliminaron). Si era de prueba, elimina este cobro.'}) : null,
+      /Editado por|Antes /.test(c.notas) ? el('div', {class:'nota', text:c.notas.replace(/^.*?(Editado por|Antes )/, '$1')}) : null,
+      det,
+      el('div', {class:'cc__acc'}, [
+        c.pedidos.length ? el('button', {class:'btn peq', text:'Ver pedidos', onclick:function(){ var v = det.style.display === 'none'; det.style.display = v ? '' : 'none'; this.textContent = v ? 'Ocultar pedidos' : 'Ver pedidos'; }}) : null,
+        el('button', {class:'btn peq prim', text:'✏️ Editar cobro', onclick:function(){ editarCuentaP(c); }}),
+        el('button', {class:'btn peq', text:'↩ Reabrir mesa', disabled: !c.reabrible, title: c.reabrible ? 'Vuelve a abrir la cuenta: los pedidos regresan a la mesa' : 'Solo se puede reabrir la última cuenta de la mesa, y si la mesa no tiene otra cuenta abierta', onclick:function(){ reabrirCuentaP(c); }}),
+        el('button', {class:'btn peq', text:'🗑 Eliminar cobro', onclick:function(){
+          if (!confirm('¿Eliminar el cobro de la mesa ' + c.mesa + ' (' + soles(c.consumo) + ')?\n\nSale de las ventas por mozo, propinas y ranking. Los pedidos no se tocan. Queda en la papelera por si te equivocas.')) return;
+          run('eliminarCobro', c.cuenta).then(function(){ toast('Cobro eliminado (está en la papelera)'); cargarCobrosHoy(); }).catch(error);
+        }})
+      ])
+    ]));
   });
-  w.appendChild(el('table', {class:'rank'}, [el('thead', null, [el('tr', null, ['Hora','Mesa','Mozo','Método','Monto','Propina',''].map(function(x, i){ return el('th', {class: i === 4 || i === 5 ? 'n' : '', text:x}); }))]), tb]));
+  w.appendChild(g);
   return w;
+}
+function reabrirCuentaP(c){
+  if (!confirm('¿Reabrir la mesa ' + c.mesa + '?\n\nEl cobro de ' + soles(c.consumo) + ' se quita (queda en la papelera) y sus pedidos vuelven a la mesa: podrás editarlos, agregar cosas y volver a cobrar con "💳 Cobrar y cerrar".')) return;
+  run('reabrirCuenta', c.cuenta).then(function(r){ toast('Mesa ' + r.mesa + ' reabierta'); MESA_SEL = r.mesa; cargarPedidos(); cargarCobrosHoy(); }).catch(error);
+}
+/* editar un cobro cerrado: métodos, montos, propinas, mozo y personas */
+function editarCuentaP(c){
+  var metodos = (CCERR && CCERR.metodos) || ['Yape o Plin', 'Efectivo', 'Tarjeta'];
+  var pagos = c.pagos.map(function(p){ return { metodo:p.metodo, monto:p.monto, propina:p.propina }; });
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'✏️ Cobro de la mesa ' + c.mesa + ' · ' + soles(c.consumo)}));
+  caja.appendChild(el('p', {class:'nota', text:'Cobrada a las ' + c.hora + '. Los pagos deben sumar ' + soles(c.consumo) + ' (la propina va aparte). Para cambiar lo que se consumió, usa "↩ Reabrir mesa".'}));
+  var selM = el('select', {class:'txt'}, [el('option', {value:'', text:'Caja (sin mozo)'})].concat((CCERR.mozos || []).map(function(m){ return el('option', {value:m.id, text:m.nombre + (m.activo ? '' : ' (inactivo)')}); })));
+  selM.value = c.mozo_id || '';
+  var pers = el('input', {type:'number', min:'0', max:'60', class:'txt', style:'width:80px', value: c.personas ? String(c.personas) : ''});
+  caja.appendChild(el('div', {style:'display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 10px'}, [el('b', {text:'Mozo:'}), selM, el('b', {text:'👥 Personas:'}), pers]));
+  var lista = el('div'), resumen = el('p', {class:'nota'}), err = el('p', {class:'nota', style:'color:#b3261e;font-weight:700'});
+  function sumar(){
+    var s = Math.round(pagos.reduce(function(a, p){ return a + p.monto; }, 0) * 100) / 100, falta = Math.round((c.consumo - s) * 100) / 100;
+    var pr = pagos.reduce(function(a, p){ return a + p.propina; }, 0);
+    resumen.textContent = 'Pagos: ' + soles(s) + (Math.abs(falta) < 0.01 ? ' ✓' : falta > 0 ? ' · faltan ' + soles(falta) : ' · sobran ' + soles(-falta)) + ' · Propina total para el mozo: ' + soles(pr);
+  }
+  function pintar(){
+    lista.textContent = '';
+    pagos.forEach(function(p, i){
+      var sel = el('select', {class:'txt'}, metodos.map(function(x){ return el('option', {value:x, text:x}); })); sel.value = p.metodo;
+      if (metodos.indexOf(p.metodo) < 0) { sel.appendChild(el('option', {value:p.metodo, text:p.metodo})); sel.value = p.metodo; }
+      sel.addEventListener('change', function(){ p.metodo = sel.value; });
+      var mo = el('input', {type:'number', step:'0.10', min:'0', class:'txt', style:'width:110px', value:String(p.monto)});
+      mo.addEventListener('input', function(){ p.monto = Number(mo.value) || 0; sumar(); });
+      var pr = el('input', {type:'number', step:'0.50', min:'0', class:'txt', style:'width:90px', placeholder:'0', value:p.propina ? String(p.propina) : ''});
+      pr.addEventListener('input', function(){ p.propina = Number(pr.value) || 0; sumar(); });
+      lista.appendChild(el('div', {style:'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0'}, [
+        el('b', {text:'Pago ' + (i + 1)}), sel, el('span', {text:'S/'}), mo, el('span', {class:'nota', text:'propina'}), pr,
+        pagos.length > 1 ? el('button', {class:'btn peq', type:'button', text:'Quitar', onclick:function(){ pagos.splice(i, 1); pintar(); }}) : null]));
+    });
+    sumar();
+  }
+  caja.appendChild(lista);
+  caja.appendChild(el('div', {style:'display:flex;gap:8px;flex-wrap:wrap'}, [
+    el('button', {class:'btn peq', type:'button', text:'+ Otro pago', onclick:function(){
+      var s = pagos.reduce(function(a, p){ return a + p.monto; }, 0); pagos.push({ metodo:metodos[0], monto:Math.max(0, Math.round((c.consumo - s) * 100) / 100), propina:0 }); pintar(); }}),
+    el('button', {class:'btn peq', type:'button', text:'+ Propina aparte', title:'Propina que dejaron con otro método (sin consumo)', onclick:function(){ pagos.push({ metodo:metodos[0], monto:0, propina:0 }); pintar(); }})
+  ]));
+  caja.appendChild(resumen); caja.appendChild(err);
+  var ok = el('button', {class:'btn prim', type:'button', text:'✓ Guardar cambios', onclick:function(){
+    var s = Math.round(pagos.reduce(function(a, p){ return a + p.monto; }, 0) * 100) / 100;
+    if (Math.abs(s - c.consumo) > 0.009) { err.textContent = 'Los pagos deben sumar ' + soles(c.consumo) + '.'; return; }
+    ok.disabled = true; ok.textContent = 'Guardando…';
+    run('guardarCobro', c.cuenta, { pagos:pagos, mozoId:selM.value, personas:pers.value === '' ? 0 : Number(pers.value) }).then(function(){
+      cerrarModal(); toast('✓ Cobro de la mesa ' + c.mesa + ' actualizado'); cargarCobrosHoy();
+      if ($('#v-mozos').classList.contains('on')) cargarReporteMozos();
+    }).catch(function(e){ ok.disabled = false; ok.textContent = '✓ Guardar cambios'; err.textContent = String(e.message || e); });
+  }});
+  caja.appendChild(el('div', {class:'pie'}, [el('button', {class:'btn', type:'button', text:'Cancelar', onclick:cerrarModal}), el('span', {class:'esp'}), ok]));
+  pintar();
+  $('#modal').classList.add('on');
+}
+/* ---------- PAPELERA: lo eliminado se puede recuperar (60 días) ---------- */
+$('#btnPapelera').addEventListener('click', function(){ abrirPapelera(); });
+function abrirPapelera(){
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'🗑 Papelera'}));
+  caja.appendChild(el('p', {class:'nota', text:'Pedidos y cobros eliminados. "Recuperar" los devuelve tal cual estaban (un pedido vuelve con su cobro). Se borran solos a los 60 días.'}));
+  var lista = el('div', {class:'ccs'}, [el('p', {class:'nota', text:'Cargando…'})]);
+  caja.appendChild(lista);
+  caja.appendChild(el('div', {class:'pie'}, [el('span', {class:'esp'}), el('button', {class:'btn', type:'button', text:'Cerrar', onclick:cerrarModal})]));
+  $('#modal').classList.add('on');
+  function cargar(){
+    run('listarPapelera').then(function(items){
+      lista.textContent = '';
+      if (!items.length) { lista.appendChild(el('p', {class:'nota', text:'La papelera está vacía.'})); return; }
+      items.forEach(function(x){
+        lista.appendChild(el('div', {class:'cc'}, [
+          el('div', {class:'cc__cab'}, [el('b', {text:(x.tipo === 'pedido' ? '🧾 ' : '💳 ') + x.resumen}), el('span', {class:'esp'})]),
+          el('div', {class:'nota', text:'Eliminado ' + x.fecha + (x.quien ? ' por ' + x.quien : '')}),
+          el('div', {class:'cc__acc'}, [
+            el('button', {class:'btn peq prim', text:'↩ Recuperar', onclick:function(){ this.disabled = true; run('restaurarPapelera', x.id).then(function(){ toast('Recuperado'); cargar(); cargarPedidos(); if (verCuentas) cargarCobrosHoy(); }).catch(error); }}),
+            el('button', {class:'btn peq', text:'Borrar para siempre', onclick:function(){ if (!confirm('¿Borrar para siempre? Ya no se podrá recuperar.')) return; run('borrarDePapelera', x.id).then(cargar).catch(error); }})
+          ])
+        ]));
+      });
+    }).catch(error);
+  }
+  cargar();
 }
 function textoOlvido(m){
   var a = m.alerta; if (!a) return '';
@@ -1405,8 +1521,8 @@ function cambiar(p, estado){
 }
 
 function eliminar(p){
-  if (!confirm('¿ELIMINAR del todo el pedido #' + nro(p) + '?\n\nÚsalo solo para pedidos de prueba: se borra de la hoja, de las ventas y del historial, y no se puede deshacer.')) return;
-  run('eliminarPedido', p.numero).then(function(){ toast('Pedido #' + nro(p) + ' eliminado'); cargarPedidos(); }).catch(error);
+  if (!confirm('¿ELIMINAR el pedido #' + nro(p) + '?\n\nSale de la hoja, de las ventas y del historial (y su cobro, si era el único pedido de esa cuenta). Queda en la 🗑 Papelera por si te equivocas.')) return;
+  run('eliminarPedido', p.numero).then(function(){ toast('Pedido #' + nro(p) + ' eliminado (está en la papelera)'); cargarPedidos(); if (verCuentas) cargarCobrosHoy(); }).catch(error);
 }
 
 /* ---------- comanda para impresora térmica 80 mm (hoja 80 × 210 mm, letra grande) ----------

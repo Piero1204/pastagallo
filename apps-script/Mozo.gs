@@ -15,7 +15,7 @@
 
 var HOJA_MOZOS = 'Mozos', HOJA_COBROS = 'Cobros';
 var COLS_MOZOS = ['id', 'nombre', 'activo', 'codigo', 'llave', 'equipo', 'vinculado', 'ultimo_acceso', 'creado', 'dias', 'mesas', 'excepcion'];
-var COLS_COBROS = ['id', 'fecha', 'mesa', 'mozo_id', 'mozo', 'consumo', 'metodo', 'monto', 'propina', 'pedidos', 'liquidado', 'notas', 'personas'];
+var COLS_COBROS = ['id', 'fecha', 'mesa', 'mozo_id', 'mozo', 'consumo', 'metodo', 'monto', 'propina', 'pedidos', 'liquidado', 'notas', 'personas', 'cuenta', 'ids', 'desde'];
 var ALFABETO_CODIGO = 'abcdefghjkmnpqrstuvwxyz23456789'; // sin i, l, o, 0, 1 (se confunden)
 
 function respuestaMozo_(body) {
@@ -249,7 +249,8 @@ function cobrarMesa_(mozo, body) {
     pagos.forEach(function (p, k) {
       var fila = { id: id + (pagos.length > 1 ? '-' + (k + 1) : ''), fecha: ahora, mesa: mesa, mozo_id: mozo.id, mozo: mozo.nombre,
         consumo: k === 0 ? c.total : 0, metodo: p.metodo, monto: p.monto, propina: p.propina, pedidos: nums, liquidado: '',
-        notas: texto_(body.notas, 120), personas: k === 0 ? (num_(m.personas) && mesaValida_(m, zona) ? num_(m.personas) : '') : '' };
+        notas: texto_(body.notas, 120), personas: k === 0 ? (num_(m.personas) && mesaValida_(m, zona) ? num_(m.personas) : '') : '',
+        cuenta: id, ids: "'" + c.pedidos.map(function (p) { return p.id; }).join(','), desde: inicioCuenta_(m, zona) };
       h.appendRow(cab.map(function (col) { return protegerCelda_(fila[col] == null ? '' : fila[col]); }));
     });
     if (comp) anotarComprobanteMesa_(c, comp);
@@ -997,4 +998,248 @@ function copiaLinea_(l, n) {
   var c = JSON.parse(JSON.stringify(l));
   c.cant = n; c.subtotal = Math.round((Number(c.unit) || 0) * n * 100) / 100;
   return c;
+}
+
+/* =========================== CUENTAS CERRADAS: EDITAR, REABRIR Y ELIMINAR ===========================
+   Un cobro = una "cuenta" (puede tener varias filas en Cobros, una por método). Columnas nuevas:
+   cuenta (id común), ids (números internos de los pedidos), desde (inicio de la cuenta). Para cobros viejos sin esas
+   columnas: cuenta = id sin "-n" y los pedidos se buscan por mesa + día + número del día. */
+function cuentaDeFila_(c) { return String(c.cuenta || String(c.id).replace(/-\d+$/, '')); }
+function pedidosDeCobro_(filas, peds, zona) {
+  var f0 = filas[0], ids = String(f0.ids == null ? '' : f0.ids).split(',').map(function (x) { return Number(String(x).replace(/'/g, '')); }).filter(Boolean);
+  if (ids.length) return peds.filter(function (p) { return ids.indexOf(Number(p.numero)) >= 0; });
+  var nums = String(f0.pedidos || '').split(',').map(function (x) { return Number(x); }).filter(Boolean);
+  var dia = f0.fecha instanceof Date ? Utilities.formatDate(f0.fecha, zona, 'yyyy-MM-dd') : '';
+  return peds.filter(function (p) {
+    return String(p.mesa) === String(f0.mesa) && p.canal === 'mesa' && p.fecha instanceof Date && p.fecha <= f0.fecha &&
+      Utilities.formatDate(p.fecha, zona, 'yyyy-MM-dd') === dia && nums.indexOf(Number(p.num_dia) || Number(p.numero)) >= 0;
+  });
+}
+function filasDeCuenta_(cuenta) {
+  if (!SpreadsheetApp.getActive().getSheetByName(HOJA_COBROS)) return [];
+  return leerTabla_(HOJA_COBROS).filter(function (c) { return cuentaDeFila_(c) === String(cuenta); });
+}
+/** Panel: cuentas cerradas de un día de trabajo (dia = 'AAAA-MM-DD'; vacío = hoy). */
+function cuentasCerradas(sesion, dia) {
+  exigirAdmin_(sesion);
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var hoy = diaNegocio_(cfg, momentoActual_(cfg)).iso;
+  dia = /^\d{4}-\d{2}-\d{2}$/.test(String(dia || '')) ? String(dia) : hoy;
+  var ini = Utilities.parseDate(dia + ' 06:00:00', zona, 'yyyy-MM-dd HH:mm:ss').getTime(), fin = ini + 86400000;
+  var res = { dia: dia, hoy: hoy, cuentas: [], metodos: metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true),
+    mozos: leerMozos_().map(function (m) { return { id: m.id, nombre: m.nombre, activo: m.activo }; }) };
+  if (!SpreadsheetApp.getActive().getSheetByName(HOJA_COBROS)) return res;
+  var grupos = {}, orden = [];
+  leerTabla_(HOJA_COBROS).forEach(function (c) {
+    if (!(c.fecha instanceof Date) || c.fecha.getTime() < ini || c.fecha.getTime() >= fin) return;
+    var k = cuentaDeFila_(c); if (!grupos[k]) { grupos[k] = []; orden.push(k); } grupos[k].push(c);
+  });
+  var peds = leerTabla_(HOJA.pedidos);
+  var mesas = {}; leerTabla_(HOJA.mesas).forEach(function (m) { mesas[String(m.mesa)] = m; });
+  orden.sort(function (a, b) { return grupos[b][0].fecha - grupos[a][0].fecha; }).forEach(function (k) {
+    var filas = grupos[k], f0 = filas[0];
+    var ps = pedidosDeCobro_(filas, peds, zona);
+    // ¿se puede reabrir? solo la ÚLTIMA cuenta de la mesa y si la mesa no tiene otra cuenta abierta
+    var posteriores = peds.filter(function (p) { return String(p.mesa) === String(f0.mesa) && p.canal === 'mesa' && p.fecha instanceof Date && p.fecha > f0.fecha && p.estado !== 'Cancelado'; });
+    var consumo = filas.reduce(function (a, c) { return a + (Number(c.consumo) || 0); }, 0);
+    res.cuentas.push({ cuenta: k, mesa: celdaTexto_(f0.mesa), hora: Utilities.formatDate(f0.fecha, zona, 'HH:mm'), mozo_id: String(f0.mozo_id || ''), mozo: String(f0.mozo || ''),
+      consumo: Math.round(consumo * 100) / 100, personas: Number(f0.personas) || 0, notas: celdaTexto_(f0.notas),
+      pagos: filas.map(function (c) { return { id: String(c.id), metodo: String(c.metodo), monto: Number(c.monto) || 0, propina: Number(c.propina) || 0, liquidado: String(c.liquidado || ''), notas: celdaTexto_(c.notas) }; }),
+      pedidos: ps.map(function (p) { return { numero: Number(p.num_dia) || Number(p.numero), hora: Utilities.formatDate(p.fecha, zona, 'HH:mm'), total: Number(p.total) || 0, lineas: lineasCortas_(p.items_json) }; }),
+      sinPedidos: !ps.length, reabrible: !!ps.length && !posteriores.length });
+  });
+  return res;
+}
+/** Editar un cobro: pagos = [{ metodo, monto, propina }] (deben sumar el consumo), mozoId, personas. */
+function guardarCobro(sesion, cuenta, o) {
+  var quien = String(exigirAdmin_(sesion) || 'panel').split('@')[0];
+  o = o || {};
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var metodos = metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true);
+  var pagos = (Array.isArray(o.pagos) ? o.pagos : []).slice(0, 8).map(function (p) {
+    var met = texto_(p && p.metodo, 30); if (/^(yape|plin)$/i.test(met)) met = YAPE_PLIN;
+    return { metodo: met, monto: Math.round((num_(p && p.monto) || 0) * 100) / 100, propina: Math.round((num_(p && p.propina) || 0) * 100) / 100 };
+  }).filter(function (p) { return p.monto > 0 || p.propina > 0; });
+  if (!pagos.length) throw new Error('Agrega al menos un pago.');
+  pagos.forEach(function (p) {
+    if (metodos.indexOf(p.metodo) < 0) throw new Error('Método no válido: ' + p.metodo);
+    if (p.monto < 0 || p.propina < 0 || p.monto > 20000 || p.propina > 2000) throw new Error('Revisa los montos.');
+  });
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var filas = filasDeCuenta_(cuenta);
+    if (!filas.length) throw new Error('No encontré ese cobro (¿lo eliminaron?).');
+    var consumo = Math.round(filas.reduce(function (a, c) { return a + (Number(c.consumo) || 0); }, 0) * 100) / 100;
+    var suma = Math.round(pagos.reduce(function (a, p) { return a + p.monto; }, 0) * 100) / 100;
+    if (Math.abs(suma - consumo) > 0.009) throw new Error('Los pagos suman S/ ' + suma.toFixed(2) + ' y la cuenta es S/ ' + consumo.toFixed(2) + '.');
+    var f0 = filas[0];
+    var mz = { id: String(f0.mozo_id || ''), nombre: String(f0.mozo || '') };
+    if (o.mozoId != null && String(o.mozoId) !== mz.id) {
+      var nm = leerMozos_().filter(function (x) { return x.id === String(o.mozoId); })[0];
+      mz = nm ? { id: nm.id, nombre: nm.nombre } : { id: '', nombre: 'Caja' };
+    }
+    var personas = o.personas != null ? (Math.floor(num_(o.personas) || 0) || '') : f0.personas;
+    var antes = filas.map(function (c) { return c.metodo + ' ' + Number(c.monto).toFixed(2) + (Number(c.propina) ? '+' + Number(c.propina).toFixed(2) : ''); }).join(', ');
+    var marca = 'Editado por ' + quien + ' ' + Utilities.formatDate(new Date(), zona, 'dd/MM HH:mm') + ' (antes: ' + antes + ')';
+    var h = SpreadsheetApp.getActive().getSheetByName(HOJA_COBROS), cab = asegurarColumnas_(h, COLS_COBROS);
+    var base = cuentaDeFila_(f0), notas0 = String(f0.notas || '').replace(/ · Editado por [\s\S]*$/, '');
+    var nuevas = pagos.map(function (p, k) {
+      var vieja = filas[k] || {};
+      return { id: base + (pagos.length > 1 ? '-' + (k + 1) : ''), fecha: f0.fecha, mesa: f0.mesa, mozo_id: mz.id, mozo: mz.nombre,
+        consumo: k === 0 ? consumo : 0, metodo: p.metodo, monto: p.monto, propina: p.propina, pedidos: f0.pedidos,
+        liquidado: vieja.metodo === p.metodo ? (vieja.liquidado || '') : '', notas: k === 0 ? (notas0 ? notas0 + ' · ' : '') + marca : '',
+        personas: k === 0 ? personas : '', cuenta: base, ids: f0.ids ? "'" + String(f0.ids).replace(/'/g, '') : '', desde: f0.desde || '' };
+    });
+    filas.map(function (c) { return c._fila; }).sort(function (a, b) { return b - a; }).forEach(function (r) { h.deleteRow(r); });
+    nuevas.forEach(function (fila) { h.appendRow(cab.map(function (col) { return protegerCelda_(fila[col] == null ? '' : fila[col]); })); });
+    nuevaVersion_();
+    return true;
+  } finally { lock.releaseLock(); }
+}
+/** Reabrir la mesa: se borra el cobro (va a la papelera) y los pedidos vuelven a la cuenta de la mesa para editarlos
+ *  o volver a cobrar. Solo la última cuenta de la mesa y si la mesa no tiene otra cuenta abierta. */
+function reabrirCuenta(sesion, cuenta) {
+  var quien = String(exigirAdmin_(sesion) || 'panel').split('@')[0];
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var filas = filasDeCuenta_(cuenta);
+    if (!filas.length) throw new Error('No encontré ese cobro.');
+    var f0 = filas[0], peds = leerTabla_(HOJA.pedidos), ps = pedidosDeCobro_(filas, peds, zona);
+    if (!ps.length) throw new Error('Los pedidos de esta cuenta ya no existen (se eliminaron). Si era de prueba, elimina el cobro.');
+    var m = filaMesa_(f0.mesa); if (!m) throw new Error('La mesa ' + f0.mesa + ' ya no existe.');
+    var c = cuentaMesa_(String(f0.mesa), m, peds, zona);
+    if (c.pedidos.length) throw new Error('La mesa ' + f0.mesa + ' ya tiene otra cuenta abierta (' + soles_(c.total) + '). Cóbrala o ciérrala primero.');
+    var post = peds.filter(function (p) { return String(p.mesa) === String(f0.mesa) && p.canal === 'mesa' && p.fecha instanceof Date && p.fecha > f0.fecha && p.estado !== 'Cancelado'; });
+    if (post.length) throw new Error('Después de esta cuenta la mesa ' + f0.mesa + ' tuvo otra. Solo se puede reabrir la última cuenta de la mesa.');
+    var primero = ps.reduce(function (a, p) { return Math.min(a, p.fecha.getTime()); }, Infinity);
+    var desde = new Date(primero - 1000);
+    aPapelera_([{ hoja: HOJA_COBROS, filas: filas }], 'cobro', 'Cobro de la mesa ' + f0.mesa + ' (' + Utilities.formatDate(f0.fecha, zona, 'dd/MM HH:mm') + ', ' + f0.mozo + ') · mesa reabierta', quien);
+    var pers = Number(f0.personas) || 0;
+    setMesa_(m, { abierta_desde: desde, atiende_id: String(f0.mozo_id || ''), ocupada_desde: new Date(primero), personas: pers || '',
+      cortesia: String(Math.max(desde.getTime(), Utilities.parseDate(Utilities.formatDate(new Date(), zona, 'yyyy-MM-dd') + ' 00:00:00', zona, 'yyyy-MM-dd HH:mm:ss').getTime())) + '|' + pers });
+    nuevaVersion_();
+    return { ok: true, mesa: String(f0.mesa) };
+  } finally { lock.releaseLock(); }
+}
+/** Eliminar un cobro (va a la papelera). Los pedidos no se tocan. */
+function eliminarCobro(sesion, cuenta) {
+  var quien = String(exigirAdmin_(sesion) || 'panel').split('@')[0];
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var filas = filasDeCuenta_(cuenta);
+    if (!filas.length) throw new Error('No encontré ese cobro.');
+    var f0 = filas[0], zona = leerConfig_().zona_horaria || 'America/Lima';
+    var total = filas.reduce(function (a, c) { return a + (Number(c.monto) || 0); }, 0);
+    aPapelera_([{ hoja: HOJA_COBROS, filas: filas }], 'cobro', 'Cobro de la mesa ' + f0.mesa + ' · ' + soles_(total) + ' (' + Utilities.formatDate(f0.fecha, zona, 'dd/MM HH:mm') + ', ' + f0.mozo + ')', quien);
+    nuevaVersion_();
+    return true;
+  } finally { lock.releaseLock(); }
+}
+
+/* =========================== PAPELERA ===========================
+   Lo que se elimina desde el panel (pedidos y cobros) se guarda aquí con todos sus datos y se puede recuperar.
+   Una entrada puede tener filas de varias hojas (p. ej. un pedido y su cobro). Se vacía sola a los 60 días. */
+var HOJA_PAPELERA = 'Papelera', COLS_PAPELERA = ['id', 'fecha', 'tipo', 'resumen', 'quien', 'datos'];
+function hojaPapelera_() {
+  var ss = SpreadsheetApp.getActive(), h = ss.getSheetByName(HOJA_PAPELERA);
+  if (!h) { h = ss.insertSheet(HOJA_PAPELERA); h.appendRow(COLS_PAPELERA); h.setFrozenRows(1); }
+  asegurarColumnas_(h, COLS_PAPELERA);
+  return h;
+}
+function serializarFila_(f) {
+  var o = {};
+  Object.keys(f).forEach(function (k) { if (k.charAt(0) === '_') return; var v = f[k]; o[k] = v instanceof Date ? { $d: v.getTime() } : v; });
+  return o;
+}
+/** grupos = [{ hoja, filas: [objetos de leerTabla_] }]; borra las filas de sus hojas. (Llamar con el bloqueo tomado.) */
+function aPapelera_(grupos, tipo, resumen, quien) {
+  var datos = grupos.map(function (g) { return { hoja: g.hoja, filas: g.filas.map(serializarFila_) }; });
+  var json = JSON.stringify(datos);
+  if (json.length > 45000) throw new Error('Es demasiado grande para la papelera.');
+  hojaPapelera_().appendRow([Utilities.getUuid().slice(0, 8), new Date(), tipo, protegerCelda_(String(resumen).slice(0, 300)), String(quien || ''), json]);
+  grupos.forEach(function (g) {
+    var h = SpreadsheetApp.getActive().getSheetByName(g.hoja);
+    g.filas.map(function (f) { return f._fila; }).sort(function (a, b) { return b - a; }).forEach(function (r) { h.deleteRow(r); });
+  });
+}
+function listarPapelera(sesion) {
+  exigirAdmin_(sesion);
+  var zona = leerConfig_().zona_horaria || 'America/Lima';
+  if (!SpreadsheetApp.getActive().getSheetByName(HOJA_PAPELERA)) return [];
+  var h = hojaPapelera_(), limite = Date.now() - 60 * 86400000, viejas = [];
+  var lista = leerTabla_(HOJA_PAPELERA).filter(function (x) {
+    if (x.fecha instanceof Date && x.fecha.getTime() < limite) { viejas.push(x._fila); return false; }
+    return String(x.id);
+  });
+  if (viejas.length) { var lock = LockService.getScriptLock(); lock.waitLock(20000); try { viejas.sort(function (a, b) { return b - a; }).forEach(function (r) { h.deleteRow(r); }); } finally { lock.releaseLock(); } }
+  return lista.reverse().map(function (x) {
+    return { id: String(x.id), fecha: x.fecha instanceof Date ? Utilities.formatDate(x.fecha, zona, 'dd/MM HH:mm') : '', tipo: String(x.tipo), resumen: celdaTexto_(x.resumen), quien: String(x.quien || '') };
+  });
+}
+function restaurarPapelera(sesion, id) {
+  exigirAdmin_(sesion);
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var e = leerTabla_(HOJA_PAPELERA).filter(function (x) { return String(x.id) === String(id); })[0];
+    if (!e) throw new Error('Ya no está en la papelera.');
+    var datos = JSON.parse(String(e.datos || '[]'));
+    // Un cobro no se recupera si sus pedidos están otra vez en una cuenta abierta o ya tienen otro cobro (sería doble).
+    var zona = leerConfig_().zona_horaria || 'America/Lima', esPedido = datos.some(function (g) { return g.hoja === HOJA.pedidos; });
+    if (!esPedido) datos.forEach(function (g) {
+      if (g.hoja !== HOJA_COBROS || !g.filas.length) return;
+      var filas = g.filas.map(function (f) { var o = {}; Object.keys(f).forEach(function (k) { var v = f[k]; o[k] = v && typeof v === 'object' && v.$d ? new Date(v.$d) : v; }); return o; });
+      var ps = pedidosDeCobro_(filas, leerTabla_(HOJA.pedidos), zona);
+      var m = filaMesa_(filas[0].mesa);
+      if (m && ps.length) {
+        var abiertos = cuentaMesa_(String(filas[0].mesa), m, leerTabla_(HOJA.pedidos), zona).pedidos.map(function (x) { return x.id; });
+        if (ps.some(function (x) { return abiertos.indexOf(Number(x.numero)) >= 0; })) throw new Error('La mesa ' + filas[0].mesa + ' está abierta otra vez con esos pedidos: cóbrala con "💳 Cobrar y cerrar" en vez de recuperar este cobro.');
+      }
+      if (ps.some(function (x) { return cobrosDelPedido_(x, zona).length; })) throw new Error('Esos pedidos ya tienen otro cobro registrado: recuperar este lo duplicaría.');
+    });
+    datos.forEach(function (g) {
+      var h = SpreadsheetApp.getActive().getSheetByName(g.hoja); if (!h) return;
+      var cab = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(function (c) { return String(c).trim(); });
+      g.filas.forEach(function (f) {
+        h.appendRow(cab.map(function (c) {
+          var v = f[c]; if (v == null) return '';
+          if (v && typeof v === 'object' && v.$d) return new Date(v.$d);
+          if (typeof v === 'string' && (c === 'ids' || c === 'pedidos' || c === 'doc' || c === 'telefono' || c === 'programado' || /^\d[\d,]*$/.test(v) && v.indexOf(',') >= 0)) return "'" + v;
+          return protegerCelda_(v);
+        }));
+      });
+      if (g.hoja === HOJA.pedidos) ordenarPedidos_(h, cab);
+    });
+    hojaPapelera_().deleteRow(e._fila);
+    if (datos.some(function (g) { return g.hoja === HOJA.productos; })) limpiarCache_();
+    nuevaVersion_();
+    return true;
+  } finally { lock.releaseLock(); }
+}
+/** Pedidos restaurados al final: se reordena por número interno para que las búsquedas por fila sigan funcionando. */
+function ordenarPedidos_(h, cab) {
+  var n = h.getLastRow(); if (n < 3) return;
+  var col = cab.indexOf('numero') + 1; if (col < 1) return;
+  h.getRange(2, 1, n - 1, h.getLastColumn()).sort({ column: col, ascending: true });
+}
+function borrarDePapelera(sesion, id) {
+  exigirAdmin_(sesion);
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var e = leerTabla_(HOJA_PAPELERA).filter(function (x) { return String(x.id) === String(id); })[0];
+    if (e) hojaPapelera_().deleteRow(e._fila);
+    return true;
+  } finally { lock.releaseLock(); }
+}
+/** Cobros que incluyen el pedido (por número interno o, en cobros viejos, por mesa + día + número del día). */
+function cobrosDelPedido_(p, zona) {
+  if (!SpreadsheetApp.getActive().getSheetByName(HOJA_COBROS) || p.canal !== 'mesa' || !(p.fecha instanceof Date)) return [];
+  var grupos = {};
+  leerTabla_(HOJA_COBROS).forEach(function (c) { var k = cuentaDeFila_(c); (grupos[k] = grupos[k] || []).push(c); });
+  var peds = leerTabla_(HOJA.pedidos), out = [];
+  Object.keys(grupos).forEach(function (k) {
+    var ps = pedidosDeCobro_(grupos[k], peds, zona);
+    if (ps.some(function (x) { return Number(x.numero) === Number(p.numero); })) out.push({ cuenta: k, filas: grupos[k], otros: ps.length - 1 });
+  });
+  return out;
 }
