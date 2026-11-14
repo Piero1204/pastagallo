@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:35:28-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:36:16-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2629,7 +2629,7 @@ window.CARTA = {
        ],
        "foto": "fotos/dolci-biscotti-con-gocce-di-cioccolato-1794451297748.jpg",
        "g_en": "chocolate chip cookie",
-       "d_en": "Chocolate chip cookie, a new york famous one."
+       "d_en": "Chocolate chip cookie, in the famous new york style."
       },
       {
        "id": "dolci-biscotto-al-cioccolato",
@@ -3203,5 +3203,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T23:35:28-05:00"
+ "publicado": "2026-11-13T23:36:16-05:00"
 };
