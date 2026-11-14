@@ -1525,7 +1525,7 @@ function eliminar(p){
   run('eliminarPedido', p.numero).then(function(){ toast('Pedido #' + nro(p) + ' eliminado (está en la papelera)'); cargarPedidos(); if (verCuentas) cargarCobrosHoy(); }).catch(error);
 }
 
-/* ---------- comanda para impresora térmica 80 mm (hoja 80 × 210 mm, letra grande) ----------
+/* ---------- comanda para impresora térmica 80 mm (el largo de la hoja se ajusta al contenido, letra grande) ----------
    Para que imprima sin preguntar: abrir el panel en Chrome con la opción --kiosk-printing
    y la térmica como impresora predeterminada (ver instrucciones de Piero). */
 var colaImpresion = [], imprimiendo = false;
@@ -1616,9 +1616,20 @@ function siguienteImpresion(){
   add('div', 'TOTAL ' + soles(p.total) + (p.canal === 'delivery' ? ' + deliv.' : ''), 'tot');
   }
   setTimeout(function(){
+    altoDelTicket(d);
     try { f.contentWindow.focus(); f.contentWindow.print(); } catch(e) {}
     setTimeout(function(){ f.remove(); imprimiendo = false; siguienteImpresion(); }, 1500);
   }, 120);
+}
+/* El papel mide lo que mide el contenido: ticket corto = papel corto, ticket largo = papel largo.
+   Se mide el ticket ya dibujado y se fija la hoja en 80 mm × (alto del contenido + un margen para el corte). */
+function altoDelTicket(d){
+  try {
+    var px = Math.max(d.body.scrollHeight, d.body.offsetHeight);
+    var mm = Math.max(40, Math.ceil(px * 25.4 / 96) + 8);
+    var s = d.createElement('style'); s.textContent = '@page{size:80mm ' + mm + 'mm;margin:0}';
+    d.head.appendChild(s);
+  } catch(e) {}
 }
 var autoImp = true;
 /* pedidos ya impresos en este equipo (para no imprimir dos veces la misma comanda) */
@@ -2774,7 +2785,7 @@ function exitoCompE(r, siguiente){
 function imprimirHtml(html){
   var fr = el('iframe', {style:'position:fixed;width:0;height:0;border:0'}); document.body.appendChild(fr);
   var d = fr.contentDocument; d.open(); d.write(html); d.close();
-  setTimeout(function(){ try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch(e) {} setTimeout(function(){ fr.remove(); }, 2000); }, 300);
+  setTimeout(function(){ if (/80mm/.test(html)) altoDelTicket(d); try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch(e) {} setTimeout(function(){ fr.remove(); }, 2000); }, 300);
 }
 function imprimirComp(c){ run('comprobanteImpreso', c.id).then(imprimirHtml).catch(error); }
 function descargarPdfComp(c){
