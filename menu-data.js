@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T21:21:57-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:12:21-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -39,7 +39,7 @@ window.CARTA = {
    ],
    "5": [
     "18:00",
-    "23:00"
+    "23:59"
    ],
    "6": [
     "18:00",
@@ -2075,7 +2075,7 @@ window.CARTA = {
         "huevo",
         "gluten"
        ],
-       "foto": "fotos/real-fettuccine-alfredo.jpg",
+       "foto": "fotos/pasta-fettuccine-1794629537790.jpg",
        "op": [
         "fettuccine-tipo"
        ],
@@ -3202,5 +3202,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T21:21:57-05:00"
+ "publicado": "2026-11-13T23:12:21-05:00"
 };
