@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:23:40-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:25:01-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2702,6 +2702,7 @@ window.CARTA = {
        "g": "café express",
        "d": "El clásico italiano: corto, intenso y de un solo trago.",
        "p": 12,
+       "agotado": true,
        "foto": "https://images.unsplash.com/photo-1579992357154-faf4bde95b3d?w=700&q=70&auto=format&fit=crop",
        "canal": "local",
        "g_en": "espresso",
@@ -3201,5 +3202,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T23:23:40-05:00"
+ "publicado": "2026-11-13T23:25:01-05:00"
 };
