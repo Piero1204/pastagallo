@@ -1626,7 +1626,8 @@ function siguienteImpresion(){
 function altoDelTicket(d){
   try {
     var px = Math.max(d.body.scrollHeight, d.body.offsetHeight);
-    var mm = Math.max(40, Math.ceil(px * 25.4 / 96) + 8);
+    /* mínimo 90 mm: si el alto fuera menor que el ancho (80 mm) Chrome manda la hoja en horizontal y el ticket sale de lado */
+    var mm = Math.max(90, Math.ceil(px * 25.4 / 96) + 8);
     var s = d.createElement('style'); s.textContent = '@page{size:80mm ' + mm + 'mm;margin:0}';
     d.head.appendChild(s);
   } catch(e) {}
