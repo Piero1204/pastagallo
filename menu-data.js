@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T18:56:38-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T19:49:44-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -686,7 +686,7 @@ window.CARTA = {
   },
   {
    "id": "salsa-ragu-di-carne",
-   "n": "Ragù di Carne",
+   "n": "Bolognese",
    "extra": 0,
    "agotado": false
   },
@@ -2266,13 +2266,13 @@ window.CARTA = {
       },
       {
        "id": "salsa-ragu-di-carne",
-       "n": "Ragù di Carne",
+       "n": "Bolognese",
        "g": "salsa de carne",
-       "d": "Salsa de carne al estilo ragú: sabrosa y contundente.",
+       "d": "Salsa boloñesa de carne: sabrosa y contundente.",
        "tipo": "salsa",
        "foto": "https://images.unsplash.com/photo-1785396347369-b5e70e3f3af3?w=700&q=70&auto=format&fit=crop",
        "g_en": "meat sauce",
-       "d_en": "Ragù-style meat sauce: rich and hearty."
+       "d_en": "Bolognese meat sauce: rich and hearty."
       },
       {
        "id": "salsa-alfredo",
@@ -3202,5 +3202,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T18:56:38-05:00"
+ "publicado": "2026-11-13T19:49:44-05:00"
 };
