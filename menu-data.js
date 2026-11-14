@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:32:38-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:33:01-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2633,7 +2633,7 @@ window.CARTA = {
       },
       {
        "id": "dolci-biscotto-al-cioccolato",
-       "n": "Biscotto al Cioccolato",
+       "n": "Chocolate Cookie",
        "g": "galleta de chocolate",
        "d": "Una galleta de chocolate intenso, para el antojo del final.",
        "p": 6,
@@ -3203,5 +3203,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T23:32:38-05:00"
+ "publicado": "2026-11-13T23:33:01-05:00"
 };
