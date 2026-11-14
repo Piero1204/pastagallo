@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:25:43-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:28:47-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2618,13 +2618,13 @@ window.CARTA = {
       },
       {
        "id": "dolci-biscotti-con-gocce-di-cioccolato",
-       "n": "Biscotto con Gocce di Cioccolato",
+       "n": "New York Cookie",
        "g": "galleta con chispas de chocolate",
        "d": "Galleta con chispas de chocolate, ideal con un buen café.",
        "p": 6,
        "al": [
-        "huevo",
         "gluten",
+        "huevo",
         "lacteos"
        ],
        "foto": "fotos/dolci-biscotti-con-gocce-di-cioccolato-1794451297748.jpg",
@@ -3203,5 +3203,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T23:25:43-05:00"
+ "publicado": "2026-11-13T23:28:47-05:00"
 };
