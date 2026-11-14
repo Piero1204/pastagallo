@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:29:28-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:32:38-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2649,9 +2649,9 @@ window.CARTA = {
       },
       {
        "id": "dolci-biscotto-red-velvet",
-       "n": "Biscotto Red Velvet",
+       "n": "Red Velvet Cookie",
        "g": "galleta red velvet",
-       "d": "Color rubí y sabor suave a cacao: elegante hasta el último bocado.",
+       "d": "Color rubí y una mezcla de sabor suave a cacao y vainilla: elegante hasta el último bocado.",
        "p": 6,
        "agotado": true,
        "al": [
@@ -2661,7 +2661,7 @@ window.CARTA = {
        ],
        "foto": "https://images.unsplash.com/photo-1593675418918-08817c2d8682?w=700&q=70&auto=format&fit=crop",
        "g_en": "red velvet cookie",
-       "d_en": "Ruby colour and a soft cocoa taste: elegant to the last bite."
+       "d_en": "Ruby colour and a soft mix between cocoa and vanilla taste: elegant to the last bite."
       }
      ]
     }
@@ -3203,5 +3203,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T23:29:28-05:00"
+ "publicado": "2026-11-13T23:32:38-05:00"
 };
