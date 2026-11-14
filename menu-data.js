@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T19:49:44-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T21:21:57-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -38,7 +38,7 @@ window.CARTA = {
     "23:00"
    ],
    "5": [
-    "16:00",
+    "18:00",
     "23:00"
    ],
    "6": [
@@ -3042,7 +3042,7 @@ window.CARTA = {
        "al": [
         "sulfitos"
        ],
-       "foto": "fotos/vini-cavicchioli-1794592779256.jpg",
+       "foto": "fotos/vini-cavicchioli-1794622914774.jpg",
        "n_en": "Cavicchioli Lambrusco Grasparossa Amabile",
        "g_en": "sparkling red, off-dry · Emilia-Romagna",
        "d_en": "Cavicchioli has been making Lambrusco since 1928 in San Prospero, just outside Modena. Grasparossa takes its name from the grape stalks, which turn red in autumn, and it is the fullest, deepest-coloured Lambrusco. A sparkling red with violet foam and deep ruby colour; aromas of red berries, blackberry and violet. Amabile means gently sweet: fresh, lively and easy on the palate. The classic partner for cured meats, pizza and pasta with meat sauce. Serve cool, 10–12 °C."
@@ -3202,5 +3202,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T19:49:44-05:00"
+ "publicado": "2026-11-13T21:21:57-05:00"
 };
