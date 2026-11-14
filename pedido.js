@@ -97,6 +97,7 @@
     if (it.t) { var tt = it.t.filter(function (x) { return x[0] === l.tam; })[0]; if (!tt) return null; base = tt[1]; }
     else base = it.p;
     if (base == null) return null;
+    if (l.mitad) { var m2 = productos[l.mitad]; var t2 = m2 && !m2.agotado && it.t && l.tam !== it.t[0][0] && m2.t ? m2.t.filter(function (x) { return x[0] === l.tam; })[0] : null; if (!t2) return null; base = Math.max(base, t2[1]); }
     var extra = 0, ok = true;
     if (l.salsa) { var s = salsaPorId[l.salsa]; if (!s) return null; extra += s.extra || 0; }
     Object.keys(l.ops || {}).forEach(function (gid) {
@@ -267,11 +268,12 @@
       return;
     }
 
-    var sel = { tam: it.t ? it.t[0][0] : "", salsa: "", cant: 1, nota: "", ops: {} };
+    var sel = { tam: it.t ? it.t[0][0] : "", salsa: "", cant: 1, nota: "", ops: {}, mitad: "" };
     var err = h("p", "hoja__err"); err.setAttribute("role", "alert");
     var add;
     function precioUnit() {
       var base = it.t ? (it.t.filter(function (x) { return x[0] === sel.tam; })[0] || it.t[0])[1] : it.p;
+      if (sel.mitad && productos[sel.mitad]) { var t2 = (productos[sel.mitad].t || []).filter(function (x) { return x[0] === sel.tam; })[0]; if (t2) base = Math.max(base, t2[1]); }
       var s = salsaPorId[sel.salsa];
       var extra = s ? s.extra : 0;
       gruposDe(it, sel.salsa).forEach(function (gid) {
@@ -304,8 +306,30 @@
     if (it.t) {
       c.appendChild(h("h3", "hoja__sub", t("tamano")));
       c.appendChild(opcionesUI("tam", it.t.map(function (x, i) { return { valor: x[0], texto: x[0], extra: soles(x[1]), marcado: i === 0 }; }),
-        false, function (v) { sel.tam = v[0]; pintar(); }));
+        false, function (v) { sel.tam = v[0]; pintarMitad(); pintar(); }));
     }
+    /* Mitad y mitad: pizzas Media y Famiglia pueden llevar 2 sabores; se cobra el precio del sabor más caro. */
+    var zonaMitad = h("div");
+    function pintarMitad() {
+      zonaMitad.textContent = "";
+      var puede = sec && sec.id === "pizze" && it.t && it.t.length > 1 && sel.tam !== it.t[0][0];
+      if (!puede) { sel.mitad = ""; return; }
+      var otras = [];
+      sec.grupos.forEach(function (g) { g.items.forEach(function (o) {
+        if (o.id === it.id || o.agotado || !o.t || o.tipo === "salsa" || !puedePedir(o, sec)) return;
+        var tz = o.t.filter(function (x) { return x[0] === sel.tam; })[0]; if (tz) otras.push({ o: o, p: tz[1] });
+      }); });
+      if (!otras.length) { sel.mitad = ""; return; }
+      if (!otras.some(function (x) { return x.o.id === sel.mitad; })) sel.mitad = "";
+      var en = I.lang === "en";
+      zonaMitad.appendChild(h("h3", "hoja__sub", en ? "Half & half (optional)" : "Mitad y mitad (opcional)"));
+      zonaMitad.appendChild(h("p", "hoja__ayuda", en ? "Pick a second flavour: you pay the price of the more expensive one." : "Elige un segundo sabor: se cobra el precio de la pizza más cara."));
+      var lista = [{ valor: "", texto: en ? "One flavour only" : "Un solo sabor", extra: "", marcado: !sel.mitad }];
+      otras.forEach(function (x) { lista.push({ valor: x.o.id, texto: tx(x.o, "n"), extra: soles(x.p), marcado: x.o.id === sel.mitad }); });
+      zonaMitad.appendChild(opcionesUI("mitad", lista, false, function (v) { sel.mitad = v[0] || ""; pintar(); }));
+    }
+    c.appendChild(zonaMitad);
+    pintarMitad();
     var zonaSalsa = h("div");
     if (it.salsa) {
       c.appendChild(h("h3", "hoja__sub", t("eligeSalsa")));
@@ -363,12 +387,15 @@
     var s = salsaPorId[sel.salsa];
     var ops = {};
     gruposDe(it, sel.salsa).forEach(function (g) { if ((sel.ops[g] || []).length) ops[g] = sel.ops[g].slice(); });
-    var key = [it.id, sel.tam, sel.salsa, JSON.stringify(ops), sel.nota].join("|");
+    var m2 = sel.mitad && productos[sel.mitad] ? productos[sel.mitad] : null;
+    var opsTxt = textoOpciones(it, sel, true), opsEs = textoOpciones(it, sel, false);
+    if (m2) { opsTxt.unshift("Half & half: " + tx(it, "n") + " + " + tx(m2, "n")); opsEs.unshift("Mitad y mitad: " + it.n + " + " + m2.n); }
+    var key = [it.id, sel.tam, sel.salsa, JSON.stringify(ops), sel.nota, m2 ? m2.id : ""].join("|");
     var ex = carrito.filter(function (l) { return l.key === key; })[0];
     if (ex) ex.cant = Math.min(20, ex.cant + sel.cant);
     else carrito.push({ key: key, id: it.id, n: tx(it, "n"), nEs: it.n, tam: sel.tam, salsa: sel.salsa,
       salsaN: s ? (productos[s.id] ? tx(productos[s.id], "n") : s.n) : "", salsaEs: s ? s.n : "",
-      ops: ops, opsTxt: textoOpciones(it, sel, true), opsEs: textoOpciones(it, sel, false),
+      ops: ops, mitad: m2 ? m2.id : "", opsTxt: opsTxt, opsEs: opsEs,
       unit: unit, cant: sel.cant, nota: (sel.nota || "").trim(), alcohol: !!(seccionDe[it.id] && seccionDe[it.id].alcohol) });
     guardar(); pintarBarra(true);
     aviso(t("agregado", { n: tx(it, "n") }));
@@ -758,7 +785,7 @@
       programado: form.programado || "", notas: form.notas || "", mayorEdad: !!form.mayorEdad, origen: origen(), ref: form.ref || "",
       comprobante: form.comprobante || "", doc: form.comprobante ? String(form.doc || "").replace(/\D/g, "") : "",
       razon: form.comprobante ? (form.razon || "") : "", correo: form.comprobante ? String(form.correo || "").trim() : "",
-      items: carrito.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {} }; })
+      items: carrito.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {}, mitad: l.mitad || "" }; })
     };
   }
 

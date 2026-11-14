@@ -90,6 +90,7 @@
   }
   function precioDe(it, sel) {
     var base = it.t ? ((it.t.filter(function (x) { return x[0] === sel.tam; })[0] || it.t[0])[1]) : it.p;
+    if (sel.mitad && PROD[sel.mitad]) { var t2 = (PROD[sel.mitad].t || []).filter(function (x) { return x[0] === sel.tam; })[0]; if (t2) base = Math.max(base, t2[1]); }
     var extra = sel.salsa && SALSA[sel.salsa] ? SALSA[sel.salsa].extra || 0 : 0;
     gruposDe(it, sel.salsa).forEach(function (g) {
       (sel.ops[g] || []).forEach(function (nm) { var o = GRUPOS[g].ops.filter(function (x) { return x.n === nm; })[0]; if (o) extra += o.p || 0; });
@@ -238,6 +239,7 @@
       if (!r.igual) {
         S.v = r.v; S.mesas = r.mesas || []; S.avisos = r.avisos || [];
         if (r.metodos && r.metodos.length) S.metodos = unirMetodos(r.metodos);
+        if (r.comprobantes) S.comprobantes = r.comprobantes;
         if (S.mesa) { var mm = mesaDe(S.mesa); S.cuenta = mm ? { mesa: mm.mesa, pedidos: mm.pedidos || [], total: mm.total } : S.cuenta; }
       }
       if (r.agotados && aplicarAgotados(r.agotados) && document.querySelector(".prods") && !capa.classList.contains("on")) pintarProductos();
@@ -754,9 +756,9 @@
     if (!conOpciones(it)) { agregar(it, { tam: "", salsa: "", ops: {}, nota: "", cant: 1 }); return; }
     fichaOpciones(it);
   }
-  function igualLinea(a, b) { return a.id === b.id && a.tam === b.tam && a.salsa === b.salsa && a.nota === b.nota && JSON.stringify(a.ops) === JSON.stringify(b.ops); }
+  function igualLinea(a, b) { return a.id === b.id && a.tam === b.tam && a.salsa === b.salsa && a.nota === b.nota && (a.mitad || "") === (b.mitad || "") && JSON.stringify(a.ops) === JSON.stringify(b.ops); }
   function agregar(it, sel) {
-    var l = { id: it.id, n: it.n, tam: sel.tam || "", salsa: sel.salsa || "", ops: sel.ops || {}, nota: sel.nota || "", cant: sel.cant || 1, unit: precioDe(it, sel) };
+    var l = { id: it.id, n: it.n, tam: sel.tam || "", salsa: sel.salsa || "", ops: sel.ops || {}, nota: sel.nota || "", cant: sel.cant || 1, mitad: sel.mitad || "", unit: precioDe(it, sel) };
     var c = carro(), igual = c.filter(function (x) { return igualLinea(x, l); })[0];
     if (igual) igual.cant = Math.min(30, igual.cant + l.cant); else c.push(l);
     guardarCarros(); refrescarTarjeta(it.id); pintarOrden();
@@ -778,8 +780,8 @@
     return w;
   }
   function fichaOpciones(it, linea) {
-    var sel = linea ? { tam: linea.tam, salsa: linea.salsa, ops: JSON.parse(JSON.stringify(linea.ops || {})), nota: linea.nota, cant: linea.cant }
-      : { tam: it.t ? it.t[0][0] : "", salsa: "", ops: {}, nota: "", cant: 1 };
+    var sel = linea ? { tam: linea.tam, salsa: linea.salsa, ops: JSON.parse(JSON.stringify(linea.ops || {})), nota: linea.nota, cant: linea.cant, mitad: linea.mitad || "" }
+      : { tam: it.t ? it.t[0][0] : "", salsa: "", ops: {}, nota: "", cant: 1, mitad: "" };
     var cuerpo = [], err = h("p", "err"), add, zonaSalsa = h("div");
     zonaSalsa.style.display = "flex"; zonaSalsa.style.flexDirection = "column"; zonaSalsa.style.gap = "12px";
     function pintarBoton() { add.textContent = (linea ? "Guardar" : "Agregar") + " · " + soles(precioDe(it, sel) * sel.cant); err.textContent = ""; }
@@ -793,8 +795,26 @@
     if (it.t) {
       cuerpo.push(h("div", "lbl", "Tamaño"));
       var et = [sel.tam];
-      cuerpo.push(chips(it.t.map(function (x) { return { v: x[0], t: x[0], s: soles(x[1]) }; }), false, et, function (v) { sel.tam = v[0]; pintarBoton(); }));
+      cuerpo.push(chips(it.t.map(function (x) { return { v: x[0], t: x[0], s: soles(x[1]) }; }), false, et, function (v) { sel.tam = v[0]; pintarMitad(); pintarBoton(); }));
     }
+    /* Mitad y mitad: en Media y Famiglia se puede elegir un 2.º sabor; se cobra el precio de la más cara */
+    var zonaMitad = h("div");
+    zonaMitad.style.display = "flex"; zonaMitad.style.flexDirection = "column"; zonaMitad.style.gap = "8px";
+    function pintarMitad() {
+      zonaMitad.textContent = "";
+      var puede = it._sec && it._sec.id === "pizze" && it.t && it.t.length > 1 && sel.tam !== it.t[0][0];
+      if (!puede) { sel.mitad = ""; return; }
+      var otras = Object.keys(PROD).map(function (k) { return PROD[k]; }).filter(function (o) {
+        return o.id !== it.id && o._sec && o._sec.id === "pizze" && !o.agotado && o.t && o.t.some(function (x) { return x[0] === sel.tam; });
+      });
+      if (!otras.some(function (o) { return o.id === sel.mitad; })) sel.mitad = "";
+      zonaMitad.appendChild(h("div", "lbl", "Mitad y mitad (opcional) · se cobra la más cara"));
+      var em = [sel.mitad || ""];
+      zonaMitad.appendChild(chips([{ v: "", t: "Un solo sabor" }].concat(otras.map(function (o) {
+        return { v: o.id, t: o.n, s: soles(o.t.filter(function (x) { return x[0] === sel.tam; })[0][1]) };
+      })), false, em, function (v) { sel.mitad = v[0] || ""; pintarBoton(); }));
+    }
+    cuerpo.push(zonaMitad); pintarMitad();
     function pintarSalsa() {
       zonaSalsa.textContent = "";
       var s = SALSA[sel.salsa];
@@ -895,6 +915,7 @@
       var it = PROD[l.id], d = h("div", "linea"), tx = h("div", "d");
       tx.appendChild(document.createTextNode(l.n + (l.tam ? " (" + l.tam + ")" : "")));
       var det = [];
+      if (l.mitad && PROD[l.mitad]) det.push("½ " + l.n + " + ½ " + PROD[l.mitad].n);
       if (l.salsa && SALSA[l.salsa]) det.push("Salsa " + SALSA[l.salsa].n);
       Object.keys(l.ops || {}).forEach(function (g) { if ((l.ops[g] || []).length) det.push(l.ops[g].join(", ")); });
       if (det.length) tx.appendChild(h("small", null, det.join(" · ")));
@@ -976,7 +997,7 @@
     }
     S.enviando = true; pintarOrden();
     var cuerpo = { mz: "pedido", t: S.t, mesa: mesa, notas: carros["_n" + mesa] || "",
-      items: c.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {} }; }) };
+      items: c.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {}, mitad: l.mitad || "" }; }) };
     api(cuerpo).then(function (r) {
       S.enviando = false;
       if (!r.ok) { toast(r.error || "No se pudo enviar.", "mal"); pintarOrden(); return; }
@@ -1073,26 +1094,48 @@
       resumen.appendChild(h("span", null, Math.abs(falta) < 0.01 ? "✓ Cuenta completa" : falta > 0 ? "Falta " + soles(falta) : "Sobra " + soles(-falta)));
       resumen.appendChild(h("span", null, prop ? "Propina " + soles(prop) : ""));
     }
+    /* comprobante: Sin comprobante / Boleta / Factura (solo los tipos habilitados en el panel) */
+    var comp = { tipo: "", doc: "", razon: "", correo: "" }, compDiv = h("div", "pago");
+    function pintarComp() {
+      compDiv.textContent = "";
+      var tipos = S.comprobantes || ["Boleta", "Factura"];
+      if (!tipos.length) return;
+      compDiv.appendChild(h("b", null, "🧾 Comprobante"));
+      compDiv.appendChild(chips([{ v: "", t: "Sin comprobante" }].concat(tipos.map(function (t) { return { v: t, t: t }; })), false, [comp.tipo], function (v) { comp.tipo = v[0] || ""; err.textContent = ""; pintarComp(); }));
+      if (!comp.tipo) return;
+      function campo(rot, k, ph, tipo, modo) {
+        var f = h("div", "fila"), i = h("input", "campo");
+        i.type = tipo || "text"; i.placeholder = ph; i.value = comp[k]; if (modo) i.inputMode = modo;
+        i.addEventListener("input", function () { comp[k] = i.value; });
+        f.appendChild(h("label", null, rot)); f.appendChild(i); compDiv.appendChild(f);
+      }
+      campo(comp.tipo === "Factura" ? "RUC" : "DNI (opcional)", "doc", comp.tipo === "Factura" ? "11 dígitos" : "8 dígitos", "text", "numeric");
+      campo(comp.tipo === "Factura" ? "Razón social" : "Nombre (opcional)", "razon", "");
+      campo("Correo (opcional)", "correo", "cliente@correo.com", "email");
+    }
+    pintarComp();
     var cab = h("div", "tot"); cab.appendChild(h("span", null, "Total de la mesa")); cab.appendChild(h("span", null, soles(total)));
     var notaDiv = division && division.length > 1 ? h("p", "aviso-ef", divOk ? "👥 El cliente pidió dividir la cuenta en " + division.length + ": " + division.map(soles).join(" · ") + ". Ya está separada abajo; elige el método de cada uno."
       : "👥 El cliente pidió dividir en " + division.length + ", pero la cuenta cambió desde entonces. Divide a mano.") : null;
     var ok = btn("✓ Registrar cobro", "btn azul", function () {
       if (pagos.some(function (p) { return !p.metodo; })) { err.textContent = "Elige el método de cada pago."; return; }
       if (Math.abs(restante()) >= 0.01) { err.textContent = "Los montos deben sumar " + soles(total) + "."; return; }
+      if (comp.tipo === "Factura" && (!/^\d{11}$/.test(comp.doc.replace(/\D/g, "")) || comp.razon.trim().length < 3)) { err.textContent = "Para factura escribe el RUC (11 dígitos) y la razón social."; return; }
+      if (comp.tipo === "Boleta" && comp.doc && !/^(\d{8}|\d{11})$/.test(comp.doc.replace(/\D/g, ""))) { err.textContent = "El DNI tiene 8 dígitos."; return; }
       ok.disabled = true; ok.textContent = "Registrando…";
-      api({ mz: "cobrar", t: S.t, mesa: S.mesa, total: total, pagos: pagos }).then(function (r) {
+      api({ mz: "cobrar", t: S.t, mesa: S.mesa, total: total, pagos: pagos, comp: comp.tipo ? comp : null }).then(function (r) {
         if (!r.ok) {
           ok.disabled = false; ok.textContent = "✓ Registrar cobro"; err.textContent = r.error || "No se pudo registrar.";
           if (r.cambio && r.cuenta) { S.cuenta = r.cuenta; cerrarModal(); pintarOrden(); toast(r.error, "mal"); }
           return;
         }
         cerrarModal();
-        toast("✓ Mesa " + r.mesa + " cobrada" + (r.propina ? " · propina " + soles(r.propina) : ""), "ok");
+        toast("✓ Mesa " + r.mesa + " cobrada" + (comp.tipo ? " · " + comp.tipo + " por emitir" : "") + (r.propina ? " · propina " + soles(r.propina) : ""), "ok");
         S.cuenta = { pedidos: [], total: 0 }; S.vista = "mesas"; S.v = ""; pintar(); sondear();
       }).catch(function () { ok.disabled = false; ok.textContent = "✓ Registrar cobro"; err.textContent = "Sin conexión. Intenta de nuevo."; });
     });
     pintarPagos();
-    abrirModal("💳 Cobrar mesa " + S.mesa, [cab, notaDiv, zona, resumen, err], [ok]);
+    abrirModal("💳 Cobrar mesa " + S.mesa, [cab, notaDiv, zona, compDiv, resumen, err], [ok]);
   }
 
   /* =========================== ARRANQUE =========================== */

@@ -483,6 +483,21 @@ function calcularPedido_(body, cat, cfg, momento, porMozo) {
     }
     if (precio == null) return { ok: false, error: p.nombre + ' se consulta con el mozo y no se puede pedir por la web.' };
 
+    // Mitad y mitad: en pizzas Media y Famiglia (no Personale) se puede elegir un 2.º sabor; se cobra el precio de la más cara.
+    var mitadNombre = '';
+    if (it.mitad) {
+      var p2 = prod[String(it.mitad)];
+      if (String(p.seccion) !== 'pizze' || tams.length < 2 || tam === tams[0][0]) return { ok: false, error: 'Dos sabores solo en pizzas Media o Familiar.' };
+      if (!p2 || String(p2.id) === String(p.id) || String(p2.seccion) !== 'pizze' || !esSi_(p2.visible)) return { ok: false, error: 'El segundo sabor ya no está en la carta. Actualiza la página.' };
+      if (!esSi_(p2.disponible)) return { ok: false, error: p2.nombre + ' está agotada por hoy.' };
+      var c2 = String(p2.canal || 'todos').trim().toLowerCase();
+      if ((c2 === 'local' && canal !== 'mesa') || (c2 === 'delivery' && canal === 'mesa')) return { ok: false, error: p2.nombre + ' no está disponible para este tipo de pedido.' };
+      var t2 = parsearTamanos_(p2.tamanos).filter(function (x) { return x[0] === tam; })[0];
+      if (!t2) return { ok: false, error: p2.nombre + ' no tiene tamaño ' + tam + '.' };
+      if (t2[1] > precio) precio = t2[1];
+      mitadNombre = String(p2.nombre);
+    }
+
     var salsa = null, recargo = 0, sp = null;
     if (esSi_(p.requiere_salsa)) {
       sp = prod[String(it.salsa)];
@@ -511,6 +526,7 @@ function calcularPedido_(body, cat, cfg, momento, porMozo) {
       validas.forEach(function (o) { extraOps += o.p; });
       if (validas.length) opsTxt.push({ id: gid, g: grp.n, v: validas.map(function (o) { return o.n + (o.p ? ' (+' + soles_(o.p) + ')' : ''); }) });
     }
+    if (mitadNombre) opsTxt.unshift({ id: '_mitad', g: 'Mitad y mitad', v: [p.nombre + ' + ' + mitadNombre] });
     var unit = precio + recargo + extraOps;
     var sub = Math.round(unit * cant * 100) / 100;
     total += sub;
@@ -1616,9 +1632,20 @@ function listarComprobantes(sesion) {
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
   var lista = leerTabla_(HOJA.comprobantes).map(function (c) { return comprobanteAObjeto_(c, zona); });
   // pedidos que pidieron comprobante y todavía no se emite
-  var pendientes = leerTabla_(HOJA.pedidos).filter(function (p) {
-    return celdaTexto_(p.comprobante) && celdaTexto_(p.comp_estado) !== 'Emitido' && p.estado !== 'Cancelado';
-  }).map(function (p) { return pedidoAObjeto_(p, zona); }).slice(-60).reverse();
+  var todosPed = leerTabla_(HOJA.pedidos);
+  var pendientes = todosPed.filter(function (p) {
+    var ce = celdaTexto_(p.comp_estado);
+    return celdaTexto_(p.comprobante) && ce !== 'Emitido' && ce.indexOf('Incluido') !== 0 && p.estado !== 'Cancelado';
+  }).map(function (p) {
+    var o = pedidoAObjeto_(p, zona);
+    // cobro de mesa con varios pedidos: el comprobante cubre toda la cuenta
+    var hijos = todosPed.filter(function (x) { return celdaTexto_(x.comp_estado) === 'Incluido:' + p.numero && x.estado !== 'Cancelado'; });
+    if (hijos.length) {
+      o.total = Math.round((Number(o.total) + hijos.reduce(function (a, x) { return a + (Number(x.total) || 0); }, 0)) * 100) / 100;
+      o.detalle = [o.detalle].concat(hijos.map(function (x) { return celdaTexto_(x.detalle); })).join('\n\n');
+    }
+    return o;
+  }).slice(-60).reverse();
   return { comprobantes: lista.slice(-500).reverse(), pendientes: pendientes, series: siguientesNumeros_(lista.filter(function (c) { return !c.electronico; })),
     sunat: sunatPublico_(),
     hoy: Utilities.formatDate(new Date(), zona, 'yyyy-MM-dd') };

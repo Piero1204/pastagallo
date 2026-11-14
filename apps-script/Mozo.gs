@@ -158,6 +158,7 @@ function estadoMozo_(mozo, version) {
   var d = salonDatos_(cfg, t);
   base.mesas = d.mesas; base.avisos = d.avisos;
   base.metodos = metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true);
+  base.comprobantes = listaComprobantes_(cfg);
   return base;
 }
 
@@ -210,6 +211,19 @@ function cobrarMesa_(mozo, body) {
     if (metodos.indexOf(pagos[i].metodo) < 0) return { ok: false, error: 'Método de pago no válido: ' + pagos[i].metodo };
     if (pagos[i].monto < 0 || pagos[i].propina < 0 || pagos[i].propina > 500 || pagos[i].monto > 20000) return { ok: false, error: 'Revisa los montos.' };
   }
+  // comprobante pedido al cobrar (opcional): { tipo:'Boleta'|'Factura', doc, razon, correo }
+  var comp = null;
+  if (body.comp && body.comp.tipo) {
+    comp = { tipo: texto_(body.comp.tipo, 10), doc: String(body.comp.doc || '').replace(/\D/g, '').slice(0, 11),
+      razon: texto_(body.comp.razon, 120), correo: texto_(body.comp.correo, 80) };
+    if (listaComprobantes_(cfg).indexOf(comp.tipo) < 0) return { ok: false, error: 'Ese tipo de comprobante no está disponible.' };
+    if (comp.tipo === 'Factura' || comp.doc) {
+      var errDoc = validarDocumento_(comp.tipo, comp.doc);
+      if (errDoc) return { ok: false, error: errDoc };
+    }
+    if (comp.tipo === 'Factura' && comp.razon.length < 3) return { ok: false, error: 'Para factura escribe la razón social.' };
+    if (comp.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(comp.correo)) return { ok: false, error: 'El correo no es válido.' };
+  }
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -236,6 +250,7 @@ function cobrarMesa_(mozo, body) {
         notas: texto_(body.notas, 120), personas: k === 0 ? (num_(m.personas) && mesaValida_(m, zona) ? num_(m.personas) : '') : '' };
       h.appendRow(cab.map(function (col) { return protegerCelda_(fila[col] == null ? '' : fila[col]); }));
     });
+    if (comp) anotarComprobanteMesa_(c, comp);
     // cerrar la cuenta (la mesa queda libre; lo que faltaba marcar como entregado se marca solo)
     cerrarCuentaDeMesa_(m, mozo.nombre);
     var propinas = pagos.reduce(function (a, p) { return a + p.propina; }, 0);
@@ -243,6 +258,24 @@ function cobrarMesa_(mozo, body) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/** Deja el comprobante pedido en el primer pedido de la cuenta ("Pendiente") y marca los demás como "Incluido:<n°>".
+ *  El panel (Comprobantes) suma la cuenta completa al emitirlo. */
+function anotarComprobanteMesa_(c, comp) {
+  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), cab = asegurarColumnas_(h, COLS.pedidos);
+  var col = function (k) { return cab.indexOf(k) + 1; };
+  var ids = c.pedidos.map(function (p) { return p.id; });
+  var filas = leerTabla_(HOJA.pedidos).filter(function (p) { return ids.indexOf(Number(p.numero)) >= 0; });
+  if (!filas.length) return;
+  var principal = filas[0].numero;
+  filas.forEach(function (p, i) {
+    h.getRange(p._fila, col('comprobante')).setValue(comp.tipo);
+    h.getRange(p._fila, col('doc')).setValue(comp.doc ? "'" + comp.doc : '');
+    h.getRange(p._fila, col('razon')).setValue(protegerCelda_(comp.razon));
+    h.getRange(p._fila, col('correo')).setValue(protegerCelda_(comp.correo));
+    h.getRange(p._fila, col('comp_estado')).setValue(i === 0 ? 'Pendiente' : 'Incluido:' + principal);
+  });
 }
 
 /* =========================== SALÓN: TURNOS, MESAS ASIGNADAS Y ESTADOS ===========================
