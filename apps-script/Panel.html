@@ -1616,22 +1616,12 @@ function siguienteImpresion(){
   add('div', 'TOTAL ' + soles(p.total) + (p.canal === 'delivery' ? ' + deliv.' : ''), 'tot');
   }
   setTimeout(function(){
-    altoDelTicket(d);
     try { f.contentWindow.focus(); f.contentWindow.print(); } catch(e) {}
     setTimeout(function(){ f.remove(); imprimiendo = false; siguienteImpresion(); }, 1500);
   }, 120);
 }
-/* El papel mide lo que mide el contenido: ticket corto = papel corto, ticket largo = papel largo.
-   Se mide el ticket ya dibujado y se fija la hoja en 80 mm × (alto del contenido + un margen para el corte). */
-function altoDelTicket(d){
-  try {
-    var px = Math.max(d.body.scrollHeight, d.body.offsetHeight);
-    /* mínimo 90 mm: si el alto fuera menor que el ancho (80 mm) Chrome manda la hoja en horizontal y el ticket sale de lado */
-    var mm = Math.max(90, Math.ceil(px * 25.4 / 96) + 8);
-    var s = d.createElement('style'); s.textContent = '@page{size:80mm ' + mm + 'mm;margin:0}';
-    d.head.appendChild(s);
-  } catch(e) {}
-}
+/* El largo del ticket lo recorta la impresora: SAT Q22UE con papel 80(72.1) x 210 mm y Cutter Select = Report[Cut]
+   (imprime solo hasta donde hay contenido y corta). No cambiar el tamaño de la hoja desde aquí. */
 var autoImp = true;
 /* pedidos ya impresos en este equipo (para no imprimir dos veces la misma comanda) */
 var IMPRESOS = {};
@@ -2786,7 +2776,7 @@ function exitoCompE(r, siguiente){
 function imprimirHtml(html){
   var fr = el('iframe', {style:'position:fixed;width:0;height:0;border:0'}); document.body.appendChild(fr);
   var d = fr.contentDocument; d.open(); d.write(html); d.close();
-  setTimeout(function(){ if (/80mm/.test(html)) altoDelTicket(d); try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch(e) {} setTimeout(function(){ fr.remove(); }, 2000); }, 300);
+  setTimeout(function(){ try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch(e) {} setTimeout(function(){ fr.remove(); }, 2000); }, 300);
 }
 function imprimirComp(c){ run('comprobanteImpreso', c.id).then(imprimirHtml).catch(error); }
 function descargarPdfComp(c){
