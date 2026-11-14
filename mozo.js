@@ -241,6 +241,9 @@
         if (r.metodos && r.metodos.length) S.metodos = unirMetodos(r.metodos);
         if (r.comprobantes) S.comprobantes = r.comprobantes;
         if (S.mesa) { var mm = mesaDe(S.mesa); S.cuenta = mm ? { mesa: mm.mesa, pedidos: mm.pedidos || [], total: mm.total } : S.cuenta; }
+        // copia local: al volver a abrir la app se ve el salón al instante (luego se actualiza)
+        guardar(K_CACHE, { mozo: yo(), ts: Date.now(), desfase: S.desfase, mesas: S.mesas, avisos: S.avisos, metodos: S.metodos,
+          comprobantes: S.comprobantes || null, horario: S.horario, turno: S.turno });
       }
       if (r.agotados && aplicarAgotados(r.agotados) && document.querySelector(".prods") && !capa.classList.contains("on")) pintarProductos();
       revisarAlertas();
@@ -255,7 +258,7 @@
   function revisarAlertas() {
     // mesas que llaman: suena al llegar un aviso nuevo y repite cada 30 s mientras haya pendientes
     // solo suenan las de MIS mesas (o sin mozo); si nadie atiende en 2 minutos, suena para todos
-    var paraMi = S.avisos.filter(function (a) { return !a.para || a.para === yo() || Date.now() + S.desfase - a.ts > 120000; });
+    var paraMi = S.avisos.filter(function (a) { return (!a.para || a.para === yo() || Date.now() + S.desfase - a.ts > 120000) && !(S.mozo && a.detalle === "Pedida por " + S.mozo.nombre); });
     var nuevos = paraMi.filter(function (a) { return !avisosVistos[a.id]; });
     paraMi.forEach(function (a) { avisosVistos[a.id] = true; });
     if (nuevos.length || (paraMi.length && Date.now() - ultimoPitido > 30000)) { pitar(3, 988); ultimoPitido = Date.now(); }
@@ -287,8 +290,28 @@
     guardar(K.alertas, hechas);
   }
 
+  /* La cuenta se imprime sola en la PC del local (la comanda completa de la mesa). */
+  function pedirCuenta(mesa) {
+    if (carro().length && !confirm("Hay platos sin enviar a cocina en esta mesa. ¿Pedir la cuenta igual? (no se incluyen)")) return;
+    api({ mz: "pedircuenta", t: S.t, mesa: mesa }).then(function (r) {
+      if (!r.ok) { toast(r.error || "No se pudo pedir la cuenta.", "mal"); return; }
+      toast(r.repetido ? "La cuenta de la mesa " + mesa + " ya estaba pedida" : "🧾 Cuenta de la mesa " + mesa + " enviada a imprimir", "ok");
+      S.v = ""; sondear();
+    }).catch(function () { toast("Sin conexión: no se pidió la cuenta. Vuelve a intentar.", "mal"); });
+  }
+
   /* =========================== PINTAR =========================== */
+  var K_CACHE = "pg-mozo-cache";
+  function usarCopiaLocal() {
+    var c = leer(K_CACHE, null);
+    if (!c || c.mozo !== yo() || Date.now() - c.ts > 6 * 3600000 || S.mesas.length) return;
+    S.mesas = c.mesas || []; S.avisos = c.avisos || []; S.desfase = c.desfase || 0; S.recibido = c.ts;
+    if (c.metodos && c.metodos.length) S.metodos = c.metodos;
+    if (c.comprobantes) S.comprobantes = c.comprobantes;
+    S.horario = c.horario || null; S.turno = c.turno || S.turno;
+  }
   function iniciar() {
+    usarCopiaLocal();
     app.textContent = "";
     if (fotos === false) document.body.classList.add("sinfotos");
     mantenerPantalla();
@@ -902,6 +925,7 @@
     // acciones de la mesa
     var acc = h("div", "orden__acc");
     if (m && m.estado === "libre") acc.appendChild(btn("🪑 Sentar clientes", "btn peq", function () { sentar(S.mesa); }));
+    if (S.cuenta && S.cuenta.pedidos.length) acc.appendChild(btn("🧾 Pedir la cuenta", "btn peq", function () { pedirCuenta(S.mesa); }));
     if (m && m.estado !== "libre") acc.appendChild(btn("👥 " + (m.personas ? m.personas + " personas" : "¿Cuántos son?"), "btn peq", function () { var me = S.mesa; pedirPersonas(me, function (n) { guardarPersonas(me, n); }); }));
     if (m && m.alerta) acc.appendChild(h("div", "olvido-txt", "⏰ " + textoAlerta(m)));
     if (m && m.estado !== "libre" && (!m.atiende || m.atiende.id !== yo())) acc.appendChild(btn("🔁 Pasar a mí", "btn peq", function () { ocupar(S.mesa, true); }));

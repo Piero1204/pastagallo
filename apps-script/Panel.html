@@ -328,7 +328,7 @@ tr.oculto td{opacity:.5}
       <div class="seg" id="filtroMozo" title="Ver solo las mesas y pedidos de un mozo"></div>
       <input class="txt" id="buscaPed" placeholder="Buscar # pedido, cliente, mesa…" style="width:220px">
       <span class="esp"></span>
-      <button class="btn son" id="autoImp" title="Imprime la comanda apenas llega cada pedido nuevo (mesa, delivery y recojo)">🖨 Impresión automática</button>
+      <button class="btn son" id="autoImp" title="Pedido nuevo → ticket de cocina (y comanda completa si es delivery/recojo). Mesa que pide la cuenta → cuenta completa.">🖨 Impresión automática</button>
       <button class="btn son" id="sonido">🔔 Sonido</button>
       <button class="btn" id="sonCfg" title="Tipo de sonido, volumen y qué pedidos hacen sonar el parlante">🎚 Sonidos</button>
       <button class="btn" id="recargar">↻ Actualizar</button>
@@ -706,7 +706,9 @@ function cargarPedidos(){
     }
     pintarPedidos(primera ? [] : nuevos.map(function(p){ return p.numero; }));
     // delivery/recojo con pago por verificar: la comanda sale recién cuando se confirma el pago
-    if (!primera && autoImp) nuevos.forEach(function(p){ if (!IMPRESOS[p.numero] && p.pagoEstado !== 'Por verificar') imprimirComanda(p); });
+    if (!primera && autoImp) nuevos.forEach(function(p){ if (!IMPRESOS[p.numero] && p.pagoEstado !== 'Por verificar') imprimirNuevo(p); });
+    // la mesa (QR) o el mozo pidieron la cuenta → sale sola la cuenta completa de la mesa
+    if (!primera && autoImp) avNuevos.forEach(function(a){ if (a.motivo === 'cuenta') imprimirCuentaAviso(a); });
     if (!primera && nuevos.length) {
       if (nuevos.some(suenaCanal)) sonidoNuevo(); document.title = '(' + nuevos.length + ') Nuevo pedido';
       var n0 = nuevos[0];
@@ -1124,7 +1126,7 @@ function confirmarPagoP(p){
   if (!confirm('¿Confirmas que el pago del pedido #' + nro(p) + ' (' + p.pago + ', ' + soles(p.total) + ') YA llegó a la cuenta?\n\nAl confirmar se imprime la comanda y el pedido pasa a cocina.')) return;
   run('confirmarPago', p.numero).then(function(){
     toast('Pago confirmado · pedido #' + nro(p));
-    if (autoImp && !IMPRESOS[p.numero]) imprimirComanda(p);
+    if (autoImp && !IMPRESOS[p.numero]) imprimirNuevo(p);
     delete AVISADOS[p.numero]; cargarPedidos();
   }).catch(error);
 }
@@ -1148,6 +1150,7 @@ function acciones(p){
     w.appendChild(el('button', {class:'btn ' + (s === 'Confirmado' ? 'ok' : 'prim') + ' peq', text: s === 'Confirmado' ? '✓ Confirmar' : '→ ' + s, onclick: function(){ cambiar(p, s); }}));
   });
   if (p.estado !== 'Cancelado' && p.estado !== 'Entregado') w.appendChild(el('button', {class:'btn mal peq', text:'Cancelar', onclick: function(){ if (confirm('¿Cancelar el pedido #' + nro(p) + '?')) cambiar(p, 'Cancelado'); }}));
+  w.appendChild(el('button', {class:'btn peq', text:'🍳 Cocina', title:'Reimprimir el ticket de cocina', onclick: function(){ imprimirCocina(p); }}));
   w.appendChild(el('button', {class:'btn peq', text:'🖨 Comanda', onclick: function(){ imprimirComanda(p); }}));
   if (p.compEstado !== 'Emitido') w.appendChild(el('button', {class:'btn peq', title:'Eliminar del todo (para pedidos de prueba)', text:'🗑', onclick: function(){ eliminar(p); }}));
   if (!p.comprobante && p.estado !== 'Cancelado') w.appendChild(el('button', {class:'btn peq', title:'Registrar una boleta o factura para este pedido', text:'🧾', onclick: function(){ emitirComp(p); }}));
@@ -1163,7 +1166,7 @@ function acciones(p){
 
 function cambiar(p, estado){
   if (estado === 'Confirmado' && p.pagoEstado === 'Por verificar') { confirmarPagoP(p); return; }
-  if (estado === 'Confirmado' && autoImp && !IMPRESOS[p.numero]) imprimirComanda(p);
+  if (estado === 'Confirmado' && autoImp && !IMPRESOS[p.numero]) imprimirNuevo(p);
   run('cambiarEstado', p.numero, estado).then(function(){ toast('Pedido #' + nro(p) + ': ' + estado); document.title = 'Panel · Pasta Gallo'; delete AVISADOS[p.numero]; cargarPedidos(); }).catch(error);
 }
 
@@ -1176,11 +1179,55 @@ function eliminar(p){
    Para que imprima sin preguntar: abrir el panel en Chrome con la opción --kiosk-printing
    y la térmica como impresora predeterminada (ver instrucciones de Piero). */
 var colaImpresion = [], imprimiendo = false;
-function imprimirComanda(p){ marcarImpreso(p.numero); colaImpresion.push(p); siguienteImpresion(); }
+/* Pedido nuevo: primero el ticket de COCINA (solo productos, letra grande, en español).
+   Mesa → la comanda completa sale al final, cuando piden la cuenta. Delivery/recojo → además la comanda completa (datos del cliente). */
+function imprimirNuevo(p){
+  marcarImpreso(p.numero);
+  colaImpresion.push({ tipo:'cocina', p:p });
+  if (p.canal !== 'mesa') colaImpresion.push({ tipo:'comanda', p:p });
+  siguienteImpresion();
+}
+function imprimirCocina(p){ colaImpresion.push({ tipo:'cocina', p:p }); siguienteImpresion(); }
+function imprimirComanda(p){ marcarImpreso(p.numero); colaImpresion.push({ tipo:'comanda', p:p }); siguienteImpresion(); }
+var CUENTAS_IMP = {};
+try { JSON.parse(localStorage.getItem('pg-impresos-cuenta') || '[]').forEach(function(n){ CUENTAS_IMP[n] = true; }); } catch(e) {}
+function imprimirCuentaAviso(a){
+  if (CUENTAS_IMP[a.id]) return;
+  var m = mesaSalon(a.mesa);
+  if (!m || !m.pedidos || !m.pedidos.length) return;
+  CUENTAS_IMP[a.id] = true;
+  try { localStorage.setItem('pg-impresos-cuenta', JSON.stringify(Object.keys(CUENTAS_IMP).slice(-200))); } catch(e) {}
+  var det = m.pedidos.map(function(x){
+    return '#' + x.numero + ' · ' + x.hora + '\n' + (x.lineas && x.lineas.length ? x.lineas.map(function(l){ return l.t + '   ' + soles(l.s) + (l.d ? '\n   ' + l.d : ''); }).join('\n') : x.detalle);
+  }).join('\n\n');
+  var notas = [a.detalle, a.division && a.division.length > 1 ? 'Dividir en ' + a.division.length + ': ' + a.division.map(soles).join(' / ') : '', m.personas ? m.personas + ' persona(s)' : ''].filter(Boolean).join('\n');
+  colaImpresion.push({ tipo:'comanda', p:{ canal:'mesa', mesa:m.mesa, numero:'CUENTA', titulo:'CUENTA', fecha:new Date().toLocaleString('es-PE'), detalle:det, notas:notas, mozo: m.atiende ? m.atiende.nombre : '', total:m.total } });
+  siguienteImpresion();
+}
+function ticketCocina(d, b, p){
+  var add = function(tag, t, cls){ var e = d.createElement(tag); e.textContent = t; if (cls) e.className = cls; b.appendChild(e); return e; };
+  add('div', p.canal === 'mesa' ? 'MESA ' + p.mesa : (p.canal === 'recojo' ? 'RECOJO' : 'DELIVERY') + ' #' + nro(p), 'k-mesa');
+  if (p.mozo) add('div', 'Moza: ' + p.mozo, 'k-moza');
+  add('div', (p.hora || '') + (p.canal === 'mesa' ? '   #' + nro(p) : ''), 'c p');
+  if (p.programado) add('div', '>> PARA LAS ' + p.programado + ' <<', 'c g');
+  var lista = p.cocina || [];
+  if (!lista.length) { b.appendChild(d.createElement('hr')); add('pre', p.detalle); }
+  var orden = ['ENTRADAS','PIZZAS','PASTAS','PARRILLAS','PROMOCIONES','POSTRES','PRODUCTOS ITALIANOS','BEBIDAS','OTROS'];
+  orden.concat(lista.map(function(x){ return x.s; }).filter(function(s){ return orden.indexOf(s) < 0; })).forEach(function(sec){
+    var items = lista.filter(function(x){ return x.s === sec; });
+    if (!items.length) return;
+    add('div', sec, 'k-sec');
+    items.forEach(function(x){
+      add('div', x.c + '  ' + String(x.n).toUpperCase(), 'k-it');
+      (x.d || []).forEach(function(t){ add('div', '· ' + t, 'k-d'); });
+    });
+  });
+  if (p.notas) { b.appendChild(d.createElement('hr')); add('div', 'COMENTARIOS:', 'k-d'); add('div', p.notas, 'k-it'); }
+}
 function siguienteImpresion(){
   if (imprimiendo || !colaImpresion.length) return;
   imprimiendo = true;
-  var p = colaImpresion.shift();
+  var job = colaImpresion.shift(), p = job.p;
   var f = el('iframe', {style:'position:fixed;width:0;height:0;border:0'}); document.body.appendChild(f);
   var d = f.contentDocument;
   d.open(); d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
@@ -1189,12 +1236,16 @@ function siguienteImpresion(){
     'h1{font-size:26px;margin:0 0 1mm;text-align:center;letter-spacing:1px}h2{font-size:20px;margin:1mm 0;text-align:center}' +
     '.c{text-align:center}.g{font-size:18px}pre{white-space:pre-wrap;word-break:break-word;font:700 16px/1.35 "Courier New",Courier,monospace;margin:0}' +
     'hr{border:0;border-top:2px dashed #000;margin:2mm 0}.tot{font-size:24px;text-align:right;margin-top:1mm}.p{font-size:14px;font-weight:400}' +
+    '.k-mesa{font:900 34px/1.1 Arial,Helvetica,sans-serif;text-align:center}.k-moza{font:700 20px/1.2 Arial,Helvetica,sans-serif;text-align:center;margin-bottom:1mm}' +
+    '.k-sec{font:900 20px/1.2 Arial,Helvetica,sans-serif;background:#000;color:#fff;padding:1mm 2mm;margin:3mm 0 1mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
+    '.k-it{font:900 28px/1.15 Arial,Helvetica,sans-serif;margin:1.5mm 0 0;word-break:break-word}.k-d{font:700 19px/1.25 Arial,Helvetica,sans-serif;padding-left:4mm}' +
     '</style></head><body></body></html>'); d.close();
   var b = d.body;
   var add = function(tag, t, cls){ var e = d.createElement(tag); e.textContent = t; if (cls) e.className = cls; b.appendChild(e); return e; };
+  if (job.tipo === 'cocina') ticketCocina(d, b, p); else {
   add('div', 'PASTA GALLO', 'c p');
   add('h1', p.canal === 'mesa' ? 'MESA ' + p.mesa : (p.canal === 'recojo' ? 'RECOJO' : 'DELIVERY'));
-  add('h2', 'Pedido #' + nro(p) + (p.ref ? ' · ' + p.ref : ''));
+  add('h2', p.titulo ? p.titulo : 'Pedido #' + nro(p) + (p.ref ? ' · ' + p.ref : ''));
   add('div', p.fecha, 'c');
   if (p.programado) add('div', '>> PARA LAS ' + p.programado + ' <<', 'c g');
   b.appendChild(d.createElement('hr'));
@@ -1212,6 +1263,7 @@ function siguienteImpresion(){
     add('div', p.razon); add('div', p.correo, 'p');
   }
   add('div', 'TOTAL ' + soles(p.total) + (p.canal === 'delivery' ? ' + deliv.' : ''), 'tot');
+  }
   setTimeout(function(){
     try { f.contentWindow.focus(); f.contentWindow.print(); } catch(e) {}
     setTimeout(function(){ f.remove(); imprimiendo = false; siguienteImpresion(); }, 1500);

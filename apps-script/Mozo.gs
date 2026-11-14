@@ -31,13 +31,14 @@ function respuestaMozo_(body) {
     var cfg = leerConfig_(), t = turno_(cfg, momentoActual_(cfg));
     if (!t.trabajan.some(function (x) { return x.id === mozo.id; })) return { ok: false, error: 'Hoy no tienes turno. Si sí vienes, pide al administrador que te active hoy en el panel (🤵 Mozos).' };
     if (a === 'pedido') return pedidoMozo_(mozo, body);
-    if (a === 'atender') { atenderAvisoComo_(body.id, mozo.nombre); return { ok: true }; }
+    if (a === 'pedircuenta') { reclamarMesa_(texto_(body.mesa, 6), mozo); return avisoCuentaMozo_(texto_(body.mesa, 6), mozo.nombre); }
+    if (a === 'atender') { var av = leerTabla_(HOJA.avisos).filter(function (x) { return String(x.id) === String(body.id); })[0]; if (av) reclamarMesa_(celdaTexto_(av.mesa), mozo); atenderAvisoComo_(body.id, mozo.nombre); return { ok: true }; }
     if (a === 'cobrar') return cobrarMesa_(mozo, body);
     if (a === 'ocupar') return ocuparMesa_(mozo, texto_(body.mesa, 6), body.forzar === true, body.personas);
-    if (a === 'personas') return personasMesa_(texto_(body.mesa, 6), body.personas);
+    if (a === 'personas') { reclamarMesa_(texto_(body.mesa, 6), mozo); return personasMesa_(texto_(body.mesa, 6), body.personas); }
     if (a === 'agotado') return marcarAgotado_(String(body.id || '').slice(0, 80), body.agotado !== false, mozo.nombre);
     if (a === 'pasar') return pasarMesa_(texto_(body.mesa, 6), String(body.a || ''), mozo.nombre);
-    if (a === 'entregar') return entregarLineas_(body.id, body.lineas, body.valor !== false, mozo.nombre);
+    if (a === 'entregar') { var pe = pedidosRecientes_().filter(function (x) { return String(x.numero) === String(body.id); })[0]; if (pe) reclamarMesa_(celdaTexto_(pe.mesa), mozo); return entregarLineas_(body.id, body.lineas, body.valor !== false, mozo.nombre); }
     if (a === 'liberar') return liberarMesa_(texto_(body.mesa, 6), mozo.nombre);
     return { ok: false, error: 'Acción no válida.' };
   } catch (err) {
@@ -166,7 +167,7 @@ function cuentaParaMozo_(mesa) {
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
   if (!m) return { ok: false, error: 'Mesa no encontrada.' };
-  var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
+  var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
   c.ok = true;
   return c;
 }
@@ -231,7 +232,7 @@ function cobrarMesa_(mozo, body) {
     var cabM = asegurarColumnas_(hm, COLS.mesas);
     var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === mesa; })[0];
     if (!m) return { ok: false, error: 'Mesa no encontrada.' };
-    var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
+    var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
     if (!c.pedidos.length) return { ok: false, error: 'La mesa ' + mesa + ' no tiene cuenta abierta.' };
     if (Math.abs(c.total - (num_(body.total) || 0)) > 0.009) {
       return { ok: false, cambio: true, cuenta: c, error: 'La cuenta cambió (llegó otro pedido). Revisa el nuevo total: S/ ' + c.total.toFixed(2) };
@@ -266,7 +267,7 @@ function anotarComprobanteMesa_(c, comp) {
   var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), cab = asegurarColumnas_(h, COLS.pedidos);
   var col = function (k) { return cab.indexOf(k) + 1; };
   var ids = c.pedidos.map(function (p) { return p.id; });
-  var filas = leerTabla_(HOJA.pedidos).filter(function (p) { return ids.indexOf(Number(p.numero)) >= 0; });
+  var filas = pedidosRecientes_().filter(function (p) { return ids.indexOf(Number(p.numero)) >= 0; });
   if (!filas.length) return;
   var principal = filas[0].numero;
   filas.forEach(function (p, i) {
@@ -348,7 +349,7 @@ function salonDatos_(cfg, t) {
   var porId = {}; t.todos.forEach(function (m) { porId[m.id] = m; });
   var minSin = num_(cfg.mozo_alerta_sin_pedido); if (minSin == null) minSin = 15;
   var minListo = num_(cfg.mozo_alerta_listo); if (minListo == null) minListo = 10;
-  var peds = leerTabla_(HOJA.pedidos);
+  var peds = pedidosRecientes_();
   var mesas = leerTabla_(HOJA.mesas).filter(function (m) { return String(m.mesa).trim(); }).map(function (m) {
     var mesa = celdaTexto_(m.mesa), c = cuentaMesa_(mesa, m, peds, zona), sent = mesaValida_(m, zona);
     var ocupada = c.pedidos.length > 0 || !!sent;
@@ -393,9 +394,31 @@ function nuevaVersion_() { PropertiesService.getScriptProperties().setProperty('
  *  queda a nombre del mozo que pidió o, si vino del QR, de su mozo asignado. */
 function asignarMesaAlPedir_(mesa, mozo, cfg) {
   var m = filaMesa_(mesa), zona = cfg.zona_horaria || 'America/Lima';
-  if (!m || mesaValida_(m, zona)) return;
+  if (!m) return;
+  if (mesaValida_(m, zona)) {
+    // la mesa ya estaba abierta: el mozo que toma el pedido pasa a ser quien la atiende
+    if (mozo && String(m.atiende_id || '') !== String(mozo.id)) setMesa_(m, { atiende_id: mozo.id });
+    return;
+  }
   var duenio = mozo || duenoDefecto_(mesa, turno_(cfg, momentoActual_(cfg)));
   setMesa_(m, { atiende_id: duenio ? duenio.id : '', ocupada_desde: new Date() });
+}
+
+/** Si la mesa está abierta y nadie la atiende, queda a nombre del mozo que hizo algo en ella. */
+function reclamarMesa_(mesa, mozo) {
+  if (!mesa || !mozo) return;
+  try {
+    var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima', m = filaMesa_(mesa);
+    if (!m || String(m.atiende_id || '')) return;
+    var sent = mesaValida_(m, zona);
+    if (!sent) {
+      var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
+      if (!c.pedidos.length) return;
+      sent = c.pedidos[0].ts;
+    }
+    setMesa_(m, { atiende_id: mozo.id, ocupada_desde: new Date(sent) });
+    nuevaVersion_();
+  } catch (e) { console.error(e); }
 }
 
 /** Sentar clientes / tomar la mesa. Si la atiende otro mozo y no se fuerza, se avisa (no se bloquea). */
@@ -407,7 +430,7 @@ function ocuparMesa_(mozo, mesa, forzar, personas) {
     if (!m || !esSi_(m.activa)) return { ok: false, error: 'Esa mesa no existe o está desactivada.' };
     var sent = mesaValida_(m, zona), actual = String(m.atiende_id || '');
     if (!sent) {
-      var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
+      var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
       if (c.pedidos.length) { sent = c.pedidos[0].ts; }  // cuenta abierta sin dueño (QR sin mozo asignado)
     }
     if (sent && actual && actual !== mozo.id && !forzar) {
@@ -432,7 +455,7 @@ function pasarMesa_(mesa, a, quien) {
     if (a && !dest) return { ok: false, error: 'Ese mozo no existe o está desactivado.' };
     var sent = mesaValida_(m, zona);
     if (!sent) {
-      var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
+      var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
       if (!c.pedidos.length) return { ok: false, error: 'La mesa ' + mesa + ' está libre.' };
       sent = c.pedidos[0].ts;
     }
@@ -447,7 +470,7 @@ function liberarMesa_(mesa, quien) {
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
     var m = filaMesa_(mesa); if (!m) return { ok: false, error: 'Mesa no encontrada.' };
-    var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
+    var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
     if (c.pedidos.length) return { ok: false, error: 'La mesa ' + mesa + ' tiene pedidos (' + soles_(c.total) + '): cóbrala para liberarla.' };
     cerrarCuentaDeMesa_(m, quien);
     return { ok: true };
@@ -457,7 +480,7 @@ function liberarMesa_(mesa, quien) {
 /** Cierra la cuenta de la mesa: queda libre, sus avisos atendidos y sus pedidos pendientes pasan a "Entregado". */
 function cerrarCuentaDeMesa_(m, quien) {
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima', mesa = String(m.mesa);
-  var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
+  var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
   var ids = c.pedidos.filter(function (p) { return p.estado !== 'Entregado'; }).map(function (p) { return p.id; });
   if (ids.length) marcarEntregados_(ids, quien, null, true);
   setMesa_(m, { abierta_desde: new Date(Date.now() + 1000), atiende_id: '', personas: '' });
@@ -473,7 +496,7 @@ function marcarEntregados_(ids, quien, lineas, valor) {
   var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), cab = asegurarColumnas_(h, COLS.pedidos);
   var col = function (c) { return cab.indexOf(c) + 1; };
   var ahora = new Date(), n = 0;
-  leerTabla_(HOJA.pedidos).forEach(function (p) {
+  pedidosRecientes_().forEach(function (p) {
     if (ids.indexOf(Number(p.numero)) < 0 || p.canal !== 'mesa' || p.estado === 'Cancelado') return;
     var total = lineasCortas_(p.items_json).length;
     var ent = p.estado === 'Entregado' ? Array.apply(null, Array(total)).map(function (x, i) { return i; }) : indicesEntregados_(p.entregado, total);
@@ -537,7 +560,7 @@ function personasMesa_(mesa, personas) {
     var m = filaMesa_(mesa); if (!m) return { ok: false, error: 'Mesa no encontrada.' };
     var campos = { personas: n };
     if (!mesaValida_(m, zona)) {
-      var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
+      var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
       campos.ocupada_desde = c.pedidos.length ? new Date(c.pedidos[0].ts) : new Date();
     }
     setMesa_(m, campos);

@@ -204,6 +204,21 @@ function leerTabla_(nombre) {
   }).filter(function (o) { return !o._vacia; });
 }
 
+/** Solo las últimas n filas de una hoja (los pedidos de hoy están al final): mucho más rápido que leer todo el historial. */
+function leerTablaReciente_(nombre, n) {
+  var h = SpreadsheetApp.getActive().getSheetByName(nombre);
+  if (!h || h.getLastRow() < 2) return [];
+  var last = h.getLastRow(), cols = h.getLastColumn(), desde = Math.max(2, last - (n || 600) + 1);
+  var cab = h.getRange(1, 1, 1, cols).getValues()[0].map(function (c) { return String(c).trim(); });
+  var v = h.getRange(desde, 1, last - desde + 1, cols).getValues();
+  return v.map(function (r, i) {
+    var o = { _fila: desde + i, _vacia: r.join('') === '' };
+    cab.forEach(function (c, j) { o[c] = r[j]; });
+    return o;
+  }).filter(function (o) { return !o._vacia; });
+}
+function pedidosRecientes_() { return leerTablaReciente_(HOJA.pedidos, 600); }
+
 function leerCatalogo_() {
   var cache = CacheService.getScriptCache();
   var c = cache.get('catalogo');
@@ -939,8 +954,50 @@ function pedidoAObjeto_(p, zona) {
     ts: p.fecha instanceof Date ? p.fecha.getTime() : 0,
     act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0,
     pagoEstado: celdaTexto_(p.pago_estado), captura: celdaTexto_(p.captura), mozo: celdaTexto_(p.mozo),
-    entregado: celdaTexto_(p.entregado)
+    entregado: celdaTexto_(p.entregado), cocina: cocinaDe_(p.items_json)
   };
+}
+
+/* ---------- ticket de COCINA: solo productos, en español, agrupados por sección ---------- */
+var SECCION_COCINA_ = { antipasti: 'ENTRADAS', pizze: 'PIZZAS', pasta: 'PASTAS', lasagne: 'PASTAS', parrillas: 'PARRILLAS',
+  promociones: 'PROMOCIONES', dolci: 'POSTRES', italia: 'PRODUCTOS ITALIANOS',
+  caffetteria: 'BEBIDAS', caffe: 'BEBIDAS', aperitivi: 'BEBIDAS', vini: 'BEBIDAS' };
+var TAM_COCINA_ = { personale: 'Personal', media: 'Mediana', famiglia: 'Familiar' };
+var _prodCocina = null;
+/** Nombre para cocina: columna nombre_cocina (si existe y tiene texto); si no, el subtítulo en español cuando es un nombre; si no, el nombre. */
+function nombreCocina_(p) {
+  if (String(p.nombre_cocina || '').trim()) return String(p.nombre_cocina).trim();
+  var g = String(p.glosa || '').trim(), s = String(p.seccion);
+  if (g && ['antipasti', 'pasta', 'lasagne', 'dolci', 'caffetteria', 'caffe'].indexOf(s) >= 0 && !/^\d|^(con|para|al estilo)\b| en un plato/i.test(g)) return g.charAt(0).toUpperCase() + g.slice(1);
+  return String(p.nombre);
+}
+function productosCocina_() {
+  if (_prodCocina) return _prodCocina;
+  _prodCocina = { id: {}, nombre: {} };
+  leerCatalogo_().productos.forEach(function (p) {
+    var o = { sec: String(p.seccion), es: nombreCocina_(p) };
+    _prodCocina.id[String(p.id)] = o; _prodCocina.nombre[String(p.nombre).toLowerCase()] = o;
+  });
+  return _prodCocina;
+}
+function salsaCocina_(nombre) {
+  var o = productosCocina_().nombre[String(nombre).toLowerCase()], es = o ? o.es : String(nombre);
+  return /^salsa\b/i.test(es) ? es.charAt(0).toUpperCase() + es.slice(1) : 'Salsa ' + es;
+}
+function cocinaDe_(json) {
+  var l = [];
+  try { l = JSON.parse(String(json || '[]')) || []; } catch (e) { return []; }
+  var pc; try { pc = productosCocina_(); } catch (e) { pc = { id: {}, nombre: {} }; }
+  return l.map(function (x) {
+    var o = pc.id[String(x.id)] || {}, tam = x.tam ? (TAM_COCINA_[String(x.tam).toLowerCase()] || String(x.tam)) : '';
+    var d = [];
+    if (x.salsa) { try { d.push(salsaCocina_(x.salsa)); } catch (e) { d.push('Salsa ' + x.salsa); } }
+    (x.opciones || []).forEach(function (op) {
+      d.push((op.g ? op.g + ': ' : '') + (op.v || []).map(function (v) { return String(v).replace(/\s*\(\+S\/[^)]*\)/, ''); }).join(', '));
+    });
+    if (x.nota) d.push('Nota: ' + x.nota);
+    return { s: SECCION_COCINA_[x.seccion || o.sec] || 'OTROS', c: Number(x.cant) || 1, n: (o.es || String(x.nombre)) + (tam ? ' ' + tam : ''), d: d };
+  });
 }
 
 /** Lista de pedidos para el panel. modo = 'activos' | 'hoy' | 'todos' (últimos 300). */
@@ -948,7 +1005,7 @@ function listarPedidos(sesion, modo) {
   exigirAdmin_(sesion);
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
   var hoy = Utilities.formatDate(new Date(), zona, 'yyyy-MM-dd');
-  var filas = leerTabla_(HOJA.pedidos).map(function (p) { return pedidoAObjeto_(p, zona); });
+  var filas = leerTablaReciente_(HOJA.pedidos, 1200).map(function (p) { return pedidoAObjeto_(p, zona); });
   var activos = ['Nuevo', 'Confirmado', 'En preparación', 'Listo', 'En camino'];
   if (modo === 'activos') filas = filas.filter(function (p) { return activos.indexOf(p.estado) >= 0; });
   else if (modo === 'hoy') filas = filas.filter(function (p) { return p.dia === hoy; });
@@ -1492,7 +1549,7 @@ function cuentaPublica_(mesa, codigo) {
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
   if (!m || !esSi_(m.activa) || !codigoMesaOk_(m, codigo)) return { ok: false, error: 'Código de mesa no válido.' };
-  var c = cuentaMesa_(mesa, m, leerTabla_(HOJA.pedidos), zona);
+  var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
   c.ok = true;
   c.pedidos.forEach(function (p) { delete p.nombre; delete p.mozo; delete p.id; });
   return c;
@@ -1501,7 +1558,7 @@ function cuentaPublica_(mesa, codigo) {
 function cuentasMesas(sesion) {
   exigirAdmin_(sesion);
   var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
-  var peds = leerTabla_(HOJA.pedidos);
+  var peds = pedidosRecientes_();
   return leerTabla_(HOJA.mesas).map(function (m) { return cuentaMesa_(m.mesa, m, peds, zona); })
     .filter(function (c) { return c.pedidos.length; });
 }
@@ -1568,6 +1625,23 @@ function registrarAviso_(body) {
     lock.releaseLock();
   }
   return { ok: true, repetido: !!igual };
+}
+
+/** El mozo pide la cuenta de una mesa (se imprime sola en la PC del local). */
+function avisoCuentaMozo_(mesa, quien) {
+  var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
+  if (!m || !esSi_(m.activa)) return { ok: false, error: 'Mesa no encontrada.' };
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var h = obtenerHoja_(SpreadsheetApp.getActive(), HOJA.avisos, COLS.avisos), cab = asegurarColumnas_(h, COLS.avisos);
+    var igual = leerTabla_(HOJA.avisos).filter(function (a) { return String(a.mesa) === String(mesa) && a.motivo === 'cuenta' && a.estado === 'Pendiente'; })[0];
+    if (!igual) {
+      var fila = { id: Utilities.getUuid().slice(0, 8), fecha: new Date(), mesa: mesa, motivo: 'cuenta', detalle: 'Pedida por ' + String(quien || 'el mozo').slice(0, 40), estado: 'Pendiente', atendido: '', division: '' };
+      h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
+    }
+    PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+    return { ok: true, repetido: !!igual };
+  } finally { lock.releaseLock(); }
 }
 
 /** Avisos sin atender de las últimas 6 horas (para el panel). */

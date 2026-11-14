@@ -41,6 +41,8 @@
     });
     document.querySelector('meta[name=viewport]').content += ", user-scalable=no";
     css("/mozo.css"); contenedor("div");
+    // se descargan en paralelo desde ya; se ejecutan en orden cuando la página está lista
+    ["/menu-data.js", "/mozo.js"].forEach(function (u) { var l = document.createElement("link"); l.rel = "preload"; l.as = "script"; l.href = u; document.head.appendChild(l); });
     document.addEventListener("DOMContentLoaded", function () { cadena(["/menu-data.js", "/mozo.js"]); });
     return;
   }
