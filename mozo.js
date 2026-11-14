@@ -147,7 +147,7 @@
     return m;
   }
   function cerrarModal() {
-    capa.classList.remove("on"); capa.textContent = ""; modalPedido = false;
+    capa.classList.remove("on"); capa.textContent = ""; modalPedido = false; salonAbierto = null;
     if (S.redibujar) { S.redibujar = false; setTimeout(function () { if (!capa.classList.contains("on")) refrescar(); }, 0); }
   }
 
@@ -238,6 +238,7 @@
       S.horario = r.horario; S.mozo = r.mozo || S.mozo; S.turno = r.turno || S.turno;
       if (!r.igual) {
         S.v = r.v; S.mesas = r.mesas || []; S.avisos = r.avisos || [];
+        aplicarPendientesSalon();
         if (r.metodos && r.metodos.length) S.metodos = unirMetodos(r.metodos);
         if (r.comprobantes) S.comprobantes = r.comprobantes;
         if (S.mesa) { var mm = mesaDe(S.mesa); S.cuenta = mm ? { mesa: mm.mesa, pedidos: mm.pedidos || [], total: mm.total } : S.cuenta; }
@@ -248,6 +249,7 @@
       if (r.agotados && aplicarAgotados(r.agotados) && document.querySelector(".prods") && !capa.classList.contains("on")) pintarProductos();
       revisarAlertas();
       refrescar();
+      if (salonAbierto) pintarSalonModal();
     }).catch(function (e) { if (S.t) toast("Sin conexión: reintentando…", "mal"); }).then(function () {
       if (S.t) timer = setTimeout(sondear, document.hidden ? 30000 : 12000);
     });
@@ -579,25 +581,66 @@
     if (p.falta > 1) d.appendChild(btn("✓ Todo entregado", "btn peq ok", function () { entregar(p, "todo", true); }));
     return d;
   }
-  function entregar(p, lineas, valor) {
-    // al instante en pantalla; el servidor confirma en el siguiente sondeo
-    var ent = (p.entregado || []).slice();
-    (lineas === "todo" ? p.lineas.map(function (x, i) { return i; }) : lineas).forEach(function (i) {
-      var k = ent.indexOf(i); if (valor && k < 0) ent.push(i); else if (!valor && k >= 0) ent.splice(k, 1);
-    });
-    p.entregado = ent; p.falta = p.lineas.length - ent.length;
+  /* Entregas: se marcan AL INSTANTE en pantalla y se envían en cola al servidor (en orden y con reintentos).
+     Mientras el servidor no las confirme, lo que llega del sondeo no las deshace. */
+  var colaEnt = [], enviandoEnt = false, pendEnt = {};   // pendEnt[id pedido] = { ent: [índices], hasta: ms }
+  function ajustarPedido(p, ent) {
+    p.entregado = ent.slice(); p.falta = (p.lineas || []).length - p.entregado.length;
     if (!p.falta) p.estado = "Entregado"; else if (p.estado === "Entregado") p.estado = "Listo";
-    S.mesas.forEach(function (m) { if (m.pedidos && m.pedidos.indexOf(p) >= 0) m.porServir = m.pedidos.reduce(function (a, q) { return a + q.falta; }, 0); });
+  }
+  function ajustarMesa(m) {
+    if (!m || !m.pedidos) return;
+    m.porServir = m.pedidos.reduce(function (a, q) { return a + (q.falta || 0); }, 0);
+    if (!m.porServir && (m.estado === "listo" || m.estado === "cocina")) m.estado = "servida";
+    else if (m.porServir && m.estado === "servida") m.estado = m.pedidos.some(function (q) { return q.falta && q.estado === "Listo"; }) ? "listo" : "cocina";
+    if (m.alerta && m.alerta.tipo === "listo" && !m.porServir) m.alerta = null;
+  }
+  function firmaEnt(a) { return a.slice().sort(function (x, y) { return x - y; }).join(","); }
+  /* aplica lo marcado y aún no confirmado sobre lo que llegó del servidor */
+  function aplicarPendientes(pedidos) {
+    var ahora = Date.now(), cambio = false;
+    (pedidos || []).forEach(function (p) {
+      var x = pendEnt[p.id]; if (!x) return;
+      var enCola = colaEnt.some(function (c) { return c.id === p.id; });
+      if (!enCola && (ahora > x.hasta || firmaEnt(p.entregado || []) === firmaEnt(x.ent))) { delete pendEnt[p.id]; return; }
+      ajustarPedido(p, x.ent); cambio = true;
+    });
+    return cambio;
+  }
+  function aplicarPendientesSalon() { S.mesas.forEach(function (m) { if (aplicarPendientes(m.pedidos)) ajustarMesa(m); }); }
+  function entregar(p, lineas, valor) {
+    var idx = lineas === "todo" ? (p.lineas || []).map(function (x, i) { return i; }) : lineas;
+    var ent = (p.entregado || []).slice();
+    idx.forEach(function (i) { var k = ent.indexOf(i); if (valor && k < 0) ent.push(i); else if (!valor && k >= 0) ent.splice(k, 1); });
+    ajustarPedido(p, ent);
+    pendEnt[p.id] = { ent: ent.slice(), hasta: Date.now() + 120000 };
+    S.mesas.forEach(function (m) { if (m.pedidos && m.pedidos.some(function (q) { return q === p || q.id === p.id; })) {
+      m.pedidos.forEach(function (q) { if (q !== p && q.id === p.id) ajustarPedido(q, ent); }); ajustarMesa(m); } });
     if (navigator.vibrate) navigator.vibrate(30);
     if (S.vista === "carta") pintarOrden(); else pintar();
-    api({ mz: "entregar", t: S.t, id: p.id, lineas: lineas, valor: valor }).then(function (r) {
-      if (!r.ok) toast(r.error || "No se pudo marcar.", "mal");
-      S.v = ""; sondear();
-    }).catch(function () { toast("Sin conexión: no se marcó. Vuelve a intentar.", "mal"); S.v = ""; });
+    colaEnt.push({ id: p.id, lineas: idx, valor: valor, intentos: 0 });
+    enviarEntregas();
+  }
+  function enviarEntregas() {
+    if (enviandoEnt || !colaEnt.length || !S.t) return;
+    enviandoEnt = true;
+    var x = colaEnt[0];
+    api({ mz: "entregar", t: S.t, id: x.id, lineas: x.lineas, valor: x.valor }).then(function (r) {
+      colaEnt.shift();
+      if (!r.ok) { delete pendEnt[x.id]; toast(r.error || "No se pudo marcar.", "mal"); }
+    }).catch(function () {
+      x.intentos++;
+      if (x.intentos >= 6) { colaEnt.shift(); delete pendEnt[x.id]; toast("Sin conexión: no se guardó lo entregado. Vuelve a marcarlo.", "mal"); return; }
+      return new Promise(function (ok) { setTimeout(ok, 1500 * x.intentos); });
+    }).then(function () {
+      enviandoEnt = false;
+      if (colaEnt.length) enviarEntregas(); else { S.v = ""; sondear(); }
+    });
   }
 
   /* tocar una mesa: si la atiende otro mozo, se pregunta (no se bloquea) */
   function tocarMesa(m) {
+    if (salonAbierto) { salonAbierto = null; cerrarModal(); }
     var d = m.atiende;
     if (m.estado !== "libre" && d && d.id !== yo()) {
       var c = h("div", "menu-yo");
@@ -660,12 +703,38 @@
       toast("Mesa " + mesa + " libre", "ok"); S.vista = "mesas"; S.v = ""; pintar(); sondear();
     }).catch(function () { toast("Sin conexión.", "mal"); });
   }
+  /* Botón "Mesa N ▾": abre el SALÓN EN VIVO (estados, totales, quién atiende) para cambiar de mesa rápido.
+     Se actualiza solo con cada sondeo mientras está abierto. */
+  var salonAbierto = null;
+  function cuerpoSalon() {
+    var w = h("div", "salon salon--modal"), activas = S.mesas.filter(function (m) { return m.activa; });
+    if (!activas.length) { w.appendChild(h("p", "vacio", "No hay mesas activas.")); return w; }
+    var ocup = activas.filter(function (m) { return m.estado !== "libre"; }).length;
+    var cab = h("div", "salon__cab");
+    cab.appendChild(h("div", "titulo", ocup + " de " + activas.length + " ocupadas"));
+    cab.appendChild(h("span", "esp"));
+    var hayPlano = activas.some(function (m) { return m.x != null && m.y != null; });
+    if (hayPlano) cab.appendChild(segmento([["grid", "▦"], ["plano", "🗺 Plano"]], S.vistaM, function (v) { S.vistaM = v; guardar(K.vistaM, v); pintarSalonModal(); }));
+    w.appendChild(cab);
+    if (hayPlano && S.vistaM === "plano") w.appendChild(plano(activas));
+    else {
+      var g = h("div", "mesas");
+      // primero las ocupadas (lo que más se usa), luego las libres
+      activas.slice().sort(function (a, b) { return (a.estado === "libre") - (b.estado === "libre"); })
+        .forEach(function (m) { g.appendChild(botonMesa(m)); });
+      w.appendChild(g);
+    }
+    w.querySelectorAll(".mesa").forEach(function (b) { if (b.querySelector("b") && new RegExp("(^|\\s)" + S.mesa + "$").test(b.querySelector("b").textContent)) b.classList.add("actual"); });
+    return w;
+  }
+  function pintarSalonModal() {
+    if (!salonAbierto || !salonAbierto.isConnected) { salonAbierto = null; return; }
+    var c = salonAbierto.querySelector(".modal__cuerpo"), y = c.scrollTop;
+    c.textContent = ""; c.appendChild(cuerpoSalon()); c.scrollTop = y;
+  }
   function elegirMesa() {
-    var g = h("div", "mesasel");
-    S.mesas.filter(function (m) { return m.activa; }).forEach(function (m) {
-      g.appendChild(btn(m.mesa, (m.estado !== "libre" ? "ocupada" : "") + (esMia(m) ? "" : " ajena") + (String(m.mesa) === String(S.mesa) ? " on" : ""), function () { cerrarModal(); tocarMesa(m); }));
-    });
-    abrirModal("Elige la mesa", [g]);
+    salonAbierto = abrirModal("🍝 Salón en vivo", [cuerpoSalon()]);
+    salonAbierto.classList.add("modal--salon");
   }
   function abrirMesa(mesa, luego) {
     ultimaCocina = null;
@@ -680,6 +749,7 @@
     return api({ mz: "cuenta", t: S.t, mesa: mesa }).then(function (r) {
       if (mesa !== S.mesa) return;
       S.cuenta = r.ok ? r : { pedidos: [], total: 0 };
+      aplicarPendientes(S.cuenta.pedidos);
       var ae = document.activeElement;
       if (!(ae && ae.closest && ae.closest(".orden textarea"))) pintarOrden();
     }).catch(function () { toast("No se pudo leer la cuenta de la mesa.", "mal"); });

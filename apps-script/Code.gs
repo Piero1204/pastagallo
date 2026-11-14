@@ -24,7 +24,7 @@ var COLS = {
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
     'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
     'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura', 'mozo', 'entregado'],
-  mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde', 'codigo_anterior', 'atiende_id', 'ocupada_desde', 'x', 'y', 'forma', 'personas'],
+  mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde', 'codigo_anterior', 'atiende_id', 'ocupada_desde', 'x', 'y', 'forma', 'personas', 'cortesia'],
   opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo'],
   /* llamadas desde la mesa: "mozo" (llamar al mozo) o "cuenta" (pedir la cuenta) */
   avisos: ['id', 'fecha', 'mesa', 'motivo', 'detalle', 'estado', 'atendido', 'division'],
@@ -392,7 +392,7 @@ function estaAbierto_(cfg, momento) {
  * Valida un pedido y calcula su total con los precios de la hoja.
  * Devuelve { ok:false, error } o { ok:true, canal, cliente, lineas, total, detalle, ... }
  */
-function calcularPedido_(body, cat, cfg, momento, porMozo) {
+function calcularPedido_(body, cat, cfg, momento, porMozo, edicion) {
   if (!body || typeof body !== 'object') return { ok: false, error: 'Pedido vacío.' };
   if (!porMozo && !esSi_(cfg.pedidos_activos)) return { ok: false, error: 'Por ahora no estamos recibiendo pedidos por la web. Escríbenos por WhatsApp.' };
 
@@ -407,7 +407,7 @@ function calcularPedido_(body, cat, cfg, momento, porMozo) {
   var mesa = '';
   if (canal === 'mesa') {
     if (!porMozo && !esSi_(cfg.pedidos_mesa_activos)) return { ok: false, error: 'Los pedidos desde la mesa no están activos. Llama a tu mozo.' };
-    if (!abierto) return { ok: false, error: porMozo ? 'La cocina ya está cerrada.' : 'El restaurante está cerrado en este momento.' };
+    if (!abierto && !edicion) return { ok: false, error: porMozo ? 'La cocina ya está cerrada.' : 'El restaurante está cerrado en este momento.' };
     mesa = texto_(body.mesa, 6);
     var cod = texto_(body.codigo, 20);
     var m = (cat.mesas || []).filter(function (x) { return String(x.mesa) === mesa; })[0];
@@ -554,17 +554,22 @@ function calcularPedido_(body, cat, cfg, momento, porMozo) {
   }
   total = Math.round(total * 100) / 100;
 
-  var detalle = lineas.map(function (l) {
+  var detalle = detalleDe_(lineas);
+
+  var origen = String(body.origen || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30);
+  return { ok: true, canal: canal, mesa: mesa, programado: programado, cliente: cliente, lineas: lineas,
+    total: total, detalle: detalle, abierto: abierto, origen: origen, comp: comp, ref: texto_(body.ref, 12) };
+}
+
+/** Texto del pedido (para la comanda, WhatsApp y el panel) a partir de sus líneas. */
+function detalleDe_(lineas) {
+  return lineas.map(function (l) {
     var t = l.cant + ' × ' + l.nombre + (l.tam ? ' (' + l.tam + ')' : '') + ' — ' + soles_(l.subtotal);
     if (l.salsa) t += '\n    Salsa: ' + l.salsa + (l.recargo ? ' (+' + soles_(l.recargo) + ')' : '');
     (l.opciones || []).forEach(function (o) { t += '\n    ' + o.g + ': ' + o.v.join(', '); });
     if (l.nota) t += '\n    Nota: ' + l.nota;
     return t;
   }).join('\n');
-
-  var origen = String(body.origen || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30);
-  return { ok: true, canal: canal, mesa: mesa, programado: programado, cliente: cliente, lineas: lineas,
-    total: total, detalle: detalle, abierto: abierto, origen: origen, comp: comp, ref: texto_(body.ref, 12) };
 }
 
 /** Construye el objeto CARTA que usa la web (menu-data.js). */
@@ -664,7 +669,8 @@ function construirCarta_(cfg, secciones, productos, opciones) {
 function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
   var validos = pedidos.filter(function (p) { return p.fecha >= desde && p.fecha < hasta; });
   var cancel = validos.filter(function (p) { return p.estado === 'Cancelado'; }).length;
-  var ok = validos.filter(function (p) { return p.estado !== 'Cancelado'; });
+  // los pedidos de solo cortesía (pan al ajo por persona, S/ 0) no cuentan como pedidos ni bajan el ticket
+  var ok = validos.filter(function (p) { return p.estado !== 'Cancelado' && String(p.origen || '') !== 'cortesia'; });
   var ventas = 0, porDia = {}, porHora = {}, porCanal = {}, porProd = {}, tiempos = [];
   var porSemana = [0, 1, 2, 3, 4, 5, 6].map(function () { return { pedidos: 0, ventas: 0 }; });
   var porPromo = {}, porOrigen = {}, conPromo = { pedidos: 0, ventas: 0 }, sinPromo = { pedidos: 0, ventas: 0 };
@@ -683,6 +689,7 @@ function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
     var items = []; try { items = JSON.parse(p.items_json || '[]'); } catch (e) { items = []; }
     var hayPromo = false;
     items.forEach(function (l) {
+      if (l.cortesia) return;
       var k = l.nombre + (l.tam ? ' (' + l.tam + ')' : '');
       if (!porProd[k]) porProd[k] = { nombre: k, cant: 0, ventas: 0 };
       porProd[k].cant += l.cant; porProd[k].ventas += l.subtotal;
@@ -828,6 +835,10 @@ function registrarPedido_(body, mozo) {
     var numDia = siguienteNumeroDia_(ahora, cfg); // el número que ven el cliente y la cocina
     // Salón: lo que envía el mozo entra directo a cocina ("En preparación"); lo pedido desde el QR de la mesa
     // se confirma solo (Config mesa_autoconfirmar = NO para confirmarlo a mano en el panel).
+    // Pan al ajo de cortesía: 1 por persona, una sola vez por cuenta de mesa (sale en el ticket de cocina)
+    var mesaCort = null, nCort = 0, zonaC = cfg.zona_horaria || 'America/Lima';
+    if (r.canal === 'mesa') { try { mesaCort = filaMesa_(r.mesa); nCort = mesaCort ? cortesiaPendiente_(mesaCort, zonaC) : 0; } catch (e) { nCort = 0; } }
+    if (nCort > 0) agregarCortesia_(r, nCort);
     var estado0 = 'Nuevo', his0 = 'Nuevo ' + fmt_(ahora, 'HH:mm');
     if (r.canal === 'mesa' && mozo) { estado0 = 'En preparación'; his0 += ' · En preparación (' + mozo.nombre + ')'; }
     else if (r.canal === 'mesa' && String(cfg.mesa_autoconfirmar || 'SI').toUpperCase() !== 'NO') { estado0 = 'Confirmado'; his0 += ' · Confirmado (auto)'; }
@@ -846,6 +857,7 @@ function registrarPedido_(body, mozo) {
     var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
     var cab = asegurarColumnas_(h, COLS.pedidos);
     h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
+    if (nCort > 0) { try { anotarCortesia_(mesaCort, zonaC); } catch (e) { console.error(e); } }
     if (r.canal === 'mesa') { try { asignarMesaAlPedir_(r.mesa, mozo, cfg); } catch (e) { console.error(e); } }
     props.setProperty('PEDIDOS_VERSION', String(Date.now()));
   } finally {

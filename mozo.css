@@ -258,3 +258,10 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
 .mesa.olvidada{box-shadow:0 0 0 3px rgba(196,106,18,.45)}
 .av.olvido{background:var(--naranja)}
 .olvido-txt{flex-basis:100%;font-weight:800;color:var(--naranja);font-size:14px}
+/* salón en vivo (botón "Mesa N ▾") */
+.modal.modal--salon{max-width:980px}
+.salon--modal .salon__cab{padding:0 0 8px}
+.salon--modal .mesas{padding:0;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.salon--modal .mesa{min-height:96px;padding:10px}
+.salon--modal .plano{margin:0}
+.mesa.actual{outline:3px solid var(--vino);outline-offset:2px}

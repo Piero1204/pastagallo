@@ -34,8 +34,8 @@ function respuestaMozo_(body) {
     if (a === 'pedircuenta') { reclamarMesa_(texto_(body.mesa, 6), mozo); return avisoCuentaMozo_(texto_(body.mesa, 6), mozo.nombre); }
     if (a === 'atender') { var av = leerTabla_(HOJA.avisos).filter(function (x) { return String(x.id) === String(body.id); })[0]; if (av) reclamarMesa_(celdaTexto_(av.mesa), mozo); atenderAvisoComo_(body.id, mozo.nombre); return { ok: true }; }
     if (a === 'cobrar') return cobrarMesa_(mozo, body);
-    if (a === 'ocupar') return ocuparMesa_(mozo, texto_(body.mesa, 6), body.forzar === true, body.personas);
-    if (a === 'personas') { reclamarMesa_(texto_(body.mesa, 6), mozo); return personasMesa_(texto_(body.mesa, 6), body.personas); }
+    if (a === 'ocupar') { var ro = ocuparMesa_(mozo, texto_(body.mesa, 6), body.forzar === true, body.personas); if (ro.ok) cortesiaTrasPersonas_(texto_(body.mesa, 6), mozo.nombre); return ro; }
+    if (a === 'personas') { reclamarMesa_(texto_(body.mesa, 6), mozo); var rp = personasMesa_(texto_(body.mesa, 6), body.personas); if (rp.ok) cortesiaTrasPersonas_(texto_(body.mesa, 6), mozo.nombre); return rp; }
     if (a === 'agotado') return marcarAgotado_(String(body.id || '').slice(0, 80), body.agotado !== false, mozo.nombre);
     if (a === 'pasar') return pasarMesa_(texto_(body.mesa, 6), String(body.a || ''), mozo.nombre);
     if (a === 'entregar') { var pe = pedidosRecientes_().filter(function (x) { return String(x.numero) === String(body.id); })[0]; if (pe) reclamarMesa_(celdaTexto_(pe.mesa), mozo); return entregarLineas_(body.id, body.lineas, body.valor !== false, mozo.nombre); }
@@ -483,7 +483,7 @@ function cerrarCuentaDeMesa_(m, quien) {
   var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
   var ids = c.pedidos.filter(function (p) { return p.estado !== 'Entregado'; }).map(function (p) { return p.id; });
   if (ids.length) marcarEntregados_(ids, quien, null, true);
-  setMesa_(m, { abierta_desde: new Date(Date.now() + 1000), atiende_id: '', personas: '' });
+  setMesa_(m, { abierta_desde: new Date(Date.now() + 1000), atiende_id: '', personas: '', cortesia: '' });
   leerTabla_(HOJA.avisos).forEach(function (a) {
     if (String(a.mesa) === mesa && a.estado === 'Pendiente') atenderAvisoComo_(a.id, quien);
   });
@@ -598,6 +598,7 @@ function personasPanel(sesion, mesa, n) {
   exigirAdmin_(sesion);
   var r = personasMesa_(texto_(mesa, 6), n);
   if (!r.ok) throw new Error(r.error);
+  cortesiaTrasPersonas_(texto_(mesa, 6), 'panel');
   return r;
 }
 
@@ -784,4 +785,149 @@ function entregarPanel(sesion, id, lineas, valor) {
   var r = entregarLineas_(id, lineas, valor !== false, String(quien || '').split('@')[0]);
   if (!r.ok) throw new Error(r.error);
   return r;
+}
+
+
+/* =========================== PAN AL AJO DE CORTESÍA ===========================
+   Cortesía de la casa: 1 pan al ajo por persona, una sola vez por cuenta de mesa. Va como línea de S/ 0
+   ("Pan al ajo (cortesía)"), aparte de los panes que se pidan, y sale en el ticket de cocina:
+   · si ya se sabe cuántas personas son, va dentro del primer pedido de la mesa;
+   · si las personas se indican (o aumentan) cuando la mesa ya tiene pedidos, sale un pedido aparte solo con la cortesía.
+   Columna "cortesia" de Mesas = "<inicio de la cuenta>|<panes ya enviados>". */
+var CORTESIA_ID_ = 'cortesia-pan-ajo', CORTESIA_NOMBRE_ = 'Pan al ajo (cortesía)';
+function cortesiaEnviada_(m, zona) {
+  var x = String(m.cortesia == null ? '' : m.cortesia).split('|');
+  return x[0] === String(inicioCuenta_(m, zona)) ? Math.floor(Number(x[1]) || 0) : 0;
+}
+function cortesiaPendiente_(m, zona) {
+  var pers = Math.floor(num_(m.personas) || 0);
+  if (!pers || !mesaValida_(m, zona)) return 0;   // "personas" solo vale para la cuenta actual
+  return Math.max(0, pers - cortesiaEnviada_(m, zona));
+}
+function agregarCortesia_(r, n) {
+  r.lineas.push({ id: CORTESIA_ID_, nombre: CORTESIA_NOMBRE_, tam: '', salsa: null, recargo: 0, cant: n, unit: 0, subtotal: 0,
+    nota: '', seccion: 'antipasti', opciones: [], cortesia: true });
+  r.detalle = detalleDe_(r.lineas);
+}
+function anotarCortesia_(m, zona) {
+  setMesa_(m, { cortesia: String(inicioCuenta_(m, zona)) + '|' + Math.floor(num_(m.personas) || 0) });
+}
+/** Después de indicar las personas: si la mesa ya tiene pedidos, envía a cocina un pedido solo con la cortesía que falta. */
+function cortesiaTrasPersonas_(mesa, quien) {
+  try {
+    var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+    var lock = LockService.getScriptLock(); lock.waitLock(20000);
+    try {
+      var m = filaMesa_(mesa); if (!m) return;
+      var n = cortesiaPendiente_(m, zona); if (!n) return;
+      var c = cuentaMesa_(mesa, m, pedidosRecientes_(), zona);
+      if (!c.pedidos.length) return;   // todavía sin pedidos: la cortesía irá dentro del primero
+      var r = { lineas: [], detalle: '' }; agregarCortesia_(r, n);
+      var props = PropertiesService.getScriptProperties();
+      var numero = Number(props.getProperty('ULTIMO_PEDIDO') || 0) + 1;
+      props.setProperty('ULTIMO_PEDIDO', String(numero));
+      var ahora = new Date(), numDia = siguienteNumeroDia_(ahora, cfg);
+      var fila = { numero: numero, fecha: ahora, canal: 'mesa', mesa: String(mesa), detalle: r.detalle, total: 0, estado: 'En preparación',
+        notas: Math.floor(num_(m.personas)) + ' persona(s) en la mesa', items_json: JSON.stringify(r.lineas), actualizado: ahora,
+        historial: 'Cortesía ' + fmt_(ahora, 'HH:mm') + ' (' + String(quien || '') + ')', origen: 'cortesia', num_dia: numDia, entregado: '',
+        mozo: quien && quien !== 'panel' ? quien : '' };
+      var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), cab = asegurarColumnas_(h, COLS.pedidos);
+      h.appendRow(cab.map(function (k) { return protegerCelda_(fila[k] == null ? '' : fila[k]); }));
+      anotarCortesia_(m, zona);
+      nuevaVersion_();
+    } finally { lock.releaseLock(); }
+  } catch (e) { console.error(e); }
+}
+
+/* =========================== EDITAR UN PEDIDO DE MESA (panel) ===========================
+   Para corregir errores: cambiar cantidades, quitar líneas o agregar productos. Solo pedidos de la cuenta ABIERTA
+   (si ya se cobró no se toca) y sin boleta/factura emitida. Lo agregado se precia en el servidor como un pedido normal. */
+function pedidoEditable_(numero, zona) {
+  var p = pedidosRecientes_().filter(function (x) { return String(x.numero) === String(numero); })[0];
+  if (!p) throw new Error('Pedido no encontrado (o es muy antiguo).');
+  if (p.canal !== 'mesa') throw new Error('Desde aquí solo se editan pedidos de mesa.');
+  if (p.estado === 'Cancelado') throw new Error('El pedido está cancelado.');
+  if (celdaTexto_(p.comp_estado) === 'Emitido') throw new Error('Este pedido ya tiene boleta o factura emitida: no se puede editar.');
+  var m = filaMesa_(p.mesa);
+  if (!m || !(p.fecha instanceof Date) || p.fecha.getTime() < inicioCuenta_(m, zona)) throw new Error('La cuenta de la mesa ' + p.mesa + ' ya se cerró (se cobró): este pedido ya no se puede editar.');
+  return p;
+}
+function pedidoParaEditar(sesion, numero) {
+  exigirAdmin_(sesion);
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var p = pedidoEditable_(numero, zona);
+  var lineas = []; try { lineas = JSON.parse(String(p.items_json || '[]')) || []; } catch (e) { lineas = []; }
+  var cat = leerCatalogo_(), sec = {};
+  (cat.secciones || []).forEach(function (s) { sec[String(s.id)] = s; });
+  var productos = (cat.productos || []).filter(function (x) {
+    var s = sec[String(x.seccion)];
+    return x.tipo !== 'salsa' && esSi_(x.visible) && esSi_(x.disponible) && s && esSi_(s.visible) && esSi_(s.mesa) &&
+      String(x.canal || 'todos').trim().toLowerCase() !== 'delivery' && (parsearTamanos_(x.tamanos).length || num_(x.precio) != null);
+  }).map(function (x) {
+    return { id: String(x.id), n: String(x.nombre), sec: String(x.seccion), secN: String((sec[String(x.seccion)] || {}).titulo || x.seccion),
+      t: parsearTamanos_(x.tamanos), p: num_(x.precio), salsa: esSi_(x.requiere_salsa), ops: listaIds_(x.opciones) };
+  });
+  var salsas = (cat.productos || []).filter(function (x) { return x.tipo === 'salsa' && esSi_(x.visible) && esSi_(x.disponible); })
+    .map(function (x) { return { id: String(x.id), n: String(x.nombre), extra: num_(x.recargo) || 0, ops: listaIds_(x.opciones) }; });
+  return { numero: Number(p.numero), num_dia: Number(p.num_dia) || Number(p.numero), mesa: String(p.mesa), estado: String(p.estado),
+    entregado: p.estado === 'Entregado' ? lineas.map(function (x, i) { return i; }) : indicesEntregados_(p.entregado, lineas.length),
+    lineas: lineas.map(function (l) {
+      return { n: String(l.nombre), tam: l.tam || '', salsa: l.salsa || '', cant: Number(l.cant) || 1, unit: Number(l.unit) || 0,
+        d: (l.opciones || []).map(function (o) { return o.g + ': ' + (o.v || []).join(', '); }).concat(l.nota ? ['Nota: ' + l.nota] : []).join(' · '),
+        cortesia: !!l.cortesia };
+    }),
+    catalogo: { productos: productos, salsas: salsas, grupos: gruposOpciones_(cat.opciones) } };
+}
+/** cambios = { cant: [nueva cantidad por línea existente, 0 = quitar], nuevos: [{ id, tam, salsa, cant, nota, ops, mitad }] } */
+function editarPedidoMesa(sesion, numero, cambios) {
+  var quien = String(exigirAdmin_(sesion) || 'panel').split('@')[0];
+  cambios = cambios || {};
+  var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    var p = pedidoEditable_(numero, zona);
+    var lineas = []; try { lineas = JSON.parse(String(p.items_json || '[]')) || []; } catch (e) { lineas = []; }
+    var cant = Array.isArray(cambios.cant) ? cambios.cant : [];
+    if (cant.length !== lineas.length) throw new Error('El pedido cambió mientras lo editabas. Ciérralo y vuelve a abrirlo.');
+    var entAntes = p.estado === 'Entregado' ? lineas.map(function (x, i) { return i; }) : indicesEntregados_(p.entregado, lineas.length);
+    var out = [], ent = [], quitados = [], agregados = [];
+    lineas.forEach(function (l, i) {
+      var n = Math.floor(Number(cant[i]));
+      if (!(n >= 0 && n <= 50)) n = Number(l.cant) || 1;
+      var antes = Number(l.cant) || 1;
+      if (n < antes) quitados.push(copiaLinea_(l, antes - n));
+      if (n > antes) agregados.push(copiaLinea_(l, n - antes));
+      if (!n) return;
+      var nl = copiaLinea_(l, n);
+      if (entAntes.indexOf(i) >= 0 && n <= antes) ent.push(out.length);   // si se aumentó, falta llevar lo nuevo
+      out.push(nl);
+    });
+    var nuevos = Array.isArray(cambios.nuevos) ? cambios.nuevos.slice(0, 20) : [];
+    if (nuevos.length) {
+      var r = calcularPedido_({ canal: 'mesa', mesa: String(p.mesa), items: nuevos }, leerCatalogo_(), cfg, momentoActual_(cfg), true, true);
+      if (!r.ok) throw new Error(r.error);
+      r.lineas.forEach(function (l) { out.push(l); agregados.push(l); });
+    }
+    if (!quitados.length && !agregados.length) return { ok: true, sinCambios: true };
+    if (!out.length) throw new Error('El pedido quedaría vacío: mejor cancélalo (botón Cancelar).');
+    var total = Math.round(out.reduce(function (a, l) { return a + (Number(l.subtotal) || 0); }, 0) * 100) / 100;
+    var est = String(p.estado);
+    if (ent.length === out.length) est = 'Entregado';
+    else if (est === 'Entregado' || est === 'Listo') est = 'En preparación';   // se agregó algo: vuelve a cocina
+    var ahora = new Date();
+    var resumen = agregados.map(function (l) { return '+' + l.cant + ' ' + l.nombre; }).concat(quitados.map(function (l) { return '−' + l.cant + ' ' + l.nombre; })).join(', ');
+    var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), cab = asegurarColumnas_(h, COLS.pedidos);
+    var set = function (k, v) { h.getRange(p._fila, cab.indexOf(k) + 1).setValue(v); };
+    set('items_json', JSON.stringify(out)); set('total', total); set('detalle', protegerCelda_(detalleDe_(out)));
+    set('entregado', ent.join(',')); set('estado', est); set('actualizado', ahora);
+    set('historial', protegerCelda_(String(p.historial || '') + ' · Editado ' + fmt_(ahora, 'HH:mm') + ' (' + quien + '): ' + resumen).slice(0, 2000));
+    nuevaVersion_();
+    return { ok: true, numero: Number(p.numero), num_dia: Number(p.num_dia) || Number(p.numero), mesa: String(p.mesa), mozo: celdaTexto_(p.mozo),
+      total: total, resumen: resumen, agregados: cocinaDe_(JSON.stringify(agregados)), quitados: cocinaDe_(JSON.stringify(quitados)) };
+  } finally { lock.releaseLock(); }
+}
+function copiaLinea_(l, n) {
+  var c = JSON.parse(JSON.stringify(l));
+  c.cant = n; c.subtotal = Math.round((Number(c.unit) || 0) * n * 100) / 100;
+  return c;
 }

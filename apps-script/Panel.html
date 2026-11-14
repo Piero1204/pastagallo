@@ -137,6 +137,18 @@ tr.oculto td{opacity:.5}
 .checks{display:flex;flex-wrap:wrap;gap:6px 14px}
 .checks label{flex-direction:row;align-items:center;gap:6px;font-weight:500;color:var(--tinta);font-size:13px}
 .pie{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.edp{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.edp-l{display:grid;grid-template-columns:1fr 70px 116px 80px;gap:8px;align-items:center;background:var(--crema2);border-radius:8px;padding:8px 10px}
+.edp-l.fuera{opacity:.5}.edp-l.fuera b{text-decoration:line-through}.edp-l.cambio{outline:2px solid var(--oro)}.edp-l.nuevo{background:#eaf6ee;outline:2px solid var(--ok)}
+.edp-n{display:flex;flex-direction:column;gap:2px}.edp-n small{color:var(--gris);font-size:12px}.edp-n .edp-ok{color:var(--ok)}.edp-n .edp-cam{color:#a35d00;font-weight:700}
+.edp-u{font-size:13px;color:var(--gris);text-align:right}.edp-s{font-weight:700;text-align:right}
+.edp-st{display:flex;align-items:center;gap:6px}.edp-st output{min-width:26px;text-align:center;font-weight:800;font-size:16px}
+.edp-tot{display:block;text-align:right;margin:4px 0 10px}
+.edp-add{border-top:1px dashed var(--linea);padding-top:10px}.edp-add>select{width:100%}
+.edp-f{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px}.edp-f label{display:flex;flex-direction:column;gap:3px;font-size:13px;font-weight:600}
+.edp-chk{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}.edp-chk label{flex-direction:row;font-weight:500;align-items:center}
+.edp-acc{display:flex;align-items:center;gap:8px;margin-top:8px}.edp-imp{display:flex;align-items:center;gap:6px;font-size:13px;margin-right:auto}
+@media (max-width:640px){.edp-l{grid-template-columns:1fr 104px;}.edp-u{display:none}.edp-s{grid-column:2}}
 .fotoBox{display:flex;gap:12px;align-items:center}
 .fotoBox img{width:100px;height:100px;object-fit:cover;border-radius:10px;background:var(--crema)}
 .grupos{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px}
@@ -999,7 +1011,8 @@ function detalleMesa(m){
       }}, [el('i', {text: hecho ? '✓' : ''}), el('span', {text:l.t}), l.d ? el('small', {text:l.d}) : null]));
     });
     cuerpo.push(el('div', {class:'det__ped'}, [
-      el('div', {class:'det__pcab'}, [el('b', {text:'#' + p.numero}), el('span', {text: p.hora + ' · ' + (p.mozo ? '🤵 ' + p.mozo : '📱 QR')}), el('span', {class:'esp'}), el('span', {class:'chip', text: p.falta ? p.estado : '✓ Entregado'})]),
+      el('div', {class:'det__pcab'}, [el('b', {text:'#' + p.numero}), el('span', {text: p.hora + ' · ' + (p.mozo ? '🤵 ' + p.mozo : '📱 QR')}), el('span', {class:'esp'}), el('span', {class:'chip', text: p.falta ? p.estado : '✓ Entregado'}),
+        el('button', {class:'btn peq', text:'✏️', title:'Editar este pedido', onclick:function(){ editarPedido(p.id); }})]),
       lineas,
       p.falta > 1 ? el('button', {class:'btn peq', text:'✓ Todo entregado', onclick:function(){ this.disabled = true; run('entregarPanel', p.id, 'todo', true).then(cargarPedidos).catch(error); }}) : null
     ]));
@@ -1150,6 +1163,7 @@ function acciones(p){
     w.appendChild(el('button', {class:'btn ' + (s === 'Confirmado' ? 'ok' : 'prim') + ' peq', text: s === 'Confirmado' ? '✓ Confirmar' : '→ ' + s, onclick: function(){ cambiar(p, s); }}));
   });
   if (p.estado !== 'Cancelado' && p.estado !== 'Entregado') w.appendChild(el('button', {class:'btn mal peq', text:'Cancelar', onclick: function(){ if (confirm('¿Cancelar el pedido #' + nro(p) + '?')) cambiar(p, 'Cancelado'); }}));
+  if (p.canal === 'mesa' && p.estado !== 'Cancelado' && p.compEstado !== 'Emitido') w.appendChild(el('button', {class:'btn peq', text:'✏️ Editar', title:'Corregir el pedido: cantidades, quitar o agregar productos', onclick: function(){ editarPedido(p.numero); }}));
   w.appendChild(el('button', {class:'btn peq', text:'🍳 Cocina', title:'Reimprimir el ticket de cocina', onclick: function(){ imprimirCocina(p); }}));
   w.appendChild(el('button', {class:'btn peq', text:'🖨 Comanda', onclick: function(){ imprimirComanda(p); }}));
   if (p.compEstado !== 'Emitido') w.appendChild(el('button', {class:'btn peq', title:'Eliminar del todo (para pedidos de prueba)', text:'🗑', onclick: function(){ eliminar(p); }}));
@@ -1162,6 +1176,154 @@ function acciones(p){
   (INFO.estados || []).forEach(function(s){ sel.appendChild(el('option', {value:s, text:s})); });
   w.appendChild(sel);
   return w;
+}
+
+/* ---------- editar un pedido de mesa (corregir errores del mozo o del cliente) ---------- */
+function editarPedido(numero){
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'Editar pedido'})); caja.appendChild(el('p', {class:'nota', text:'Cargando el pedido…'}));
+  $('#modal').classList.add('on');
+  run('pedidoParaEditar', numero).then(formEditarPedido).catch(function(e){ cerrarModal(); error(e); });
+}
+function formEditarPedido(d){
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'✏️ Editar pedido #' + d.num_dia + ' · Mesa ' + d.mesa}));
+  caja.appendChild(el('p', {class:'nota', text:'Corrige cantidades (0 = quitar) o agrega productos. El total se recalcula con los precios del sistema y, si dejas marcada la casilla, sale un ticket de cocina solo con el cambio.'}));
+  var cat = d.catalogo, PR = {}, SA = {}, G = cat.grupos || {};
+  cat.productos.forEach(function(p){ PR[p.id] = p; }); cat.salsas.forEach(function(s){ SA[s.id] = s; });
+  var cant = d.lineas.map(function(l){ return l.cant; }), nuevos = [];
+  var lista = el('div', {class:'edp'}), totEl = el('b', {class:'edp-tot'});
+  function paso(v, fn){
+    var o = el('output', {text:String(v)});
+    return el('div', {class:'edp-st'}, [el('button', {class:'btn peq', type:'button', text:'−', onclick:function(){ fn(-1); }}), o, el('button', {class:'btn peq', type:'button', text:'+', onclick:function(){ fn(1); }})]);
+  }
+  function pintar(){
+    lista.textContent = ''; var tot = 0;
+    d.lineas.forEach(function(l, i){
+      var sub = l.unit * cant[i]; tot += sub;
+      lista.appendChild(el('div', {class:'edp-l' + (cant[i] === 0 ? ' fuera' : '') + (cant[i] !== l.cant ? ' cambio' : '')}, [
+        el('div', {class:'edp-n'}, [el('b', {text: l.n + (l.tam ? ' (' + l.tam + ')' : '')}), l.salsa ? el('small', {text:'Salsa: ' + l.salsa}) : null, l.d ? el('small', {text:l.d}) : null,
+          d.entregado.indexOf(i) >= 0 ? el('small', {class:'edp-ok', text:'✓ ya entregado'}) : null, cant[i] !== l.cant ? el('small', {class:'edp-cam', text:'antes: ' + l.cant}) : null]),
+        el('span', {class:'edp-u', text: soles(l.unit)}),
+        paso(cant[i], function(k){ cant[i] = Math.max(0, Math.min(50, cant[i] + k)); pintar(); }),
+        el('span', {class:'edp-s', text: soles(sub)})
+      ]));
+    });
+    nuevos.forEach(function(x, k){
+      var sub = x._unit * x.cant; tot += sub;
+      lista.appendChild(el('div', {class:'edp-l nuevo'}, [
+        el('div', {class:'edp-n'}, [el('b', {text:'＋ ' + x._n}), x._d ? el('small', {text:x._d}) : null]),
+        el('span', {class:'edp-u', text: soles(x._unit)}),
+        paso(x.cant, function(s){ x.cant += s; if (x.cant < 1) nuevos.splice(k, 1); pintar(); }),
+        el('span', {class:'edp-s', text: soles(sub)})
+      ]));
+    });
+    totEl.textContent = 'Total del pedido: ' + soles(tot) + ' (aprox.; lo confirma el sistema)';
+  }
+  caja.appendChild(lista); caja.appendChild(totEl);
+
+  /* agregar un producto */
+  var add = el('div', {class:'edp-add'}), zona = el('div', {class:'edp-op'});
+  var selP = el('select', {class:'txt'}, [el('option', {value:'', text:'＋ Agregar un producto…'})]);
+  var porSec = {};
+  cat.productos.forEach(function(p){ (porSec[p.secN] = porSec[p.secN] || []).push(p); });
+  Object.keys(porSec).forEach(function(s){ selP.appendChild(el('optgroup', {label:s}, porSec[s].map(function(p){ return el('option', {value:p.id, text:p.n}); }))); });
+  add.appendChild(selP); add.appendChild(zona);
+  caja.appendChild(add);
+  selP.addEventListener('change', function(){ armarNuevo(PR[this.value]); });
+  function armarNuevo(p){
+    zona.textContent = ''; if (!p) return;
+    var x = { id:p.id, tam: p.t.length ? p.t[0][0] : '', salsa:'', mitad:'', cant:1, nota:'', ops:{} };
+    var f = el('div', {class:'edp-f'}), zOps = el('div'), zMitad = el('div'), prev = el('b');
+    function grupos(){ var ids = p.ops.slice(); if (x.salsa && SA[x.salsa]) SA[x.salsa].ops.forEach(function(g){ if (ids.indexOf(g) < 0) ids.push(g); }); return ids.filter(function(g){ return G[g]; }); }
+    function unit(){
+      var base = p.t.length ? ((p.t.filter(function(t){ return t[0] === x.tam; })[0] || p.t[0])[1]) : (p.p || 0);
+      if (x.mitad && PR[x.mitad]) { var t2 = PR[x.mitad].t.filter(function(t){ return t[0] === x.tam; })[0]; if (t2 && t2[1] > base) base = t2[1]; }
+      var e = x.salsa && SA[x.salsa] ? SA[x.salsa].extra : 0;
+      grupos().forEach(function(g){ (x.ops[g] || []).forEach(function(n){ var o = G[g].ops.filter(function(o){ return o.n === n; })[0]; if (o) e += o.p; }); });
+      return base + e;
+    }
+    function verPrecio(){ prev.textContent = soles(unit() * x.cant); }
+    function pintarMitad(){
+      zMitad.textContent = '';
+      if (!(p.sec === 'pizze' && p.t.length > 1 && x.tam !== p.t[0][0])) { x.mitad = ''; return; }
+      var s = el('select', {class:'txt', onchange:function(){ x.mitad = this.value; verPrecio(); }}, [el('option', {value:'', text:'Un solo sabor'})].concat(
+        cat.productos.filter(function(o){ return o.sec === 'pizze' && o.id !== p.id && o.t.some(function(t){ return t[0] === x.tam; }); })
+          .map(function(o){ return el('option', {value:o.id, text:'½ ' + o.n}); })));
+      s.value = x.mitad; zMitad.appendChild(el('label', null, ['Mitad y mitad (se cobra la más cara)', s]));
+    }
+    function pintarOps(){
+      zOps.textContent = '';
+      grupos().forEach(function(gid){
+        var g = G[gid]; x.ops[gid] = x.ops[gid] || [];
+        if (g.tipo === 'una') {
+          var s = el('select', {class:'txt', onchange:function(){ x.ops[gid] = this.value ? [this.value] : []; verPrecio(); }},
+            [el('option', {value:'', text: g.req ? '— elige —' : '— ninguno —'})].concat(g.ops.map(function(o){ return el('option', {value:o.n, text:o.n + (o.p ? ' (+' + soles(o.p) + ')' : '')}); })));
+          s.value = x.ops[gid][0] || ''; zOps.appendChild(el('label', null, [g.n + (g.req ? ' *' : ''), s]));
+        } else {
+          var w = el('div', {class:'edp-chk'}, [el('span', {text:g.n + ':'})]);
+          g.ops.forEach(function(o){
+            var c = el('input', {type:'checkbox', onchange:function(){ var a = x.ops[gid], k = a.indexOf(o.n); if (this.checked && k < 0) a.push(o.n); if (!this.checked && k >= 0) a.splice(k, 1); verPrecio(); }});
+            c.checked = x.ops[gid].indexOf(o.n) >= 0; w.appendChild(el('label', null, [c, ' ' + o.n + (o.p ? ' (+' + soles(o.p) + ')' : '')]));
+          });
+          zOps.appendChild(w);
+        }
+      });
+    }
+    if (p.t.length) {
+      var st = el('select', {class:'txt', onchange:function(){ x.tam = this.value; pintarMitad(); verPrecio(); }}, p.t.map(function(t){ return el('option', {value:t[0], text:t[0] + ' · ' + soles(t[1])}); }));
+      f.appendChild(el('label', null, ['Tamaño', st]));
+    }
+    f.appendChild(zMitad); pintarMitad();
+    if (p.salsa) {
+      var ss = el('select', {class:'txt', onchange:function(){ x.salsa = this.value; Object.keys(x.ops).forEach(function(g){ if (p.ops.indexOf(g) < 0) delete x.ops[g]; }); pintarOps(); verPrecio(); }},
+        [el('option', {value:'', text:'— elige la salsa —'})].concat(cat.salsas.map(function(s){ return el('option', {value:s.id, text:s.n + (s.extra ? ' (+' + soles(s.extra) + ')' : '')}); })));
+      f.appendChild(el('label', null, ['Salsa *', ss]));
+    }
+    f.appendChild(zOps); pintarOps();
+    var ic = el('input', {class:'txt', type:'number', min:'1', max:'20', value:'1', oninput:function(){ x.cant = Math.max(1, Math.min(20, Math.floor(Number(this.value) || 1))); verPrecio(); }});
+    var nt = el('input', {class:'txt', type:'text', maxlength:'120', placeholder:'Nota para cocina (opcional)', oninput:function(){ x.nota = this.value; }});
+    f.appendChild(el('label', null, ['Cantidad', ic])); f.appendChild(el('label', null, ['Nota', nt]));
+    zona.appendChild(f);
+    zona.appendChild(el('div', {class:'edp-acc'}, [prev, el('span', {class:'esp'}), el('button', {class:'btn ok peq', type:'button', text:'＋ Agregar al pedido', onclick:function(){
+      if (p.salsa && !x.salsa) { toast('Elige la salsa', true); return; }
+      var falta = grupos().filter(function(g){ return G[g].req && !(x.ops[g] || []).length; })[0];
+      if (falta) { toast('Elige ' + G[falta].n.toLowerCase(), true); return; }
+      var ops = {}; grupos().forEach(function(g){ if ((x.ops[g] || []).length) ops[g] = x.ops[g].slice(); });
+      var dd = [];
+      if (x.mitad && PR[x.mitad]) dd.push('½ ' + p.n + ' + ½ ' + PR[x.mitad].n);
+      if (x.salsa && SA[x.salsa]) dd.push('Salsa ' + SA[x.salsa].n);
+      Object.keys(ops).forEach(function(g){ dd.push(ops[g].join(', ')); });
+      if (x.nota) dd.push('Nota: ' + x.nota);
+      nuevos.push({ id:x.id, tam:x.tam, salsa:x.salsa, mitad:x.mitad, cant:x.cant, nota:x.nota.trim(), ops:ops, _n: p.n + (x.tam ? ' (' + x.tam + ')' : ''), _d: dd.join(' · '), _unit: unit() });
+      selP.value = ''; zona.textContent = ''; pintar();
+    }})]));
+    verPrecio();
+  }
+
+  var imp = el('input', {type:'checkbox'}); imp.checked = true;
+  var guardar = el('button', {class:'btn prim', type:'button', text:'Guardar cambios', onclick:function(){
+    var cambio = nuevos.length || cant.some(function(c, i){ return c !== d.lineas[i].cant; });
+    if (!cambio) { cerrarModal(); return; }
+    guardar.disabled = true; guardar.textContent = 'Guardando…';
+    run('editarPedidoMesa', d.numero, { cant: cant, nuevos: nuevos.map(function(x){ return { id:x.id, tam:x.tam, salsa:x.salsa, mitad:x.mitad, cant:x.cant, nota:x.nota, ops:x.ops }; }) }).then(function(r){
+      cerrarModal();
+      if (r.sinCambios) { toast('Sin cambios'); return; }
+      toast('Pedido #' + r.num_dia + ' actualizado (' + r.resumen + ') · total ' + soles(r.total));
+      if (imp.checked) imprimirCambioCocina(r);
+      cargarPedidos();
+    }).catch(function(e){ guardar.disabled = false; guardar.textContent = 'Guardar cambios'; error(e); });
+  }});
+  caja.appendChild(el('div', {class:'pie'}, [el('label', {class:'edp-imp'}, [imp, ' Imprimir el cambio para cocina']), el('span', {class:'esp'}),
+    el('button', {class:'btn', type:'button', text:'Cancelar', onclick: cerrarModal}), guardar]));
+  pintar();
+}
+function imprimirCambioCocina(r){
+  var lista = (r.agregados || []).concat((r.quitados || []).map(function(x){ var y = JSON.parse(JSON.stringify(x)); y.s = 'QUITAR · NO PREPARAR'; return y; }));
+  if (!lista.length) return;
+  colaImpresion.push({ tipo:'cocina', p:{ canal:'mesa', mesa:r.mesa, nd:r.num_dia, numero:r.numero, mozo:r.mozo,
+    hora: new Date().toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'}), cocina:lista, cambio:'CAMBIO EN PEDIDO #' + r.num_dia } });
+  siguienteImpresion();
 }
 
 function cambiar(p, estado){
@@ -1208,6 +1370,7 @@ function ticketCocina(d, b, p){
   var add = function(tag, t, cls){ var e = d.createElement(tag); e.textContent = t; if (cls) e.className = cls; b.appendChild(e); return e; };
   add('div', p.canal === 'mesa' ? 'MESA ' + p.mesa : (p.canal === 'recojo' ? 'RECOJO' : 'DELIVERY') + ' #' + nro(p), 'k-mesa');
   if (p.mozo) add('div', 'Moza: ' + p.mozo, 'k-moza');
+  if (p.cambio) add('div', '*** ' + p.cambio + ' ***', 'k-sec');
   add('div', (p.hora || '') + (p.canal === 'mesa' ? '   #' + nro(p) : ''), 'c p');
   if (p.programado) add('div', '>> PARA LAS ' + p.programado + ' <<', 'c g');
   var lista = p.cocina || [];
