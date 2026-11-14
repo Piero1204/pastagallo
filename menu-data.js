@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:33:01-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:35:28-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2620,7 +2620,7 @@ window.CARTA = {
        "id": "dolci-biscotti-con-gocce-di-cioccolato",
        "n": "Classic New York Cookie",
        "g": "galleta con chispas de chocolate",
-       "d": "Galleta con chispas de chocolate, ideal con un buen café.",
+       "d": "Galleta con chispas de chocolate, al famoso estilo de nueva york.",
        "p": 6,
        "al": [
         "gluten",
@@ -2629,7 +2629,7 @@ window.CARTA = {
        ],
        "foto": "fotos/dolci-biscotti-con-gocce-di-cioccolato-1794451297748.jpg",
        "g_en": "chocolate chip cookie",
-       "d_en": "Chocolate chip cookie, perfect with a good coffee."
+       "d_en": "Chocolate chip cookie, a new york famous one."
       },
       {
        "id": "dolci-biscotto-al-cioccolato",
@@ -3203,5 +3203,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T23:33:01-05:00"
+ "publicado": "2026-11-13T23:35:28-05:00"
 };
