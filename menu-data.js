@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:15:03-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:19:01-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2208,6 +2208,7 @@ window.CARTA = {
        "d": "Pequeños anillos de pasta rellenos de carne, con el mismo relleno de nuestros ravioli di carne. Tradición de Emilia-Romaña.",
        "p": 32,
        "salsa": true,
+       "agotado": true,
        "al": [
         "gluten",
         "huevo"
@@ -3205,5 +3206,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-14T19:15:03-05:00"
+ "publicado": "2026-11-14T19:19:01-05:00"
 };
