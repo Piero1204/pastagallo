@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:20:13-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:20:22-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2913,6 +2913,7 @@ window.CARTA = {
        "n": "Don’t Worry Be Happy",
        "d": "Vodka, crema de coco y jugo de naranja. Con ese nombre, no hay más que decir.",
        "p": 20,
+       "agotado": true,
        "foto": "https://images.unsplash.com/photo-1762883469122-c15463bbce28?w=700&q=70&auto=format&fit=crop",
        "d_en": "Vodka, coconut cream and orange juice. With that name, nothing more to say."
       },
@@ -3207,5 +3208,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-14T19:20:13-05:00"
+ "publicado": "2026-11-14T19:20:22-05:00"
 };
