@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:42:25-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:42:48-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -750,7 +750,7 @@ window.CARTA = {
   {
    "id": "pasta-huancaina",
    "n": "Huancaína",
-   "extra": 4,
+   "extra": 8,
    "agotado": false,
    "op": [
     "picante"
@@ -2407,7 +2407,7 @@ window.CARTA = {
        "id": "pasta-huancaina",
        "n": "Huancaína",
        "d": "Emulsión sedosa y dorada de ají amarillo sofrito, queso fresco y notas lácteas. Aterciopelada al paladar, equilibra un picor sutil con una cremosidad envolvente, emblema de la cocina peruana.",
-       "extra": 4,
+       "extra": 8,
        "tipo": "salsa",
        "al": [
         "lacteos"
@@ -3234,5 +3234,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-14T19:42:25-05:00"
+ "publicado": "2026-11-14T19:42:48-05:00"
 };
