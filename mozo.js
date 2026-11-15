@@ -76,6 +76,20 @@
     });
     if (grupos.length) SECS.push({ id: s.id, titulo: s.titulo, grupos: grupos });
   });
+  /* Cargos adicionales (caja, taper, corcho, roturas…): solo para el mozo, vienen del servidor en "estado".
+     No están en menu-data.js, así que nunca salen en la carta pública. Se guarda el último recibido. */
+  var K_CARGOS = "pg-mozo-cargos", CARGOS = [], CARGO = {};
+  function aplicarCargos(lista) {
+    CARGOS = []; CARGO = {};
+    (Array.isArray(lista) ? lista : []).forEach(function (x) {
+      if (!x || !x.id || !x.n) return;
+      var it = { id: x.id, n: x.n, t: (x.t && x.t.length) ? x.t : null, p: x.p, _cargo: true };
+      if (!it.t && it.p == null) return;
+      CARGOS.push(it); CARGO[it.id] = it;
+    });
+  }
+  aplicarCargos(leer(K_CARGOS, []));
+  function prodDe(id) { return PROD[id] || CARGO[id]; }
   function motivoNo(it) {
     if (it.agotado) return "Agotado";
     if (it.p == null && !(it.t && it.t.length)) return "Consultar";
@@ -241,6 +255,11 @@
         aplicarPendientesSalon();
         if (r.metodos && r.metodos.length) S.metodos = unirMetodos(r.metodos);
         if (r.comprobantes) S.comprobantes = r.comprobantes;
+        if (r.cargos) {
+          var antes = JSON.stringify(CARGOS);
+          aplicarCargos(r.cargos); guardar(K_CARGOS, r.cargos);
+          if (antes !== JSON.stringify(CARGOS) && document.querySelector(".prods") && !capa.classList.contains("on") && !S.q) pintarProductos();
+        }
         if (S.mesa) { var mm = mesaDe(S.mesa); S.cuenta = mm ? { mesa: mm.mesa, pedidos: mm.pedidos || [], total: mm.total } : S.cuenta; }
         // copia local: al volver a abrir la app se ve el salón al instante (luego se actualiza)
         guardar(K_CACHE, { mozo: yo(), ts: Date.now(), desfase: S.desfase, mesas: S.mesas, avisos: S.avisos, metodos: S.metodos,
@@ -882,6 +901,12 @@
       prods.appendChild(sec);
       if (obs) obs.observe(sec);
     });
+    if (CARGOS.length) {
+      var dc = h("details", "cargos"), sm = h("summary", null, "➕ Cargos Adicionales");
+      dc.appendChild(sm);
+      var gc = h("div", "grid"); CARGOS.forEach(function (it) { gc.appendChild(tarjeta(it)); }); dc.appendChild(gc);
+      prods.appendChild(dc);
+    }
   }
   function refrescarTarjeta(id) {
     document.querySelectorAll('.prod[data-id="' + id + '"]').forEach(function (b) {
@@ -971,7 +996,7 @@
       cuerpo.push(zonaSalsa); pintarSalsa();
     }
     (it.op || []).forEach(function (gid) { if (GRUPOS[gid]) cuerpo.push(bloque(gid)); });
-    cuerpo.push(h("div", "lbl", "Indicación para cocina (opcional)"));
+    cuerpo.push(h("div", "lbl", it._cargo ? "Nota (opcional)" : "Indicación para cocina (opcional)"));
     var nota = h("input", "campo"); nota.maxLength = 120; nota.placeholder = "Ej.: sin cebolla, bien cocido…"; nota.value = sel.nota || "";
     nota.addEventListener("input", function () { sel.nota = nota.value.trim(); });
     cuerpo.push(nota); cuerpo.push(err);
@@ -994,7 +1019,7 @@
       if (volverAlPedido) abrirPedidoCelular();
     });
     pintarBoton();
-    if (!linea) cuerpo.push(btn("🚫 Marcar " + it.n + " como agotado", "link-agot", function () { cerrarModal(); cambiarAgotado(it, true); }));
+    if (!linea && !it._cargo) cuerpo.push(btn("🚫 Marcar " + it.n + " como agotado", "link-agot", function () { cerrarModal(); cambiarAgotado(it, true); }));
     abrirModal(it.n + (it.g ? " · " + it.g : ""), cuerpo, [step, add]);
   }
 
@@ -1053,7 +1078,7 @@
     if (!c.length) lista.appendChild(h("p", "vacio", "Toca los platos para agregarlos al pedido."));
     else lista.appendChild(h("div", "lbl", "Por enviar a cocina"));
     c.forEach(function (l) {
-      var it = PROD[l.id], d = h("div", "linea"), tx = h("div", "d");
+      var it = prodDe(l.id), d = h("div", "linea"), tx = h("div", "d");
       tx.appendChild(document.createTextNode(l.n + (l.tam ? " (" + l.tam + ")" : "")));
       var det = [];
       if (l.mitad && PROD[l.mitad]) det.push("½ " + l.n + " + ½ " + PROD[l.mitad].n);
