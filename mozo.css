@@ -276,3 +276,9 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
 .cobro-h{align-items:center;gap:8px}.cobro-h .btn{height:36px;flex:0 0 auto}
 .metodos-c{display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .barra-ped .btn.imprimir{height:54px;font-size:17px;flex:1.4}
+/* Cargos adicionales (solo mozo) */
+.cargos{margin:18px 0 8px;border:1px dashed var(--oro-claro);border-radius:12px;padding:0 10px}
+.cargos>summary{cursor:pointer;list-style:none;padding:12px 2px;font-size:15px;font-weight:800;color:var(--vino)}
+.cargos>summary::-webkit-details-marker{display:none}
+.cargos[open]>summary{border-bottom:1px solid var(--oro-claro);margin-bottom:10px}
+.cargos .grid{margin-bottom:10px}
