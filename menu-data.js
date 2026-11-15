@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:42:48-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T20:17:37-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -3037,7 +3037,16 @@ window.CARTA = {
        "id": "vini-sangria",
        "n": "Sangria",
        "g": "sangría",
-       "p": 55,
+       "t": [
+        [
+         "Jarra",
+         55
+        ],
+        [
+         "Media Jarra",
+         30
+        ]
+       ],
        "al": [
         "sulfitos"
        ],
@@ -3234,5 +3243,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-14T19:42:48-05:00"
+ "publicado": "2026-11-14T20:17:37-05:00"
 };
