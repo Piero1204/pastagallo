@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-13T23:36:16-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:14:53-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -39,7 +39,7 @@ window.CARTA = {
    ],
    "5": [
     "18:00",
-    "23:59"
+    "23:00"
    ],
    "6": [
     "18:00",
@@ -2522,6 +2522,7 @@ window.CARTA = {
        "g": "Con ensalada y papas fritas",
        "d": "Chuleta de cerdo.",
        "p": 38,
+       "agotado": true,
        "foto": "https://images.unsplash.com/photo-1612871689527-2a6145cc9e86?w=700&q=70&auto=format&fit=crop",
        "n_en": "Pork Chop",
        "g_en": "With salad and French fries",
@@ -3203,5 +3204,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-13T23:36:16-05:00"
+ "publicado": "2026-11-14T19:14:53-05:00"
 };
