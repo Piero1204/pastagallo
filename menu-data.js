@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:24:40-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:41:42-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -746,6 +746,15 @@ window.CARTA = {
    "n": "Carbonara",
    "extra": 8,
    "agotado": false
+  },
+  {
+   "id": "pasta-huancaina",
+   "n": "Huancaína",
+   "extra": 4,
+   "agotado": false,
+   "op": [
+    "picante"
+   ]
   }
  ],
  "secciones": [
@@ -2393,6 +2402,20 @@ window.CARTA = {
        ],
        "foto": "https://images.unsplash.com/photo-1633337474564-1d9478ca4e2e?w=700&q=70&auto=format&fit=crop",
        "d_en": "The Roman classic, creamy, made with egg yolk and parmesan cheese."
+      },
+      {
+       "id": "pasta-huancaina",
+       "n": "Huancaína",
+       "d": "Emulsión sedosa y dorada de ají amarillo sofrito, queso fresco y notas lácteas. Aterciopelada al paladar, equilibra un picor sutil con una cremosidad envolvente, emblema de la cocina peruana.",
+       "extra": 4,
+       "tipo": "salsa",
+       "al": [
+        "lacteos"
+       ],
+       "op": [
+        "picante"
+       ],
+       "d_en": "A silky, golden emulsion of sautéed yellow chili, fresh cheese, and creamy notes. Velvety on the palate, it balances subtle heat with enveloping richness—an icon of Peruvian cuisine."
       }
      ]
     }
@@ -3210,5 +3233,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-14T19:24:40-05:00"
+ "publicado": "2026-11-14T19:41:42-05:00"
 };
