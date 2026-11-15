@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:41:42-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:42:25-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2412,6 +2412,7 @@ window.CARTA = {
        "al": [
         "lacteos"
        ],
+       "foto": "fotos/pasta-huancaina-1794703341661.jpg",
        "op": [
         "picante"
        ],
@@ -3233,5 +3234,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-14T19:41:42-05:00"
+ "publicado": "2026-11-14T19:42:25-05:00"
 };
