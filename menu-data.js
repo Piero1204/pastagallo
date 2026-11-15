@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:20:22-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T19:24:36-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -1042,6 +1042,7 @@ window.CARTA = {
        "g": "bruschetta de champiñones",
        "d": "Pan tostado coronado con funghi, rústico y lleno de sabor.",
        "p": 20,
+       "agotado": true,
        "al": [
         "gluten"
        ],
@@ -3208,5 +3209,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-14T19:20:22-05:00"
+ "publicado": "2026-11-14T19:24:36-05:00"
 };
