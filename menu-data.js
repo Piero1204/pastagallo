@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-14T20:59:39-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-15T19:19:03-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -661,6 +661,19 @@ window.CARTA = {
      "n": "Gianduia Nera",
      "n_en": "Dark gianduja",
      "p": 15
+    }
+   ]
+  },
+  "extras-pasta": {
+   "n": "Agregados para tu pasta",
+   "n_en": "Pasta extras",
+   "tipo": "varias",
+   "req": false,
+   "ops": [
+    {
+     "n": "Jamón",
+     "n_en": "Ham",
+     "p": 0
     }
    ]
   }
@@ -1552,6 +1565,7 @@ window.CARTA = {
       {
        "id": "pizze-speciale",
        "n": "Speciale",
+       "g": "La Especial",
        "d": "Carne, tocino, champiñones y aceitunas, para quien busca más sabor en cada porción.",
        "t": [
         [
@@ -1580,6 +1594,7 @@ window.CARTA = {
       {
        "id": "pizze-tentazione",
        "n": "Tentazione",
+       "g": "Tentación",
        "d": "Chorizo, tocino, champiñones y aceitunas. Difícil resistirse.",
        "t": [
         [
@@ -2043,7 +2058,6 @@ window.CARTA = {
        "g": "spaghetti a la huancaína con lomo",
        "d": "Dos mundos en un plato: spaghetti italianos con la cremosa salsa huancaína peruana y lomo. Elige tu nivel de picante.",
        "p": 60,
-       "agotado": true,
        "al": [
         "gluten",
         "lacteos"
@@ -2714,7 +2728,7 @@ window.CARTA = {
    "intro": "Se preparan al momento y se sirven solo en el local.",
    "pie": "",
    "alcohol": false,
-   "delivery": true,
+   "delivery": false,
    "mesa": true,
    "grupos": [
     {
@@ -3250,5 +3264,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-14T20:59:39-05:00"
+ "publicado": "2026-11-15T19:19:03-05:00"
 };
