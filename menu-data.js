@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-17T23:44:51-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-17T23:45:03-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2021,8 +2021,8 @@ window.CARTA = {
        "salsa": true,
        "destacado": "tris",
        "al": [
-        "gluten",
         "huevo",
+        "gluten",
         "lacteos"
        ],
        "foto": "fotos/pasta-tris-di-pasta-1794977086892.jpg",
@@ -3264,5 +3264,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-17T23:44:51-05:00"
+ "publicado": "2026-11-17T23:45:03-05:00"
 };
