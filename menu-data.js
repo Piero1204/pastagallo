@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T14:23:12-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T14:23:23-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2530,7 +2530,6 @@ window.CARTA = {
        "g": "Con ensalada y papas fritas",
        "d": "Una selección de churrasco, chuleta, pollo y chorizo, para probar un poco de todo.",
        "p": 60,
-       "agotado": true,
        "foto": "https://images.unsplash.com/photo-1702827487086-9ab8a573d825?w=700&q=70&auto=format&fit=crop",
        "n_en": "Mixed Grill",
        "g_en": "With salad and French fries",
@@ -3260,5 +3259,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T14:23:12-05:00"
+ "publicado": "2026-11-18T14:23:23-05:00"
 };
