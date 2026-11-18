@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-17T23:45:03-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-17T23:45:38-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -1056,7 +1056,7 @@ window.CARTA = {
         "lacteos",
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1619535860434-ba1d8fa12536?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/antipasti-pane-allaglio-con-formaggio-1794977134614.jpg",
        "g_en": "garlic bread with cheese",
        "d_en": "Our garlic bread, now with cheese."
       },
@@ -3264,5 +3264,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-17T23:45:03-05:00"
+ "publicado": "2026-11-17T23:45:38-05:00"
 };
