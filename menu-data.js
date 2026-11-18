@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-17T23:43:45-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-17T23:44:00-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -900,8 +900,8 @@ window.CARTA = {
        "d": "La mesa del fin de semana: una pizza familiar a elección, cuatro porciones de pan al ajo y una Pepsi de litro y medio.",
        "p": 65,
        "al": [
-        "gluten",
         "huevo",
+        "gluten",
         "lacteos"
        ],
        "foto": "fotos/promociones-combo-famiglia-1794977021255.jpg",
@@ -3264,5 +3264,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-17T23:43:45-05:00"
+ "publicado": "2026-11-17T23:44:00-05:00"
 };
