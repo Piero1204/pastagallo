@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T14:22:10-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T14:22:12-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -746,7 +746,7 @@ window.CARTA = {
    "id": "salsa-salsa-al-lomo",
    "n": "Lomo Saltado",
    "extra": 8,
-   "agotado": true
+   "agotado": false
   },
   {
    "id": "salsa-funghi-e-cardonada",
@@ -2385,7 +2385,6 @@ window.CARTA = {
        "d": "Como un lomo saltado sobre tu pasta: trozos de lomo salteados al sillao (salsa de soya).",
        "extra": 8,
        "tipo": "salsa",
-       "agotado": true,
        "al": [
         "soya"
        ],
@@ -2544,7 +2543,6 @@ window.CARTA = {
        "g": "Con ensalada y papas fritas",
        "d": "Lomo fino de 350 gramos, sellado a la plancha y servido en el término que prefieras.",
        "p": 60,
-       "agotado": true,
        "foto": "https://images.unsplash.com/photo-1600891964092-4316c288032e?w=700&q=70&auto=format&fit=crop",
        "op": [
         "termino"
@@ -3263,5 +3261,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T14:22:10-05:00"
+ "publicado": "2026-11-18T14:22:12-05:00"
 };
