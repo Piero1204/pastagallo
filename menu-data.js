@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:27:03-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:27:10-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2479,8 +2479,8 @@ window.CARTA = {
        "d": "La clásica de siempre: capas de pasta y carne, gratinada y reconfortante.",
        "p": 32,
        "al": [
-        "gluten",
         "huevo",
+        "gluten",
         "lacteos"
        ],
        "foto": "fotos/lasagne-lasagna-di-carne-1795062419715.jpg",
@@ -3286,5 +3286,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T23:27:03-05:00"
+ "publicado": "2026-11-18T23:27:10-05:00"
 };
