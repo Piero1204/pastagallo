@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T21:33:02-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:27:03-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2483,7 +2483,7 @@ window.CARTA = {
         "huevo",
         "lacteos"
        ],
-       "foto": "https://images.unsplash.com/photo-1709429790175-b02bb1b19207?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/lasagne-lasagna-di-carne-1795062419715.jpg",
        "g_en": "beef lasagna",
        "d_en": "The classic: layers of pasta and beef, gratinated and comforting."
       },
@@ -3286,5 +3286,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T21:33:02-05:00"
+ "publicado": "2026-11-18T23:27:03-05:00"
 };
