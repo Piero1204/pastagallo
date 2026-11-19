@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:29:34-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:30:02-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2201,17 +2201,17 @@ window.CARTA = {
        "id": "pasta-ravioli-di-formaggio",
        "n": "Ravioli di Ricotta",
        "g": "ravioles de ricotta",
-       "d": "Ravioles rellenos de ricotta, suaves y cremosos.",
+       "d": "Ravioles rellenos de ricotta y espinaca, suaves y cremosos.",
        "p": 32,
        "salsa": true,
        "al": [
-        "gluten",
         "huevo",
+        "gluten",
         "lacteos"
        ],
        "foto": "fotos/pasta-ravioli-di-formaggio-1795062570951.jpg",
        "g_en": "ricotta ravioli",
-       "d_en": "Ricotta-filled ravioli, soft and creamy."
+       "d_en": "Ricotta-filled ravioli and spinach, soft and creamy."
       },
       {
        "id": "pasta-raviolini",
@@ -3286,5 +3286,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T23:29:34-05:00"
+ "publicado": "2026-11-18T23:30:02-05:00"
 };
