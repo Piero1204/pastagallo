@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:27:10-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:27:30-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2851,7 +2851,7 @@ window.CARTA = {
          9
         ]
        ],
-       "foto": "https://images.unsplash.com/photo-1546751706-81c567470489?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/caffe-maracuya-1795062446368.jpg",
        "canal": "local",
        "op": [
         "temp-limonada"
@@ -3286,5 +3286,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T23:27:10-05:00"
+ "publicado": "2026-11-18T23:27:30-05:00"
 };
