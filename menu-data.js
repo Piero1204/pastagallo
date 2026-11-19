@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:27:30-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:29:00-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2193,7 +2193,7 @@ window.CARTA = {
         "gluten",
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1594610352113-ad218529cfb7?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/pasta-ravioli-di-carne-1795062531153.jpg",
        "g_en": "beef ravioli",
        "d_en": "Beef-filled ravioli, with the sauce of your choice."
       },
@@ -3286,5 +3286,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T23:27:30-05:00"
+ "publicado": "2026-11-18T23:29:00-05:00"
 };
