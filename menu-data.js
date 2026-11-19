@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T21:30:00-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T21:30:41-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2820,11 +2820,11 @@ window.CARTA = {
        "d": "Fresca y cítrica. Helada, a temperatura ambiente o frozen.",
        "t": [
         [
-         "1 Lt.",
+         "1 Litro",
          18
         ],
         [
-         "1/2 Lt.",
+         "Medio Litro",
          9
         ]
        ],
@@ -3277,5 +3277,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T21:30:00-05:00"
+ "publicado": "2026-11-18T21:30:41-05:00"
 };
