@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T21:30:41-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T21:33:02-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2918,12 +2918,21 @@ window.CARTA = {
       },
       {
        "id": "caffe-ghiaccio",
-       "n": "Ghiaccio",
-       "g": "hielo",
+       "n": "Hielo",
        "d": "Hielo adicional para tu bebida.",
-       "p": 3,
+       "t": [
+        [
+         "Grande",
+         3
+        ],
+        [
+         "Pequeño",
+         1
+        ]
+       ],
        "foto": "https://images.unsplash.com/photo-1782179186180-357225891bb0?w=700&q=70&auto=format&fit=crop",
        "canal": "local",
+       "n_en": "Ice",
        "g_en": "ice",
        "d_en": "Extra ice for your drink."
       }
@@ -3277,5 +3286,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T21:30:41-05:00"
+ "publicado": "2026-11-18T21:33:02-05:00"
 };
