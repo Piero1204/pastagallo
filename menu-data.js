@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:30:02-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:31:06-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2024,7 +2024,7 @@ window.CARTA = {
         "gluten",
         "lacteos"
        ],
-       "foto": "fotos/pasta-tris-di-pasta-1794977086892.jpg",
+       "foto": "fotos/pasta-tris-di-pasta-1795062662978.jpg",
        "g_en": "three pastas on one plate",
        "d_en": "A long plate with our classics: fettuccine, lasagna and raviolini."
       }
@@ -3286,5 +3286,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T23:30:02-05:00"
+ "publicado": "2026-11-18T23:31:06-05:00"
 };
