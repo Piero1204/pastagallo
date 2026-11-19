@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:29:11-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T23:29:34-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2209,7 +2209,7 @@ window.CARTA = {
         "huevo",
         "lacteos"
        ],
-       "foto": "https://images.unsplash.com/photo-1628885363743-fbf9c98d4196?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/pasta-ravioli-di-formaggio-1795062570951.jpg",
        "g_en": "ricotta ravioli",
        "d_en": "Ricotta-filled ravioli, soft and creamy."
       },
@@ -3286,5 +3286,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T23:29:11-05:00"
+ "publicado": "2026-11-18T23:29:34-05:00"
 };
