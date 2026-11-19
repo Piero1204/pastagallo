@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T14:23:23-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-18T21:23:09-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -2832,7 +2832,16 @@ window.CARTA = {
        "n": "Maracuyá",
        "g": "refresco de maracuyá",
        "d": "El sabor tropical y vibrante del maracuyá. Helada, a temperatura ambiente o frozen.",
-       "p": 18,
+       "t": [
+        [
+         "1 Lt.",
+         18
+        ],
+        [
+         "1/2 Lt.",
+         9
+        ]
+       ],
        "foto": "https://images.unsplash.com/photo-1546751706-81c567470489?w=700&q=70&auto=format&fit=crop",
        "canal": "local",
        "op": [
@@ -3259,5 +3268,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-18T14:23:23-05:00"
+ "publicado": "2026-11-18T21:23:09-05:00"
 };
