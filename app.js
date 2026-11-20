@@ -27,6 +27,11 @@
     var v = Number(n);
     return Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2);
   }
+  /* % de rebaja respecto al precio de antes (oferta del día) */
+  function pctEl(antes, ahora) {
+    var p = Math.round((antes - ahora) / antes * 100);
+    return p > 0 ? h("span", "pct", "\u2212" + p + "%") : null;
+  }
   function precioEl(n) {
     var s = h("span", "precio");
     s.appendChild(h("small", null, "S/"));
@@ -279,10 +284,14 @@
     top.appendChild(h("h4", "it__n", tx(it, "n")));
     if (it.p != null && !it.t) {
       top.appendChild(h("span", "it__pts"));
-      if (it.pa != null && it.pa > it.p) { var pa = precioEl(it.pa); pa.className += " precio--antes"; pa.title = t("antes"); top.appendChild(pa); }
+      if (it.pa != null && it.pa > it.p) {
+        var pa = precioEl(it.pa); pa.className += " precio--antes"; pa.title = t("antes"); top.appendChild(pa);
+        var pc = pctEl(it.pa, it.p); if (pc) top.appendChild(pc);
+      }
       top.appendChild(precioEl(it.p));
     }
     a.appendChild(top);
+    if (it.destacado === "hoy" && !it.agotado) a.appendChild(h("span", "hoy-tag", t("soloHoy")));
     if (tx(it, "g")) a.appendChild(h("p", "it__g", tx(it, "g")));
     if (tx(it, "d")) a.appendChild(h("p", "it__d", tx(it, "d")));
     var inc = I.lang === "en" && it.inc_en ? it.inc_en : it.inc;
@@ -301,7 +310,13 @@
     if (it.t) {
       var tb = h("div", "tam");
       it.t.forEach(function (x) {
-        var c = h("div"); c.appendChild(h("span", null, x[0])); c.appendChild(precioEl(x[1])); tb.appendChild(c);
+        var c = h("div"); c.appendChild(h("span", null, x[0]));
+        var ant = it.ta && it.ta.filter(function (y) { return y[0] === x[0]; })[0];
+        if (ant && ant[1] > x[1]) {
+          var pt = precioEl(ant[1]); pt.className += " precio--antes"; pt.title = t("antes"); c.appendChild(pt);
+          var pc2 = pctEl(ant[1], x[1]); if (pc2) c.appendChild(pc2);
+        }
+        c.appendChild(precioEl(x[1])); tb.appendChild(c);
       });
       a.appendChild(tb);
     }
@@ -365,7 +380,7 @@
     c.appendChild(h("h2", null, tx(sec, "titulo")));
     c.appendChild(h("div", "sub", tx(sec, "subtitulo")));
     c.appendChild(ornamento());
-    if (tx(sec, "intro")) c.appendChild(h("p", "intro", tx(sec, "intro")));
+    if (tx(sec, "intro")) c.appendChild(h("p", "intro" + (tx(sec, "intro").charAt(0) === "\u26a0" ? " intro--aviso" : ""), tx(sec, "intro")));
     if (sec.id === "promociones") { var sem = semanaPromos(grupos); if (sem) c.appendChild(sem); }
     cab.appendChild(c); s.appendChild(cab);
 

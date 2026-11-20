@@ -596,7 +596,7 @@ function construirCarta_(cfg, secciones, productos, opciones) {
       if (p.glosa) it.g = String(p.glosa);
       if (p.descripcion) it.d = String(p.descripcion);
       var tams = parsearTamanos_(p.tamanos);
-      if (tams.length) it.t = tams; else if (num_(p.precio) != null) it.p = num_(p.precio);
+      if (tams.length) { it.t = tams; var ta = parsearTamanos_(p.precio_antes); if (ta.length) it.ta = ta; } else if (num_(p.precio) != null) it.p = num_(p.precio);
       if (num_(p.recargo)) it.extra = num_(p.recargo);
       if (p.tipo === 'salsa') it.tipo = 'salsa';
       if (esSi_(p.requiere_salsa)) it.salsa = true;
@@ -737,6 +737,7 @@ function doGet(e) {
     try { return json_(cuentaPublica_(texto_(e.parameter.m, 6), texto_(e.parameter.cod || e.parameter.c, 20))); }
     catch (err) { return json_({ ok: false, error: 'No pudimos leer la cuenta.' }); }
   }
+  ofertaVencida_(); // quita la oferta del día si ya pasó
   var cfg = leerConfig_();
   var momento = momentoActual_(cfg);
   var agotados = [];
@@ -791,6 +792,7 @@ function siguienteNumeroDia_(ahora, cfg) {
 /** mozo = { id, nombre } solo cuando lo llama el panel del mozo (Mozo.gs), nunca desde el body. */
 function registrarPedido_(body, mozo) {
   if (body && body.web) return { ok: true, numero: 0 }; // trampa para robots
+  ofertaVencida_(); // quita la oferta del día si ya pasó
   if (JSON.stringify(body).length > 20000) return { ok: false, error: 'Pedido demasiado grande.' };
 
   var cache = CacheService.getScriptCache();
