@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-20T17:06:27-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-20T17:06:49-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -785,43 +785,6 @@ window.CARTA = {
      "titulo": "",
      "nota": "",
      "items": [
-      {
-       "id": "promociones-combo-famiglia",
-       "n": "La Tavolata",
-       "g": "pizza familiar + pan al ajo + Pepsi 1.5 L",
-       "d": "La mesa del fin de semana: una pizza familiar a elección, cuatro porciones de pan al ajo y una Pepsi de litro y medio.",
-       "p": 65,
-       "al": [
-        "huevo",
-        "gluten",
-        "lacteos"
-       ],
-       "foto": "fotos/promociones-combo-famiglia-1794977021255.jpg",
-       "canal": "delivery",
-       "op": [
-        "combo-pizza-familiar",
-        "temp-bebida"
-       ],
-       "g_en": "family pizza + garlic bread + 1.5 L Pepsi",
-       "d_en": "The weekend table: a family-size pizza of your choice, four portions of garlic bread and a 1.5-litre Pepsi.",
-       "inc": [
-        "Pizza familiar a elección",
-        "4 porciones de pan al ajo (8 rebanadas)",
-        "Pepsi de 1.5 litros"
-       ],
-       "inc_en": [
-        "Family-size pizza of your choice",
-        "4 portions of garlic bread (8 slices)",
-        "1.5-litre Pepsi"
-       ],
-       "promo": {
-        "dias": [
-         0,
-         5,
-         6
-        ]
-       }
-      },
       {
        "id": "promociones-il-classico",
        "n": "Il Classico",
@@ -3472,5 +3435,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-20T17:06:27-05:00"
+ "publicado": "2026-11-20T17:06:49-05:00"
 };
