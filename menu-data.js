@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-20T17:06:16-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-20T17:06:27-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -785,44 +785,6 @@ window.CARTA = {
      "titulo": "",
      "nota": "",
      "items": [
-      {
-       "id": "promociones-combo-per-due",
-       "n": "Cena per Due",
-       "g": "pizza mediana + fettuccine + pan al ajo + Pepsi",
-       "d": "Para compartir entre dos: una pizza mediana a elección y un plato de fettuccine all’Alfredo, con pan al ajo y Pepsi. El fettuccine verde está sujeto a disponibilidad.",
-       "p": 60,
-       "al": [
-        "huevo",
-        "gluten",
-        "lacteos"
-       ],
-       "foto": "fotos/ref-combo-per-due.jpg",
-       "canal": "delivery",
-       "op": [
-        "combo-pizza-mediana",
-        "fettuccine-tipo",
-        "temp-bebida"
-       ],
-       "g_en": "medium pizza + fettuccine + garlic bread + Pepsi",
-       "d_en": "To share between two: a medium pizza of your choice and a plate of fettuccine Alfredo, with garlic bread and Pepsi. Green fettuccine is subject to availability.",
-       "inc": [
-        "Pizza mediana a elección",
-        "Fettuccine all’Alfredo, clásico o verde",
-        "2 porciones de pan al ajo (4 rebanadas)",
-        "Pepsi de ½ litro"
-       ],
-       "inc_en": [
-        "Medium pizza of your choice",
-        "Fettuccine Alfredo, classic or green",
-        "2 portions of garlic bread (4 slices)",
-        "½-litre Pepsi"
-       ],
-       "promo": {
-        "dias": [
-         4
-        ]
-       }
-      },
       {
        "id": "promociones-combo-famiglia",
        "n": "La Tavolata",
@@ -3510,5 +3472,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-20T17:06:16-05:00"
+ "publicado": "2026-11-20T17:06:27-05:00"
 };
