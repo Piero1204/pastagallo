@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-21T00:11:02-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-21T16:01:17-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -780,7 +780,49 @@ window.CARTA = {
    "alcohol": false,
    "delivery": true,
    "mesa": false,
-   "grupos": [],
+   "grupos": [
+    {
+     "titulo": "",
+     "nota": "",
+     "items": [
+      {
+       "id": "promociones-combo-personale",
+       "n": "Pizza per Uno",
+       "g": "pizza personal + pan al ajo + Pepsi",
+       "d": "Tu pizza personal, Hawaiana o Americana, con dos porciones de pan al ajo y una Pepsi helada.",
+       "p": 30,
+       "al": [
+        "huevo",
+        "gluten",
+        "lacteos"
+       ],
+       "foto": "fotos/promociones-combo-personale-1794534247247.jpg",
+       "canal": "delivery",
+       "op": [
+        "combo-pizza-personal",
+        "temp-bebida"
+       ],
+       "g_en": "personal pizza + garlic bread + Pepsi",
+       "d_en": "Your personal pizza, Hawaiian or Americana, with two portions of garlic bread and a cold Pepsi.",
+       "inc": [
+        "Pizza personal Hawaiana o Americana",
+        "2 porciones de pan al ajo (4 rebanadas)",
+        "Pepsi de ½ litro"
+       ],
+       "inc_en": [
+        "Personal Hawaiian or Americana pizza",
+        "2 portions of garlic bread (4 slices)",
+        "½-litre Pepsi"
+       ],
+       "promo": {
+        "dias": [
+         2
+        ]
+       }
+      }
+     ]
+    }
+   ],
    "titulo_en": "Le Nostre Proposte",
    "subtitulo_en": "To take away · every day has its own",
    "intro_en": "Delivery or pick-up.",
@@ -3056,5 +3098,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-21T00:11:02-05:00"
+ "publicado": "2026-11-21T16:01:17-05:00"
 };
