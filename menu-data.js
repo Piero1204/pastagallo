@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-20T17:07:01-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-21T00:11:02-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -1238,7 +1238,7 @@ window.CARTA = {
    "id": "pizze",
    "titulo": "Pizze",
    "subtitulo": "Nuestras pizzas de la casa",
-   "intro": "⚠ Hoy nuestras pizzas son precocidas por la falta de luz. Gracias por tu comprensión.",
+   "intro": "Cada pizza se elige en tres tamaños, para ti o para toda la mesa.",
    "pie": "Puedes agregar ingredientes adicionales al pedir · S/ 4.00 c/u",
    "alcohol": false,
    "delivery": true,
@@ -1255,20 +1255,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         17
-        ],
-        [
-         "Media",
-         28
-        ],
-        [
-         "Famiglia",
-         45
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          22
         ],
         [
@@ -1280,7 +1266,6 @@ window.CARTA = {
          50
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1298,20 +1283,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         20
-        ],
-        [
-         "Media",
-         30
-        ],
-        [
-         "Famiglia",
-         50
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          25
         ],
         [
@@ -1323,7 +1294,6 @@ window.CARTA = {
          55
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1341,20 +1311,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         25
-        ],
-        [
-         "Media",
-         35
-        ],
-        [
-         "Famiglia",
-         55
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          30
         ],
         [
@@ -1366,7 +1322,6 @@ window.CARTA = {
          60
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1385,20 +1340,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         25
-        ],
-        [
-         "Media",
-         35
-        ],
-        [
-         "Famiglia",
-         55
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          30
         ],
         [
@@ -1410,7 +1351,6 @@ window.CARTA = {
          60
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1429,20 +1369,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         25
-        ],
-        [
-         "Media",
-         35
-        ],
-        [
-         "Famiglia",
-         55
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          30
         ],
         [
@@ -1454,7 +1380,6 @@ window.CARTA = {
          60
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1472,20 +1397,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         27
-        ],
-        [
-         "Media",
-         37
-        ],
-        [
-         "Famiglia",
-         57
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          32
         ],
         [
@@ -1497,7 +1408,6 @@ window.CARTA = {
          62
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1515,20 +1425,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         25
-        ],
-        [
-         "Media",
-         35
-        ],
-        [
-         "Famiglia",
-         55
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          30
         ],
         [
@@ -1540,7 +1436,6 @@ window.CARTA = {
          60
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1559,20 +1454,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         25
-        ],
-        [
-         "Media",
-         35
-        ],
-        [
-         "Famiglia",
-         55
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          30
         ],
         [
@@ -1584,7 +1465,6 @@ window.CARTA = {
          60
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1604,20 +1484,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         27
-        ],
-        [
-         "Media",
-         37
-        ],
-        [
-         "Famiglia",
-         57
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          32
         ],
         [
@@ -1629,7 +1495,6 @@ window.CARTA = {
          62
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1648,20 +1513,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         27
-        ],
-        [
-         "Media",
-         37
-        ],
-        [
-         "Famiglia",
-         60
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          32
         ],
         [
@@ -1673,7 +1524,6 @@ window.CARTA = {
          65
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1692,20 +1542,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
-        ],
-        [
-         "Media",
-         40
-        ],
-        [
-         "Famiglia",
-         61
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          35
         ],
         [
@@ -1717,7 +1553,6 @@ window.CARTA = {
          66
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos",
@@ -1737,20 +1572,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
-        ],
-        [
-         "Media",
-         40
-        ],
-        [
-         "Famiglia",
-         61
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          35
         ],
         [
@@ -1762,7 +1583,6 @@ window.CARTA = {
          66
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1781,20 +1601,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
-        ],
-        [
-         "Media",
-         40
-        ],
-        [
-         "Famiglia",
-         65
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          35
         ],
         [
@@ -1806,7 +1612,6 @@ window.CARTA = {
          70
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1825,20 +1630,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         27
-        ],
-        [
-         "Media",
-         40
-        ],
-        [
-         "Famiglia",
-         70
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          32
         ],
         [
@@ -1850,7 +1641,6 @@ window.CARTA = {
          75
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos",
@@ -1870,20 +1660,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
-        ],
-        [
-         "Media",
-         40
-        ],
-        [
-         "Famiglia",
-         65
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          35
         ],
         [
@@ -1895,7 +1671,6 @@ window.CARTA = {
          70
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1914,20 +1689,6 @@ window.CARTA = {
        "t": [
         [
          "Personale",
-         30
-        ],
-        [
-         "Media",
-         40
-        ],
-        [
-         "Famiglia",
-         65
-        ]
-       ],
-       "ta": [
-        [
-         "Personale",
          35
         ],
         [
@@ -1939,7 +1700,6 @@ window.CARTA = {
          70
         ]
        ],
-       "destacado": "hoy",
        "al": [
         "gluten",
         "lacteos"
@@ -1955,7 +1715,7 @@ window.CARTA = {
    ],
    "titulo_en": "",
    "subtitulo_en": "Our house pizzas",
-   "intro_en": "⚠ Today our pizzas are pre-baked because of the power outage. Thank you for understanding.",
+   "intro_en": "Every pizza comes in three sizes, for you or for the whole table.",
    "pie_en": "Add extra toppings when ordering · S/ 4.00 each"
   },
   {
@@ -1977,16 +1737,14 @@ window.CARTA = {
        "n": "Fonte di Ravioli di Ricotta",
        "g": "fuente de ravioles de ricotta",
        "d": "Una fuente generosa de ravioles rellenos de ricotta, servida con la salsa de tu elección.",
-       "p": 55,
+       "p": 60,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "gluten",
         "huevo",
         "lacteos"
        ],
        "foto": "https://images.unsplash.com/photo-1659813952313-eb81e5b3fbdd?w=700&q=70&auto=format&fit=crop",
-       "pa": 60,
        "g_en": "platter of ricotta ravioli",
        "d_en": "A generous platter of ricotta-filled ravioli, served with the sauce of your choice."
       },
@@ -1995,15 +1753,13 @@ window.CARTA = {
        "n": "Fonte di Ravioli di Carne",
        "g": "fuente de ravioles de carne",
        "d": "Una fuente generosa de ravioles rellenos de carne, servida con la salsa de tu elección.",
-       "p": 55,
+       "p": 60,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "gluten",
         "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1778850620699-79ba3ff60bf0?w=700&q=70&auto=format&fit=crop",
-       "pa": 60,
        "g_en": "platter of beef ravioli",
        "d_en": "A generous platter of beef-filled ravioli, served with the sauce of your choice."
       },
@@ -2012,15 +1768,13 @@ window.CARTA = {
        "n": "Fonte di Fettuccine",
        "g": "fuente de fettuccine",
        "d": "Una fuente generosa de fettuccine, clásicos o verdes (de espinaca), servida con la salsa de tu elección.",
-       "p": 45,
+       "p": 50,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "gluten",
         "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1627207644206-a2040d60ecad?w=700&q=70&auto=format&fit=crop",
-       "pa": 50,
        "op": [
         "fettuccine-tipo"
        ],
@@ -2034,7 +1788,6 @@ window.CARTA = {
        "d": "Un plato largo que reúne nuestros clásicos: fettuccine, lasagna de carne y raviolini di carne.",
        "p": 34,
        "salsa": true,
-       "agotado": true,
        "destacado": "tris",
        "al": [
         "huevo",
@@ -2055,15 +1808,13 @@ window.CARTA = {
        "id": "pasta-fettuccine-allalfredo-con-lomo",
        "n": "Fettuccine all’Alfredo con Lomo",
        "d": "Fettuccine bañados en la cremosa salsa Alfredo y coronados con lomo, en el término que prefieras.",
-       "p": 50,
-       "destacado": "hoy",
+       "p": 55,
        "al": [
         "gluten",
         "lacteos",
         "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1791202978575-21e01ab3a6e5?w=700&q=70&auto=format&fit=crop",
-       "pa": 55,
        "op": [
         "termino"
        ],
@@ -2074,14 +1825,12 @@ window.CARTA = {
        "n": "Spaghetti alla Huancaina con Lomo",
        "g": "spaghetti a la huancaína con lomo",
        "d": "Dos mundos en un plato: spaghetti italianos con la cremosa salsa huancaína peruana y lomo. Elige tu nivel de picante.",
-       "p": 55,
-       "destacado": "hoy",
+       "p": 60,
        "al": [
         "gluten",
         "lacteos"
        ],
        "foto": "https://images.unsplash.com/photo-1581228258201-fe6e5861d1f6?w=700&q=70&auto=format&fit=crop",
-       "pa": 60,
        "op": [
         "picante"
        ],
@@ -2093,15 +1842,13 @@ window.CARTA = {
        "n": "Spaghetti ai Gamberi",
        "g": "spaghetti con langostinos",
        "d": "Spaghetti con langostinos en salsa roja (de tomate) o blanca (bechamel), a tu elección, con el nivel de picante que prefieras.",
-       "p": 55,
-       "destacado": "hoy",
+       "p": 60,
        "al": [
         "gluten",
         "mariscos",
         "lacteos"
        ],
        "foto": "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w=700&q=70&auto=format&fit=crop",
-       "pa": 60,
        "op": [
         "salsa-gamberi",
         "picante"
@@ -2119,15 +1866,13 @@ window.CARTA = {
        "id": "pasta-fettuccine",
        "n": "Fettuccine",
        "d": "Cintas largas y planas, ideales para las salsas cremosas. Clásicos o verdes (de espinaca).",
-       "p": 25,
+       "p": 30,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "gluten",
         "huevo"
        ],
        "foto": "fotos/pasta-fettuccine-1794629537790.jpg",
-       "pa": 30,
        "op": [
         "fettuccine-tipo"
        ],
@@ -2137,30 +1882,26 @@ window.CARTA = {
        "id": "pasta-pappardelle",
        "n": "Pappardelle",
        "d": "Anchas cintas de tradición toscana, hechas para salsas con carácter.",
-       "p": 25,
+       "p": 30,
        "salsa": true,
        "agotado": true,
-       "destacado": "hoy",
        "al": [
         "gluten",
         "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1601751911508-fd69ffc08fa2?w=700&q=70&auto=format&fit=crop",
-       "pa": 30,
        "d_en": "Wide ribbons from the Tuscan tradition, made for hearty sauces."
       },
       {
        "id": "pasta-spaghetti",
        "n": "Spaghetti",
        "d": "El clásico entre los clásicos, siempre bienvenido.",
-       "p": 25,
+       "p": 30,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "gluten"
        ],
        "foto": "https://images.unsplash.com/photo-1627042633145-b780d842ba45?w=700&q=70&auto=format&fit=crop",
-       "pa": 30,
        "d_en": "The classic of classics, always welcome."
       },
       {
@@ -2168,14 +1909,12 @@ window.CARTA = {
        "n": "Conchiglie",
        "g": "conchitas",
        "d": "Pasta en forma de concha que guarda la salsa en cada bocado.",
-       "p": 25,
+       "p": 30,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "gluten"
        ],
        "foto": "https://images.unsplash.com/photo-1606503854923-95e45999ae2f?w=700&q=70&auto=format&fit=crop",
-       "pa": 30,
        "g_en": "shells",
        "d_en": "Shell-shaped pasta that holds the sauce in every bite."
       },
@@ -2184,14 +1923,12 @@ window.CARTA = {
        "n": "Gomiti",
        "g": "coditos",
        "d": "Pequeños codos de pasta: sencillos, simpáticos y muy queridos.",
-       "p": 25,
+       "p": 30,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "gluten"
        ],
        "foto": "https://images.unsplash.com/photo-1708184528301-b0dad28dded5?w=700&q=70&auto=format&fit=crop",
-       "pa": 30,
        "g_en": "elbows",
        "d_en": "Little pasta elbows: simple, charming and much loved."
       },
@@ -2200,14 +1937,12 @@ window.CARTA = {
        "n": "Maccheroni",
        "g": "macarrones",
        "d": "Tubos cortos de pasta que abrazan la salsa.",
-       "p": 25,
+       "p": 30,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "gluten"
        ],
        "foto": "https://images.unsplash.com/photo-1707870678076-40ba56a65ece?w=700&q=70&auto=format&fit=crop",
-       "pa": 30,
        "g_en": "macaroni",
        "d_en": "Short pasta tubes that embrace the sauce."
       }
@@ -2222,15 +1957,13 @@ window.CARTA = {
        "n": "Ravioli di Carne",
        "g": "ravioles de carne",
        "d": "Ravioles rellenos de carne, con la salsa de tu elección.",
-       "p": 27,
+       "p": 32,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "huevo",
         "gluten"
        ],
        "foto": "fotos/pasta-ravioli-di-carne-1795062531153.jpg",
-       "pa": 32,
        "g_en": "beef ravioli",
        "d_en": "Beef-filled ravioli, with the sauce of your choice."
       },
@@ -2239,16 +1972,14 @@ window.CARTA = {
        "n": "Ravioli di Ricotta",
        "g": "ravioles de ricotta",
        "d": "Ravioles rellenos de ricotta y espinaca, suaves y cremosos.",
-       "p": 27,
+       "p": 32,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "huevo",
         "gluten",
         "lacteos"
        ],
        "foto": "fotos/pasta-ravioli-di-formaggio-1795062570951.jpg",
-       "pa": 32,
        "g_en": "ricotta ravioli",
        "d_en": "Ricotta-filled ravioli and spinach, soft and creamy."
       },
@@ -2257,15 +1988,13 @@ window.CARTA = {
        "n": "Raviolini",
        "g": "ravioles pequeños",
        "d": "Como nuestros ravioli, pero en tamaño pequeño: más bocados en cada plato.",
-       "p": 29,
+       "p": 34,
        "salsa": true,
-       "destacado": "hoy",
        "al": [
         "gluten",
         "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1665761543682-6305ccc5398b?w=700&q=70&auto=format&fit=crop",
-       "pa": 34,
        "g_en": "small ravioli",
        "d_en": "Like our ravioli, but smaller: more bites on every plate."
       },
@@ -2274,16 +2003,14 @@ window.CARTA = {
        "n": "Tortellini di Carne",
        "g": "tortellini de carne",
        "d": "Pequeños anillos de pasta rellenos de carne, con el mismo relleno de nuestros ravioli di carne. Tradición de Emilia-Romaña.",
-       "p": 27,
+       "p": 32,
        "salsa": true,
        "agotado": true,
-       "destacado": "hoy",
        "al": [
         "gluten",
         "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1628885405379-5d58de03edb0?w=700&q=70&auto=format&fit=crop",
-       "pa": 32,
        "g_en": "beef tortellini",
        "d_en": "Little rings of pasta filled with beef, the same filling as our beef ravioli. A tradition from Emilia-Romagna."
       },
@@ -2292,15 +2019,13 @@ window.CARTA = {
        "n": "Gnocchi di Patate",
        "g": "ñoquis de papa",
        "d": "Suaves ñoquis de papa, tiernos como una nube.",
-       "p": 25,
+       "p": 30,
        "salsa": true,
        "agotado": true,
-       "destacado": "hoy",
        "al": [
         "gluten"
        ],
        "foto": "https://images.unsplash.com/photo-1579349443343-73da56a71a20?w=700&q=70&auto=format&fit=crop",
-       "pa": 30,
        "g_en": "potato gnocchi",
        "d_en": "Soft potato gnocchi, light as a cloud."
       }
@@ -2508,7 +2233,6 @@ window.CARTA = {
        "g": "lasagna de espinaca",
        "d": "Capas de pasta y espinaca, gratinada hasta quedar dorada.",
        "p": 34,
-       "agotado": true,
        "al": [
         "gluten",
         "huevo",
@@ -2524,7 +2248,6 @@ window.CARTA = {
        "g": "lasagna de carne",
        "d": "La clásica de siempre: capas de pasta y carne, gratinada y reconfortante.",
        "p": 32,
-       "agotado": true,
        "al": [
         "huevo",
         "gluten",
@@ -2540,7 +2263,6 @@ window.CARTA = {
        "g": "lasagna de espárragos",
        "d": "Capas de pasta con espárragos, delicada y gratinada.",
        "p": 36,
-       "agotado": true,
        "al": [
         "gluten",
         "huevo",
@@ -2577,10 +2299,8 @@ window.CARTA = {
        "n": "Parrilla Mixta",
        "g": "Con ensalada y papas fritas",
        "d": "Una selección de churrasco, chuleta, pollo y chorizo, para probar un poco de todo.",
-       "p": 55,
-       "destacado": "hoy",
+       "p": 60,
        "foto": "https://images.unsplash.com/photo-1702827487086-9ab8a573d825?w=700&q=70&auto=format&fit=crop",
-       "pa": 60,
        "n_en": "Mixed Grill",
        "g_en": "With salad and French fries",
        "d_en": "A selection of steak, pork chop, chicken and chorizo, to try a little of everything."
@@ -2590,10 +2310,8 @@ window.CARTA = {
        "n": "Lomo Fino a la Plancha",
        "g": "Con ensalada y papas fritas",
        "d": "Lomo fino de 350 gramos, sellado a la plancha y servido en el término que prefieras.",
-       "p": 55,
-       "destacado": "hoy",
+       "p": 60,
        "foto": "https://images.unsplash.com/photo-1600891964092-4316c288032e?w=700&q=70&auto=format&fit=crop",
-       "pa": 60,
        "op": [
         "termino"
        ],
@@ -2606,10 +2324,8 @@ window.CARTA = {
        "n": "Churrasco",
        "g": "Con ensalada y papas fritas",
        "d": "Churrasco de res.",
-       "p": 33,
-       "destacado": "hoy",
+       "p": 38,
        "foto": "https://images.unsplash.com/photo-1662499754738-e0d6ac84f308?w=700&q=70&auto=format&fit=crop",
-       "pa": 38,
        "n_en": "Steak",
        "g_en": "With salad and French fries",
        "d_en": "Beef steak."
@@ -2619,11 +2335,9 @@ window.CARTA = {
        "n": "Chuleta",
        "g": "Con ensalada y papas fritas",
        "d": "Chuleta de cerdo.",
-       "p": 33,
+       "p": 38,
        "agotado": true,
-       "destacado": "hoy",
        "foto": "https://images.unsplash.com/photo-1612871689527-2a6145cc9e86?w=700&q=70&auto=format&fit=crop",
-       "pa": 38,
        "n_en": "Pork Chop",
        "g_en": "With salad and French fries",
        "d_en": "Pork chop."
@@ -2633,10 +2347,8 @@ window.CARTA = {
        "n": "Pollo a la Plancha",
        "g": "Con papas fritas y ensalada",
        "d": "Pollo a la plancha, servido con papas fritas y ensalada.",
-       "p": 25,
-       "destacado": "hoy",
+       "p": 30,
        "foto": "https://images.unsplash.com/photo-1670398564097-0762e1b30b3a?w=700&q=70&auto=format&fit=crop",
-       "pa": 30,
        "n_en": "Grilled Chicken",
        "g_en": "With French fries and salad",
        "d_en": "Grilled chicken, served with French fries and salad."
@@ -2646,14 +2358,12 @@ window.CARTA = {
        "n": "Milanesa de Pollo",
        "g": "Con papas fritas",
        "d": "Pollo apanado, dorado y crocante.",
-       "p": 25,
-       "destacado": "hoy",
+       "p": 30,
        "al": [
         "gluten",
         "huevo"
        ],
        "foto": "https://images.unsplash.com/photo-1682970078535-cd0cf994ee96?w=700&q=70&auto=format&fit=crop",
-       "pa": 30,
        "n_en": "Chicken Milanese",
        "g_en": "With French fries",
        "d_en": "Breaded chicken, golden and crispy."
@@ -2663,10 +2373,8 @@ window.CARTA = {
        "n": "Porción de Chorizo",
        "g": "Con papas fritas",
        "d": "Incluye 3 chorizos.",
-       "p": 17,
-       "destacado": "hoy",
+       "p": 22,
        "foto": "https://images.unsplash.com/photo-1750461325551-02b7ea57625a?w=700&q=70&auto=format&fit=crop",
-       "pa": 22,
        "n_en": "Chorizo Portion",
        "g_en": "With French fries",
        "d_en": "Includes 3 chorizo sausages."
@@ -2890,7 +2598,6 @@ window.CARTA = {
          9
         ]
        ],
-       "agotado": true,
        "foto": "https://images.unsplash.com/photo-1575596510825-f748919a2bf7?w=700&q=70&auto=format&fit=crop",
        "canal": "local",
        "op": [
@@ -2914,7 +2621,6 @@ window.CARTA = {
          9
         ]
        ],
-       "agotado": true,
        "foto": "fotos/caffe-maracuya-1795062446368.jpg",
        "canal": "local",
        "op": [
@@ -3350,5 +3056,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-20T17:07:01-05:00"
+ "publicado": "2026-11-21T00:11:02-05:00"
 };
