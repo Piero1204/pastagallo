@@ -503,3 +503,22 @@ body.con-carrito .repetir{display:none}
 .tam>div .precio--antes{display:block;margin:0 0 3px;font-size:.95rem}
 .hoy-tag{display:block;width:max-content;max-width:100%;margin:8px 6px 0 0;font:700 .66rem/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--crema-3);background:var(--vino);padding:5px 8px;border-radius:2px}
 .sec__cab .intro--aviso{margin:18px auto 0;max-width:34ch;padding:11px 16px;border:1px solid var(--oro-claro);background:rgba(201,164,92,.16);color:#f6ebcf;font:600 .9rem/1.45 var(--sans);text-align:center;font-style:normal;border-radius:2px}
+
+/* =================== PEDIDO: sugerencias con foto, entrega, programar, resumen =================== */
+.sugiere__it{width:132px;padding:0 0 8px;gap:2px;overflow:hidden}
+.sugiere__img{display:block;width:100%;height:84px;object-fit:cover;background:#e9dcc2;margin-bottom:4px}
+.sugiere__n,.sugiere__p{padding:0 10px}
+.sugiere__n{display:block}
+.campo-sel{width:100%}
+.prog{margin:4px 0 8px;border:1px solid rgba(169,128,63,.55);background:#fff8ec}
+.prog>summary{list-style:none;cursor:pointer;min-height:48px;display:flex;align-items:center;padding:8px 12px;font:600 1rem var(--sans)}
+.prog>summary::-webkit-details-marker{display:none}
+.prog>summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .2s}
+.prog[open]>summary::after{transform:rotate(225deg)}
+.prog__cuerpo{padding:0 12px 10px}
+.resumen{margin:10px 0 4px;padding:10px 12px;border:1px solid rgba(169,128,63,.55);background:#fff8ec;font:500 .95rem/1.5 var(--sans)}
+.resumen div{display:flex;justify-content:space-between;gap:10px}
+.resumen__t{font-weight:700;border-top:1px dashed var(--oro);margin-top:4px;padding-top:4px}
+.resumen__aviso{margin:6px 0 0;font-size:.82rem;color:var(--tinta-2)}
+.pago-ayuda{margin:0 0 8px;padding:8px 12px;border-left:3px solid var(--oro);background:#f6e8d6;font:500 .88rem/1.4 var(--sans)}
+.req{color:var(--rojo,#b6232a)}

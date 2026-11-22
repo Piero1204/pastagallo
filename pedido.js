@@ -37,7 +37,7 @@
   /* Datos del cliente y su último pedido: se guardan SOLO en su propio celular (localStorage),
      para no tener que escribirlos otra vez. */
   var CLAVE_CLIENTE = "pg-cliente", CLAVE_ULTIMO = "pg-ultimo-pedido";
-  var CAMPOS_CLIENTE = ["nombre", "telefono", "direccion", "referencia", "pago", "canal", "doc", "razon", "correo"];
+  var CAMPOS_CLIENTE = ["nombre", "telefono", "direccion", "referencia", "zona", "pago", "canal", "doc", "razon", "correo"];
   function leerJson(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
   function guardarJson(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function recordarCliente() {
@@ -56,6 +56,70 @@
   });
   var salsas = (C.salsas || []).filter(function (s) { return !s.agotado; });
   var salsaPorId = {}; salsas.forEach(function (s) { salsaPorId[s.id] = s; });
+
+  /* ---------- costo de delivery (misma fórmula que calcularDelivery_ en apps-script/Code.gs) ---------- */
+  var DEL_DEF = {
+    local: { lat: -8.1278775, lng: -79.040603 }, factor_pista: 1.3, base: 4.5, por_km: 1.55, minimo: 5, maximo: 30, max_km: 14.5,
+    zonas: [
+      { nombre: 'La Merced', precio: 5, lat: -8.126, lng: -79.0393, radio_km: 0.5 }, { nombre: 'California', precio: 6, lat: -8.1309, lng: -79.0377, radio_km: 0.6 },
+      { nombre: 'San Andrés', precio: 7, lat: -8.1124, lng: -79.034, radio_km: 0.8 }, { nombre: 'Golf', precio: 7, lat: -8.134, lng: -79.035, radio_km: 0.8 },
+      { nombre: 'Santa María', precio: 10, lat: -8.1199, lng: -79.0222, radio_km: 0.9 }, { nombre: 'Las Quintanas', precio: 10, lat: -8.0994, lng: -79.0273, radio_km: 0.9 },
+      { nombre: 'San Isidro', precio: 10, lat: -8.1019, lng: -79.0326, radio_km: 0.9 }, { nombre: 'El Bosque', precio: 10, lat: -8.1102, lng: -79.006, radio_km: 1.0 },
+      { nombre: 'La Esperanza', precio: 20, lat: -8.083, lng: -79.041, radio_km: 1.5 }, { nombre: 'La Rinconada', precio: 15, lat: -8.0924, lng: -79.0052, radio_km: 1.0 },
+      { nombre: 'El Milagro', precio: 20, lat: -8.0338, lng: -79.0632, radio_km: 1.5 }, { nombre: 'Covicorti', precio: 8, lat: -8.1129, lng: -79.0465, radio_km: 0.8 },
+      { nombre: 'La Perla', precio: 8, lat: -8.128, lng: -79.0274, radio_km: 0.8 }, { nombre: 'Buenos Aires', precio: 8, lat: -8.1435, lng: -79.0562, radio_km: 0.9 },
+      { nombre: 'Centro de Trujillo', precio: 8, lat: -8.1118, lng: -79.0287, radio_km: 0.8 }, { nombre: 'El Salvador', precio: 10, lat: -8.1027, lng: -79.0232, radio_km: 0.9 },
+      { nombre: 'Tacora', precio: 12, lat: -8.095, lng: -79.05, radio_km: 1.0 }, { nombre: 'Huanchaco', precio: 30, lat: -8.08, lng: -79.1205, radio_km: 1.5 },
+      { nombre: 'Ramón Castilla', precio: 20, lat: -8.0877, lng: -79.0109, radio_km: 1.0 }
+    ]
+  };
+  function distanciaKm(a, b) {
+    var rad = Math.PI / 180, dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(x)));
+  }
+  function calcularDelivery(tar, ent) {
+    ent = ent || {}; tar = tar || {};
+    var zonas = tar.zonas || [], nombre = String(ent.zona == null ? '' : ent.zona).trim();
+    var fin = function (n) { return Math.ceil(Math.round(Number(n) * 1e6) / 1e6); };
+    if (nombre) {
+      var z = zonas.filter(function (x) { return String(x.nombre) === nombre; })[0];
+      if (!z || !isFinite(Number(z.precio))) return { ok: false, error: 'Elige una zona de la lista.' };
+      return { ok: true, costo: fin(z.precio), zona: String(z.nombre), km: null, metodo: 'zona' };
+    }
+    var lat = ent.lat == null || ent.lat === '' ? NaN : Number(ent.lat), lng = ent.lng == null || ent.lng === '' ? NaN : Number(ent.lng);
+    if (!isFinite(lat) && !isFinite(lng)) return { ok: false, falta: true, error: 'Elige tu zona o usa tu ubicación.' };
+    if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return { ok: false, error: 'Ubicación no válida.' };
+    var p = { lat: lat, lng: lng }, mejor = null, md = 0;
+    zonas.forEach(function (x) {
+      var zl = x.lat == null || x.lat === '' ? NaN : Number(x.lat), zg = x.lng == null || x.lng === '' ? NaN : Number(x.lng), rk = x.radio_km == null || x.radio_km === '' ? NaN : Number(x.radio_km);
+      if (!isFinite(zl) || !isFinite(zg) || !isFinite(rk) || !isFinite(Number(x.precio))) return;
+      var dz = distanciaKm({ lat: zl, lng: zg }, p);
+      if (dz <= rk && (!mejor || dz < md)) { mejor = x; md = dz; }
+    });
+    var loc = tar.local || {}, ll = Number(loc.lat), lg = Number(loc.lng);
+    var km = isFinite(ll) && isFinite(lg) && loc.lat != null && loc.lng != null ? distanciaKm({ lat: ll, lng: lg }, p) : null;
+    if (mejor) return { ok: true, costo: fin(mejor.precio), zona: String(mejor.nombre), km: km, metodo: 'ubicacion-zona' };
+    if (km == null) return { ok: false, error: 'No se pudo calcular el delivery por ubicación. Elige tu zona.' };
+    var maxKm = Number(tar.max_km);
+    if (maxKm > 0 && km > maxKm) return { ok: false, fuera: true, km: km, error: 'Estás fuera de nuestra zona de reparto.' };
+    var num = function (v, def) { var n = Number(v); return v == null || v === '' || !isFinite(n) ? def : n; };
+    var c = fin(num(tar.base, 0) + num(tar.por_km, 0) * km * num(tar.factor_pista, 1));
+    var mn = num(tar.minimo, 0), mx = num(tar.maximo, 0);
+    if (c < mn) c = mn;
+    if (mx > 0 && c > mx) c = mx;
+    return { ok: true, costo: fin(c), zona: '', km: km, metodo: 'distancia' };
+  }
+  function tarifas() { return CFG.deliveryTarifas && CFG.deliveryTarifas.zonas && CFG.deliveryTarifas.zonas.length ? CFG.deliveryTarifas : DEL_DEF; }
+  /* Entrega según lo que eligió el cliente: zona de la lista > ubicación. null si no es delivery. */
+  function entregaActual() {
+    if (MODO === "mesa" || form.canal !== "delivery") return null;
+    var r = calcularDelivery(tarifas(), { zona: form.zona, lat: form.lat, lng: form.lng });
+    if (r.ok && r.metodo === "zona" && form.lat != null) { var rc = calcularDelivery(tarifas(), { lat: form.lat, lng: form.lng }); if (rc.fuera) return rc; }
+    return r;
+  }
+  function costoDelivery() { var e = entregaActual(); return e && e.ok ? e.costo : 0; }
+  function sumaPagar() { return total() + costoDelivery(); }
 
   /* ---------- reglas ---------- */
   function enExtra() { // cocina extra tras el cierre: solo llevar y delivery (misma regla que el servidor)
@@ -124,20 +188,28 @@
     var hh = Math.floor(m / 60), mi = ("0" + (m % 60)).slice(-2), suf = hh >= 12 ? "pm" : "am";
     return (hh % 12 || 12) + ":" + mi + " " + suf;
   }
+  function sumarDiasIso(iso, n) {
+    var p = iso.split("-"), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + n));
+    return d.getUTCFullYear() + "-" + ("0" + (d.getUTCMonth() + 1)).slice(-2) + "-" + ("0" + d.getUTCDate()).slice(-2);
+  }
+  /* Franja en la que se puede programar: horas de 18:30 a 23:00 (configurable) cada 15 min, con tiempo de preparación.
+     Misma regla que el servidor (ventanasProgramadas_): la primera franja con horas libres, hoy o el próximo día abierto.
+     "fecha" viaja al servidor para que "mañana 19:00" no se evalúe contra hoy. */
   function ventanaPedido() {
     var dias = (C.horario && C.horario.dias) || {};
-    var ah = P.ahoraLugar(new Date());
+    var ah = P.ahoraLugar(new Date()), pc = CFG.programado || {};
+    var paso = pc.paso >= 5 && pc.paso <= 60 ? pc.paso : 15, prep = pc.prep >= 0 && pc.prep <= 240 ? pc.prep : 30;
+    var xp = window.PG_COMERCIO && C.ext && C.ext.comercio && C.ext.comercio.prog;   // módulo comercio: intervalo y anticipación configurables
+    if (xp) { paso = xp.paso || paso; if (xp.ant != null) prep = xp.ant; }
+    var pd = P.minutos(pc.desde || "18:30"), ph = P.minutos(pc.hasta || "23:00");
     for (var i = 0; i <= 7; i++) {
       var d = (ah.dia + i) % 7, r = dias[d]; if (!r) continue;
       var a = P.minutos(r[0]), c = P.minutos(r[1]); if (c <= a) c += 1440;
-      var desde = a, hasta = c - 15;
-      if (i === 0) {
-        if (ah.min >= c - 15) continue;
-        desde = Math.max(a, Math.ceil((ah.min + 30) / 15) * 15);
-      }
+      var desde = Math.ceil(Math.max(a, pd) / paso) * paso, hasta = Math.floor(Math.min(c, ph) / paso) * paso;
+      if (i === 0) desde = Math.max(desde, Math.ceil((ah.min + prep) / paso) * paso);
       if (desde > hasta) continue;
       var etq = i === 0 ? t("hoy").toLowerCase() : i === 1 ? t("manana").trim().replace(/,$/, "").toLowerCase() : t("el") + t("dias")[d];
-      return { dias: i, dia: d, a: a, c: c, desde: desde, hasta: hasta, etiqueta: etq.trim() };
+      return { dias: i, dia: d, a: a, c: c, desde: desde, hasta: hasta, paso: paso, fecha: sumarDiasIso(ah.fecha, i), etiqueta: etq.trim() };
     }
     return null;
   }
@@ -229,6 +301,22 @@
       l.appendChild(r);
       l.appendChild(h("span", "opcion__t", o.texto));
       if (o.extra) l.appendChild(h("span", "opcion__p", o.extra));
+      w.appendChild(l);
+    });
+    return w;
+  }
+
+  /* Casillas excluyentes que se pueden dejar sin marcar (pago y comprobante son opcionales). alCambiar("") si no queda ninguna. */
+  function opcionesOpc(nombre, opciones, alCambiar) {
+    var w = h("div", "opciones"); w.setAttribute("role", "group");
+    opciones.forEach(function (o) {
+      var l = h("label", "opcion"), r = h("input"); r.type = "checkbox"; r.name = nombre; r.value = o.valor;
+      if (o.marcado) r.checked = true;
+      r.addEventListener("change", function () {
+        if (r.checked) Array.prototype.forEach.call(w.querySelectorAll("input"), function (x) { if (x !== r) x.checked = false; });
+        alCambiar(r.checked ? o.valor : "");
+      });
+      l.appendChild(r); l.appendChild(h("span", "opcion__t", o.texto));
       w.appendChild(l);
     });
     return w;
@@ -434,7 +522,7 @@
   }
 
   /* ---------- carrito y formulario ---------- */
-  var form = {};
+  var form = {}, refrescarResumen = null;
   function abrirCarrito() {
     var c = h("div", "hoja__cuerpo");
     if (!carrito.length) { c.appendChild(h("p", "hoja__desc", t("vacio"))); abrirHoja(c, t("tuPedido")); return; }
@@ -453,7 +541,7 @@
         li.appendChild(info);
         li.appendChild(stepper(l.cant, 0, 20, function (v) {
           if (v === 0) carrito.splice(i, 1); else l.cant = v;
-          guardar(); pintarBarra(); if (!carrito.length) { cerrarHoja(); return; } pintarLista();
+          guardar(); pintarBarra(); if (!carrito.length) { cerrarHoja(); return; } pintarLista(); if (refrescarResumen) refrescarResumen();
         }));
         lista.appendChild(li);
       });
@@ -467,6 +555,11 @@
       var fila = h("div", "sugiere__fila");
       sug.forEach(function (x) {
         var b = h("button", "sugiere__it"); b.type = "button";
+        if (x.it.foto) {
+          var si = h("img", "sugiere__img"); si.src = x.it.foto; si.alt = ""; si.loading = "lazy";
+          si.onerror = function () { si.remove(); };
+          b.appendChild(si);
+        }
         b.appendChild(h("span", "sugiere__n", tx(x.it, "n")));
         b.appendChild(h("span", "sugiere__p", x.it.t ? (I.lang === "en" ? "from " : "desde ") + soles(x.it.t[0][1]) : "+ " + soles(x.it.p)));
         b.addEventListener("click", function () {
@@ -528,6 +621,8 @@
     var hp = h("input", "trampa"); hp.name = "web"; hp.tabIndex = -1; hp.autocomplete = "off"; hp.setAttribute("aria-hidden", "true");
     f.appendChild(hp);
     var zona = h("div");
+    var resumen = h("div", "resumen"); resumen.setAttribute("aria-live", "polite");
+    refrescarResumen = null;
     if (MODO === "mesa") {
       f.appendChild(campo("nombre", t("aNombre"), "text", { max: 60, auto: "given-name" }));
       f.appendChild(campo("notas", t("comentCocina"), "area", { max: 300 }));
@@ -542,35 +637,49 @@
         f.appendChild(opcionesUI("canal", [
           { valor: "delivery", texto: t("delivery"), marcado: form.canal === "delivery" },
           { valor: "recojo", texto: t("recojo"), marcado: form.canal === "recojo" }
-        ], false, function (v) { form.canal = v[0]; pintarZona(); if (cajaCobro) pintarCobro(cajaCobro, form.pago, true); }));
+        ], false, function (v) { form.canal = v[0]; pintarZona(); pintarResumen(); }));
       }
       f.appendChild(zona);
       f.appendChild(campo("nombre", t("nombre"), "text", { max: 60, auto: "name" }));
       f.appendChild(campo("telefono", t("celular"), "tel", { max: 16, auto: "tel", modo: "tel", ph: "9XX XXX XXX" }));
       if (CFG.metodosPago && CFG.metodosPago.length) {
-        f.appendChild(h("h3", "hoja__sub", t("comoPagar")));
+        var pagoObl = CFG.pagoObligatorio === true;   // por defecto el pago es opcional (Config pago_obligatorio)
+        f.appendChild(h("h3", "hoja__sub", t("comoPagar") + (pagoObl ? "" : " (" + t("opcional") + ")")));
         if (CFG.metodosPago.indexOf(form.pago) < 0) form.pago = "";
+        if (!pagoObl) f.appendChild(h("p", "pago-ayuda", t("pagoAdelanto")));
         var cajaCobro = h("div");
-        f.appendChild(opcionesUI("pago", CFG.metodosPago.map(function (m) { return { valor: m, texto: m, marcado: form.pago === m }; }),
-          false, function (v) { form.pago = v[0]; pintarCobro(cajaCobro, form.pago, true); }));
+        var lisPago = CFG.metodosPago.map(function (m) { return { valor: m, texto: m, marcado: form.pago === m }; });
+        var alPago = function (v) { form.pago = Array.isArray(v) ? v[0] : v; pintarCobro(cajaCobro, form.pago, true); };
+        f.appendChild(pagoObl ? opcionesUI("pago", lisPago, false, alPago) : opcionesOpc("pago", lisPago, alPago));
         f.appendChild(cajaCobro);
         pintarCobro(cajaCobro, form.pago, true);
       }
-      var vent = (window.PG_COMERCIO && PG_COMERCIO.ventana(t)) || ventanaPedido();   // comercio: intervalo y anticipación configurables
+      var vent = ventanaPedido();
       if (vent) {
-        // la hora solo se puede elegir DENTRO del horario de atención (cada 15 minutos)
-        var horas = [{ valor: "", texto: abiertoAhora() ? t("loAntes") : t("eligeHora") }];
+        // Fuera de horario: el selector de hora es la forma de pedir (visible). Dentro de horario: plegado, "lo antes posible" por defecto.
+        var abiertoYa = abiertoAhora();
+        var horas = [{ valor: "", texto: abiertoYa ? t("loAntes") : t("eligeHora") }];
         for (var mm = vent.desde; mm <= vent.hasta; mm += (vent.paso || 15)) horas.push({ valor: hhmm(mm), texto: vent.etiqueta + " · " + fmtHora(mm) });
         if (window.PG_COMERCIO) horas = PG_COMERCIO.filtrarHoras(horas, vent);   // comercio: quita las franjas sin cupo
         if (form.programado && !horas.some(function (x) { return x.valor === form.programado; })) form.programado = "";
+        form.programadoFecha = form.programado ? (vent.fecha || "") : "";
         var wh = h("label", "campo-w");
-        wh.appendChild(h("span", "campo-l", abiertoAhora() ? t("paraHora") : t("paraHoraReq")));
-        var sh = h("select", "campo"); sh.name = "programado";
+        if (!abiertoYa) wh.appendChild(h("span", "campo-l", t("paraHoraReq")));
+        var sh = h("select", "campo"); sh.name = "programado"; sh.setAttribute("aria-label", abiertoYa ? t("programarMasTarde") : t("paraHoraReq"));
         horas.forEach(function (x) { var o = h("option", null, x.texto); o.value = x.valor; if (x.valor === (form.programado || "")) o.selected = true; sh.appendChild(o); });
-        sh.addEventListener("change", function () { form.programado = sh.value; form.programadoTxt = sh.value ? sh.options[sh.selectedIndex].text : ""; });
+        sh.addEventListener("change", function () {
+          form.programado = sh.value; form.programadoFecha = sh.value ? (vent.fecha || "") : "";
+          form.programadoTxt = sh.value ? sh.options[sh.selectedIndex].text : "";
+        });
         wh.appendChild(sh);
-        wh.appendChild(h("span", "hoja__ayuda", t("horarioRango", { a: fmtHora(vent.a), b: fmtHora(vent.c), d: vent.etiqueta })));
-        f.appendChild(wh);
+        wh.appendChild(h("span", "hoja__ayuda", t("horarioRango", { a: fmtHora(vent.desde), b: fmtHora(vent.hasta), d: vent.etiqueta })));
+        if (abiertoYa) {
+          var det = h("details", "prog"); if (form.programado) det.open = true;
+          det.appendChild(h("summary", null, t("programarMasTarde")));
+          var dcu = h("div", "prog__cuerpo"); dcu.appendChild(wh); det.appendChild(dcu);
+          det.addEventListener("toggle", function () { if (!det.open && sh.value) { sh.value = ""; form.programado = ""; form.programadoFecha = ""; form.programadoTxt = ""; } });
+          f.appendChild(det);
+        } else f.appendChild(wh);
       }
       f.appendChild(campo("notas", t("comentarios"), "area", { max: 300 }));
       f.appendChild(bloqueComprobante());
@@ -588,9 +697,10 @@
       if (!tipos.length) return w;
       var datos = h("div");
       w.appendChild(h("h3", "hoja__sub", t("comprobante")));
-      w.appendChild(opcionesUI("comp", [{ valor: "", texto: t("sinComp"), marcado: !form.comprobante }].concat(tipos.map(function (x) {
+      // Boleta y Factura sin ninguna marcada: es opcional (sin marcar = sin comprobante)
+      w.appendChild(opcionesOpc("comp", tipos.map(function (x) {
         return { valor: x, texto: t(x === "Boleta" ? "boleta" : "factura"), marcado: form.comprobante === x };
-      })), false, function (v) { form.comprobante = v[0]; pintarDatos(); }));
+      }), function (v) { form.comprobante = v; pintarDatos(); }));
       w.appendChild(datos);
       function pintarDatos() {
         datos.textContent = "";
@@ -610,16 +720,26 @@
         if (form.canal === "recojo") zona.appendChild(h("p", "hoja__ayuda", t("recogeEn") + C.negocio.direccion + "."));
         return;
       }
-      zona.appendChild(campo("direccion", t("direccion"), "text", { max: 200, auto: "street-address" }));
-      zona.appendChild(campo("referencia", t("referencia"), "text", { max: 200, ph: t("referenciaPh") }));
+      zona.appendChild(campo("direccion", t("direccion") + " *", "text", { max: 200, auto: "street-address" }));
+      zona.appendChild(campo("referencia", t("referencia") + " *", "text", { max: 200, ph: t("referenciaPh") }));
+      // zona de la lista (precio de lista) o ubicación del cliente (zona o distancia)
+      var wz = h("label", "campo-w"); wz.appendChild(h("span", "campo-l", t("zonaEtq") + " *"));
+      var sz = h("select", "campo"); sz.name = "zona";
+      var o0 = h("option", null, t("zonaElige")); o0.value = ""; sz.appendChild(o0);
+      tarifas().zonas.forEach(function (zn) { var o = h("option", null, zn.nombre + " · S/ " + Math.ceil(Number(zn.precio))); o.value = zn.nombre; if (form.zona === zn.nombre) o.selected = true; sz.appendChild(o); });
+      sz.addEventListener("change", function () { form.zona = sz.value; pintarResumen(); });
+      wz.appendChild(sz); zona.appendChild(wz);
       if (navigator.geolocation) {
         var ub = h("div", "ubic");
-        var ubEst = h("span", "hoja__ayuda", form.ubicacion ? t("ubicLista") : t("ubicAyuda"));
-        var ubB = boton(form.ubicacion ? "📍 " + t("ubicOtra") : "📍 " + t("ubicBtn"), "btn-ubic", function () {
+        var ubEst = h("span", "hoja__ayuda", form.lat != null ? t("ubicLista") : t("ubicAyuda"));
+        var ubB = boton(form.lat != null ? "📍 " + t("ubicOtra") : "📍 " + t("ubicBtn"), "btn-ubic", function () {
           ubB.disabled = true; ubEst.textContent = t("ubicBuscando");
-          navigator.geolocation.getCurrentPosition(function (pos) {
-            form.ubicacion = "https://maps.google.com/?q=" + pos.coords.latitude.toFixed(6) + "," + pos.coords.longitude.toFixed(6);
+          navigator.geolocation.getCurrentPosition(function (pos) {   // solo con permiso del cliente
+            form.lat = Math.round(pos.coords.latitude * 1e6) / 1e6; form.lng = Math.round(pos.coords.longitude * 1e6) / 1e6;
+            form.ubicacion = "https://maps.google.com/?q=" + form.lat.toFixed(6) + "," + form.lng.toFixed(6);
+            form.zona = ""; sz.value = "";   // la ubicación manda hasta que el cliente elija otra zona
             ubB.disabled = false; ubB.textContent = "📍 " + t("ubicOtra"); ubEst.textContent = t("ubicLista");
+            pintarResumen();
           }, function () {
             ubB.disabled = false; ubEst.textContent = t("ubicError");
           }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
@@ -630,7 +750,29 @@
       var td = I.lang === "en" && CFG.textoDelivery_en ? CFG.textoDelivery_en : CFG.textoDelivery;
       if (td) zona.appendChild(h("p", "hoja__ayuda", td));
     }
-    pintarZona();
+    /* Resumen antes de enviar: productos + delivery = total */
+    function pintarResumen() {
+      resumen.textContent = "";
+      var cobro = typeof cajaCobro !== "undefined" && cajaCobro;
+      if (cobro) pintarCobro(cajaCobro, form.pago, true);
+      var e = entregaActual();
+      if (!e) { resumen.style.display = "none"; return; }
+      resumen.style.display = "";
+      var fila = function (a, b, cls) { var d = h("div", cls); d.appendChild(h("span", null, a)); d.appendChild(h("span", null, b)); resumen.appendChild(d); };
+      fila(t("totalProd"), soles(total()));
+      if (e.ok) {
+        fila(e.zona ? t("deliveryZona", { c: e.costo, z: e.zona }) : t("deliveryAprox", { c: e.costo }), "");
+        fila(t("total"), soles(total() + e.costo), "resumen__t");
+        resumen.appendChild(h("p", "resumen__aviso", t("deliveryNota")));
+      } else if (e.fuera) {
+        resumen.appendChild(h("p", "hoja__err", t("fueraZona")));
+      } else {
+        resumen.appendChild(h("p", "resumen__aviso", e.falta ? t("deliveryFalta") : e.error));
+      }
+    }
+    refrescarResumen = pintarResumen;
+    f.appendChild(resumen);
+    pintarZona(); pintarResumen();
     var err = h("p", "hoja__err"); err.setAttribute("role", "alert");
     f.appendChild(err);
     f.addEventListener("input", function () { err.textContent = ""; });
@@ -706,8 +848,10 @@
     if (conCaptura) {   // en mesa el monto es el de la cuenta (se muestra arriba), no el del carrito
       var monto = h("p", "cobro__monto");
       monto.appendChild(h("span", null, t("montoPagar") + " "));
-      monto.appendChild(h("b", null, soles(total())));
-      if (form.canal === "delivery") monto.appendChild(h("span", "cobro__nota", " " + t("deliveryAparte")));
+      monto.appendChild(h("b", null, soles(sumaPagar())));   // productos + delivery (el servidor verifica este monto exacto)
+      var ent = entregaActual();
+      if (ent && ent.ok) monto.appendChild(h("span", "cobro__nota", " (" + t("totalProd").toLowerCase() + " " + soles(total()) + " + delivery S/ " + ent.costo + ")"));
+      else if (ent) monto.appendChild(h("span", "cobro__nota", " " + t("deliveryAparte")));
       w.appendChild(monto);
     }
     if (c.qr) { var q = h("img", "cobro__qr"); q.src = c.qr; q.alt = "QR " + metodo; q.onerror = function () { q.remove(); }; w.appendChild(q); }
@@ -784,8 +928,14 @@
     if (MODO === "mesa") return "";
     if (!form.nombre || form.nombre.trim().length < 2) return t("errNombre");
     if (String(form.telefono || "").replace(/\D/g, "").length < 9) return t("errCel");
-    if (form.canal === "delivery" && (!form.direccion || form.direccion.trim().length < 5)) return t("errDir");
-    if (CFG.pagoObligatorio !== false && CFG.metodosPago && CFG.metodosPago.length && !form.pago) return t("errPago");
+    if (form.canal === "delivery") {
+      if (!form.direccion || form.direccion.trim().length < 5) return t("errDir");
+      if (!form.referencia || form.referencia.trim().length < 3) return t("errRef");
+      var en = entregaActual();
+      if (en && en.fuera) return t("fueraZona");
+      if (en && !en.ok) return en.falta ? t("errZona") : en.error;
+    }
+    if (CFG.pagoObligatorio === true && CFG.metodosPago && CFG.metodosPago.length && !form.pago) return t("errPago");
     if (!abiertoAhora() && !form.programado) return t("errHora");
     if (carrito.some(function (l) { return l.alcohol; }) && !form.mayorEdad) return t("errMayor");
     return validarComprobante();
@@ -795,8 +945,9 @@
     var cp = {
       canal: MODO === "mesa" ? "mesa" : form.canal, mesa: MESA, codigo: CODIGO, web: trampa || "", idioma: I.lang,
       nombre: form.nombre || "", telefono: form.telefono || "", direccion: form.canal === "delivery" ? (form.direccion || "") : "",
-      referencia: form.canal === "delivery" ? [form.referencia || "", form.ubicacion ? "Ubicación: " + form.ubicacion : ""].filter(Boolean).join(" · ") : "", pago: form.pago || "",
-      programado: form.programado || "", notas: form.notas || "", mayorEdad: !!form.mayorEdad, origen: origen(), ref: form.ref || "",
+      referencia: form.canal === "delivery" ? (form.referencia || "") : "", pago: form.pago || "",
+      zona: form.canal === "delivery" ? (form.zona || "") : "", lat: form.canal === "delivery" && form.lat != null ? form.lat : null, lng: form.canal === "delivery" && form.lng != null ? form.lng : null,
+      programado: form.programado || "", programadoFecha: form.programado ? (form.programadoFecha || "") : "", notas: form.notas || "", mayorEdad: !!form.mayorEdad, origen: origen(), ref: form.ref || "",
       comprobante: form.comprobante || "", doc: form.comprobante ? String(form.doc || "").replace(/\D/g, "") : "",
       razon: form.comprobante ? (form.razon || "") : "", correo: form.comprobante ? String(form.correo || "").trim() : "",
       items: carrito.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {}, mitad: l.mitad || "" }; })
@@ -818,7 +969,12 @@
       if (l.nota) L.push("    Nota: " + l.nota);
     });
     L.push("");
-    L.push("*Total productos: " + soles(totalServidor != null ? totalServidor : total()) + "*" + (form.canal === "delivery" ? " (+ delivery)" : ""));
+    var ent = entregaActual(), prod = totalServidor != null ? totalServidor : total();
+    if (ent && ent.ok) {
+      L.push("Productos: " + soles(prod));
+      L.push("Delivery: S/ " + ent.costo + " (aprox.)" + (ent.zona ? " · zona " + ent.zona : ""));
+      L.push("*Total: " + soles(prod + ent.costo) + "*");
+    } else L.push("*Total productos: " + soles(prod) + "*" + (form.canal === "delivery" ? " (+ delivery)" : ""));
     L.push("Nombre: " + (form.nombre || ""));
     L.push("Celular: " + (form.telefono || ""));
     if (form.canal === "delivery") {
@@ -866,7 +1022,7 @@
     recordarCliente();
     guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
     carrito = []; guardar(); pintarBarra();
-    form.ref = ""; form.ubicacion = "";
+    form.ref = ""; form.ubicacion = ""; form.lat = null; form.lng = null; form.zona = "";
     pintarRepetir();
     abrirHoja(c, t("tuPedido"));
     if (!w) setTimeout(function () { location.href = url; }, 50);
@@ -899,7 +1055,7 @@
         recordarCliente();
         guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
         carrito = []; guardar(); pintarBarra();
-        form.ref = ""; form.ubicacion = ""; form.captura = ""; form.capturaSubida = false;
+        form.ref = ""; form.ubicacion = ""; form.lat = null; form.lng = null; form.zona = ""; form.captura = ""; form.capturaSubida = false;
         pintarRepetir();
         abrirHoja(c, t("tuPedido"));
         return {};
