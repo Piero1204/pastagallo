@@ -56,7 +56,7 @@
       fetch(api + "?qr=1&cod=" + encodeURIComponent(mesa)).then(function (r) { return r.json(); }).then(function (r) {
         if (!r.ok) { aviso(r.error || "Este QR ya no es válido. Pide ayuda a tu mozo."); return; }
         window.MODO = "mesa"; window.PG_MESA = { m: r.mesa, c: mesa };
-        cadena(["/i18n.js", "/pedido.js", "/app.js"]);
+        cadena(["/i18n.js"].concat(CARTA.ext && CARTA.ext.comercio ? ["/comercio.js"] : [], ["/pedido.js", "/app.js"]));
       }).catch(function () { aviso("Sin conexión. Revisa tu internet y vuelve a escanear el QR."); });
     });
   });

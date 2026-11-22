@@ -58,7 +58,14 @@
   var salsaPorId = {}; salsas.forEach(function (s) { salsaPorId[s.id] = s; });
 
   /* ---------- reglas ---------- */
-  function abiertoAhora() { return P.estadoActual().abierto; }
+  function enExtra() { // cocina extra tras el cierre: solo llevar y delivery (misma regla que el servidor)
+    var x = CFG.extraLlevarMin | 0; if (!x || MODO === "mesa") return false;
+    var ah = P.ahoraLugar(new Date()), r = (C.horario.dias || {})[ah.dia]; if (!r) return false;
+    var a = P.minutos(r[0]), c = P.minutos(r[1]), m = ah.min;
+    if (c <= a) { c += 1440; if (m < a) m += 1440; }
+    return m >= c && m < c + x;
+  }
+  function abiertoAhora() { return P.estadoActual().abierto || enExtra(); }
   function mesaValida() { return MODO !== "mesa" || (MESA && CODIGO); }
   function activo() {
     if (!CFG.activos) return false;
@@ -72,6 +79,7 @@
   }
   function motivoNoPedible(it, sec) {
     if (it.agotado) return t("agotado");
+    if (window.PG_COMERCIO) { var mc = PG_COMERCIO.motivo(it, sec); if (mc) return mc; }   // módulo comercio: fuera de su horario
     if (it.promo && !it._hoy) return t("promoOtroDia", { c: it._cuando });
     if (it.promo && it._hora) return t("promoHora", { c: it._cuando });
     if (it.canal === "local" && MODO !== "mesa") return t("soloLocalTxt");
@@ -527,7 +535,9 @@
       form.comprobante = "";
     } else {
       if (!form.canal || !CFG.recojo) form.canal = "delivery";
-      if (CFG.recojo) {
+      var enBarra = !!(window.PG_COMERCIO && PG_COMERCIO.barra && CFG.recojo);   // módulo comercio: QR de barra = recojo en el local
+      if (enBarra) form.canal = "recojo";
+      if (CFG.recojo && !enBarra) {
         f.appendChild(h("h3", "hoja__sub", t("comoLoQuieres")));
         f.appendChild(opcionesUI("canal", [
           { valor: "delivery", texto: t("delivery"), marcado: form.canal === "delivery" },
@@ -546,11 +556,12 @@
         f.appendChild(cajaCobro);
         pintarCobro(cajaCobro, form.pago, true);
       }
-      var vent = ventanaPedido();
+      var vent = (window.PG_COMERCIO && PG_COMERCIO.ventana(t)) || ventanaPedido();   // comercio: intervalo y anticipación configurables
       if (vent) {
         // la hora solo se puede elegir DENTRO del horario de atención (cada 15 minutos)
         var horas = [{ valor: "", texto: abiertoAhora() ? t("loAntes") : t("eligeHora") }];
-        for (var mm = vent.desde; mm <= vent.hasta; mm += 15) horas.push({ valor: hhmm(mm), texto: vent.etiqueta + " · " + fmtHora(mm) });
+        for (var mm = vent.desde; mm <= vent.hasta; mm += (vent.paso || 15)) horas.push({ valor: hhmm(mm), texto: vent.etiqueta + " · " + fmtHora(mm) });
+        if (window.PG_COMERCIO) horas = PG_COMERCIO.filtrarHoras(horas, vent);   // comercio: quita las franjas sin cupo
         if (form.programado && !horas.some(function (x) { return x.valor === form.programado; })) form.programado = "";
         var wh = h("label", "campo-w");
         wh.appendChild(h("span", "campo-l", abiertoAhora() ? t("paraHora") : t("paraHoraReq")));
@@ -781,7 +792,7 @@
   }
 
   function cuerpoPedido(trampa) {
-    return {
+    var cp = {
       canal: MODO === "mesa" ? "mesa" : form.canal, mesa: MESA, codigo: CODIGO, web: trampa || "", idioma: I.lang,
       nombre: form.nombre || "", telefono: form.telefono || "", direccion: form.canal === "delivery" ? (form.direccion || "") : "",
       referencia: form.canal === "delivery" ? [form.referencia || "", form.ubicacion ? "Ubicación: " + form.ubicacion : ""].filter(Boolean).join(" · ") : "", pago: form.pago || "",
@@ -790,6 +801,7 @@
       razon: form.comprobante ? (form.razon || "") : "", correo: form.comprobante ? String(form.correo || "").trim() : "",
       items: carrito.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {}, mitad: l.mitad || "" }; })
     };
+    return window.PG_COMERCIO ? PG_COMERCIO.cuerpo(cp) : cp;   // comercio: origen de barra y sesión de mesa
   }
 
   // El mensaje de WhatsApp siempre va en español: lo lee el equipo del restaurante.
@@ -849,6 +861,7 @@
     c.appendChild(h("p", "hoja__ayuda", t("codigoPedido") + form.ref));
     var a = h("a", "link-wa", t("noAbrio")); a.href = url; a.target = "_blank"; a.rel = "noopener";
     c.appendChild(a);
+    if (window.PG_COMERCIO) PG_COMERCIO.resena(c, h);   // comercio: botón de reseña (solo si hay enlace)
     c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
     recordarCliente();
     guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
@@ -881,6 +894,7 @@
         c.appendChild(h("p", "hoja__ayuda", t("codigoPedido") + form.ref));
         var a = h("a", "btn-ped btn-ped--wa", t("abrirWa")); a.href = url; a.target = "_blank"; a.rel = "noopener";
         c.appendChild(a);
+        if (window.PG_COMERCIO) PG_COMERCIO.resena(c, h);   // comercio: botón de reseña (solo si hay enlace)
         c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
         recordarCliente();
         guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
@@ -928,6 +942,7 @@
       c.appendChild(h("h3", null, t("enviadoMesa", { n: numero })));
       c.appendChild(h("p", null, t("mozoConfirma") + soles(totalServidor)));
       c.appendChild(boton(t("verCuenta"), "btn-ped btn-ped--linea", abrirCuenta));
+      if (window.PG_COMERCIO) PG_COMERCIO.resena(c, h);   // comercio: botón de reseña (solo si hay enlace)
       c.appendChild(boton(t("volver"), "btn-ped", cerrarHoja));
     } else {
       var url = mensajeWhatsapp(numero, totalServidor, detalle);
@@ -936,6 +951,7 @@
       var a = h("a", "btn-ped btn-ped--wa", t("enviarWa")); a.href = url; a.target = "_blank"; a.rel = "noopener";
       c.appendChild(a);
       c.appendChild(h("p", "hoja__ayuda", t("respondemos", { d: form.canal === "delivery" ? t("conDelivery") : "" })));
+      if (window.PG_COMERCIO) PG_COMERCIO.resena(c, h);   // comercio: botón de reseña (solo si hay enlace)
     }
     carrito = []; guardar(); pintarBarra();
     abrirHoja(c, MODO === "mesa" ? t("mesa") + MESA : t("tuPedido"));
@@ -1026,6 +1042,7 @@
         ok.appendChild(h("h3", null, t("cuentaPedida")));
         ok.appendChild(h("p", null, sel.comp ? t("cuentaPedidaComp") : t("cuentaPedidaTxt")));
         if (div.length > 1) ok.appendChild(h("p", null, t("divNota") + " " + div.map(function (x, i) { return t("persona", { n: i + 1 }) + ": " + soles(x); }).join(" · ")));
+        if (window.PG_COMERCIO) PG_COMERCIO.resena(ok, h);   // comercio: botón de reseña (solo si hay enlace)
         ok.appendChild(boton(t("volver"), "btn-ped", cerrarHoja));
         abrirHoja(ok, t("mesa") + MESA);
       });
@@ -1169,6 +1186,13 @@
       toast = h("div", "toast"); toast.setAttribute("role", "status"); document.body.appendChild(toast);
       pintarBarra();
       pintarRepetir();
+      if (C.ext && C.ext.busqueda) { // módulo "búsqueda inteligente y voz" (modulo_busqueda = SI): sin la bandera, no se carga nada
+        var sq = document.createElement("script"); sq.src = "busqueda.js"; sq.async = true;
+        sq.onload = function () { if (window.PG_BUSQUEDA) window.PG_BUSQUEDA.iniciar({ carta: C, modo: MODO, dia: P.ahoraLugar(new Date()).dia, acepta: aceptaAhora,
+          puedePedir: function (id) { return !!productos[id] && puedePedir(productos[id], seccionDe[id]); },
+          agregar: function (l) { var it = productos[l.id], r = it && repreciar({ id: l.id, tam: l.tam || "", salsa: l.salsa || "", ops: l.ops || {}, mitad: l.mitad || "" }); if (!r) return false; agregar(it, { tam: r.tam, salsa: r.salsa, cant: l.cant, nota: l.nota || "", ops: r.ops, mitad: r.mitad }, r.unit); return true; } }); };
+        document.head.appendChild(sq);
+      }
     }
   };
 })();

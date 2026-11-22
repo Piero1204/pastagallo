@@ -1,0 +1,95 @@
+/* Panel de reparto (módulo "reparto"): se muestra al tocar 🛵 Reparto. Usa $, el, run, toast, error, soles del panel. */
+(function(){
+  var RP = { datos: null, timer: null };
+  var NOMBRES_CFG = [
+    ['reparto_modo', 'Modo de despacho (oferta = por turnos · libre = el primero que toma · manual = solo tú asignas)'],
+    ['reparto_aceptacion_seg', 'Segundos para aceptar una oferta (90)'],
+    ['reparto_max_activos', 'Pedidos a la vez por repartidor (1)'],
+    ['reparto_max_vueltas', 'Vueltas de ofertas antes de abrir a todos (2)'],
+    ['reparto_visto_min', 'Minutos sin conexión para dejar de ofrecerle pedidos (5)'],
+    ['reparto_eta_base_min', 'ETA: minutos base (vacío = sin ETA)'],
+    ['reparto_eta_min_por_km', 'ETA: minutos por km (opcional)'],
+    ['reparto_zonas', 'ETA: zonas y minutos extra (ej.: Centro=15; Alto Trujillo=30)'],
+    ['reparto_seguimiento_horas', 'Horas que vale el enlace de seguimiento (48)']
+  ];
+  function hora(ms){ if (!ms) return '—'; var d = new Date(ms); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+  function mins(ms, ahora){ return ms ? Math.max(0, Math.floor((ahora - ms)/60000)) : 0; }
+  function copiar(t){ if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Enlace copiado'); }, function(){ prompt('Copia el enlace:', t); }); else prompt('Copia el enlace:', t); }
+  function llamar(fn){ var a = Array.prototype.slice.call(arguments); return run.apply(null, a).then(function(){ cargar(); }).catch(error); }
+
+  function pintar(){
+    var d = RP.datos; if (!d) return;
+    $('#rpResumen').textContent = 'Modo: ' + d.modo + ' · ' + d.filas.length + ' en curso · ' + d.entregadasHoy + ' entregados hoy';
+    var cont = $('#rpFilas'); cont.textContent = '';
+    if (!d.filas.length) cont.appendChild(el('p', {class:'nota', text:'No hay pedidos de delivery en curso.'}));
+    d.filas.forEach(function(f){
+      var enlace = f.enlace;
+      var estTxt = f.estado === 'En camino' ? 'En camino' : f.estado;
+      var quien = f.repartidor ? '🛵 ' + f.repartidor : (f.estado === 'Ofrecido' ? 'Ofrecido (esperando respuesta)' : (f.estado === 'Preparando' ? 'En cocina' : 'Sin repartidor'));
+      var sel = el('select', {class:'txt', 'aria-label':'Repartidor'}, [el('option', {value:'', text:'Asignar a…'})].concat(d.repartidores.filter(function(r){ return r.vinculado; }).map(function(r){ return el('option', {value:r.id, text:r.nombre + (r.estado === 'descanso' ? ' (descanso)' : '') + (r.activos ? ' · ' + r.activos + ' en curso' : '')}); })));
+      var acc = [];
+      if (['Pendiente','Ofrecido','Asignado'].indexOf(f.estado) >= 0) {
+        acc.push(sel);
+        acc.push(el('button', {class:'btn peq prim', text:'Asignar', onclick:function(){ if (!sel.value) return toast('Elige un repartidor.', true); llamar('repartoAsignar', f.numero, sel.value); }}));
+        if (f.estado !== 'Pendiente') acc.push(el('button', {class:'btn peq', text:'Liberar', onclick:function(){ llamar('repartoLiberar', f.numero); }}));
+      }
+      acc.push(el('button', {class:'btn peq', text:'⏱ ETA/zona', onclick:function(){
+        var z = prompt('Zona de #' + f.nd + ' (vacío = ninguna). Zonas: ' + (d.zonas.join(', ') || '—'), f.zona || ''); if (z === null) return;
+        var k = prompt('Distancia aproximada en km (vacío = no usar):', f.km === '' ? '' : String(f.km)); if (k === null) return;
+        var e = prompt('ETA en minutos (vacío = calcular con los ajustes):', ''); if (e === null) return;
+        var o = { zona: z, km: k }; if (e !== '') o.etaMin = e;
+        llamar('repartoAjustar', f.numero, o);
+      }}));
+      if (enlace) {
+        acc.push(el('button', {class:'btn peq', text:'🔗 Copiar seguimiento', onclick:function(){ copiar(enlace); }}));
+        var tel = String(f.telefono || '').replace(/\D/g, ''); if (tel.length === 9) tel = '51' + tel;
+        if (tel) acc.push(el('a', {class:'btn peq', target:'_blank', rel:'noopener', text:'📲 Enviar por WhatsApp', href:'https://wa.me/' + tel + '?text=' + encodeURIComponent('Hola ' + (f.cliente.split(' ')[0] || '') + ', sigue tu pedido de Pasta Gallo aquí: ' + enlace)}));
+      } else acc.push(el('span', {class:'nota', text:'(Falta "sitio_url" en Ajustes > Conexiones para armar el enlace)'}));
+      if (f.problema) acc.push(el('button', {class:'btn peq', text:'✔ Problema resuelto', onclick:function(){ llamar('repartoResolver', f.numero); }}));
+      var tiempos = 'Pedido ' + hora(f.pedidoTs) + ' · hace ' + mins(f.pedidoTs, d.ahora) + ' min'
+        + (f.asignado ? ' · asignado ' + hora(f.asignado) : '') + (f.enCamino ? ' · salió ' + hora(f.enCamino) : '')
+        + (f.etaHasta ? ' · ETA ' + hora(f.etaHasta) : '');
+      cont.appendChild(el('div', {class:'rp-fila' + (f.atrasado ? ' atraso' : '') + (f.problema ? ' problema' : '')}, [
+        el('div', {class:'cab'}, [el('span', {class:'num', text:'#' + f.nd}), el('span', {class:'rp-est ' + estTxt.split(' ')[0], text:estTxt}),
+          el('b', {text:quien}), f.atrasado ? el('span', {class:'rp-est', style:'background:#b6232a;color:#fff', text:'⚠ ' + f.minAtraso + ' min de retraso'}) : null,
+          el('span', {class:'nota', style:'margin-left:auto', text:soles(f.total) + (f.cobrar ? ' · cobrar ' + soles(f.cobrar) : '')})]),
+        el('div', {text:f.cliente + ' · ' + f.direccion + (f.referencia ? ' (' + f.referencia + ')' : '') + (f.zona ? ' · zona ' + f.zona : '')}),
+        el('div', {class:'nota', text:tiempos + (f.cobrado && f.recibido ? ' · cobrado, vuelto ' + soles(f.vuelto) : '')}),
+        f.problema ? el('div', {style:'color:#c46a12;font-weight:700', text:'⚠ Problema reportado: ' + f.problema}) : null,
+        f.libre ? el('div', {class:'nota', text:'Abierto: cualquier repartidor disponible puede tomarlo.'}) : null,
+        el('div', {class:'acc'}, acc)
+      ]));
+    });
+    var rc = $('#rpReps'); rc.textContent = '';
+    if (!d.repartidores.length) rc.appendChild(el('p', {class:'nota', text:'Aún no hay repartidores. Crea uno en 🤵 Mozos con rol "repartidor" y envíale su enlace.'}));
+    d.repartidores.forEach(function(r){
+      rc.appendChild(el('div', {class:'rp-rep'}, [
+        el('div', {}, [el('span', {class:'rp-pto' + (r.enLinea ? ' on' : '')}), el('b', {text:r.nombre}), el('span', {class:'nota', text:' · ' + (r.vinculado ? r.estado : 'sin vincular')})]),
+        el('div', {class:'nota', text:(r.vehiculo || 'sin vehículo') + ' · ' + r.activos + ' en curso · ' + r.entregasHoy + ' entregas hoy'}),
+        el('div', {class:'nota', text:'Efectivo cobrado hoy: ' + soles(r.efectivoHoy) + (r.promedio ? ' · ★ ' + r.promedio + ' (' + r.calificaciones + ')' : '')}),
+        el('div', {class:'acc'}, [
+          el('button', {class:'btn peq', text:'Vehículo', onclick:function(){ var v = prompt('Vehículo de ' + r.nombre + ' (ej.: moto roja):', r.vehiculo); if (v === null) return; llamar('repartoPerfil', r.id, v, ''); }}),
+          el('button', {class:'btn peq', text:r.estado === 'descanso' ? 'Poner disponible' : 'Poner en descanso', onclick:function(){ llamar('repartoPerfil', r.id, null, r.estado === 'descanso' ? 'disponible' : 'descanso'); }})
+        ])
+      ]));
+    });
+    var oc = $('#rpOpin'); oc.textContent = '';
+    if (!d.opiniones.length) oc.appendChild(el('p', {class:'nota', text:'Todavía no hay opiniones.'}));
+    d.opiniones.forEach(function(o){ oc.appendChild(el('div', {class:'nota', text:'#' + o.nd + ' · ' + '★'.repeat(o.estrellas) + '☆'.repeat(5 - o.estrellas) + (o.repartidor ? ' · ' + o.repartidor : '') + (o.comentario ? ' · “' + o.comentario + '”' : '')})); });
+    var cf = $('#rpCfg'); if (!cf.children.length) {
+      NOMBRES_CFG.forEach(function(c){ cf.appendChild(el('label', {}, [c[1], el('input', {class:'txt', 'data-k':c[0], value:d.config[c[0]] || ''})])); });
+    }
+  }
+  function cargar(){
+    return run('repartoPanel').then(function(d){ RP.datos = d; pintar(); }).catch(error);
+  }
+  $('#rpRefrescar').addEventListener('click', cargar);
+  $('#rpGuardarCfg').addEventListener('click', function(){
+    var o = {}; document.querySelectorAll('#rpCfg input').forEach(function(i){ o[i.dataset.k] = i.value; });
+    run('repartoConfig', o).then(function(){ toast('Ajustes del reparto guardados'); cargar(); }).catch(error);
+  });
+  EXT_VISTAS['reparto'] = function(){
+    cargar(); clearInterval(RP.timer);
+    RP.timer = setInterval(function(){ var v = $('#v-reparto'); if (!v || !v.classList.contains('on')) { clearInterval(RP.timer); return; } cargar(); }, 15000);
+  };
+})();

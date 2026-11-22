@@ -409,6 +409,16 @@ function estaAbierto_(cfg, momento) {
   return momento.min >= a && momento.min < c;
 }
 
+/** Minutos extra tras el cierre en que la cocina sigue recibiendo SOLO llevar/delivery (clave cocina_extra_llevar_min; 0 = sin extra). */
+function cocinaExtraMin_(cfg) { var n = parseInt(cfg && cfg.cocina_extra_llevar_min, 10); return (n > 0 && n <= 120) ? n : 0; }
+function enVentanaExtra_(cfg, momento) {
+  var x = cocinaExtraMin_(cfg); if (!x) return false;
+  var r = horarioDe_(cfg, momento.dia); if (!r) return false;
+  var a = minutos_(r[0]), c = minutos_(r[1]), m = momento.min;
+  if (c <= a) { c += 1440; if (m < a) m += 1440; }
+  return m >= c && m < c + x;
+}
+
 /**
  * Valida un pedido y calcula su total con los precios de la hoja.
  * Devuelve { ok:false, error } o { ok:true, canal, cliente, lineas, total, detalle, ... }
@@ -422,6 +432,7 @@ function calcularPedido_(body, cat, cfg, momento, porMozo, edicion) {
   if (canal === 'recojo' && !esSi_(cfg.recojo_activo)) return { ok: false, error: 'El recojo en local no está disponible.' };
 
   var abierto = estaAbierto_(cfg, momento);
+  if (!abierto && canal !== 'mesa' && enVentanaExtra_(cfg, momento)) abierto = true;   // cocina extra: solo llevar y delivery
   var programado = texto_(body.programado, 20);
   if (programado && !/^\d{1,2}:\d{2}$/.test(programado)) programado = '';
 
@@ -673,8 +684,9 @@ function construirCarta_(cfg, secciones, productos, opciones) {
       parrafos_en: String(cfg.historia_texto_en || '').split(/\n\s*\n/).map(function (x) { return x.trim(); }).filter(Boolean)
     },
     alergenos: ALERGENOS,
+    ext: extPublico_(cfg),   // datos públicos de los módulos activos (vacío si no hay ninguno)
     pedidos: {
-      api: cfg.api_url || '', activos: esSi_(cfg.pedidos_activos), fueraHorario: esSi_(cfg.pedidos_fuera_de_horario),
+      extraLlevarMin: cocinaExtraMin_(cfg), api: cfg.api_url || '', activos: esSi_(cfg.pedidos_activos), fueraHorario: esSi_(cfg.pedidos_fuera_de_horario),
       mesaActivos: esSi_(cfg.pedidos_mesa_activos), recojo: esSi_(cfg.recojo_activo),
       metodosPago: metodosLista_(cfg.metodos_pago, false),
       pagoObligatorio: String(cfg.pago_obligatorio == null || cfg.pago_obligatorio === '' ? 'SI' : cfg.pago_obligatorio).toUpperCase() !== 'NO',
@@ -746,6 +758,7 @@ function calcularDashboard_(pedidos, desde, hasta, zonaFmt) {
 
 /* =========================== API PÚBLICA (web) =========================== */
 function doGet(e) {
+  if (e && e.parameter && e.parameter.ext) { try { return json_(despacharExtGet_(e.parameter)); } catch (err) { return json_({ ok: false, error: 'No disponible.' }); } }
   if (!(e && e.parameter && (e.parameter.estado || e.parameter.cuenta || e.parameter.qr))) {
     var t = HtmlService.createTemplateFromFile('Panel');
     t.modoWeb = true;
@@ -778,7 +791,7 @@ function doPost(e) {
   var res;
   try {
     var body = JSON.parse(e && e.postData && e.postData.contents || '{}');
-    res = body && body.mz ? respuestaMozo_(body) : body && body.aviso ? registrarAviso_(body) : registrarPedido_(body);
+    res = body && body.mz ? respuestaMozo_(body) : body && body.ext ? despacharExt_(body) : body && body.aviso ? registrarAviso_(body) : registrarPedido_(body);
   } catch (err) {
     console.error(err);
     res = { ok: false, error: 'No pudimos registrar tu pedido. Intenta de nuevo o escríbenos por WhatsApp.' };
@@ -825,6 +838,7 @@ function registrarPedido_(body, mozo) {
   var cat = leerCatalogo_();
   var r = calcularPedido_(body, cat, cfg, momentoActual_(cfg), !!mozo);
   if (!r.ok) return r;
+  if (!mozo && typeof comercioValidarPedido_ === 'function') { var cx = comercioValidarPedido_(body, r, cfg); if (cx) return cx; } // módulo comercio (ModComercio.gs); apagado = no hace nada
 
   // Pago anticipado (delivery y recojo): queda "Por verificar" hasta que el local lo confirme en el panel
   var captura = '';
@@ -1197,7 +1211,7 @@ function calcularAjuste_(orig, tipo, valor) {
 }
 
 function ajustarPedido(sesion, numero, tipo, valor, motivo) {
-  var quien = String(exigirAdmin_(sesion) || 'panel').split('@')[0];
+  var identidad = String(exigirAdmin_(sesion) || 'panel').toLowerCase(), quien = identidad.split('@')[0];
   motivo = String(motivo || '').trim().slice(0, 120);
   if (tipo !== 'quitar' && motivo.length < 3) throw new Error('Escribe el motivo del ajuste.');
   var lock = LockService.getScriptLock();
@@ -1215,6 +1229,12 @@ function ajustarPedido(sesion, numero, tipo, valor, motivo) {
     var anterior = Number(p.ajuste) || 0;
     if (tipo === 'quitar' && !anterior) return { ok: true, original: original, total: original, ajuste: 0, pct: 0 };
     var r = calcularAjuste_(original, tipo, valor);
+    // límite de descuento: descuento_max_pct (vacío = sin límite); quienes están en descuento_sin_limite (correos o nombres, separados por coma) no tienen tope
+    var tope = parseFloat(String(cfg.descuento_max_pct || '').replace(',', '.'));
+    if (tipo !== 'quitar' && isFinite(tope) && tope >= 0 && r.pct < -tope - 0.001) {
+      var libres = String(cfg.descuento_sin_limite || '').toLowerCase().split(/[,;\s]+/).filter(Boolean);
+      if (libres.indexOf(identidad) < 0 && libres.indexOf(quien) < 0) throw new Error('Tu límite de descuento es ' + tope + ' %. Pídele a un responsable que lo aplique.');
+    }
     var ahora = new Date();
     var poner = function (k, v) { h.getRange(p._fila, cab.indexOf(k) + 1).setValue(v); };
     poner('total', r.final);
@@ -1520,11 +1540,12 @@ function marcarPendiente_() {
 var CLAVES_EDITABLES = ['nombre', 'desde', 'direccion', 'telefono', 'whatsapp', 'mensaje_whatsapp', 'instagram', 'tiktok',
   'facebook_url', 'horario_texto', 'cerrado_texto', 'horario_lunes', 'horario_martes', 'horario_miercoles', 'horario_jueves',
   'horario_viernes', 'horario_sabado', 'horario_domingo', 'historia_eyebrow', 'historia_titulo', 'historia_texto',
-  'pedidos_activos', 'pedidos_fuera_de_horario', 'pedidos_mesa_activos', 'metodos_pago', 'recojo_activo', 'texto_delivery',
+  'pedidos_activos', 'cocina_extra_llevar_min', 'descuento_max_pct', 'descuento_sin_limite', 'pedidos_fuera_de_horario', 'pedidos_mesa_activos', 'metodos_pago', 'recojo_activo', 'texto_delivery',
   'api_url', 'sitio_url', 'github_repo', 'github_rama', 'admins', 'minutos_alerta',
   'historia_eyebrow_en', 'historia_titulo_en', 'historia_texto_en', 'texto_delivery_en', 'horario_texto_en', 'cerrado_texto_en',
   'comprobantes', 'metodos_pago_mesa', 'yape_numero', 'yape_titular', 'plin_numero', 'plin_titular', 'banco_texto',
-  'pago_obligatorio', 'banco_nombre', 'banco_moneda', 'banco_cuenta', 'banco_cci', 'banco_titular'];
+  'pago_obligatorio', 'banco_nombre', 'banco_moneda', 'banco_cuenta', 'banco_cci', 'banco_titular',
+  'modulo_tienda', 'modulo_repartidores', 'modulo_reparto', 'modulo_inventario', 'modulo_especiales', 'modulo_clientes', 'modulo_reportes', 'modulo_busqueda', 'modulo_comercio', 'modulo_encargos', 'modulo_fidelidad'];
 /* claves de cobro: sus cambios quedan en la hoja "Auditoría" (los números se guardan enmascarados) y se escriben como TEXTO */
 var CLAVES_PAGO_ = ['metodos_pago', 'metodos_pago_mesa', 'pago_obligatorio', 'yape_numero', 'yape_titular', 'plin_numero', 'plin_titular',
   'banco_texto', 'banco_nombre', 'banco_moneda', 'banco_cuenta', 'banco_cci', 'banco_titular'];

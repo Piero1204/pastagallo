@@ -327,6 +327,7 @@ tr.oculto td{opacity:.5}
     <button data-v="mesas">🔳 Mesas y QR</button>
     <button data-v="mozos">🤵 Mozos</button>
     <button data-v="ajustes">⚙️ Ajustes</button>
+    <?!= extIncluir_('nav') ?>
   </nav>
 </header>
 
@@ -492,6 +493,7 @@ tr.oculto td{opacity:.5}
     </div>
     <div class="pie"><button class="btn prim" id="guardarAjustes">Guardar ajustes</button></div>
   </section>
+<?!= extIncluir_('views') ?>
 </main>
 
 <div id="login"><form id="fLogin" autocomplete="on">
@@ -574,6 +576,7 @@ $('#tabs').addEventListener('click', function(e){
   if (b.dataset.v === 'mesas') cargarMesas();
   if (b.dataset.v === 'mozos') cargarMozos();
   if (b.dataset.v === 'ajustes') cargarAjustes();
+  if (window.EXT_VISTAS && EXT_VISTAS[b.dataset.v]) { try { EXT_VISTAS[b.dataset.v](); } catch(err) { error(err); } }
 });
 function marcarSeg(sel, val){ document.querySelectorAll(sel + ' button').forEach(function(x){ x.classList.toggle('on', (x.dataset.c||'') === val); }); }
 
@@ -1634,7 +1637,7 @@ function imprimirCuentaAviso(a){
 function ticketCocina(d, b, p){
   var add = function(tag, t, cls){ var e = d.createElement(tag); e.textContent = t; if (cls) e.className = cls; b.appendChild(e); return e; };
   add('div', p.canal === 'mesa' ? 'MESA ' + p.mesa : (p.canal === 'recojo' ? 'RECOJO' : 'DELIVERY') + ' #' + nro(p), 'k-mesa');
-  if (p.mozo) add('div', 'Moza: ' + p.mozo, 'k-moza');
+  if (p.mozo) add('div', 'Atiende: ' + p.mozo, 'k-moza');
   if (p.cambio) add('div', '*** ' + p.cambio + ' ***', 'k-sec');
   add('div', (p.hora || '') + (p.canal === 'mesa' ? '   #' + nro(p) : ''), 'c p');
   if (p.programado) add('div', '>> PARA LAS ' + p.programado + ' <<', 'c g');
@@ -2401,6 +2404,10 @@ function pintarMozos(){
       cuerpo.push(el('div', {class:'mzCampo'}, [el('label', {text:'Hoy'}), el('span', {class: m.trabajaHoy ? 'hoyOk' : 'hoyNo', text: m.trabajaHoy ? '✅ Hoy trabaja' : '⛔ Hoy no tiene turno (no puede tomar pedidos)'}), hoy]));
     }
     var acciones = [
+      el('button', {class:'btn peq', text:'Rol: ' + (m.rol || 'mozo'), title:'mozo, cajero, repartidor o cocina', onclick: function(){
+        var r = prompt('Rol de ' + m.nombre + ' (mozo, cajero, repartidor o cocina):', m.rol || 'mozo'); if (r == null) return;
+        run('guardarMozo', { id:m.id, nombre:m.nombre, activo:m.activo, rol:r }).then(function(x){ MOZOS = x; pintarMozos(); toast('Rol actualizado'); }).catch(error);
+      }}),
       el('button', {class:'btn peq', text:'Cambiar nombre', onclick: function(){
         var n = prompt('Nombre del mozo (como sale en la comanda):', m.nombre); if (n == null) return;
         run('guardarMozo', { id:m.id, nombre:n, activo:m.activo }).then(function(x){ MOZOS = x; pintarMozos(); }).catch(error);
@@ -2414,12 +2421,13 @@ function pintarMozos(){
       if (m.activo && !confirm('¿Desactivar a ' + m.nombre + '? Su equipo deja de funcionar al instante.')) return;
       run('guardarMozo', { id:m.id, nombre:m.nombre, activo:!m.activo }).then(function(x){ MOZOS = x; pintarMozos(); }).catch(error);
     }}));
-    l.appendChild(el('div', {class:'mesa' + (m.activo ? '' : ' inactiva'), style:'text-align:left'}, [el('h3', {text:'🤵 ' + m.nombre})].concat(cuerpo).concat([el('div', {class:'pie', style:'flex-wrap:wrap;margin-top:8px'}, acciones)])));
+    l.appendChild(el('div', {class:'mesa' + (m.activo ? '' : ' inactiva'), style:'text-align:left'}, [el('h3', {text:'🤵 ' + m.nombre + (m.rol && m.rol !== 'mozo' ? ' · ' + m.rol : '')})].concat(cuerpo).concat([el('div', {class:'pie', style:'flex-wrap:wrap;margin-top:8px'}, acciones)])));
   });
 }
 $('#nuevoMozo').addEventListener('click', function(){
   var n = prompt('Nombre del mozo (como saldrá en la comanda):', ''); if (n == null || !n.trim()) return;
-  run('guardarMozo', { id:'', nombre:n, activo:true }).then(function(x){ MOZOS = x; pintarMozos(); toast('Mozo creado: copia su enlace o muéstrale el QR'); }).catch(error);
+  var rol = prompt('Rol (mozo, cajero, repartidor o cocina):', 'mozo'); if (rol == null) return;
+  run('guardarMozo', { id:'', nombre:n, activo:true, rol:rol }).then(function(x){ MOZOS = x; pintarMozos(); toast('Mozo creado: copia su enlace o muéstrale el QR'); }).catch(error);
 });
 function pintarReporteMozos(r){
   var l = $('#rMozos'); l.textContent = '';
@@ -2919,7 +2927,9 @@ function enviarCompCorreo(c){
 var GRUPOS_AJ = [
   ['Cobros (Yape, Plin y transferencia)', [['yape_numero','Número de Yape'],['yape_titular','Nombre que aparece en Yape'],['plin_numero','Número de Plin'],['plin_titular','Nombre que aparece en Plin'],['banco_nombre','Banco (ej.: Interbank)'],['banco_moneda','Moneda (ej.: PEN)'],['banco_cuenta','N.° de cuenta (solo dígitos)'],['banco_cci','CCI (20 dígitos)'],['banco_titular','Titular de la cuenta'],['banco_texto','Instrucciones adicionales para la transferencia (opcional)','area']],
    'Los datos de la cuenta se muestran al cliente con un botón de copiar para la cuenta y otro para el CCI. Cada cambio queda en la hoja Auditoría. El cliente de delivery o recojo ve estos datos al elegir cómo pagar y puede subir la captura. El pedido llega como "PAGO POR VERIFICAR" y la comanda se imprime recién cuando tocas "✓ Pago recibido".'],
-  ['Pedidos', [['minutos_alerta','Minutos para marcar un pedido como atrasado (tarjeta roja parpadeante y sonido)'],['pedidos_activos','Recibir pedidos por la web','si'],['pedidos_mesa_activos','Pedidos desde la mesa (QR)','si'],['recojo_activo','Permitir recojo en local','si'],['pedidos_fuera_de_horario','Aceptar pedidos programados estando cerrado','si'],['pago_obligatorio','Exigir que el cliente elija un método de pago (si lo apagas, puede pedir sin elegir y coordinan el pago después)','si1'],['metodos_pago','Métodos de pago para DELIVERY y RECOJO (pago anticipado, sin efectivo). Ej.: Yape o Plin, Transferencia. (“Yape” y “Plin” se muestran juntos como una sola opción “Yape o Plin” con el QR de Plin)'],['metodos_pago_mesa','Métodos de pago en el SALÓN (al pedir la cuenta). Ej.: Yape o Plin, Efectivo, Tarjeta (en el salón no se ofrece transferencia)'],['comprobantes','Comprobantes que puede pedir el cliente: Boleta, Factura (en Nuevo RUS solo Boleta; vacío = no se ofrece)'],['texto_delivery','Texto sobre el costo de delivery','area']]],
+  ['Pedidos', [['minutos_alerta','Minutos para marcar un pedido como atrasado (tarjeta roja parpadeante y sonido)'],['pedidos_activos','Recibir pedidos por la web','si'],['pedidos_mesa_activos','Pedidos desde la mesa (QR)','si'],['recojo_activo','Permitir recojo en local','si'],['cocina_extra_llevar_min','Minutos extra tras el cierre para recibir SOLO llevar y delivery (ej. 15 = hasta las 23:15 si cierras a las 23:00; vacío o 0 = sin extra; el salón no cambia)'],['pedidos_fuera_de_horario','Aceptar pedidos programados estando cerrado','si'],['descuento_max_pct','Descuento máximo permitido por pedido, en % (vacío = sin tope)'],['descuento_sin_limite','Quiénes pueden dar más descuento que el tope: correos o nombres de usuario separados por coma'],['pago_obligatorio','Exigir que el cliente elija un método de pago (si lo apagas, puede pedir sin elegir y coordinan el pago después)','si1'],['metodos_pago','Métodos de pago para DELIVERY y RECOJO (pago anticipado, sin efectivo). Ej.: Yape o Plin, Transferencia. (“Yape” y “Plin” se muestran juntos como una sola opción “Yape o Plin” con el QR de Plin)'],['metodos_pago_mesa','Métodos de pago en el SALÓN (al pedir la cuenta). Ej.: Yape o Plin, Efectivo, Tarjeta (en el salón no se ofrece transferencia)'],['comprobantes','Comprobantes que puede pedir el cliente: Boleta, Factura (en Nuevo RUS solo Boleta; vacío = no se ofrece)'],['texto_delivery','Texto sobre el costo de delivery','area']]],
+  ['Módulos nuevos (apagados por defecto)', [['modulo_tienda','Panel de tienda / mostrador','si'],['modulo_repartidores','Repartidores y despacho','si'],['modulo_reparto','Delivery propio: reparto, despacho y seguimiento','si'],['modulo_inventario','Inventario y recetas','si'],['modulo_especiales','Pedidos especiales, mayoristas y envíos','si'],['modulo_clientes','Clientes y opiniones','si'],['modulo_reportes','Reportes avanzados','si'],['modulo_comercio','Pedido web: horarios por plato, programado, QR de barra, reseña','si'],['modulo_encargos','Encargos, mayoristas y envíos (nuevo)','si'],['modulo_fidelidad','Puntos de fidelidad','si'],['modulo_busqueda','Búsqueda inteligente y voz','si']],
+   'Cada módulo se enciende por separado y no cambia nada de lo anterior hasta que lo actives.'],
   ['Horario', [['horario_texto','Texto del horario para el cliente'],['cerrado_texto','Texto de días cerrados'],['horario_lunes','Lunes'],['horario_martes','Martes'],['horario_miercoles','Miércoles'],['horario_jueves','Jueves'],['horario_viernes','Viernes'],['horario_sabado','Sábado'],['horario_domingo','Domingo']], 'Formato 18:00-23:00 o la palabra cerrado. La web detecta sola si está abierto.'],
   ['Negocio', [['nombre','Nombre'],['desde','Texto bajo el logo'],['direccion','Dirección'],['telefono','Teléfono visible'],['whatsapp','WhatsApp (51 + número, sin espacios)'],['mensaje_whatsapp','Mensaje inicial de WhatsApp'],['instagram','Instagram (sin @)'],['tiktok','TikTok (sin @)'],['facebook_url','Link de Facebook']]],
   ['Nuestra historia', [['historia_eyebrow','Título pequeño'],['historia_titulo','Título'],['historia_texto','Texto (párrafos separados por una línea en blanco)','area']]],
@@ -3015,6 +3025,9 @@ function arrancar(){
     run('listarComprobantes').then(function(r){ COMP = r; $('#cComp').textContent = COMP.pendientes.length || ''; }).catch(function(){});
   }).catch(function(e){ if (String(e).indexOf('Sesión vencida') < 0) document.body.textContent = String(e && e.message || e); });
 }
+/* ---------- módulos (cada uno agrega su parte; vacío si no hay módulos activos) ---------- */
+window.EXT_VISTAS = window.EXT_VISTAS || {};   // nombre de la vista -> función que la carga al abrirla
+<?!= extIncluir_('js') ?>
 try { $('#lNombre').value = localStorage.getItem('pg-nombre') || ''; } catch(x) {}
 if (MODO_WEB && !SESION) pedirLogin(''); else arrancar();
 })();

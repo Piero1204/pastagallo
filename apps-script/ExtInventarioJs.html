@@ -1,0 +1,169 @@
+/* ---------- módulo inventario (se carga solo si modulo_inventario = SI) ---------- */
+(function(){
+var ST = { d: null, tab: 'insumos', acc: null, form: null, rec: null };
+function raiz(){ return $('#invRaiz'); }
+function n3(n){ return String(Math.round(Number(n||0)*1000)/1000); }
+function campo(label, input){ return el('label', { class: 'mx-f' }, [el('span', { text: label }), input]); }
+function inp(props){ var p = { class: '', autocomplete: 'off' }; Object.keys(props).forEach(function(k){ p[k] = props[k]; }); return el('input', p); }
+function rotuloEstado(e){ return e === 'negativo' ? 'STOCK NEGATIVO' : (e === 'bajo' ? 'Stock bajo' : 'Stock OK'); }
+
+function cargar(){
+  run('inventarioListar').then(function(r){
+    ST.d = r; pintar();
+    var c = $('#cInv'); if (c) c.textContent = r.alertas || '';
+    var p = r.proceso;
+    if (p && p.activo && p.movimientos) toast('Inventario: se descontaron ' + p.descontados + ' pedido(s) confirmado(s)' + (p.devueltos ? ' y se devolvieron ' + p.devueltos : '') + '.');
+  }).catch(error);
+}
+
+function pintar(){
+  var d = ST.d, r = raiz(); if (!d) return;
+  r.textContent = '';
+  var alertas = d.insumos.filter(function(i){ return i.activo && i.estado !== 'ok'; });
+  var av = el('div', { 'aria-live': 'polite' });
+  if (alertas.length) {
+    var neg = alertas.filter(function(i){ return i.estado === 'negativo'; });
+    av.appendChild(el('div', { class: 'mx-aviso' }, [
+      (neg.length ? '⚠ Stock negativo: ' + neg.map(function(i){ return i.nombre; }).join(', ') + '. ' : '') +
+      '⚠ Por reponer: ' + alertas.map(function(i){ return i.nombre + ' (' + n3(i.stock) + ' ' + i.unidad + ')'; }).join(' · ')]));
+  }
+  r.appendChild(av);
+  // barra superior
+  var chk = inp({ type: 'checkbox', id: 'invAuto' }); chk.checked = !!d.descuentoAuto;
+  chk.addEventListener('change', function(){
+    run('inventarioConfig', { descuentoAuto: chk.checked }).then(function(x){ d.descuentoAuto = x.descuentoAuto; toast(x.descuentoAuto ? 'Descuento automático ENCENDIDO: cuenta los pedidos desde ahora.' : 'Descuento automático apagado.'); }).catch(function(e){ chk.checked = !chk.checked; error(e); });
+  });
+  r.appendChild(el('div', { class: 'barra' }, [
+    el('div', { class: 'seg', role: 'tablist' }, [['insumos', 'Insumos'], ['recetas', 'Recetas'], ['movs', 'Movimientos']].map(function(t){
+      return el('button', { class: ST.tab === t[0] ? 'on' : '', onclick: function(){ ST.tab = t[0]; ST.acc = null; ST.form = null; if (t[0] === 'recetas' && !ST.rec) cargarRecetas(); else pintar(); } , text: t[1] });
+    })),
+    el('button', { class: 'btn prim', onclick: function(){ ST.tab = 'insumos'; ST.acc = null; ST.form = { nuevo: true }; pintar(); }, text: '+ Insumo' }),
+    el('label', { class: 'mx-interruptor', title: 'Al confirmarse un pedido, descuenta los insumos de su receta. Nunca bloquea una venta.' }, [chk, 'Descontar solo al confirmar pedidos']),
+    el('button', { class: 'btn', onclick: function(){ run('inventarioProcesar').then(function(p){ toast(p.activo ? 'Revisados los pedidos: ' + p.movimientos + ' movimiento(s) nuevo(s).' : 'El descuento automático está apagado.'); cargar(); }).catch(error); }, text: 'Revisar pedidos ahora' })
+  ]));
+  if (ST.tab === 'insumos') pintarInsumos(r);
+  else if (ST.tab === 'recetas') pintarRecetas(r);
+  else pintarMovs(r);
+}
+
+function pintarInsumos(r){
+  var d = ST.d;
+  if (ST.form) r.appendChild(formInsumo(ST.form));
+  if (ST.acc) r.appendChild(formAccion(ST.acc));
+  if (!d.insumos.length) { r.appendChild(el('div', { class: 'vacio' }, ['Aún no hay insumos. Toca “+ Insumo” para crear el primero (harina, queso, tomate…).'])); return; }
+  var lista = el('div', { class: 'mx-lista' });
+  d.insumos.forEach(function(i){
+    lista.appendChild(el('div', { class: 'mx-card ' + i.estado + (i.activo ? '' : ' inactivo') }, [
+      el('div', { class: 'mx-top' }, [el('b', { text: i.nombre }), el('span', { class: 'mx-chip ' + i.estado, text: rotuloEstado(i.estado) }), i.activo ? null : el('span', { class: 'mx-chip', text: 'Inactivo' })]),
+      el('div', {}, [el('span', { class: 'mx-big', text: n3(i.stock) + ' ' + i.unidad }), el('span', { class: 'nota', text: '  mínimo ' + n3(i.minimo) + (i.costo != null ? ' · costo ' + soles(i.costo) : '') })]),
+      el('div', { class: 'mx-acc' }, [
+        ['entrada', '+ Entrada'], ['salida', '− Salida'], ['merma', 'Merma'], ['ajuste', 'Contar']
+      ].map(function(a){ return el('button', { class: 'btn', onclick: function(){ ST.form = null; ST.acc = { id: i.id, tipo: a[0] }; pintar(); window.scrollTo(0, 0); }, text: a[1] }); })
+        .concat([el('button', { class: 'btn peq', onclick: function(){ ST.acc = null; ST.form = { id: i.id, ins: i }; pintar(); window.scrollTo(0, 0); }, text: 'Editar' })]))
+    ]));
+  });
+  r.appendChild(lista);
+}
+
+function formAccion(a){
+  var ins = ST.d.insumos.filter(function(i){ return i.id === a.id; })[0]; if (!ins) return el('div');
+  var tit = { entrada: 'Entrada (compra o reposición)', salida: 'Salida (uso)', merma: 'Merma (pérdida o vencido)', ajuste: 'Contar: ¿cuánto hay realmente?' }[a.tipo];
+  var cant = inp({ type: 'text', inputmode: 'decimal', placeholder: a.tipo === 'ajuste' ? 'Cantidad contada' : 'Cantidad', 'aria-label': 'Cantidad' });
+  var mot = inp({ type: 'text', maxlength: 160, placeholder: a.tipo === 'merma' || a.tipo === 'ajuste' ? 'Motivo (obligatorio)' : 'Motivo (opcional)', 'aria-label': 'Motivo' });
+  var btn = el('button', { class: 'btn prim', text: 'Guardar' });
+  function guardar(){
+    btn.disabled = true;
+    run('inventarioMovimiento', { insumo_id: a.id, tipo: a.tipo, cantidad: cant.value, motivo: mot.value }).then(function(x){
+      toast(x.alerta || (x.sinCambio ? 'Sin cambios: el conteo coincide.' : ins.nombre + ': ahora hay ' + n3(x.saldo) + ' ' + ins.unidad), !!x.alerta);
+      ST.acc = null; cargar();
+    }).catch(function(e){ btn.disabled = false; error(e); });
+  }
+  btn.addEventListener('click', guardar);
+  cant.addEventListener('keydown', function(e){ if (e.key === 'Enter') guardar(); });
+  setTimeout(function(){ cant.focus(); }, 30);
+  return el('div', { class: 'mx-panel' }, [
+    el('b', { text: tit + ' · ' + ins.nombre + ' (hay ' + n3(ins.stock) + ' ' + ins.unidad + ')' }),
+    el('div', { class: 'mx-fila', style: 'margin-top:8px' }, [campo('Cantidad (' + ins.unidad + ')', cant), campo('Motivo', mot)]),
+    el('div', { class: 'mx-acc' }, [btn, el('button', { class: 'btn', onclick: function(){ ST.acc = null; pintar(); }, text: 'Cancelar' })])
+  ]);
+}
+
+function formInsumo(f){
+  var i = f.ins || {};
+  var nom = inp({ type: 'text', maxlength: 80, value: i.nombre || '' }), uni = inp({ type: 'text', maxlength: 12, value: i.unidad || '', placeholder: 'kg, g, L, ml, unid' });
+  var sto = inp({ type: 'text', inputmode: 'decimal', value: '', placeholder: '0' }), min = inp({ type: 'text', inputmode: 'decimal', value: i.minimo != null ? n3(i.minimo) : '' });
+  var cos = inp({ type: 'text', inputmode: 'decimal', value: i.costo != null ? String(i.costo) : '', placeholder: 'opcional' });
+  var not = inp({ type: 'text', maxlength: 200, value: i.notas || '' });
+  var act = inp({ type: 'checkbox' }); act.checked = i.activo !== false;
+  var btn = el('button', { class: 'btn prim', text: 'Guardar' });
+  btn.addEventListener('click', function(){
+    btn.disabled = true;
+    run('inventarioGuardarInsumo', { id: f.id || '', nombre: nom.value, unidad: uni.value, stock: sto.value, minimo: min.value, costo: cos.value, notas: not.value, activo: act.checked ? 'SI' : 'NO' })
+      .then(function(){ toast('Insumo guardado.'); ST.form = null; cargar(); }).catch(function(e){ btn.disabled = false; error(e); });
+  });
+  var campos = [campo('Nombre', nom), campo('Unidad', uni)];
+  if (!f.id) campos.push(campo('Stock inicial', sto));
+  campos.push(campo('Mínimo (alerta)', min), campo('Costo por unidad (opcional)', cos), campo('Notas', not));
+  return el('div', { class: 'mx-panel' }, [
+    el('b', { text: f.id ? 'Editar insumo' : 'Nuevo insumo' }),
+    el('div', { class: 'mx-fila', style: 'margin-top:8px' }, campos),
+    f.id ? el('label', { class: 'mx-interruptor' }, [act, 'Activo (si lo desactivas, deja de dar alertas)']) : null,
+    el('div', { class: 'mx-acc' }, [btn, el('button', { class: 'btn', onclick: function(){ ST.form = null; pintar(); }, text: 'Cancelar' })])
+  ]);
+}
+
+function pintarMovs(r){
+  var m = ST.d.movimientos;
+  if (!m.length) { r.appendChild(el('div', { class: 'vacio' }, ['Todavía no hay movimientos.'])); return; }
+  var t = el('table', { class: 'tabla' }, [el('thead', {}, [el('tr', {}, ['Fecha', 'Insumo', 'Tipo', 'Cantidad', 'Saldo', 'Motivo', 'Quién'].map(function(h){ return el('th', { text: h }); }))])]);
+  var tb = el('tbody');
+  m.forEach(function(x){
+    tb.appendChild(el('tr', {}, [x.fecha, x.insumo, x.tipo, (x.cantidad > 0 ? '+' : '') + n3(x.cantidad), n3(x.saldo), x.motivo, x.usuario].map(function(v, k){ return el('td', { text: String(v), style: k === 4 && x.saldo < 0 ? 'color:var(--mal);font-weight:700' : '' }); })));
+  });
+  t.appendChild(tb);
+  r.appendChild(el('div', { style: 'overflow-x:auto' }, [t]));
+}
+
+/* ---------- recetas (las carga el dueño) ---------- */
+function cargarRecetas(){
+  run('inventarioRecetas').then(function(x){ ST.rec = { d: x, pid: '', tam: '', lineas: [] }; pintar(); }).catch(error);
+}
+function elegirReceta(pid, tam){
+  var R = ST.rec; R.pid = pid; R.tam = tam;
+  var ex = R.d.recetas.filter(function(x){ return x.producto_id === pid && x.tamano === tam; })[0];
+  R.lineas = ex ? ex.lineas.map(function(l){ return { insumo_id: l.insumo_id, cantidad: n3(l.cantidad) }; }) : [];
+}
+function pintarRecetas(r){
+  var R = ST.rec; if (!R) { r.appendChild(el('div', { class: 'vacio' }, ['Cargando…'])); return; }
+  r.appendChild(el('div', { class: 'mx-aviso suave' }, ['Aquí tú defines cuánto insumo lleva cada plato. Si un producto no tiene receta, no se descuenta nada. No hay recetas precargadas.']));
+  var sp = el('select', { 'aria-label': 'Producto' }, [el('option', { value: '', text: '— Elige un producto —' })].concat(R.d.productos.map(function(p){ var o = el('option', { value: p.id, text: p.nombre }); if (p.id === R.pid) o.selected = true; return o; })));
+  var prod = R.d.productos.filter(function(p){ return p.id === R.pid; })[0];
+  var st = el('select', { 'aria-label': 'Tamaño' }, [el('option', { value: '', text: 'Todos los tamaños / único' })].concat(((prod && prod.tamanos) || []).map(function(t){ var o = el('option', { value: t, text: t }); if (t === R.tam) o.selected = true; return o; })));
+  sp.addEventListener('change', function(){ elegirReceta(sp.value, ''); pintar(); });
+  st.addEventListener('change', function(){ elegirReceta(R.pid, st.value); pintar(); });
+  r.appendChild(el('div', { class: 'mx-fila' }, [campo('Producto', sp), campo('Tamaño', st)]));
+  if (!R.pid) return;
+  if (!R.d.insumos.length) { r.appendChild(el('div', { class: 'vacio' }, ['Primero crea los insumos.'])); return; }
+  var caja = el('div', { class: 'mx-panel' });
+  R.lineas.forEach(function(l, k){
+    var s = el('select', { 'aria-label': 'Insumo' }, [el('option', { value: '', text: '— Insumo —' })].concat(R.d.insumos.map(function(i){ var o = el('option', { value: i.id, text: i.nombre + ' (' + i.unidad + ')' }); if (i.id === l.insumo_id) o.selected = true; return o; })));
+    s.addEventListener('change', function(){ l.insumo_id = s.value; });
+    var c = inp({ type: 'text', inputmode: 'decimal', value: l.cantidad, 'aria-label': 'Cantidad por unidad vendida', placeholder: 'Cantidad' });
+    c.addEventListener('input', function(){ l.cantidad = c.value; });
+    caja.appendChild(el('div', { class: 'mx-fila', style: 'grid-template-columns:2fr 1fr auto' }, [s, c, el('button', { class: 'mx-del', 'aria-label': 'Quitar', onclick: function(){ R.lineas.splice(k, 1); pintar(); }, text: '×' })]));
+  });
+  caja.appendChild(el('div', { class: 'mx-acc' }, [
+    el('button', { class: 'btn', onclick: function(){ R.lineas.push({ insumo_id: '', cantidad: '' }); pintar(); }, text: '+ Insumo' }),
+    el('button', { class: 'btn prim', text: 'Guardar receta', onclick: function(){
+      run('inventarioGuardarReceta', { producto_id: R.pid, tamano: R.tam, lineas: R.lineas }).then(function(){
+        toast('Receta guardada.');
+        var pid = R.pid, tam = R.tam;
+        run('inventarioRecetas').then(function(x){ ST.rec = { d: x, pid: pid, tam: tam, lineas: R.lineas }; pintar(); });
+      }).catch(error); } })
+  ]));
+  caja.appendChild(el('div', { class: 'nota', style: 'margin-top:6px' }, ['Cantidad que se gasta por CADA unidad vendida. Dejarla sin insumos y guardar borra la receta.']));
+  r.appendChild(caja);
+}
+
+EXT_VISTAS['inventario'] = function(){ cargar(); };
+})();

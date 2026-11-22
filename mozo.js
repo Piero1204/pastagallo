@@ -223,6 +223,7 @@
           api({ mz: "vincular", codigo: CODIGO, equipo: eq }).then(function (r) {
             if (!r.ok) { err.textContent = r.error; b.remove(); return; }
             S.t = r.t; S.mozo = r.mozo; guardar(K.t, r.t); guardar(K.mozo, r.mozo); guardar("pg-mozo-equipo", eq);
+            if (r.mozo.rol && r.mozo.rol !== "mozo") { location.reload(); return; }   // cajero, repartidor o cocina: se carga su app
             iniciar(); toast("✓ Equipo vinculado a " + r.mozo.nombre, "ok");
           }).catch(function () { b.disabled = false; b.textContent = "Vincular este equipo"; err.textContent = "Sin conexión. Intenta de nuevo."; });
         });
@@ -1315,5 +1316,19 @@
     navigator.serviceWorker.register("/mozo-sw.js", { scope: "/" }).catch(function () {});
   }
   if (!SECS.length) { app.appendChild(h("p", "vacio", "No se pudo cargar la carta. Revisa la conexión y vuelve a abrir.")); return; }
-  if (S.t && S.mozo) iniciar(); else pantallaLogin();
+  /* Roles distintos de mozo (cajero, repartidor, cocina): su app vive en /<rol>.js y recibe el control.
+     Debe definir window.PG_APP_<ROL> = { iniciar(ctx) } con ctx = { api, token, mozo, contenedor, h, toast, salir, cfg }. */
+  var ROLES_EXT = ["cajero", "repartidor", "cocina"];
+  function rolExt() { var r = S.mozo && String(S.mozo.rol || "").toLowerCase(); return ROLES_EXT.indexOf(r) >= 0 ? r : ""; }
+  function cargarRolExt(rol) {
+    var sc = document.createElement("script"); sc.src = "/" + rol + ".js";
+    sc.onload = function () {
+      var a = window["PG_APP_" + rol.toUpperCase()];
+      if (a && a.iniciar) a.iniciar({ api: api, token: S.t, mozo: S.mozo, contenedor: app, h: h, toast: toast, salir: salir, cfg: C });
+      else app.appendChild(h("p", "vacio", "Este módulo todavía no está disponible. Avisa al administrador."));
+    };
+    sc.onerror = function () { app.appendChild(h("p", "vacio", "No se pudo cargar el módulo de " + rol + ". Revisa la conexión y vuelve a abrir el enlace.")); };
+    document.head.appendChild(sc);
+  }
+  if (S.t && S.mozo) { if (rolExt()) cargarRolExt(rolExt()); else iniciar(); } else pantallaLogin();
 })();

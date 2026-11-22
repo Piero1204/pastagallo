@@ -1,0 +1,33 @@
+  <section class="vista" id="v-reparto">
+    <style>
+      .rp-fila{background:#fff;border:1px solid var(--linea,#dccdb0);border-left:5px solid var(--oro);border-radius:12px;padding:10px 12px;margin:8px 0;display:grid;gap:6px}
+      .rp-fila.atraso{border-left-color:#b6232a;background:#fff4f2}.rp-fila.problema{border-left-color:#c46a12}
+      .rp-fila .cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+      .rp-fila .num{font:700 22px/1 var(--serif);color:var(--vino)}
+      .rp-fila .acc{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+      .rp-est{padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700;background:#f1ece2}
+      .rp-est.Pendiente,.rp-est.Ofrecido{background:#fbe8c8;color:#7a4a00}.rp-est.Asignado{background:#dbe8f5;color:#1f4870}.rp-est.En{background:#e3efd6;color:#36561b}
+      .rp-reps{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+      .rp-rep{background:#fff;border:1px solid var(--linea,#dccdb0);border-radius:12px;padding:10px 12px;display:grid;gap:4px}
+      .rp-pto{display:inline-block;width:9px;height:9px;border-radius:50%;background:#bbb;margin-right:5px}.rp-pto.on{background:#58c26a}
+      .rp-cfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:8px}
+      .rp-cfg label{display:grid;gap:3px;font-size:12.5px}
+    </style>
+    <div class="barra">
+      <h2 class="tit" style="margin:0 8px 0 0">Reparto</h2>
+      <button class="btn" id="rpRefrescar">↻ Actualizar</button>
+      <span class="nota" id="rpResumen"></span>
+    </div>
+    <p class="nota">Pedidos de <b>delivery</b>: quién lleva cada uno, tiempos y retrasos. Los repartidores se crean en <b>🤵 Mozos</b> con rol "repartidor". Se actualiza solo cada 15 segundos mientras esta pestaña está abierta.</p>
+    <h3 class="cuentas__tit">En curso</h3>
+    <div id="rpFilas"></div>
+    <h3 class="cuentas__tit">Repartidores</h3>
+    <div class="rp-reps" id="rpReps"></div>
+    <h3 class="cuentas__tit">Opiniones de clientes</h3>
+    <div id="rpOpin"></div>
+    <details style="margin-top:14px"><summary class="btn">⚙️ Ajustes del reparto</summary>
+      <p class="nota" style="margin-top:8px">Todo es opcional. Sin tiempos de ETA escritos, el cliente no ve estimación. Zonas: <code>Centro=15; Alto Trujillo=30</code> (minutos extra por zona; se detecta la zona por la dirección del pedido).</p>
+      <div class="rp-cfg" id="rpCfg"></div>
+      <div class="pie" style="justify-content:flex-start"><button class="btn prim" id="rpGuardarCfg">Guardar ajustes del reparto</button></div>
+    </details>
+  </section>

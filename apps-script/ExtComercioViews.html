@@ -1,0 +1,28 @@
+  <section class="vista" id="v-comercio">
+    <h2 class="tit">Pedido web: horarios, barra, programados y reseña</h2>
+    <div class="grupo">
+      <h3>Pedido programado</h3>
+      <p class="nota">El cliente elige la hora de recojo o entrega dentro del horario del local. El servidor revisa la hora otra vez al recibir el pedido.</p>
+      <div class="form" id="cxProg" style="margin-top:8px"></div>
+    </div>
+    <div class="grupo">
+      <h3>Catálogo por horario</h3>
+      <p class="nota">Escribe la ventana en que se puede pedir un producto o una categoría entera (ej. <b>12:00-16:00</b>; puedes poner varias separadas por coma, y cruzar la medianoche con <b>22:00-02:00</b>). Los días son opcionales (ej. <b>lun, mar, vie</b>). Vacío = siempre disponible. El cliente solo ve lo que se puede pedir ahora.</p>
+      <div class="form" id="cxVent" style="margin:8px 0"></div>
+      <input class="txt" id="cxBuscar" placeholder="Buscar producto o categoría…" style="max-width:320px;margin-bottom:8px">
+      <div style="overflow:auto;max-height:420px"><table class="tabla" id="cxTabla"></table></div>
+      <div class="pie"><button class="btn prim" id="cxGuardarVent">Guardar horarios</button></div>
+    </div>
+    <div class="grupo">
+      <h3>QR de barra / mostrador</h3>
+      <p class="nota">Imprime este QR y ponlo en la barra: el pedido llega marcado como "barra" y se pide para recoger en el local (necesita que el recojo esté activo en Ajustes).</p>
+      <div class="form" id="cxBarra" style="margin-top:8px"></div>
+      <div class="pie" style="justify-content:flex-start"><button class="btn" id="cxQr">Generar QR de barra</button></div>
+      <div id="cxQrOut" style="margin-top:10px;text-align:center"></div>
+    </div>
+    <div class="grupo">
+      <h3>Reseña y avisos</h3>
+      <div class="form" id="cxOtros" style="margin-top:8px"></div>
+    </div>
+    <div class="pie"><button class="btn prim" id="cxGuardarCfg">Guardar ajustes</button></div>
+  </section>

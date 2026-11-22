@@ -1,0 +1,26 @@
+<section class="vista" id="v-reportes">
+  <div class="barra">
+    <h2 class="tit" style="margin:0 8px 0 0">Reportes</h2>
+    <label>Desde <input type="date" id="repD" style="padding:7px;border:1px solid var(--linea);border-radius:8px"></label>
+    <label>Hasta <input type="date" id="repH" style="padding:7px;border:1px solid var(--linea);border-radius:8px"></label>
+    <div class="seg" id="repRapido"><button data-p="7">7 días</button><button data-p="30" class="on">30 días</button><button data-p="mes">Este mes</button><button data-p="ant">Mes pasado</button></div>
+    <button class="btn prim" id="repVer">Ver</button>
+    <button class="btn" id="repCsv">Descargar CSV</button>
+  </div>
+  <p class="nota" id="repNota" aria-live="polite">No cuenta pedidos cancelados ni cortesías. Las ventas ya incluyen descuentos y recargos.</p>
+  <div class="kpis" id="repK" style="grid-template-columns:repeat(4,1fr)"></div>
+  <div class="paneles" id="repP"></div>
+  <div class="panel" style="margin-top:14px">
+    <h3>Reporte mensual por correo</h3>
+    <p class="nota">Se envía solo cuando tú lo activas. Pide permiso de Google para enviar correo y para crear un activador (la primera vez).</p>
+    <div class="barra">
+      <input type="text" id="repCorreos" placeholder="correo1@ejemplo.com, correo2@ejemplo.com" aria-label="Correos del reporte" style="flex:1;min-width:220px;padding:9px 11px;border:1px solid var(--linea);border-radius:8px">
+      <button class="btn" id="repGuardarC">Guardar correos</button>
+    </div>
+    <div class="barra">
+      <button class="btn" id="repPrueba">Enviar el reporte del mes pasado ahora</button>
+      <button class="btn" id="repInst"></button>
+      <span class="nota" id="repEstado"></span>
+    </div>
+  </div>
+</section>

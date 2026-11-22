@@ -1,0 +1,105 @@
+/* ---------- módulo Clientes (usa $, el, run, toast, error, soles del panel) ---------- */
+(function(){
+  var CLI = { sel: '', fid: false };
+  function descargar(nombre, texto, tipo){
+    try {
+      var b = new Blob([texto], { type: (tipo || 'text/csv') + ';charset=utf-8' }), a = document.createElement('a');
+      a.href = URL.createObjectURL(b); a.download = nombre; document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    } catch (e) { toast('Tu navegador no permitió la descarga.', true); }
+  }
+  window.descargarCsvPanel = window.descargarCsvPanel || descargar;
+  function pestana(t){
+    document.querySelectorAll('#cliTabs button').forEach(function(b){ b.classList.toggle('on', b.dataset.t === t); });
+    $('#cliLista').style.display = t === 'lista' ? '' : 'none';
+    $('#cliOps').style.display = t === 'ops' ? '' : 'none';
+    $('#cliFid').style.display = t === 'fid' ? '' : 'none';
+    if (t === 'lista') buscar(); if (t === 'ops') cargarOps(); if (t === 'fid') cargarFid();
+  }
+  $('#cliTabs').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) pestana(b.dataset.t); });
+  var tQ; $('#cliQ').addEventListener('input', function(){ clearTimeout(tQ); tQ = setTimeout(buscar, 300); });
+  $('#cliAct').addEventListener('click', function(){ run('clientesActualizar', false).then(function(r){ toast('Listo: ' + r.clientes + ' clientes.'); buscar(); }).catch(error); });
+  $('#cliRec').addEventListener('click', function(){
+    if (!confirm('Se vuelve a calcular todo desde los pedidos. Las notas y etiquetas se conservan. ¿Continuar?')) return;
+    run('clientesActualizar', true).then(function(r){ toast('Reconstruido: ' + r.clientes + ' clientes.'); buscar(); }).catch(error);
+  });
+  function buscar(){
+    run('clientesBuscar', $('#cliQ').value).then(function(r){
+      var t = $('#cliT'); t.textContent = '';
+      $('#cliInfo').textContent = r.total + ' cliente(s)' + (r.total > r.clientes.length ? ' (se muestran los ' + r.clientes.length + ' más recientes: usa la búsqueda)' : '') + '. Solo el administrador ve esto.';
+      if (!r.clientes.length) t.appendChild(el('tr', null, [el('td', { colspan: 5, class: 'nota', text: 'Todavía no hay clientes con teléfono en los pedidos.' })]));
+      r.clientes.forEach(function(c){
+        var tr = el('tr', { tabindex: 0, style: 'cursor:pointer' }, [
+          el('td', null, [el('b', { text: c.nombre || '(sin nombre)' }), c.etiquetas ? el('div', { class: 'nota', text: c.etiquetas }) : null]),
+          el('td', { text: c.telefono }), el('td', { text: String(c.pedidos) }), el('td', { text: soles(c.total) }), el('td', { text: c.ultimo })]);
+        var abrir = function(){ ficha(c.telefono); };
+        tr.addEventListener('click', abrir); tr.addEventListener('keydown', function(e){ if (e.key === 'Enter') abrir(); });
+        t.appendChild(tr);
+      });
+    }).catch(error);
+  }
+  function estrellas(n){ return '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n); }
+  function ficha(tel){
+    run('clientesFicha', tel).then(function(f){
+      var c = f.cliente, box = $('#cliFicha'); box.textContent = ''; box.style.display = '';
+      box.appendChild(el('h3', { text: (c.nombre || '(sin nombre)') + ' · ' + c.telefono }));
+      box.appendChild(el('p', { text: c.pedidos + ' pedidos · ' + soles(c.total) + ' · ticket promedio ' + soles(c.ticket) + ' · primero ' + (c.primer || '-') + ' · último ' + (c.ultimo || '-') }));
+      var notas = el('textarea', { rows: 3, maxlength: 500, 'aria-label': 'Notas internas', style: 'width:100%;padding:8px;border:1px solid var(--linea);border-radius:8px' }); notas.value = c.notas;
+      var tags = el('input', { type: 'text', 'aria-label': 'Etiquetas', placeholder: 'Etiquetas separadas por coma (ej.: frecuente, alérgico)', style: 'width:100%;padding:8px;border:1px solid var(--linea);border-radius:8px;margin-top:6px' }); tags.value = c.etiquetas;
+      box.appendChild(el('label', { text: 'Notas internas (solo el equipo)' })); box.appendChild(notas); box.appendChild(tags);
+      box.appendChild(el('div', { class: 'barra', style: 'margin-top:8px' }, [
+        el('button', { class: 'btn prim', text: 'Guardar notas', onclick: function(){ run('clientesGuardarNota', c.telefono, notas.value, tags.value).then(function(){ toast('Guardado.'); buscar(); }).catch(error); } }),
+        el('button', { class: 'btn', text: 'Exportar datos (CSV)', onclick: function(){ run('clientesExportarCsv', c.telefono).then(function(r){ descargar(r.nombre, r.csv); }).catch(error); } }),
+        el('button', { class: 'btn mal', text: 'Olvidar cliente', onclick: function(){
+          if (!confirm('Se borra el nombre, teléfono, dirección y correo de este cliente en sus pedidos y en sus notas. Las ventas se conservan. NO se puede deshacer. ¿Seguro?')) return;
+          run('clientesOlvidar', c.telefono, true).then(function(r){ toast('Cliente olvidado (' + r.pedidos + ' pedidos anonimizados).'); box.style.display = 'none'; buscar(); }).catch(error);
+        } })]));
+      box.appendChild(el('h3', { text: 'Últimos pedidos', style: 'margin-top:12px' }));
+      var tb = el('tbody');
+      f.pedidos.forEach(function(p){
+        tb.appendChild(el('tr', null, [el('td', { text: p.fecha }), el('td', { text: '#' + (p.num_dia || p.numero) }), el('td', { text: p.canal }), el('td', { text: p.estado }), el('td', { text: soles(p.total) }),
+          el('td', null, [el('button', { class: 'btn peq', text: 'Enlace de opinión', onclick: function(){ run('opinionEnlace', p.numero).then(function(r){
+            try { navigator.clipboard.writeText(r.url); toast('Enlace copiado. Envíaselo por WhatsApp.'); } catch (e) { prompt('Copia este enlace:', r.url); } }).catch(error); } })])]));
+      });
+      box.appendChild(el('table', { class: 'tabla' }, [el('thead', null, [el('tr', null, ['Fecha', 'Pedido', 'Canal', 'Estado', 'Total', ''].map(function(x){ return el('th', { text: x }); }))]), tb]));
+      if (f.opiniones.length) {
+        box.appendChild(el('h3', { text: 'Opiniones', style: 'margin-top:12px' }));
+        f.opiniones.forEach(function(o){ box.appendChild(el('p', { text: o.fecha + ' · ' + estrellas(o.estrellas) + (o.comentario ? ' · ' + o.comentario : '') })); });
+      }
+      if (f.fidelidad) fichaFid(box, c, f.fidelidad);
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }).catch(error);
+  }
+  function fichaFid(box, c, F){
+    box.appendChild(el('h3', { text: 'Puntos', style: 'margin-top:12px' }));
+    box.appendChild(el('p', { text: F.saldo + ' puntos disponibles (' + F.ganados + ' ganados, ' + F.canjeados + ' canjeados, ajustes ' + F.ajustes + '). Regla: 1 punto por cada S/ ' + F.regla + '.' }));
+    var pts = el('input', { type: 'number', min: 1, step: 1, placeholder: 'Puntos', 'aria-label': 'Puntos a canjear', style: 'width:90px;padding:8px;border:1px solid var(--linea);border-radius:8px' });
+    var mot = el('input', { type: 'text', maxlength: 120, placeholder: 'Qué se entrega a cambio', 'aria-label': 'Motivo del canje', style: 'flex:1;min-width:180px;padding:8px;border:1px solid var(--linea);border-radius:8px' });
+    var rid = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    box.appendChild(el('div', { class: 'barra' }, [pts, mot,
+      el('button', { class: 'btn prim', text: 'Canjear', onclick: function(){ run('fidelidadCanjear', c.telefono, Number(pts.value), mot.value, rid).then(function(r){ toast('Canje registrado. Saldo: ' + r.saldo); ficha(c.telefono); }).catch(error); } }),
+      el('button', { class: 'btn', text: 'Ajustar (+/-)', onclick: function(){
+        var n = prompt('Puntos a sumar (positivo) o restar (negativo):'); if (n === null) return;
+        var m = prompt('Motivo del ajuste:'); if (m === null) return;
+        run('fidelidadAjustar', c.telefono, Number(n), m, 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)).then(function(r){ toast('Ajuste registrado. Saldo: ' + r.saldo); ficha(c.telefono); }).catch(error); } })]));
+    F.movimientos.forEach(function(m){ box.appendChild(el('p', { class: 'nota', text: m.fecha + ' · ' + m.tipo + ' ' + m.puntos + ' · ' + m.motivo + ' (' + m.usuario + ')' })); });
+  }
+  function cargarOps(){
+    run('opinionesListar').then(function(r){
+      var k = $('#opK'); k.textContent = '';
+      [['Promedio', r.total ? r.promedio.toFixed(2) + ' / 5' : '-'], ['Opiniones', String(r.total)], ['5 estrellas', String(r.distribucion[5])]].forEach(function(x){ k.appendChild(el('div', { class: 'kpi' }, [el('span', { text: x[0] }), el('strong', { text: x[1] })])); });
+      var t = $('#opT'); t.textContent = '';
+      if (!r.ultimas.length) t.appendChild(el('tr', null, [el('td', { colspan: 5, class: 'nota', text: 'Todavía no hay opiniones.' })]));
+      r.ultimas.forEach(function(o){ t.appendChild(el('tr', null, [el('td', { text: o.fecha }), el('td', { text: '#' + (o.num_dia || o.pedido) }), el('td', { text: o.canal }), el('td', { text: estrellas(o.estrellas) }), el('td', { text: o.comentario })])); });
+    }).catch(error);
+  }
+  function cargarFid(){
+    run('clientesEstado').then(function(e){
+      CLI.fid = e.fidelidad; $('#fidRegla').value = e.reglaFidelidad;
+      $('#fidOnOff').textContent = e.fidelidad ? 'Fidelidad ENCENDIDA (tocar para apagar)' : 'Fidelidad apagada (tocar para encender)';
+    }).catch(error);
+  }
+  $('#fidOnOff').addEventListener('click', function(){ run('fidelidadModulo', !CLI.fid).then(function(){ toast(CLI.fid ? 'Fidelidad apagada.' : 'Fidelidad encendida.'); cargarFid(); }).catch(error); });
+  $('#fidGuardar').addEventListener('click', function(){ run('fidelidadGuardarRegla', $('#fidRegla').value).then(function(){ toast('Regla guardada.'); cargarFid(); }).catch(error); });
+  EXT_VISTAS['clientes'] = function(){ pestana('lista'); };
+})();
