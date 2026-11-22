@@ -1,0 +1,260 @@
+/* ---------- módulo encargos (se carga solo si modulo_encargos = SI) ---------- */
+(function(){
+var ST = { tab: 'enc', filtro: 'activos', d: null, form: null, may: null, mayForm: null, env: null, envForm: null, prod: null, prodFecha: '' };
+var ESTADO_SIG = { 'Cotizado': 'Confirmado', 'Confirmado': 'En preparación', 'En preparación': 'Listo', 'Listo': 'Entregado' };
+var DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+function raiz(){ return $('#ecRaiz'); }
+function r2(n){ return Math.round(n * 100) / 100; }
+function campo(label, input){ return el('label', { class: 'ec-f' }, [el('span', { text: label }), input]); }
+function inp(props){ var p = { autocomplete: 'off' }; Object.keys(props).forEach(function(k){ p[k] = props[k]; }); return el('input', p); }
+function sel(opciones, valor, aria){ var s = el('select', { 'aria-label': aria || '' }); opciones.forEach(function(o){ var op = el('option', { value: o[0], text: o[1] }); if (String(o[0]) === String(valor)) op.selected = true; s.appendChild(op); }); return s; }
+function diaTxt(f){ var p = f.split('-'), d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); return DIAS[d.getDay()] + ' ' + p[2] + '/' + p[1]; }
+function nn(n){ return String(Math.round(Number(n || 0) * 100) / 100); }
+
+function pestanas(){
+  return el('div', { class: 'barra' }, [el('div', { class: 'seg', role: 'tablist' }, [['enc', 'Encargos'], ['may', 'Mayoristas'], ['env', 'Envíos'], ['prod', 'Producción']].map(function(t){
+    return el('button', { class: ST.tab === t[0] ? 'on' : '', text: t[1], onclick: function(){ ST.tab = t[0]; ST.form = ST.mayForm = ST.envForm = null; cargar(); } });
+  }))]);
+}
+function cargar(){
+  var r = ST.tab === 'enc' ? run('encargosListar', { estado: ST.filtro })
+    : ST.tab === 'may' ? run('encargosListar', { estado: 'activos' })
+    : ST.tab === 'env' ? Promise.all([run('enviosListar'), run('encargosListar', { estado: 'todos' })])
+    : run('produccionDia', ST.prodFecha || '');
+  r.then(function(x){
+    if (ST.tab === 'enc' || ST.tab === 'may') ST.d = x;
+    else if (ST.tab === 'env') { ST.env = x[0]; ST.d = x[1]; }
+    else { ST.prod = x; ST.prodFecha = x.fecha; if (!ST.d) return run('encargosListar', { estado: 'activos' }).then(function(y){ ST.d = y; pintar(); }); }
+    if (ST.tab === 'enc') { var c = $('#cEnc'); if (c) c.textContent = x.encargos.filter(function(e){ return e.entrega_fecha === x.hoy; }).length || ''; }
+    pintar();
+  }).catch(error);
+}
+function pintar(){
+  var r = raiz(); r.textContent = ''; r.appendChild(pestanas());
+  if (ST.tab === 'enc') pintarEnc(r); else if (ST.tab === 'may') pintarMay(r); else if (ST.tab === 'env') pintarEnv(r); else pintarProd(r);
+}
+
+/* ===== encargos (agenda por fecha) ===== */
+function pintarEnc(r){
+  var d = ST.d;
+  r.appendChild(el('div', { class: 'barra' }, [
+    el('button', { class: 'btn prim', text: '+ Nuevo encargo', onclick: function(){ ST.form = formVacio(); pintar(); window.scrollTo(0, 0); } }),
+    el('div', { class: 'seg' }, [['activos', 'Pendientes'], ['todos', 'Todos']].map(function(f){ return el('button', { class: ST.filtro === f[0] ? 'on' : '', text: f[1], onclick: function(){ ST.filtro = f[0]; cargar(); } }); }))
+  ]));
+  if (ST.form) r.appendChild(formEncargo(ST.form));
+  if (!d.encargos.length) { r.appendChild(el('div', { class: 'vacio' }, ['No hay encargos' + (ST.filtro === 'activos' ? ' pendientes' : '') + '.'])); return; }
+  var ultimo = '';
+  d.encargos.forEach(function(e){
+    if (e.entrega_fecha !== ultimo) { ultimo = e.entrega_fecha; r.appendChild(el('div', { class: 'ec-dia', text: (e.entrega_fecha === d.hoy ? 'Hoy · ' : '') + diaTxt(e.entrega_fecha) })); var lista = el('div', { class: 'ec-lista' }); r.appendChild(lista); }
+    r.lastChild.appendChild(tarjeta(e));
+  });
+}
+function tarjeta(e){
+  var sig = ESTADO_SIG[e.estado], final = e.estado === 'Entregado' || e.estado === 'Cancelado';
+  return el('div', { class: 'ec-card e-' + e.estado.replace(/ /g, '-') }, [
+    el('div', { class: 'ec-top' }, [el('b', { text: (e.entrega_hora ? e.entrega_hora + ' · ' : '') + e.cliente }), el('span', { class: 'ec-chip', text: e.estado }), e.tipo === 'Catering' ? el('span', { class: 'ec-chip', text: 'Catering' }) : null]),
+    el('div', { class: 'nota', text: (e.contacto ? '📞 ' + e.contacto + ' · ' : '') + (e.lugar ? '📍 ' + e.lugar : '') }),
+    el('div', { style: 'font-size:13px' }, e.items.map(function(i){ return el('div', { text: nn(i.cant) + ' × ' + i.n + '  —  ' + soles(i.cant * i.precio) }); })),
+    e.notas ? el('div', { class: 'nota', text: 'Nota: ' + e.notas }) : null,
+    el('div', { class: 'ec-tot' }, [soles(e.total), el('span', { class: 'ec-chip' + (e.saldo > 0 && e.estado !== 'Cancelado' ? ' deb' : ''), style: 'margin-left:8px;vertical-align:middle', text: 'Adelanto ' + soles(e.adelanto) + ' · Saldo ' + soles(e.saldo) })]),
+    el('div', { class: 'ec-acc' }, [
+      sig ? el('button', { class: 'btn ok', text: '→ ' + sig, onclick: function(){ cambiar(e, sig); } }) : null,
+      !final && e.saldo > 0 ? el('button', { class: 'btn', text: 'Cobrar saldo', onclick: function(){ pagar(e); } }) : null,
+      !final ? el('button', { class: 'btn', text: 'Editar', onclick: function(){ ST.form = formDe(e); pintar(); window.scrollTo(0, 0); } }) : null,
+      el('button', { class: 'btn', text: 'Ficha', onclick: function(){ ficha(e); } }),
+      !final ? el('button', { class: 'btn mal', text: 'Cancelar', onclick: function(){ if (confirm('¿Cancelar el encargo de ' + e.cliente + '?')) cambiar(e, 'Cancelado'); } }) : null
+    ])
+  ]);
+}
+function cambiar(e, est){
+  run('encargoEstado', e.id, est, e.estado).then(function(x){ toast(x.aviso || ('Encargo ' + est.toLowerCase() + '.'), !!x.aviso); cargar(); }).catch(function(er){ error(er); cargar(); });
+}
+function pagar(e){
+  var m = prompt('¿Cuánto pagó el cliente ahora? (saldo ' + soles(e.saldo) + ')', nn(e.saldo));
+  if (m == null) return;
+  run('encargoPago', e.id, m).then(function(){ toast('Pago registrado.'); cargar(); }).catch(error);
+}
+function formVacio(){ return { id: '', tipo: 'Encargo', cliente: '', contacto: '', mayorista_id: '', entrega_fecha: ST.d.hoy, entrega_hora: '', lugar: '', items: [{ n: '', cant: '1', precio: '' }], adelanto: '', notas: '' }; }
+function formDe(e){ return { id: e.id, tipo: e.tipo, cliente: e.cliente, contacto: e.contacto, mayorista_id: e.mayorista_id, entrega_fecha: e.entrega_fecha, entrega_hora: e.entrega_hora, lugar: e.lugar,
+  items: e.items.map(function(i){ return { n: i.n, cant: nn(i.cant), precio: nn(i.precio) }; }), adelanto: nn(e.adelanto), notas: e.notas }; }
+
+function formEncargo(f){
+  var d = ST.d;
+  var tipo = sel(d.tipos.map(function(t){ return [t, t]; }), f.tipo, 'Tipo');
+  var cli = inp({ type: 'text', maxlength: 80, value: f.cliente }), con = inp({ type: 'tel', maxlength: 30, value: f.contacto, placeholder: '987 654 321' });
+  var may = sel([['', 'Sin mayorista']].concat(d.mayoristas.filter(function(m){ return m.activo || m.id === f.mayorista_id; }).map(function(m){ return [m.id, m.nombre + (m.descuento_pct ? ' (' + m.descuento_pct + '%)' : '')]; })), f.mayorista_id, 'Mayorista');
+  var fec = inp({ type: 'date', value: f.entrega_fecha, min: f.id ? '' : d.hoy }), hor = inp({ type: 'time', value: f.entrega_hora });
+  var lug = inp({ type: 'text', maxlength: 140, value: f.lugar, placeholder: 'Dirección o “recojo en local”' });
+  var ade = inp({ type: 'text', inputmode: 'decimal', value: f.adelanto, placeholder: '0.00' }), not = el('textarea', { rows: 2, maxlength: 400, 'aria-label': 'Notas' }); not.value = f.notas;
+  var dl = el('datalist', { id: 'ecProds' }, d.productos.map(function(p){ return el('option', { value: p.nombre }); }));
+  var itemsBox = el('div'), resumen = el('div', { class: 'ec-tot', 'aria-live': 'polite' });
+  function mayActual(){ return d.mayoristas.filter(function(m){ return m.id === may.value; })[0]; }
+  function precioLista(n){ var m = mayActual(); if (!m) return null; var k = n.trim().toLowerCase(); var x = m.precios.filter(function(p){ return String(p.n).toLowerCase() === k; })[0]; return x ? x.precio : null; }
+  function calc(){
+    var m = mayActual(), sub = 0, conDesc = 0;
+    f.items.forEach(function(i){ var c = Number(String(i.cant).replace(',', '.')) || 0, lp = precioLista(i.n), p = i.precio === '' ? (lp == null ? 0 : lp) : Number(String(i.precio).replace(',', '.')) || 0, s = r2(c * p); sub += s; if (lp == null) conDesc += s; });
+    var desc = m ? r2(conDesc * m.descuento_pct / 100) : 0, tot = r2(sub - desc), ad = Number(String(ade.value).replace(',', '.')) || 0;
+    resumen.textContent = 'Total ' + soles(tot) + (desc ? ' (desc. mayorista −' + soles(desc) + ')' : '') + ' · Saldo ' + soles(tot - ad);
+  }
+  function pintarItems(){
+    itemsBox.textContent = '';
+    f.items.forEach(function(i, k){
+      var n = inp({ type: 'text', list: 'ecProds', maxlength: 80, value: i.n, placeholder: 'Producto o descripción', 'aria-label': 'Producto' });
+      var c = inp({ type: 'text', inputmode: 'decimal', value: i.cant, 'aria-label': 'Cantidad', placeholder: 'Cant.' });
+      var p = inp({ type: 'text', inputmode: 'decimal', value: i.precio, 'aria-label': 'Precio acordado', placeholder: 'Precio S/' });
+      n.addEventListener('input', function(){ i.n = n.value; var lp = precioLista(n.value); if (lp != null && i.precio === '') p.placeholder = 'Lista: ' + lp; calc(); });
+      c.addEventListener('input', function(){ i.cant = c.value; calc(); }); p.addEventListener('input', function(){ i.precio = p.value; calc(); });
+      itemsBox.appendChild(el('div', { class: 'ec-it' }, [n, c, p, el('button', { class: 'ec-del', 'aria-label': 'Quitar ítem', text: '×', onclick: function(){ if (f.items.length > 1) { f.items.splice(k, 1); pintarItems(); calc(); } } })]));
+    });
+  }
+  may.addEventListener('change', function(){ f.mayorista_id = may.value; pintarItems(); calc(); }); ade.addEventListener('input', calc);
+  pintarItems(); calc();
+  var btn = el('button', { class: 'btn prim', text: f.id ? 'Guardar cambios' : 'Crear encargo' });
+  btn.addEventListener('click', function(){
+    btn.disabled = true;
+    run('encargoGuardar', { id: f.id, tipo: tipo.value, cliente: cli.value, contacto: con.value, mayorista_id: may.value, entrega_fecha: fec.value, entrega_hora: hor.value, lugar: lug.value,
+      items: f.items.filter(function(i){ return i.n.trim() || i.precio !== ''; }), adelanto: ade.value, notas: not.value })
+      .then(function(){ toast('Encargo guardado.'); ST.form = null; cargar(); }).catch(function(e){ btn.disabled = false; error(e); });
+  });
+  return el('div', { class: 'ec-panel' }, [el('b', { text: f.id ? 'Editar encargo ' + f.id : 'Nuevo encargo' }), dl,
+    el('div', { class: 'ec-fila', style: 'margin-top:8px' }, [campo('Tipo', tipo), campo('Cliente', cli), campo('Teléfono', con), campo('Mayorista', may)]),
+    el('div', { class: 'ec-fila' }, [campo('Fecha de entrega', fec), campo('Hora', hor), campo('Lugar de entrega', lug)]),
+    el('div', { class: 'ec-f' }, [el('span', { text: 'Ítems y precio acordado (puedes escribir cualquier cosa)' })]), itemsBox,
+    el('button', { class: 'btn', text: '+ Ítem', onclick: function(){ f.items.push({ n: '', cant: '1', precio: '' }); pintarItems(); } }),
+    el('div', { class: 'ec-fila', style: 'margin-top:10px' }, [campo('Adelanto recibido (S/)', ade), campo('Notas', not)]),
+    resumen,
+    el('div', { class: 'ec-acc', style: 'margin-top:8px' }, [btn, el('button', { class: 'btn', text: 'Cancelar', onclick: function(){ ST.form = null; pintar(); } })])]);
+}
+
+/* ===== ficha imprimible ===== */
+function ficha(e){
+  var imp = $('#ecImp');
+  if (!imp) { imp = el('div', { id: 'ecImp' }); document.body.appendChild(imp); }
+  imp.textContent = '';
+  var tb = el('table', {}, [el('tr', {}, [el('th', { text: 'Cant.' }), el('th', { text: 'Detalle' }), el('th', { class: 'num', text: 'P. unit.' }), el('th', { class: 'num', text: 'Subtotal' })])]);
+  e.items.forEach(function(i){ tb.appendChild(el('tr', {}, [el('td', { text: nn(i.cant) }), el('td', { text: i.n }), el('td', { class: 'num', text: soles(i.precio) }), el('td', { class: 'num', text: soles(i.cant * i.precio) })])); });
+  var f = el('div', { class: 'ec-ficha' }, [
+    el('div', { class: 'no-imp', style: 'display:flex;gap:8px;margin-bottom:12px' }, [el('button', { class: 'btn prim', text: '🖨 Imprimir', onclick: function(){ window.print(); } }), el('button', { class: 'btn', text: 'Cerrar', onclick: function(){ imp.classList.remove('on'); } })]),
+    el('h1', { text: 'Pasta Gallo · ' + e.tipo + ' ' + e.id }),
+    el('div', { text: 'Estado: ' + e.estado }),
+    el('p', {}, [el('b', { text: 'Cliente: ' }), e.cliente + (e.contacto ? ' · Tel. ' + e.contacto : '')]),
+    el('p', {}, [el('b', { text: 'Entrega: ' }), diaTxt(e.entrega_fecha) + ' (' + e.entrega_fecha + ')' + (e.entrega_hora ? ' a las ' + e.entrega_hora : '') + (e.lugar ? ' · ' + e.lugar : '')]),
+    tb,
+    e.descuento_pct ? el('div', { class: 'num', text: 'Descuento mayorista: ' + e.descuento_pct + '% (sobre ítems sin precio propio)' }) : null,
+    el('div', { class: 'num', style: 'font-size:18px', text: 'Total: ' + soles(e.total) }),
+    el('div', { class: 'num', text: 'Adelanto: ' + soles(e.adelanto) }),
+    el('div', { class: 'num', style: 'font-size:18px;font-weight:700', text: 'SALDO A COBRAR: ' + soles(e.saldo) }),
+    e.notas ? el('p', {}, [el('b', { text: 'Notas: ' }), e.notas]) : null
+  ]);
+  imp.appendChild(f); imp.classList.add('on'); window.scrollTo(0, 0);
+}
+
+/* ===== mayoristas ===== */
+function pintarMay(r){
+  var d = ST.d;
+  r.appendChild(el('div', { class: 'ec-aviso' }, ['Los precios y descuentos de cada mayorista solo se usan en los encargos. No cambian los precios públicos de la carta.']));
+  r.appendChild(el('div', { class: 'barra' }, [el('button', { class: 'btn prim', text: '+ Mayorista', onclick: function(){ ST.mayForm = { id: '', nombre: '', contacto: '', descuento_pct: '', precios: [], activo: true, notas: '' }; pintar(); } })]));
+  if (ST.mayForm) r.appendChild(formMay(ST.mayForm));
+  if (!d.mayoristas.length) { r.appendChild(el('div', { class: 'vacio' }, ['Aún no hay clientes mayoristas.'])); return; }
+  var l = el('div', { class: 'ec-lista' });
+  d.mayoristas.forEach(function(m){
+    l.appendChild(el('div', { class: 'ec-card', style: m.activo ? '' : 'opacity:.6' }, [
+      el('div', { class: 'ec-top' }, [el('b', { text: m.nombre }), el('span', { class: 'ec-chip', text: m.descuento_pct + '% desc.' }), m.activo ? null : el('span', { class: 'ec-chip', text: 'Inactivo' })]),
+      el('div', { class: 'nota', text: m.contacto ? '📞 ' + m.contacto : '' }),
+      el('div', { style: 'font-size:13px' }, m.precios.map(function(p){ return el('div', { text: p.n + ': ' + soles(p.precio) }); })),
+      el('div', { class: 'ec-acc' }, [el('button', { class: 'btn', text: 'Editar', onclick: function(){ ST.mayForm = { id: m.id, nombre: m.nombre, contacto: m.contacto, descuento_pct: nn(m.descuento_pct), precios: m.precios.map(function(p){ return { n: p.n, precio: nn(p.precio) }; }), activo: m.activo, notas: m.notas }; pintar(); window.scrollTo(0, 0); } })])
+    ]));
+  });
+  r.appendChild(l);
+}
+function formMay(f){
+  var nom = inp({ type: 'text', maxlength: 80, value: f.nombre }), con = inp({ type: 'tel', maxlength: 30, value: f.contacto }), pct = inp({ type: 'text', inputmode: 'decimal', value: f.descuento_pct, placeholder: '0' });
+  var not = inp({ type: 'text', maxlength: 300, value: f.notas }), act = inp({ type: 'checkbox' }); act.checked = f.activo;
+  var caja = el('div'), dl = el('datalist', { id: 'ecProds2' }, ST.d.productos.map(function(p){ return el('option', { value: p.nombre }); }));
+  function pintarPrecios(){
+    caja.textContent = '';
+    f.precios.forEach(function(p, k){
+      var n = inp({ type: 'text', list: 'ecProds2', maxlength: 80, value: p.n, placeholder: 'Producto', 'aria-label': 'Producto' }), c = inp({ type: 'text', inputmode: 'decimal', value: p.precio, placeholder: 'Precio S/', 'aria-label': 'Precio' });
+      n.addEventListener('input', function(){ p.n = n.value; }); c.addEventListener('input', function(){ p.precio = c.value; });
+      caja.appendChild(el('div', { class: 'ec-it', style: 'grid-template-columns:3fr 1.2fr auto' }, [n, c, el('button', { class: 'ec-del', text: '×', 'aria-label': 'Quitar', onclick: function(){ f.precios.splice(k, 1); pintarPrecios(); } })]));
+    });
+  }
+  pintarPrecios();
+  var btn = el('button', { class: 'btn prim', text: 'Guardar' });
+  btn.addEventListener('click', function(){
+    btn.disabled = true;
+    run('mayoristaGuardar', { id: f.id, nombre: nom.value, contacto: con.value, descuento_pct: pct.value, precios: f.precios, activo: act.checked ? 'SI' : 'NO', notas: not.value })
+      .then(function(){ toast('Mayorista guardado.'); ST.mayForm = null; cargar(); }).catch(function(e){ btn.disabled = false; error(e); });
+  });
+  return el('div', { class: 'ec-panel' }, [el('b', { text: f.id ? 'Editar mayorista' : 'Nuevo mayorista' }), dl,
+    el('div', { class: 'ec-fila', style: 'margin-top:8px' }, [campo('Nombre', nom), campo('Teléfono', con), campo('Descuento general (%)', pct), campo('Notas', not)]),
+    el('div', { class: 'ec-f' }, [el('span', { text: 'Precios propios (opcional; esos ítems quedan fuera del descuento %)' })]), caja,
+    el('button', { class: 'btn', text: '+ Precio', onclick: function(){ f.precios.push({ n: '', precio: '' }); pintarPrecios(); } }),
+    el('label', { class: 'ec-f', style: 'margin-top:8px;display:flex;gap:8px;align-items:center' }, [act, el('span', { text: 'Activo' })]),
+    el('div', { class: 'ec-acc', style: 'margin-top:8px' }, [btn, el('button', { class: 'btn', text: 'Cancelar', onclick: function(){ ST.mayForm = null; pintar(); } })])]);
+}
+
+/* ===== envíos interprovinciales (solo Perú) ===== */
+function pintarEnv(r){
+  var E = ST.env;
+  r.appendChild(el('div', { class: 'ec-aviso' }, ['Registro manual de envíos dentro del Perú (Olva, Shalom, Marvisur…). El seguimiento lo escribes tú con lo que te informe la agencia.']));
+  r.appendChild(el('div', { class: 'barra' }, [el('button', { class: 'btn prim', text: '+ Envío', onclick: function(){ ST.envForm = { id: '', encargo_id: '', cliente: '', contacto: '', agencia: '', guia: '', clave: '', departamento: '', destino: '', costo: '', estado: 'Preparando', seguimiento: '' }; pintar(); } })]));
+  if (ST.envForm) r.appendChild(formEnv(ST.envForm));
+  if (!E.envios.length) { r.appendChild(el('div', { class: 'vacio' }, ['Aún no hay envíos registrados.'])); return; }
+  var l = el('div', { class: 'ec-lista' });
+  E.envios.forEach(function(v){
+    l.appendChild(el('div', { class: 'ec-card', style: 'border-left-color:' + (v.estado === 'Entregado' ? 'var(--ok)' : v.estado === 'Incidencia' ? 'var(--mal)' : 'var(--azul)') }, [
+      el('div', { class: 'ec-top' }, [el('b', { text: v.cliente }), el('span', { class: 'ec-chip', text: v.estado })]),
+      el('div', { style: 'font-size:13px', text: v.agencia + ' → ' + v.destino + ', ' + v.departamento + (v.encargo_id ? ' · Encargo ' + v.encargo_id : '') }),
+      el('div', { style: 'font-size:13px', text: (v.guia ? 'Guía: ' + v.guia : 'Sin guía') + (v.clave ? ' · Clave: ' + v.clave : '') + ' · Costo ' + soles(v.costo) }),
+      v.seguimiento ? el('div', { class: 'nota', text: 'Seguimiento: ' + v.seguimiento }) : null,
+      el('div', { class: 'ec-acc' }, [el('button', { class: 'btn', text: 'Actualizar', onclick: function(){ ST.envForm = { id: v.id, encargo_id: v.encargo_id, cliente: v.cliente, contacto: v.contacto, agencia: v.agencia, guia: v.guia, clave: v.clave, departamento: v.departamento, destino: v.destino, costo: nn(v.costo), estado: v.estado, seguimiento: v.seguimiento }; pintar(); window.scrollTo(0, 0); } })])
+    ]));
+  });
+  r.appendChild(l);
+}
+function formEnv(f){
+  var E = ST.env;
+  var enc = sel([['', 'Sin encargo vinculado']].concat(ST.d.encargos.map(function(e){ return [e.id, e.id + ' · ' + e.cliente + ' (' + e.entrega_fecha + ')']; })), f.encargo_id, 'Encargo');
+  var cli = inp({ type: 'text', maxlength: 80, value: f.cliente, placeholder: 'Quien recibe' }), con = inp({ type: 'tel', maxlength: 30, value: f.contacto });
+  var age = inp({ type: 'text', maxlength: 60, value: f.agencia, placeholder: 'Olva, Shalom…' }), gui = inp({ type: 'text', maxlength: 40, value: f.guia }), cla = inp({ type: 'text', maxlength: 40, value: f.clave });
+  var dep = sel([['', '— Departamento —']].concat(E.departamentos.map(function(x){ return [x, x]; })), f.departamento, 'Departamento'), des = inp({ type: 'text', maxlength: 120, value: f.destino, placeholder: 'Ciudad o agencia de destino' });
+  var cos = inp({ type: 'text', inputmode: 'decimal', value: f.costo, placeholder: '0.00' }), est = sel(E.estados.map(function(x){ return [x, x]; }), f.estado, 'Estado');
+  var seg = el('textarea', { rows: 2, maxlength: 300, 'aria-label': 'Seguimiento' }); seg.value = f.seguimiento;
+  enc.addEventListener('change', function(){ var e = ST.d.encargos.filter(function(x){ return x.id === enc.value; })[0]; if (e && !cli.value) { cli.value = e.cliente; con.value = e.contacto; } });
+  var btn = el('button', { class: 'btn prim', text: 'Guardar' });
+  btn.addEventListener('click', function(){
+    btn.disabled = true;
+    run('envioGuardar', { id: f.id, encargo_id: enc.value, cliente: cli.value, contacto: con.value, agencia: age.value, guia: gui.value, clave: cla.value, departamento: dep.value, destino: des.value, costo: cos.value, estado: est.value, seguimiento: seg.value })
+      .then(function(){ toast('Envío guardado.'); ST.envForm = null; cargar(); }).catch(function(e){ btn.disabled = false; error(e); });
+  });
+  return el('div', { class: 'ec-panel' }, [el('b', { text: f.id ? 'Actualizar envío ' + f.id : 'Nuevo envío' }),
+    el('div', { class: 'ec-fila', style: 'margin-top:8px' }, [campo('Encargo (opcional)', enc), campo('Recibe', cli), campo('Teléfono', con), campo('Agencia', age)]),
+    el('div', { class: 'ec-fila' }, [campo('Guía / orden', gui), campo('Clave de recojo', cla), campo('Departamento', dep), campo('Ciudad / sede destino', des), campo('Costo (S/)', cos), campo('Estado', est)]),
+    campo('Seguimiento (lo que te diga la agencia)', seg),
+    el('div', { class: 'ec-acc', style: 'margin-top:8px' }, [btn, el('button', { class: 'btn', text: 'Cancelar', onclick: function(){ ST.envForm = null; pintar(); } })])]);
+}
+
+/* ===== producción por día ===== */
+function pintarProd(r){
+  var P = ST.prod;
+  var fec = inp({ type: 'date', value: P.fecha, 'aria-label': 'Fecha' });
+  fec.addEventListener('change', function(){ ST.prodFecha = fec.value; cargar(); });
+  r.appendChild(el('div', { class: 'barra' }, [campo('Día a preparar', fec),
+    el('button', { class: 'btn', text: 'Hoy', onclick: function(){ ST.prodFecha = ''; cargar(); } }),
+    el('button', { class: 'btn', text: 'Mañana', onclick: function(){ var d = new Date(); d.setDate(d.getDate() + 1); ST.prodFecha = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); cargar(); } })]));
+  r.appendChild(el('div', { class: 'ec-aviso', 'aria-live': 'polite' }, [diaTxt(P.fecha) + ': ' + P.encargos + ' encargo(s) confirmado(s)' + (P.pedidosProgramados ? ' + ' + P.pedidosProgramados + ' pedido(s) programado(s) de hoy' : '') + (P.sinConfirmar ? ' · ' + P.sinConfirmar + ' cotizado(s) sin confirmar (no se suman)' : '') + '.']));
+  if (!P.productos.length) { r.appendChild(el('div', { class: 'vacio' }, ['Nada prometido para este día.'])); return; }
+  var t = el('table', { class: 'tabla' }, [el('thead', {}, [el('tr', {}, ['Producto', 'Cantidad', 'De'].map(function(h){ return el('th', { text: h }); }))])]);
+  var tb = el('tbody'); P.productos.forEach(function(p){ tb.appendChild(el('tr', {}, [el('td', { text: p.nombre }), el('td', { text: nn(p.cantidad), style: 'font:700 18px var(--serif)' }), el('td', { text: p.fuentes.join(', '), class: 'nota' })])); });
+  t.appendChild(tb); r.appendChild(el('div', { style: 'overflow-x:auto' }, [t]));
+  if (P.insumos.length) {
+    r.appendChild(el('div', { class: 'ec-dia', text: 'Insumos necesarios (según tus recetas)' }));
+    var t2 = el('table', { class: 'tabla' }, [el('thead', {}, [el('tr', {}, ['Insumo', 'Necesario', 'En stock', 'Falta'].map(function(h){ return el('th', { text: h }); }))])]), b2 = el('tbody');
+    P.insumos.forEach(function(i){ b2.appendChild(el('tr', {}, [el('td', { text: i.nombre }), el('td', { text: nn(i.necesario) + ' ' + i.unidad }), el('td', { text: nn(i.stock) + ' ' + i.unidad }), el('td', { text: i.falta ? nn(i.falta) + ' ' + i.unidad : '—', style: i.falta ? 'color:var(--mal);font-weight:700' : '' })])); });
+    t2.appendChild(b2); r.appendChild(el('div', { style: 'overflow-x:auto' }, [t2]));
+  }
+}
+
+EXT_VISTAS['encargos'] = function(){ cargar(); };
+})();

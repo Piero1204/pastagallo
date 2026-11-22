@@ -14,7 +14,7 @@
    mozo_minutos_despues (60) = cuánto queda abierto el panel después de que cierra la cocina (para cobrar). */
 
 var HOJA_MOZOS = 'Mozos', HOJA_COBROS = 'Cobros';
-var COLS_MOZOS = ['id', 'nombre', 'activo', 'codigo', 'llave', 'equipo', 'vinculado', 'ultimo_acceso', 'creado', 'dias', 'mesas', 'excepcion'];
+var COLS_MOZOS = ['id', 'nombre', 'activo', 'codigo', 'llave', 'equipo', 'vinculado', 'ultimo_acceso', 'creado', 'dias', 'mesas', 'excepcion', 'rol'];
 var COLS_COBROS = ['id', 'fecha', 'mesa', 'mozo_id', 'mozo', 'consumo', 'metodo', 'monto', 'propina', 'pedidos', 'liquidado', 'notas', 'personas', 'cuenta', 'ids', 'desde'];
 var ALFABETO_CODIGO = 'abcdefghjkmnpqrstuvwxyz23456789'; // sin i, l, o, 0, 1 (se confunden)
 
@@ -57,7 +57,8 @@ function leerMozos_() {
       llave: String(m.llave || ''), equipo: String(m.equipo || ''),
       vinculado: m.vinculado instanceof Date ? m.vinculado.getTime() : 0,
       ultimo: m.ultimo_acceso instanceof Date ? m.ultimo_acceso.getTime() : 0, _fila: m._fila,
-      dias: parsearDias_(m.dias), mesas: parsearMesas_(m.mesas), excepcion: celdaTexto_(m.excepcion) };
+      dias: parsearDias_(m.dias), mesas: parsearMesas_(m.mesas), excepcion: celdaTexto_(m.excepcion),
+      rol: String(m.rol || 'mozo').trim().toLowerCase() || 'mozo' };
   });
 }
 function huella_(t) {
@@ -82,7 +83,7 @@ function mozoDeLlave_(t) {
   if (!m) {
     var f = leerMozos_().filter(function (x) { return x.llave && iguales_(x.llave, h); })[0];
     if (!f || !f.activo) return null;
-    m = { id: f.id, nombre: f.nombre };
+    m = { id: f.id, nombre: f.nombre, rol: f.rol };
     cache.put(ck, JSON.stringify(m), 60);
     // último uso (como máximo una vez cada 10 minutos, para no escribir en cada consulta)
     if (Date.now() - f.ultimo > 600000) {
@@ -116,7 +117,7 @@ function vincularEquipo_(body) {
     h.getRange(m._fila, cab.indexOf('equipo') + 1).setValue(protegerCelda_(equipo));
     h.getRange(m._fila, cab.indexOf('vinculado') + 1).setValue(new Date());
     h.getRange(m._fila, cab.indexOf('ultimo_acceso') + 1).setValue(new Date());
-    return { ok: true, t: t, mozo: { id: m.id, nombre: m.nombre } };
+    return { ok: true, t: t, mozo: { id: m.id, nombre: m.nombre, rol: m.rol } };
   } finally {
     lock.releaseLock();
   }
@@ -702,7 +703,7 @@ function listarMozos(sesion) {
   var cfg = leerConfig_(), dn = diaNegocio_(cfg, momentoActual_(cfg));
   return leerMozos_().map(function (m) {
     var ex = String(m.excepcion || '').split(':');
-    return { id: m.id, nombre: m.nombre, activo: m.activo, link: m.activo && m.codigo ? linkMozo_(cfg, m.codigo) : '',
+    return { id: m.id, nombre: m.nombre, rol: m.rol, activo: m.activo, link: m.activo && m.codigo ? linkMozo_(cfg, m.codigo) : '',
       vinculado: !!m.llave, equipo: m.llave ? m.equipo : '', desde: m.vinculado, ultimo: m.ultimo,
       dias: m.dias, mesas: m.mesas.join(', '), trabajaHoy: trabajaHoy_(m, dn), hoyForzado: ex[0] === dn.iso ? ex[1] : '', diaHoy: dn.dia,
       autoconfirmar: String(cfg.mesa_autoconfirmar || 'SI').toUpperCase() !== 'NO',
@@ -720,12 +721,14 @@ function guardarMozo(sesion, o) {
   var m = o.id ? lista.filter(function (x) { return x.id === String(o.id); })[0] : null;
   if (lista.some(function (x) { return x.nombre.toLowerCase() === nombre.toLowerCase() && (!m || x.id !== m.id); })) throw new Error('Ya hay un mozo con ese nombre.');
   var activo = o.activo !== false;
+  var rolNuevo = o.rol === undefined ? undefined : validarRol_(o.rol);
   var h = hojaMozos_(), cab = asegurarColumnas_(h, COLS_MOZOS);
   var usados = lista.map(function (x) { return x.codigo; });
   var dias = o.dias === undefined ? undefined : (Array.isArray(o.dias) && o.dias.length && o.dias.length < 7
     ? diasTexto_(o.dias.map(Number).filter(function (d) { return d >= 0 && d <= 6; }).sort()) : '');
   var mesasTxt = o.mesas === undefined ? undefined : parsearMesas_(texto_(o.mesas, 200)).join(', ');
   if (m) {
+    if (rolNuevo !== undefined) h.getRange(m._fila, cab.indexOf('rol') + 1).setValue(rolNuevo);
     if (dias !== undefined) h.getRange(m._fila, cab.indexOf('dias') + 1).setValue(dias);
     if (mesasTxt !== undefined) h.getRange(m._fila, cab.indexOf('mesas') + 1).setValue("'" + mesasTxt);
     h.getRange(m._fila, cab.indexOf('nombre') + 1).setValue(protegerCelda_(nombre));
@@ -739,7 +742,7 @@ function guardarMozo(sesion, o) {
     olvidarLlave_(m.llave);
   } else {
     var fila = { id: Utilities.getUuid().slice(0, 6), nombre: nombre, activo: activo ? 'SI' : 'NO', codigo: codigoNuevo_(usados),
-      llave: '', equipo: '', vinculado: '', ultimo_acceso: '', creado: new Date(), dias: dias || '', mesas: mesasTxt ? "'" + mesasTxt : '', excepcion: '' };
+      llave: '', equipo: '', vinculado: '', ultimo_acceso: '', creado: new Date(), dias: dias || '', mesas: mesasTxt ? "'" + mesasTxt : '', excepcion: '', rol: rolNuevo || 'mozo' };
     h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
   }
   return listarMozos(sesion);

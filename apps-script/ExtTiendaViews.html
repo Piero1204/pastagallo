@@ -1,0 +1,27 @@
+  <section class="vista" id="v-tienda">
+    <div class="barra">
+      <h2 class="tit" style="margin:0 8px 0 0">Tienda / mostrador</h2>
+      <div class="seg" id="tiSeg"><button data-t="ventas" class="on">Ventas del día</button><button data-t="catalogo">Catálogo</button></div>
+      <span class="esp"></span>
+    </div>
+
+    <div id="tiVentas">
+      <div class="barra">
+        <label class="nota">Fecha <input class="txt" type="date" id="tiDia" style="width:160px"></label>
+        <button class="btn" id="tiRecargar">↻ Actualizar</button>
+      </div>
+      <div class="kpis" id="tiKpis"></div>
+      <div class="paneles">
+        <div class="panel"><h3>Lo que más se vendió</h3><div class="filas" id="tiTop"></div></div>
+        <div class="panel"><h3>Cierres de caja</h3><div id="tiCierres"></div></div>
+      </div>
+      <h3 class="cuentas__tit">Ventas</h3>
+      <table class="tabla"><thead><tr><th>N°</th><th>Hora</th><th>Cajero</th><th>Detalle</th><th>Pago</th><th>Total</th><th></th></tr></thead><tbody id="tiT"></tbody></table>
+    </div>
+
+    <div id="tiCatalogo" style="display:none">
+      <p class="nota" style="margin-bottom:10px">Marca qué productos se venden en el mostrador y cárgales SKU, código de barras y unidad. El precio de tienda es opcional: vacío = se usa el precio de la carta. Los cambios se guardan al salir de cada casilla.</p>
+      <div class="barra"><input class="txt" id="tiBusca" placeholder="Buscar producto, SKU o código…" style="width:280px"><label class="nota"><input type="checkbox" id="tiSolo"> Solo los de tienda</label></div>
+      <table class="tabla"><thead><tr><th>Producto</th><th>Precio carta</th><th>En tienda</th><th>SKU</th><th>Código de barras</th><th>Unidad</th><th>Precio tienda</th></tr></thead><tbody id="tiCat"></tbody></table>
+    </div>
+  </section>

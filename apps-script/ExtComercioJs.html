@@ -1,0 +1,70 @@
+/* Módulo Comercio: pantalla "Pedido web" del panel */
+(function () {
+  var DATA = null, CAMPOS = {};
+  function campoCx(cont, clave, etq, tipo, ayuda, opciones) {
+    var inp;
+    if (tipo === 'si') {
+      inp = el('select', { class: 'txt' }, [el('option', { value: 'SI', text: 'Sí' }), el('option', { value: 'NO', text: 'No' })]);
+      inp.value = String(DATA.cfg[clave] || 'SI').toUpperCase() === 'NO' ? 'NO' : 'SI';
+    } else {
+      inp = el('input', { class: 'txt', type: tipo === 'num' ? 'number' : 'text', placeholder: opciones || '' });
+      inp.value = DATA.cfg[clave] || '';
+    }
+    CAMPOS[clave] = inp;
+    cont.appendChild(el('label', tipo === 'ancho' ? { class: 'ancho' } : null, [etq, inp, ayuda ? el('span', { class: 'ayuda', text: ayuda }) : null]));
+  }
+  function pintarTabla() {
+    var q = norm($('#cxBuscar').value), t = $('#cxTabla'); t.textContent = '';
+    t.appendChild(el('tr', null, [el('th', { text: 'Qué' }), el('th', { text: 'Horas' }), el('th', { text: 'Días' })]));
+    DATA.filas.forEach(function (f) {
+      if (q && norm(f.nombre + ' ' + (f.seccion || '')).indexOf(q) < 0) return;
+      var h = el('input', { class: 'txt', placeholder: '12:00-16:00' }), d = el('input', { class: 'txt', placeholder: 'lun, mar' });
+      h.value = f._h != null ? f._h : f.horas; d.value = f._d != null ? f._d : f.dias;
+      h.addEventListener('input', function () { f._h = h.value; }); d.addEventListener('input', function () { f._d = d.value; });
+      t.appendChild(el('tr', null, [
+        el('td', null, [f.tipo === 'seccion' ? el('b', { text: 'Categoría: ' + f.nombre }) : el('span', { text: f.nombre }), f.seccion ? el('div', { class: 'nota', text: f.seccion }) : null]),
+        el('td', null, [h]), el('td', null, [d])]));
+    });
+  }
+  function cargar() {
+    run('comercioLeer').then(function (d) {
+      DATA = d; CAMPOS = {};
+      var a = $('#cxProg'); a.textContent = '';
+      campoCx(a, 'comercio_programado', 'Permitir elegir la hora', 'si');
+      campoCx(a, 'comercio_prog_intervalo_min', 'Cada cuántos minutos hay horas (5 a 120)', 'num', '', '15');
+      campoCx(a, 'comercio_prog_anticipacion_min', 'Anticipación mínima (minutos)', 'num', 'Desde el momento del pedido (0 a 720).', '30');
+      campoCx(a, 'comercio_prog_cupo', 'Máximo de pedidos por hora', 'num', 'Vacío = sin límite.');
+      var v = $('#cxVent'); v.textContent = ''; campoCx(v, 'comercio_ventanas', 'Aplicar horarios a la carta', 'si');
+      var b = $('#cxBarra'); b.textContent = ''; campoCx(b, 'comercio_barra', 'Aceptar pedidos del QR de barra', 'si');
+      var o = $('#cxOtros'); o.textContent = '';
+      campoCx(o, 'resena_url', 'Enlace de reseña de Google (https://…)', 'ancho', 'Vacío = no se muestra el botón "Déjanos tu reseña".');
+      campoCx(o, 'comercio_aviso_cocina_min', 'Avisar que la cocina cierra (minutos antes)', 'num', 'Vacío = sin aviso.', '30');
+      campoCx(o, 'comercio_mesa_revocar', 'Rechazar pedidos de una mesa ya cobrada', 'si', 'Si la cuenta se cerró después de abrir el QR, se pide escanear de nuevo.');
+      pintarTabla();
+    }).catch(error);
+  }
+  EXT_VISTAS['comercio'] = cargar;
+  $('#cxBuscar').addEventListener('input', function () { if (DATA) pintarTabla(); });
+  $('#cxGuardarCfg').addEventListener('click', function () {
+    var o = {}; Object.keys(CAMPOS).forEach(function (k) { o[k] = CAMPOS[k].value; });
+    run('comercioGuardarConfig', o).then(function () { toast('Ajustes guardados.'); }).catch(error);
+  });
+  $('#cxGuardarVent').addEventListener('click', function () {
+    var lista = DATA.filas.filter(function (f) { return f._h != null || f._d != null; })
+      .map(function (f) { return { tipo: f.tipo, id: f.id, horas: f._h != null ? f._h : f.horas, dias: f._d != null ? f._d : f.dias }; });
+    if (!lista.length) { toast('No hay cambios.'); return; }
+    run('comercioGuardarVentanas', lista).then(function () { toast('Horarios guardados.'); cargar(); }).catch(error);
+  });
+  $('#cxQr').addEventListener('click', function () {
+    run('comercioQrBarra').then(function (r) {
+      var out = $('#cxQrOut'); out.textContent = '';
+      var caja = el('div'); caja.innerHTML = r.svg;
+      out.appendChild(caja); out.appendChild(el('p', { class: 'nota', text: r.url }));
+      out.appendChild(el('button', { class: 'btn', text: 'Imprimir', onclick: function () {
+        var w = window.open('', '_blank'); if (!w) { toast('Permite las ventanas emergentes para imprimir.', true); return; }
+        w.document.write('<html><head><title>QR de barra</title></head><body style="text-align:center;font-family:Georgia,serif"><h1>Pide desde tu celular</h1>' + r.svg + '<p>Escanea y recoge tu pedido en la barra</p></body></html>');
+        w.document.close(); w.focus(); w.print();
+      } }));
+    }).catch(error);
+  });
+})();

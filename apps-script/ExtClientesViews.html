@@ -1,0 +1,32 @@
+<section class="vista" id="v-clientes">
+  <div class="barra">
+    <h2 class="tit" style="margin:0 8px 0 0">Clientes</h2>
+    <div class="seg" id="cliTabs"><button data-t="lista" class="on">Clientes</button><button data-t="ops">Opiniones</button><button data-t="fid">Fidelidad</button></div>
+  </div>
+  <div id="cliLista">
+    <div class="barra">
+      <input type="search" id="cliQ" placeholder="Buscar por nombre, teléfono o etiqueta" aria-label="Buscar cliente" style="flex:1;min-width:200px;padding:9px 11px;border:1px solid var(--linea);border-radius:8px">
+      <button class="btn" id="cliAct">Actualizar</button>
+      <button class="btn" id="cliRec" title="Vuelve a calcular todo desde los pedidos (conserva notas y etiquetas)">Reconstruir todo</button>
+    </div>
+    <p class="nota" id="cliInfo" aria-live="polite">Solo el administrador ve esto. Los clientes salen de los pedidos que traen teléfono; nada se publica en la web.</p>
+    <table class="tabla"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Pedidos</th><th>Total</th><th>Último</th></tr></thead><tbody id="cliT"></tbody></table>
+    <div id="cliFicha" class="panel" style="margin-top:14px;display:none" aria-live="polite"></div>
+  </div>
+  <div id="cliOps" style="display:none">
+    <div class="kpis" id="opK" style="grid-template-columns:repeat(3,1fr)"></div>
+    <table class="tabla"><thead><tr><th>Fecha</th><th>Pedido</th><th>Canal</th><th>Estrellas</th><th>Comentario</th></tr></thead><tbody id="opT"></tbody></table>
+    <p class="nota" style="margin-top:8px">Para pedir una opinión, abre la ficha de un cliente y toca "Enlace de opinión" en uno de sus pedidos; envíaselo por WhatsApp.</p>
+  </div>
+  <div id="cliFid" style="display:none">
+    <div class="panel">
+      <h3>Programa de puntos (opcional)</h3>
+      <p class="nota">Define cuántos soles gastados dan 1 punto. Vacío = sin puntos. No se inventan premios: al canjear, quien atiende escribe qué entregó.</p>
+      <div class="barra">
+        <button class="btn" id="fidOnOff"></button>
+        <label>Soles por punto: <input type="text" inputmode="decimal" id="fidRegla" style="width:90px;padding:7px 9px;border:1px solid var(--linea);border-radius:8px"></label>
+        <button class="btn prim" id="fidGuardar">Guardar regla</button>
+      </div>
+    </div>
+  </div>
+</section>

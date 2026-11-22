@@ -1,0 +1,81 @@
+/* ---------- Tienda / mostrador (módulo "tienda") ---------- */
+(function(){
+  var CAT = [], VENTAS = null;
+  function tiActivo(t){
+    $('#tiVentas').style.display = t === 'ventas' ? '' : 'none';
+    $('#tiCatalogo').style.display = t === 'catalogo' ? '' : 'none';
+    document.querySelectorAll('#tiSeg button').forEach(function(b){ b.classList.toggle('on', b.dataset.t === t); });
+    if (t === 'catalogo') tiCargarCat(); else tiCargarVentas();
+  }
+  function metodos(v){ return (v.pagos||[]).map(function(p){ return p.metodo + ' ' + soles(p.monto); }).join(' + '); }
+
+  /* ----- ventas del día ----- */
+  function tiCargarVentas(){
+    var dia = $('#tiDia').value || '';
+    run('tiendaReporte', dia).then(function(r){
+      VENTAS = r; if (!$('#tiDia').value) $('#tiDia').value = r.dia;
+      var t = r.totales, k = $('#tiKpis'); k.innerHTML = '';
+      [['Ventas', t.ventas], ['Total', soles(t.total)], ['Efectivo', soles(t.efectivo)], ['Yape', soles(t.yape)], ['Plin', soles(t.plin)], ['Tarjeta', soles(t.tarjeta)], ['Descuentos', soles(t.descuentos)], ['Anuladas', t.anuladas]].forEach(function(x){
+        k.appendChild(el('div', { class: 'kpi' }, [el('span', { text: x[0] }), el('strong', { text: String(x[1]) })]));
+      });
+      var top = $('#tiTop'); top.innerHTML = '';
+      if (!r.productos.length) top.appendChild(el('p', { class: 'nota', text: 'Sin ventas en esta fecha.' }));
+      r.productos.slice(0, 10).forEach(function(p){ top.appendChild(el('div', { class: 'fila' }, [el('span', { text: p.nombre + ' · ' + p.cant + ' ' + p.unidad }), el('b', { text: soles(p.monto) })])); });
+      var ci = $('#tiCierres'); ci.innerHTML = '';
+      if (!r.cierres.length) ci.appendChild(el('p', { class: 'nota', text: 'Aún no se cerró la caja este día.' }));
+      r.cierres.forEach(function(c){
+        ci.appendChild(el('p', { text: c.id + ' · ' + c.cajero + ' · ' + soles(c.total) + ' · efectivo esperado ' + soles(c.esperado) + (c.contado === '' ? '' : ' · contado ' + soles(c.contado) + ' · diferencia ' + soles(c.diferencia)) }));
+      });
+      var tb = $('#tiT'); tb.innerHTML = '';
+      if (!r.ventas.length) tb.appendChild(el('tr', null, [el('td', { colspan: 7, class: 'nota', text: 'No hay ventas.' })]));
+      r.ventas.forEach(function(v){
+        var anul = v.estado === 'Anulada';
+        var det = v.lineas.map(function(l){ return l.nombre + ' ×' + l.cant; }).join(', ');
+        var acc = el('td');
+        if (!anul) acc.appendChild(el('button', { class: 'btn', text: 'Anular', onclick: function(){
+          var m = prompt('Motivo de la anulación de ' + v.id + ' (' + soles(v.total) + '):'); if (!m || m.trim().length < 3) return;
+          run('tiendaAnular', v.id, m.trim()).then(function(){ toast('Venta anulada.'); tiCargarVentas(); }).catch(error);
+        } }));
+        else acc.appendChild(el('span', { class: 'nota', text: 'ANULADA: ' + v.anuladaMotivo }));
+        tb.appendChild(el('tr', anul ? { style: 'opacity:.55' } : null, [el('td', { text: String(v.numero) }), el('td', { text: v.hora }), el('td', { text: v.cajero }),
+          el('td', { text: det + (v.descuento ? ' · desc. ' + soles(v.descuento) + ' (' + v.motivo + ')' : '') }), el('td', { text: metodos(v) }), el('td', { text: soles(v.total) }), acc]));
+      });
+    }).catch(error);
+  }
+
+  /* ----- catálogo ----- */
+  function tiCargarCat(){ run('tiendaCatalogo').then(function(l){ CAT = l; tiPintarCat(); }).catch(error); }
+  function tiPintarCat(){
+    var q = norm($('#tiBusca').value), solo = $('#tiSolo').checked, tb = $('#tiCat'); tb.innerHTML = '';
+    CAT.filter(function(p){ return (!solo || p.vende_tienda) && (!q || norm(p.nombre + ' ' + p.sku + ' ' + p.codigo_barras).indexOf(q) >= 0); }).forEach(function(p){
+      var chk = el('input', { type: 'checkbox' }); chk.checked = p.vende_tienda;
+      var sku = el('input', { class: 'txt', value: p.sku, style: 'width:110px', 'aria-label': 'SKU de ' + p.nombre });
+      var bar = el('input', { class: 'txt', value: p.codigo_barras, style: 'width:150px', inputmode: 'numeric', 'aria-label': 'Código de barras de ' + p.nombre });
+      var uni = el('select', { class: 'txt', 'aria-label': 'Unidad de ' + p.nombre }, ['unid', 'kg', 'g', 'lt'].map(function(u){ var o = el('option', { value: u, text: u }); if (u === p.unidad) o.selected = true; return o; }));
+      var pt = el('input', { class: 'txt', value: p.precio_tienda === '' ? '' : p.precio_tienda, style: 'width:90px', inputmode: 'decimal', placeholder: 'igual a carta', 'aria-label': 'Precio de tienda de ' + p.nombre });
+      var fila = el('tr');
+      function guardar(){
+        var datos = { sku: sku.value, codigo_barras: bar.value, unidad: uni.value, vende_tienda: chk.checked, precio_tienda: pt.value };
+        fila.style.opacity = '.6';
+        run('tiendaGuardarProducto', p.id, datos).then(function(){
+          fila.style.opacity = ''; p.sku = datos.sku.trim(); p.codigo_barras = datos.codigo_barras.trim(); p.unidad = datos.unidad; p.vende_tienda = datos.vende_tienda; p.precio_tienda = datos.precio_tienda.trim();
+          toast('✓ ' + p.nombre + ' guardado');
+        }).catch(function(e){ fila.style.opacity = ''; error(e); tiCargarCat(); });
+      }
+      [chk, sku, bar, uni, pt].forEach(function(x){ x.addEventListener('change', guardar); });
+      var precio = p.tamanos ? p.tamanos : (p.precio === '' ? '—' : soles(p.precio));
+      fila.appendChild(el('td', null, [el('b', { text: p.nombre }), el('div', { class: 'nota', text: p.seccion + (p.disponible ? '' : ' · agotado') })]));
+      fila.appendChild(el('td', { text: precio }));
+      [chk, sku, bar, uni, pt].forEach(function(x){ fila.appendChild(el('td', null, [x])); });
+      tb.appendChild(fila);
+    });
+    if (!tb.children.length) tb.appendChild(el('tr', null, [el('td', { colspan: 7, class: 'nota', text: 'No hay productos con ese filtro.' })]));
+  }
+
+  $('#tiSeg').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) tiActivo(b.dataset.t); });
+  $('#tiDia').addEventListener('change', tiCargarVentas);
+  $('#tiRecargar').addEventListener('click', tiCargarVentas);
+  $('#tiBusca').addEventListener('input', tiPintarCat);
+  $('#tiSolo').addEventListener('change', tiPintarCat);
+  window.EXT_VISTAS['tienda'] = function(){ tiActivo('ventas'); };
+})();
