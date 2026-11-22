@@ -564,13 +564,6 @@ body.buscando .buscador{margin-top:48px}
 .menu-sec a{color:var(--vino)}
 .menu-sec a:hover,.menu-sec a.on{color:var(--vino);background:rgba(201,164,92,.22)}
 
-/* títulos de sección: compactos, sin bloque oscuro */
-.sec__cab,.sec--b .sec__cab,.sec--promo .sec__cab{max-width:720px;margin:0 auto;padding:26px 18px 2px;text-align:left;background:none;color:var(--vino)}
-.sec__cab::before,.sec__cab .m,.sec__cab .orn,.sec__cab .num,.sec--promo .sec__cab .num{display:none}
-.sec__cab h2{font-size:1.65rem;letter-spacing:.03em;margin:0;word-spacing:0}
-.sec__cab .sub{font-family:var(--serif);font-style:italic;font-size:1.02rem;color:var(--oro);margin-top:2px}
-.sec__cab .intro{max-width:none;margin:6px 0 0;font-size:1rem;color:var(--tinta-2)}
-.sec__cab .intro--aviso{max-width:none;margin:10px 0 0;text-align:left;color:var(--vino);background:rgba(201,164,92,.2);border-color:var(--oro)}
 .sec__cuerpo{padding:10px 14px 24px}
 .sec--promo .sec__cuerpo{padding-top:10px;padding-bottom:20px}
 .grupo+.grupo{margin-top:22px}
@@ -653,18 +646,12 @@ body.buscando .buscador{margin-top:48px}
   .it.fcon{grid-template-columns:minmax(0,1fr) 132px}
   .it__fw{width:132px;height:132px}
   .chips{justify-content:safe center}
-  .sec__cab h2{font-size:1.9rem}
 }
 @media (prefers-reduced-motion:reduce){.agregar.pop,.barra-ped.pulso{animation:none}.barra-ped{transition:none}}
 
 /* =================== v6: horarios (todo visible, avisos), colores de títulos y vista aparte de la tienda =================== */
-/* títulos de sección: vuelven el rojo y el verde de la marca (alternados), sin perder la cabecera compacta */
-.sec--a .sec__cab h2{color:var(--rojo)}
-.sec--b .sec__cab h2{color:var(--verde)}
-.sec--promo .sec__cab h2{color:#7a5a1e}
-.sec--a .sec__cab h2::after,.sec--b .sec__cab h2::after,.sec--promo .sec__cab h2::after{content:"";display:block;width:44px;height:3px;border-radius:2px;margin-top:8px;background:currentColor;opacity:.85}
-.sec--a .sec__cab .sub{color:var(--rojo);opacity:.8}
-.sec--b .sec__cab .sub{color:var(--verde);opacity:.85}
+/* cabeceras de sección: bloques vino (rojo) y oliva (verde) originales */
+.sec__cab .hr-sec{color:var(--crema);background:rgba(201,164,92,.22);border-color:var(--oro-claro)}
 
 /* lo que no se puede pedir ahora sigue a la vista: aviso discreto y tarjeta atenuada pero legible */
 .hr-sec{display:inline-block;max-width:100%;margin-top:10px;padding:5px 12px;border:1px solid var(--oro);border-radius:999px;background:rgba(201,164,92,.2);color:var(--vino);font:600 .78rem/1.25 var(--sans);letter-spacing:.02em}
