@@ -4,6 +4,7 @@
   var C = window.CARTA;
   var N = C.negocio;
   var PED = window.PG_PEDIDO || null;
+  var COM = (PED && PED.modo === "mesa") ? null : (window.PG_COMERCIO || null);   // módulo comercio: horarios por producto/sección (avisos y orden)
   var I = window.PG_I18N, t = I.t, tx = I.tx;
   /* Si la carta ya tiene su link propio, el link viejo de GitHub Pages redirige allí. */
   if (N.sitioUrl && /\.github\.io$/.test(location.hostname) && N.sitioUrl.indexOf(location.hostname) < 0) {
@@ -278,6 +279,8 @@
       a.appendChild(bd);
     }
     if (it.destacado === "tris") a.className += " it--dest";
+    var avHr = COM && COM.aviso && it.tipo !== "salsa" && !it.agotado ? COM.aviso(it, sec) : "";
+    if (avHr) a.className += " it--fuera";
     var tieneFoto = !!it.foto;
     var esTienda = !!(sec && sec.id === "tienda");
     /* selector de tamaño como chips: tienda, o cualquier producto cuyos tamaños son pesos (1 kg, 1/2 kg, 1/4 kg) */
@@ -310,6 +313,7 @@
       top.appendChild(precioEl(it.p));
     }
     a.appendChild(top);
+    if (avHr) { var hr = h("span", "hr-tag", avHr); hr.setAttribute("title", avHr); a.appendChild(hr); }
     if (it.destacado === "hoy" && !it.agotado) a.appendChild(h("span", "hoy-tag", t("soloHoy")));
     if (tx(it, "g")) a.appendChild(h("p", "it__g", tx(it, "g")));
     if (tx(it, "d")) a.appendChild(h("p", "it__d", tx(it, "d")));
@@ -387,6 +391,7 @@
 
   /* ---------- secciones ---------- */
   var seccionesVisibles = [];
+  var tiendaSec = null;   // la tienda (productos para cocinar en casa) va en su propia vista, fuera de la carta
   var hayAlergenos = false;
 
   function seccion(sec, idx) {
@@ -408,6 +413,7 @@
     });
     if (!grupos.length) return null;
     seccionesVisibles.push(sec);
+    sec._fuera = COM && COM.avisoSec ? COM.avisoSec(sec) : "";
     var n = seccionesVisibles.length;
     var s = h("section", "sec " + (sec.id === "promociones" ? "sec--promo" : (n % 2 ? "sec--a" : "sec--b"))); s.id = sec.id;
     var cab = h("header", "sec__cab anim");
@@ -417,6 +423,8 @@
     c.appendChild(h("h2", null, tx(sec, "titulo")));
     c.appendChild(h("div", "sub", tx(sec, "subtitulo")));
     c.appendChild(ornamento());
+    var avSec = COM && COM.avisoSec ? COM.avisoSec(sec) : "";
+    if (avSec) { s.className += " sec--fuera"; c.appendChild(h("div", "hr-sec", avSec)); }
     if (tx(sec, "intro")) c.appendChild(h("p", "intro" + (tx(sec, "intro").charAt(0) === "\u26a0" ? " intro--aviso" : ""), tx(sec, "intro")));
     if (sec.id === "promociones") { var sem = semanaPromos(grupos); if (sem) c.appendChild(sem); }
     cab.appendChild(c); s.appendChild(cab);
@@ -475,8 +483,13 @@
     var nav = h("nav", "nav"); nav.id = "nav"; nav.setAttribute("aria-label", t("seccionesAria"));
     var in_ = h("div", "nav__in");
     var ch = h("div", "chips"); ch.id = "chips";
+    if (tiendaSec) {
+      var ct = h("a", "chip chip--tienda", t("tiendaBoton")); ct.href = "#tienda"; ct.setAttribute("data-tienda", "1"); ch.appendChild(ct);
+    }
     seccionesVisibles.forEach(function (s) {
-      var a = h("a", "chip", tx(s, "titulo")); a.href = "#" + s.id; a.setAttribute("data-id", s.id); ch.appendChild(a);
+      var a = h("a", "chip" + (s._fuera ? " chip--fuera" : ""), tx(s, "titulo")); a.href = "#" + s.id; a.setAttribute("data-id", s.id);
+      if (s._fuera) a.title = s._fuera;
+      ch.appendChild(a);
     });
     /* menú hamburguesa: todas las secciones a la vista */
     var hb = h("button", "hamb"); hb.type = "button"; hb.setAttribute("aria-label", t("menuSecciones"));
@@ -484,8 +497,13 @@
     hb.innerHTML = '<span></span><span></span><span></span>';
     var menu = h("div", "menu-sec"); menu.id = "menu-sec";
     var ul = h("ul");
+    if (tiendaSec) {
+      var lt = h("li"), at = h("a", "menu-sec__tienda", t("tiendaBoton")); at.href = "#tienda";
+      at.addEventListener("click", function (ev) { ev.preventDefault(); cerrarMenu(); irTienda(); });
+      lt.appendChild(at); ul.appendChild(lt);
+    }
     seccionesVisibles.forEach(function (s) {
-      var li = h("li"), a = h("a", null, tx(s, "titulo")); a.href = "#" + s.id;
+      var li = h("li"), a = h("a", s._fuera ? "menu-fuera" : null, tx(s, "titulo")); a.href = "#" + s.id;
       a.addEventListener("click", function (ev) {
         ev.preventDefault(); cerrarMenu();
         var chip = ch.querySelector('[data-id="' + s.id + '"]'); if (chip) chip.click();
@@ -532,7 +550,7 @@
     var c = norm(valor).trim();
     document.body.classList.toggle("buscando", !!c);
     var total = 0;
-    document.querySelectorAll(".sec").forEach(function (sec) {
+    document.querySelectorAll("#vista-carta .sec").forEach(function (sec) {
       var vis = 0;
       sec.querySelectorAll(".grupo").forEach(function (g) {
         var gv = 0;
@@ -590,18 +608,30 @@
     estadoBarra = h("div", "estado"); estadoBarra.setAttribute("role", "status");
     document.body.insertBefore(estadoBarra, app);
 
-    var secs = [];
-    C.secciones.forEach(function (s, i) { var e = seccion(s, i); if (e) secs.push(e); });
+    var secs = [], secTienda = null;
+    tiendaSec = C.secciones.filter(function (s) { return s.id === "tienda"; })[0] || null;
+    C.secciones.forEach(function (s, i) { if (s === tiendaSec) return; var e = seccion(s, i); if (e) secs.push(e); });
+    if (tiendaSec) { secTienda = seccion(tiendaSec, 0); seccionesVisibles.pop(); if (!secTienda) tiendaSec = null; }
 
-    app.appendChild(portada());
+    var vCarta = h("div"); vCarta.id = "vista-carta";
+    vCarta.appendChild(portada());
     var nav = navegacion();
-    var anc = h("span"); anc.id = "carta-inicio"; anc.style.cssText = "display:block;position:relative;top:-42px"; app.appendChild(anc);
-    app.appendChild(buscadorEl); app.appendChild(nav);
-    secs.forEach(function (s) { app.appendChild(s); });
+    var anc = h("span"); anc.id = "carta-inicio"; anc.style.cssText = "display:block;position:relative;top:-42px"; vCarta.appendChild(anc);
+    vCarta.appendChild(buscadorEl); vCarta.appendChild(nav);
+    secs.forEach(function (s) { vCarta.appendChild(s); });
     var cuerpoFinal = secs.length ? secs[secs.length - 1].querySelector(".sec__cuerpo") : null;
     if (hayAlergenos && cuerpoFinal) cuerpoFinal.appendChild(leyenda());
-    var vacio = h("p", "vacio", t("noEncontrado")); vacio.id = "vacio"; app.appendChild(vacio);
-    if (C.historia && C.historia.parrafos && C.historia.parrafos.length) app.appendChild(historia());
+    var vacio = h("p", "vacio", t("noEncontrado")); vacio.id = "vacio"; vCarta.appendChild(vacio);
+    if (C.historia && C.historia.parrafos && C.historia.parrafos.length) vCarta.appendChild(historia());
+    app.appendChild(vCarta);
+    if (secTienda) {
+      var vTienda = h("div"); vTienda.id = "vista-tienda"; vTienda.hidden = true;
+      var barraT = h("div", "tienda-barra");
+      var volver = h("a", "tienda-volver", t("volverCarta")); volver.href = "#carta"; barraT.appendChild(volver);
+      barraT.appendChild(botonIdioma("idioma idioma--tienda"));
+      vTienda.appendChild(barraT); vTienda.appendChild(secTienda);
+      app.appendChild(vTienda);
+    }
     app.appendChild(gracias());
 
     var f = h("a", "fab"); f.href = waUrl(); f.target = "_blank"; f.rel = "noopener";
@@ -615,6 +645,10 @@
     document.querySelectorAll('a[href^="#"]').forEach(function (a) {
       a.addEventListener("click", function (ev) {
         var id = a.getAttribute("href").slice(1), el = document.getElementById(id);
+        if (id === "tienda" && tiendaSec) { ev.preventDefault(); irTienda(); return; }
+        if (id === "carta") { ev.preventDefault(); irCarta(); return; }
+        if (el && el.closest("#vista-tienda")) return;
+        if (el && !el.offsetParent && document.body.classList.contains("vista-tienda")) { ev.preventDefault(); irCarta(id); return; }
         if (!el) return;
         ev.preventDefault();
         var off = id === "carta-inicio" ? 0 : 92;
@@ -658,6 +692,28 @@
     }
   }
 
+  /* ---------- vistas: carta / tienda (misma página, sin recargar; hash #tienda) ---------- */
+  function mostrarVista(tienda) {
+    var vt = q("#vista-tienda"), vc = q("#vista-carta"); if (!vt || !vc) return;
+    vt.hidden = !tienda; vc.hidden = !!tienda;
+    document.body.classList.toggle("vista-tienda", !!tienda);
+    document.querySelectorAll("#vista-tienda .rev, #vista-tienda .anim").forEach(function (x) { x.classList.add("ya"); });
+    if (fab) fab.classList.toggle("ver", !!tienda);
+  }
+  function irTienda() { if (location.hash !== "#tienda") location.hash = "#tienda"; else { mostrarVista(true); window.scrollTo({ top: 0, behavior: "auto" }); } }
+  var saltoPend = null;
+  function irCarta(id) {
+    saltoPend = id || null;
+    if (location.hash === "#tienda") { location.hash = "#carta"; return; }   // hashchange hace el resto
+    sincronizarVista();
+  }
+  function sincronizarVista() {
+    var esT = location.hash === "#tienda" && !!q("#vista-tienda");
+    mostrarVista(esT);
+    var el = !esT && saltoPend && document.getElementById(saltoPend); saltoPend = null;
+    window.scrollTo({ top: el ? el.getBoundingClientRect().top + window.pageYOffset - 92 : 0, behavior: "auto" });
+  }
+
   /* Enlace directo a un producto o combo (para historias de Instagram): ?p=ID&o=ig */
   function abrirEnlace() {
     var params = new URLSearchParams(location.search);
@@ -665,6 +721,7 @@
     if (o) { try { sessionStorage.setItem("pg-origen", o); } catch (e) {} }
     var id = params.get("p"); if (!id) return;
     var art = document.getElementById("p-" + id); if (!art) return;
+    if (art.closest("#vista-tienda")) { if (location.hash !== "#tienda") location.hash = "#tienda"; mostrarVista(true); }
     var it = null, sec = null;
     C.secciones.forEach(function (s) { s.grupos.forEach(function (g) { g.items.forEach(function (i) { if (i.id === id) { it = i; sec = s; } }); }); });
     setTimeout(function () {
@@ -692,6 +749,11 @@
       }); }); });
     }).catch(function () {});
   }
-  function iniciar() { construir(); abrirEnlace(); agotadosEnVivo(); }
+  function iniciar() {
+    construir();
+    if (location.hash === "#tienda") mostrarVista(true);
+    window.addEventListener("hashchange", sincronizarVista);
+    abrirEnlace(); agotadosEnVivo();
+  }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
 })();

@@ -330,6 +330,8 @@
       im.onerror = function () { im.remove(); };
       c.appendChild(im);
     }
+    var avDet = window.PG_COMERCIO && PG_COMERCIO.aviso ? PG_COMERCIO.aviso(it, sec) : "";
+    if (avDet) c.appendChild(h("p", "hr-aviso", avDet));
     if (tx(it, "g")) c.appendChild(h("p", "detalle__g", tx(it, "g")));
     if (tx(it, "d")) c.appendChild(h("p", "hoja__desc", tx(it, "d")));
     var inc = I.lang === "en" && it.inc_en ? it.inc_en : it.inc;
@@ -494,7 +496,8 @@
       ops: ops, mitad: m2 ? m2.id : "", opsTxt: opsTxt, opsEs: opsEs,
       unit: unit, cant: sel.cant, nota: (sel.nota || "").trim(), alcohol: !!(seccionDe[it.id] && seccionDe[it.id].alcohol) });
     guardar(); pintarBarra(true);
-    aviso(t("agregado", { n: tx(it, "n") }));
+    var avH = window.PG_COMERCIO && PG_COMERCIO.aviso ? PG_COMERCIO.aviso(it, seccionDe[it.id]) : "";
+    aviso(avH ? t("hrAgregado", { n: tx(it, "n"), a: avH }) : t("agregado", { n: tx(it, "n") }));
   }
 
   function clicAgregar(it, sec, tam) {
@@ -510,7 +513,7 @@
   var toast, toastT;
   function aviso(txt) {
     toast.textContent = txt; toast.classList.add("on");
-    clearTimeout(toastT); toastT = setTimeout(function () { toast.classList.remove("on"); }, 2200);
+    clearTimeout(toastT); toastT = setTimeout(function () { toast.classList.remove("on"); }, txt.length > 60 ? 4200 : 2200);
   }
 
   /* ---------- barra del carrito ---------- */
@@ -540,6 +543,8 @@
         if (l.salsaN) info.appendChild(h("span", null, t("salsa") + l.salsaN));
         (l.opsTxt || []).forEach(function (o) { info.appendChild(h("span", null, o)); });
         if (l.nota) info.appendChild(h("span", null, t("nota") + l.nota));
+        var avL = window.PG_COMERCIO && PG_COMERCIO.aviso && productos[l.id] ? PG_COMERCIO.aviso(productos[l.id], seccionDe[l.id]) : "";
+        if (avL) info.appendChild(h("span", "hr-aviso hr-aviso--linea", avL));
         info.appendChild(h("span", "linea__p", soles(l.unit * l.cant)));
         li.appendChild(info);
         li.appendChild(stepper(l.cant, 0, 20, function (v) {
@@ -586,7 +591,7 @@
   /* "¿Le sumas algo?": bebida, postre o pan al ajo, solo si aún no están en el pedido y se pueden pedir ahora. */
   function sugerencias() {
     var enCarrito = function (pred) { return carrito.some(function (l) { var s = seccionDe[l.id]; return pred(l, s); }); };
-    var pedible = function (id) { var it = productos[id], sec = seccionDe[id]; return it && sec && puedePedir(it, sec) ? { it: it, sec: sec } : null; };
+    var pedible = function (id) { var it = productos[id], sec = seccionDe[id]; return it && sec && puedePedir(it, sec) && !(window.PG_COMERCIO && PG_COMERCIO.fuera && PG_COMERCIO.fuera(it, sec)) ? { it: it, sec: sec } : null; };
     var primeroDe = function (secId, ids) {
       for (var i = 0; i < ids.length; i++) { var x = pedible(ids[i]); if (x) return x; }
       var sec = C.secciones.filter(function (s) { return s.id === secId; })[0]; if (!sec) return null;
@@ -798,7 +803,19 @@
     f.addEventListener("submit", function (ev) {
       ev.preventDefault();
       var e = validar();
-      if (e) { err.textContent = e; return; }
+      if (e) {
+        err.textContent = e;
+        if (avisoFuera) {
+          var bp = h("button", "btn-ped btn-ped--linea hr-prog", t("hrProgramar")); bp.type = "button";
+          bp.addEventListener("click", function () {
+            var d0 = f.querySelector("details.prog"); if (d0) d0.open = true;
+            var s0 = f.querySelector("select[name=programado]");
+            if (s0) { if (s0.scrollIntoView) s0.scrollIntoView({ block: "center", behavior: "smooth" }); try { s0.focus({ preventScroll: true }); } catch (x) {} }
+          });
+          err.appendChild(document.createElement("br")); err.appendChild(bp);
+        }
+        return;
+      }
       if (MODO !== "mesa") {
         if (form.captura) {
           enviar.disabled = true; enviar.textContent = t("subiendo");
@@ -927,6 +944,30 @@
     if (String(form.telefono || "").replace(/\D/g, "").length < 9) return t("errWaComp");
     return "";
   }
+  /* Módulo comercio (delivery/recojo): los productos con horario se pueden agregar siempre, pero el pedido debe caer en su horario.
+     Inmediato: si hay productos fuera de horario ahora, se bloquea y se invita a programar. Programado: la hora elegida debe caer
+     dentro del horario de cada producto (misma regla que el servidor, que además lo vuelve a validar). */
+  var avisoFuera = false;
+  function mensajeHorarioProductos() {
+    avisoFuera = false;
+    if (MODO === "mesa" || !window.PG_COMERCIO || !PG_COMERCIO.revisar) return "";
+    var ents = carrito.map(function (l) { return { it: productos[l.id], sec: seccionDe[l.id] }; });
+    var cuando = null;
+    if (form.programado) {
+      var vent = ventanaPedido(), fecha = form.programadoFecha || (vent && vent.fecha) || "";
+      var pp = fecha.split("-"), dia = new Date(Date.UTC(+pp[0], +pp[1] - 1, +pp[2])).getUTCDay(), pm = P.minutos(form.programado);
+      if (vent && fecha === vent.fecha && pm < vent.a && pm + 1440 <= vent.c) dia = (dia + 1) % 7;   // pasada la medianoche
+      cuando = { dia: dia, min: pm };
+    }
+    var mal = PG_COMERCIO.revisar(ents, cuando);
+    if (!mal.length) return "";
+    var n = tx(mal[0].it, "n"), mas = mal.length - 1;
+    if (!cuando) {
+      avisoFuera = true;
+      return mas > 0 ? t("hrBloqueoMas", { n: n, m: mas }) : t("hrBloqueo", { n: n, c: mal[0].solo });
+    }
+    return mas > 0 ? t("hrNoCuadraMas", { n: n, m: mas }) : t("hrNoCuadra", { n: n, c: mal[0].solo });
+  }
   function validar() {
     if (!carrito.length) return t("vacio");
     if (MODO === "mesa") return "";
@@ -941,6 +982,7 @@
     }
     if (CFG.pagoObligatorio === true && CFG.metodosPago && CFG.metodosPago.length && !form.pago) return t("errPago");
     if (!abiertoAhora() && !form.programado) return t("errHora");
+    var mf = mensajeHorarioProductos(); if (mf) return mf;
     if (carrito.some(function (l) { return l.alcohol; }) && !form.mayorEdad) return t("errMayor");
     return validarComprobante();
   }
