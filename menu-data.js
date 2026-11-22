@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T09:08:47-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T09:16:48-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -3567,7 +3567,324 @@ window.CARTA = {
    "subtitulo_en": "The perfect pairing",
    "intro_en": "",
    "pie_en": ""
+  },
+  {
+   "id": "tienda",
+   "titulo": "Tienda · Para llevar a casa",
+   "subtitulo": "Pasta fresca y salsas por peso, listas para cocinar en casa.",
+   "intro": "",
+   "pie": "",
+   "alcohol": false,
+   "delivery": true,
+   "mesa": false,
+   "grupos": [
+    {
+     "titulo": "Pasta fresca",
+     "nota": "",
+     "items": [
+      {
+       "id": "tienda-ravioles-carne",
+       "n": "Ravioles de carne",
+       "d": "Pasta fresca rellena de carne, lista para cocinar en casa.",
+       "t": [
+        [
+         "1 kg",
+         38
+        ],
+        [
+         "1/2 kg",
+         19
+        ]
+       ],
+       "foto": "fotos/pasta-ravioli-di-carne-1795062531153.jpg",
+       "n_en": "Beef ravioli",
+       "d_en": "Fresh pasta filled with beef, ready to cook at home."
+      },
+      {
+       "id": "tienda-ravioles-queso",
+       "n": "Ravioles de queso",
+       "d": "Pasta fresca rellena de queso, lista para cocinar en casa.",
+       "t": [
+        [
+         "1 kg",
+         38
+        ],
+        [
+         "1/2 kg",
+         19
+        ]
+       ],
+       "foto": "fotos/pasta-ravioli-di-formaggio-1795062570951.jpg",
+       "n_en": "Cheese ravioli",
+       "d_en": "Fresh pasta filled with cheese, ready to cook at home."
+      },
+      {
+       "id": "tienda-fettuccini",
+       "n": "Fettuccini",
+       "d": "Fettuccini fresco, hecho cada día.",
+       "t": [
+        [
+         "1 kg",
+         20
+        ],
+        [
+         "1/2 kg",
+         10
+        ]
+       ],
+       "foto": "fotos/pasta-fettuccine-1794449529303.jpg",
+       "n_en": "Fettuccini",
+       "d_en": "Fresh fettuccini, made daily."
+      },
+      {
+       "id": "tienda-spaghetti",
+       "n": "Spaghetti",
+       "d": "Spaghetti fresco, hecho cada día.",
+       "t": [
+        [
+         "1 kg",
+         20
+        ],
+        [
+         "1/2 kg",
+         10
+        ]
+       ],
+       "n_en": "Spaghetti",
+       "d_en": "Fresh spaghetti, made daily."
+      },
+      {
+       "id": "tienda-tortellini",
+       "n": "Tortellini",
+       "d": "Tortellini fresco, listo para cocinar en casa.",
+       "t": [
+        [
+         "1 kg",
+         38
+        ],
+        [
+         "1/2 kg",
+         19
+        ]
+       ],
+       "n_en": "Tortellini",
+       "d_en": "Fresh tortellini, ready to cook at home."
+      },
+      {
+       "id": "tienda-masa-lasagna",
+       "n": "Masa de lasagna",
+       "d": "Láminas de masa fresca para armar tu lasagna.",
+       "t": [
+        [
+         "1 kg",
+         20
+        ],
+        [
+         "1/2 kg",
+         10
+        ]
+       ],
+       "n_en": "Lasagna sheets",
+       "d_en": "Fresh pasta sheets to build your own lasagna."
+      }
+     ]
+    },
+    {
+     "titulo": "Lasagnas",
+     "nota": "",
+     "items": [
+      {
+       "id": "tienda-lasagna-carne",
+       "n": "Lasagna de carne",
+       "d": "Lasagna de carne al horno, lista para calentar.",
+       "t": [
+        [
+         "1 kg",
+         38
+        ],
+        [
+         "1/2 kg",
+         19
+        ]
+       ],
+       "foto": "fotos/lasagne-lasagna-di-carne-1795062419715.jpg",
+       "n_en": "Beef lasagna",
+       "d_en": "Baked beef lasagna, ready to heat."
+      },
+      {
+       "id": "tienda-lasagna-espinaca",
+       "n": "Lasagna de espinaca",
+       "d": "Lasagna de espinaca al horno, lista para calentar.",
+       "t": [
+        [
+         "1 kg",
+         40
+        ],
+        [
+         "1/2 kg",
+         20
+        ]
+       ],
+       "n_en": "Spinach lasagna",
+       "d_en": "Baked spinach lasagna, ready to heat."
+      },
+      {
+       "id": "tienda-lasagna-champinones",
+       "n": "Lasagna de champiñones",
+       "d": "Lasagna de champiñones al horno, lista para calentar.",
+       "t": [
+        [
+         "1 kg",
+         44
+        ],
+        [
+         "1/2 kg",
+         22
+        ]
+       ],
+       "n_en": "Mushroom lasagna",
+       "d_en": "Baked mushroom lasagna, ready to heat."
+      }
+     ]
+    },
+    {
+     "titulo": "Salsas",
+     "nota": "",
+     "items": [
+      {
+       "id": "tienda-salsa-carne",
+       "n": "Salsa de carne",
+       "d": "Salsa de carne para tus pastas.",
+       "t": [
+        [
+         "1 kg",
+         38
+        ],
+        [
+         "1/2 kg",
+         19
+        ],
+        [
+         "1/4 kg",
+         9.5
+        ]
+       ],
+       "n_en": "Meat sauce",
+       "d_en": "Meat sauce for your pasta."
+      },
+      {
+       "id": "tienda-salsa-tomate",
+       "n": "Salsa de tomate",
+       "d": "Salsa de tomate casera para tus pastas.",
+       "t": [
+        [
+         "1 kg",
+         36
+        ],
+        [
+         "1/2 kg",
+         18
+        ],
+        [
+         "1/4 kg",
+         9
+        ]
+       ],
+       "n_en": "Tomato sauce",
+       "d_en": "Homemade tomato sauce for your pasta."
+      },
+      {
+       "id": "tienda-salsa-alfredo",
+       "n": "Salsa Alfredo",
+       "d": "Salsa Alfredo cremada para tus pastas.",
+       "t": [
+        [
+         "1 kg",
+         38
+        ],
+        [
+         "1/2 kg",
+         19
+        ],
+        [
+         "1/4 kg",
+         9.5
+        ]
+       ],
+       "n_en": "Alfredo sauce",
+       "d_en": "Creamy Alfredo sauce for your pasta."
+      },
+      {
+       "id": "tienda-salsa-amatriciana",
+       "n": "Salsa Amatricciana",
+       "d": "Salsa Amatricciana para tus pastas.",
+       "t": [
+        [
+         "1 kg",
+         48
+        ],
+        [
+         "1/2 kg",
+         24
+        ],
+        [
+         "1/4 kg",
+         12
+        ]
+       ],
+       "n_en": "Amatriciana sauce",
+       "d_en": "Amatriciana sauce for your pasta."
+      },
+      {
+       "id": "tienda-salsa-pesto",
+       "n": "Salsa Pesto",
+       "d": "Salsa Pesto para tus pastas.",
+       "t": [
+        [
+         "1 kg",
+         38
+        ],
+        [
+         "1/2 kg",
+         19
+        ],
+        [
+         "1/4 kg",
+         9.5
+        ]
+       ],
+       "n_en": "Pesto sauce",
+       "d_en": "Pesto sauce for your pasta."
+      },
+      {
+       "id": "tienda-salsa-champinones",
+       "n": "Salsa de champiñones",
+       "d": "Salsa de champiñones para tus pastas.",
+       "t": [
+        [
+         "1 kg",
+         64
+        ],
+        [
+         "1/2 kg",
+         32
+        ],
+        [
+         "1/4 kg",
+         16
+        ]
+       ],
+       "n_en": "Mushroom sauce",
+       "d_en": "Mushroom sauce for your pasta."
+      }
+     ]
+    }
+   ],
+   "titulo_en": "Shop · To take home",
+   "subtitulo_en": "Fresh pasta and sauces by weight, ready to cook at home.",
+   "intro_en": "",
+   "pie_en": ""
   }
  ],
- "publicado": "2026-11-22T09:08:47-05:00"
+ "publicado": "2026-11-22T09:16:48-05:00"
 };
