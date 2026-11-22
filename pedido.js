@@ -323,7 +323,7 @@
   }
 
   /* ---------- ficha del producto (detalle + opciones) ---------- */
-  function abrirDetalle(it, sec) {
+  function abrirDetalle(it, sec, tamPre) {
     var c = h("div", "hoja__cuerpo");
     if (it.foto) {
       var im = h("img", "detalle__foto" + (sec && (sec.id === "italia" || (sec.id === "vini" && /^fotos\//.test(it.foto))) ? " detalle__foto--producto" + (sec.id === "vini" ? " detalle__foto--botella" : "") : "")); im.src = it.foto; im.alt = tx(it, "n");
@@ -364,7 +364,7 @@
       return;
     }
 
-    var sel = { tam: it.t ? it.t[0][0] : "", salsa: "", cant: 1, nota: "", ops: {}, mitad: "" };
+    var sel = { tam: it.t ? ((tamPre && it.t.some(function (x) { return x[0] === tamPre; })) ? tamPre : it.t[0][0]) : "", salsa: "", cant: 1, nota: "", ops: {}, mitad: "" };
     var err = h("p", "hoja__err"); err.setAttribute("role", "alert");
     var add;
     function precioUnit() {
@@ -401,7 +401,7 @@
 
     if (it.t) {
       c.appendChild(h("h3", "hoja__sub", t("tamano")));
-      c.appendChild(opcionesUI("tam", it.t.map(function (x, i) { return { valor: x[0], texto: x[0], extra: soles(x[1]), marcado: i === 0 }; }),
+      c.appendChild(opcionesUI("tam", it.t.map(function (x, i) { return { valor: x[0], texto: x[0], extra: soles(x[1]), marcado: x[0] === sel.tam }; }),
         false, function (v) { sel.tam = v[0]; pintarMitad(); pintar(); }));
     }
     /* Mitad y mitad: pizzas Media y Famiglia pueden llevar 2 sabores; se cobra el precio del sabor más caro. */
@@ -497,9 +497,12 @@
     aviso(t("agregado", { n: tx(it, "n") }));
   }
 
-  function clicAgregar(it, sec) {
+  function clicAgregar(it, sec, tam) {
     if (!aceptaAhora()) { aviso(MODO === "mesa" ? t("cerradoMesa") : t("cerradoAviso")); return; }
-    if (tieneOpciones(it)) abrirDetalle(it, sec);
+    /* tarjeta con selector de tamaño (tienda: 1 kg / 1/2 kg / 1/4 kg): si solo falta el tamaño se agrega directo */
+    var tt = tam && it.t ? it.t.filter(function (x) { return x[0] === tam; })[0] : null;
+    if (tt && !it.salsa && !(it.op && it.op.length)) { agregar(it, { tam: tt[0], salsa: "", cant: 1, nota: "", ops: {} }, tt[1]); return; }
+    if (tieneOpciones(it)) abrirDetalle(it, sec, tt ? tt[0] : "");
     else agregar(it, { tam: "", salsa: "", cant: 1, nota: "", ops: {} }, it.p);
   }
 
@@ -515,7 +518,7 @@
     var n = unidades();
     barra.classList.toggle("on", n > 0);
     document.body.classList.toggle("con-carrito", n > 0);
-    barraTxt.textContent = t("verPedido") + n + (n === 1 ? t("producto") : t("productos"));
+    barraTxt.textContent = t("verPedido") + n;
     barraTot.textContent = soles(total());
     pintarRepetir();
     if (animar) { barra.classList.remove("pulso"); void barra.offsetWidth; barra.classList.add("pulso"); }
@@ -555,13 +558,14 @@
       var fila = h("div", "sugiere__fila");
       sug.forEach(function (x) {
         var b = h("button", "sugiere__it"); b.type = "button";
-        if (x.it.foto) {
-          var si = h("img", "sugiere__img"); si.src = x.it.foto; si.alt = ""; si.loading = "lazy";
-          si.onerror = function () { si.remove(); };
-          b.appendChild(si);
-        }
+        var fw = h("span", "sugiere__fw");
+        var si = h("img", "sugiere__img"); si.alt = ""; si.loading = "lazy";
+        var ponerVacia = function () { si.onerror = null; si.src = "gallo-oro.png"; si.className = "sugiere__img sugiere__img--vacia"; };
+        if (x.it.foto) { si.src = x.it.foto; si.onerror = ponerVacia; } else ponerVacia();
+        fw.appendChild(si); fw.appendChild(h("span", "sugiere__mas", "+"));
+        b.appendChild(fw);
         b.appendChild(h("span", "sugiere__n", tx(x.it, "n")));
-        b.appendChild(h("span", "sugiere__p", x.it.t ? (I.lang === "en" ? "from " : "desde ") + soles(x.it.t[0][1]) : "+ " + soles(x.it.p)));
+        b.appendChild(h("span", "sugiere__p", x.it.t ? (I.lang === "en" ? "from " : "desde ") + soles(x.it.t[0][1]) : soles(x.it.p)));
         b.addEventListener("click", function () {
           if (tieneOpciones(x.it)) { cerrarHoja(); setTimeout(function () { abrirDetalle(x.it, x.sec); }, 80); return; }
           agregar(x.it, { tam: "", salsa: "", cant: 1, nota: "", ops: {} }, x.it.p);
@@ -1300,12 +1304,16 @@
     aceptaAhora: function () { return aceptaAhora(); },
     mesaValida: mesaValida,
     puedePedir: puedePedir,
-    abrirDetalle: function (it, sec) { abrirDetalle(it, sec); },
-    boton: function (it, sec) {
+    abrirDetalle: function (it, sec, tam) { abrirDetalle(it, sec, tam); },
+    boton: function (it, sec, tamFn) {
       var b = h("button", "agregar"); b.type = "button";
-      b.appendChild(h("span", null, "+")); b.appendChild(document.createTextNode(" " + t("agregar")));
+      b.appendChild(h("span", null, "+"));
       b.setAttribute("aria-label", t("agregarA", { n: tx(it, "n") }));
-      b.addEventListener("click", function (ev) { ev.stopPropagation(); clicAgregar(it, sec); });
+      b.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+        clicAgregar(it, sec, tamFn ? tamFn() : "");
+      });
       return b;
     },
     iniciar: function (utils) {

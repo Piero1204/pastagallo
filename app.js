@@ -154,7 +154,7 @@
     return ah;
   }
 
-  var estadoBarra, bienvenida, fab, fabTxt;
+  var estadoBarra, bienvenida, fab, fabTxt, buscadorEl;
   function waUrl() {
     return "https://wa.me/" + N.whatsapp + "?text=" + encodeURIComponent(N.mensajeWhatsapp);
   }
@@ -279,9 +279,28 @@
     }
     if (it.destacado === "tris") a.className += " it--dest";
     var tieneFoto = !!it.foto;
-    if (tieneFoto) a.className += " fcon";
+    var esTienda = !!(sec && sec.id === "tienda");
+    /* selector de tamaño como chips: tienda, o cualquier producto cuyos tamaños son pesos (1 kg, 1/2 kg, 1/4 kg) */
+    var conChips = !!(it.t && it.t.length > 1 && (esTienda || it.t.every(function (x) { return /(^|\s)(kg|g|gr)\b/i.test(x[0]); })));
+    var conFw = tieneFoto || esTienda;
+    a.className += conFw ? " fcon" : " it--sinfoto";
     var top = h("div", "it__top");
+    /* etiqueta solo si el dato ya existe en la carta */
+    if (it.nuevo) top.appendChild(h("span", "tag tag--nuevo", t("nuevo")));
+    else if (it.popular) top.appendChild(h("span", "tag tag--popular", t("popular")));
     top.appendChild(h("h4", "it__n", tx(it, "n")));
+    var tamSel = it.t && it.t.length ? it.t[0][0] : "", cajaPrecio = null;
+    function pintarPrecioTam() {
+      cajaPrecio.textContent = "";
+      var x = it.t.filter(function (y) { return y[0] === tamSel; })[0] || it.t[0];
+      var ant = it.ta && it.ta.filter(function (y) { return y[0] === x[0]; })[0];
+      if (ant && ant[1] > x[1]) {
+        var pt = precioEl(ant[1]); pt.className += " precio--antes"; pt.title = t("antes"); cajaPrecio.appendChild(pt);
+        var pc3 = pctEl(ant[1], x[1]); if (pc3) cajaPrecio.appendChild(pc3);
+      }
+      cajaPrecio.appendChild(precioEl(x[1]));
+    }
+    if (conChips) { cajaPrecio = h("span", "it__sel"); pintarPrecioTam(); top.appendChild(cajaPrecio); }
     if (it.p != null && !it.t) {
       top.appendChild(h("span", "it__pts"));
       if (it.pa != null && it.pa > it.p) {
@@ -307,7 +326,20 @@
     if (it.canal === "local") a.appendChild(h("span", "etq", t("soloLocal")));
     if (it.canal === "delivery" && !it.promo) a.appendChild(h("span", "etq", t("soloDelivery")));
     if (it.extra) a.appendChild(h("span", "mas", t("adicional") + dinero(it.extra)));
-    if (it.t) {
+    if (conChips) {
+      var cw = h("div", "tam-chips"); cw.setAttribute("role", "radiogroup"); cw.setAttribute("aria-label", t("tamElige"));
+      it.t.forEach(function (x) {
+        var c = h("button", "tam-chip" + (x[0] === tamSel ? " on" : ""), x[0]); c.type = "button";
+        c.setAttribute("role", "radio"); c.setAttribute("aria-checked", x[0] === tamSel ? "true" : "false");
+        c.addEventListener("click", function (ev) {
+          ev.stopPropagation(); tamSel = x[0];
+          Array.prototype.forEach.call(cw.children, function (o) { var on = o === c; o.classList.toggle("on", on); o.setAttribute("aria-checked", on ? "true" : "false"); });
+          pintarPrecioTam();
+        });
+        cw.appendChild(c);
+      });
+      a.appendChild(cw);
+    } else if (it.t) {
       var tb = h("div", "tam");
       it.t.forEach(function (x) {
         var c = h("div"); c.appendChild(h("span", null, x[0]));
@@ -331,19 +363,24 @@
     }
     if (it.agotado && it.tipo !== "salsa") a.appendChild(h("span", "agotado", t("agotado")));
     else if (it.agotado) a.appendChild(h("span", "agotado", t("noDisponible")));
-    if (PED && PED.puedePedir(it, sec)) a.appendChild(PED.boton(it, sec));
+    var btnAdd = PED && PED.puedePedir(it, sec) ? PED.boton(it, sec, conChips ? function () { return tamSel; } : null) : null;
     if (PED && it.tipo !== "salsa") {
       a.className += " it--clic"; a.tabIndex = 0; a.setAttribute("role", "button");
       a.setAttribute("aria-label", t("verDetalle") + tx(it, "n"));
-      var abrir = function (ev) { if (ev.target.closest(".agregar")) return; PED.abrirDetalle(it, sec); };
+      var abrir = function (ev) { if (ev.target.closest(".agregar, .tam-chips")) return; PED.abrirDetalle(it, sec); };
       a.addEventListener("click", abrir);
       a.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && ev.target === a) { ev.preventDefault(); PED.abrirDetalle(it, sec); } });
     }
-    if (tieneFoto) {
-      var im = h("img", "foto" + (sec && (sec.id === "italia" || (sec.id === "vini" && /^fotos\//.test(it.foto))) ? " foto--producto" + (sec.id === "vini" ? " foto--botella" : "") : "")); im.src = it.foto; im.alt = tx(it, "n"); im.loading = "lazy";
-      im.onerror = function () { a.className = a.className.replace(" fcon", ""); im.remove(); };
-      a.appendChild(im);
-    }
+    if (conFw) {
+      var fw = h("div", "it__fw");
+      var im = h("img", "foto" + (sec && (sec.id === "italia" || (sec.id === "vini" && /^fotos\//.test(it.foto))) ? " foto--producto" + (sec.id === "vini" ? " foto--botella" : "") : "")); im.alt = tx(it, "n"); im.loading = "lazy";
+      /* sin foto (o foto rota): placeholder de marca, el gallo sobre fondo crema */
+      var vacia = function () { im.onerror = null; im.src = "gallo-oro.png"; im.className = "foto foto--vacia"; im.alt = ""; fw.className += " it__fw--vacia"; };
+      if (tieneFoto) { im.src = it.foto; im.onerror = vacia; } else vacia();
+      fw.appendChild(im);
+      if (btnAdd) fw.appendChild(btnAdd);
+      a.appendChild(fw);
+    } else if (btnAdd) a.appendChild(btnAdd);
     a.setAttribute("data-q", norm([it.n, it.g, it.d, it.n_en, it.g_en, it.d_en].join(" ")));
     return a;
   }
@@ -466,22 +503,22 @@
     document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") cerrarMenu(); });
     in_.appendChild(hb);
     in_.appendChild(ch);
-    var lupa = h("button", "lupa"); lupa.type = "button"; lupa.setAttribute("aria-label", t("buscarAria"));
-    var sv = document.createElementNS(NS, "svg"); sv.setAttribute("viewBox", "0 0 24 24");
-    var c1 = document.createElementNS(NS, "circle"); c1.setAttribute("cx", 11); c1.setAttribute("cy", 11); c1.setAttribute("r", 6.5);
-    var l1 = document.createElementNS(NS, "path"); l1.setAttribute("d", "M16 16l5 5"); sv.appendChild(c1); sv.appendChild(l1);
-    lupa.appendChild(sv); in_.appendChild(lupa);
     in_.appendChild(botonIdioma("idioma"));
     nav.appendChild(in_);
-    var b = h("div", "busca"); b.id = "busca";
-    var inp = h("input"); inp.type = "search"; inp.id = "q"; inp.placeholder = t("buscar"); inp.setAttribute("aria-label", t("buscar")); inp.autocomplete = "off";
-    b.appendChild(inp); nav.appendChild(b);
     nav.appendChild(menu);
-    lupa.addEventListener("click", function () {
-      b.classList.toggle("abierta");
-      if (b.classList.contains("abierta")) inp.focus(); else { inp.value = ""; filtrar(""); }
-    });
-    inp.addEventListener("input", function () { filtrar(inp.value); });
+    /* buscador siempre visible arriba de la carta */
+    var b = h("div", "buscador"); b.id = "busca";
+    var sv = document.createElementNS(NS, "svg"); sv.setAttribute("viewBox", "0 0 24 24"); sv.setAttribute("aria-hidden", "true"); sv.setAttribute("class", "buscador__ic");
+    var c1 = document.createElementNS(NS, "circle"); c1.setAttribute("cx", 11); c1.setAttribute("cy", 11); c1.setAttribute("r", 6.5);
+    var l1 = document.createElementNS(NS, "path"); l1.setAttribute("d", "M16 16l5 5"); sv.appendChild(c1); sv.appendChild(l1);
+    b.appendChild(sv);
+    var inp = h("input"); inp.type = "search"; inp.id = "q"; inp.placeholder = t("buscar"); inp.setAttribute("aria-label", t("buscarAria")); inp.autocomplete = "off";
+    b.appendChild(inp);
+    var cl = h("button", "buscador__x", "\u00d7"); cl.type = "button"; cl.setAttribute("aria-label", t("buscarAria"));
+    cl.addEventListener("click", function () { inp.value = ""; cl.classList.remove("hay"); filtrar(""); inp.focus(); });
+    b.appendChild(cl);
+    inp.addEventListener("input", function () { cl.classList.toggle("hay", !!inp.value); filtrar(inp.value); });
+    buscadorEl = b;
     return nav;
   }
 
@@ -511,7 +548,7 @@
       sec.classList.toggle("oculto", !vis); total += vis;
     });
     var v = q("#vacio"); v.classList.toggle("hay", !!c && total === 0);
-    if (c) window.scrollTo({ top: q("#nav").offsetTop - 34, behavior: "auto" });
+    if (c) window.scrollTo({ top: Math.max(0, q("#busca").offsetTop - 42), behavior: "auto" });
   }
 
   /* ---------- gracias ---------- */
@@ -557,8 +594,9 @@
     C.secciones.forEach(function (s, i) { var e = seccion(s, i); if (e) secs.push(e); });
 
     app.appendChild(portada());
-    var nav = navegacion(); app.appendChild(nav);
-    var anc = h("span"); anc.id = "carta-inicio"; anc.style.cssText = "display:block;position:relative;top:-84px"; app.appendChild(anc);
+    var nav = navegacion();
+    var anc = h("span"); anc.id = "carta-inicio"; anc.style.cssText = "display:block;position:relative;top:-42px"; app.appendChild(anc);
+    app.appendChild(buscadorEl); app.appendChild(nav);
     secs.forEach(function (s) { app.appendChild(s); });
     var cuerpoFinal = secs.length ? secs[secs.length - 1].querySelector(".sec__cuerpo") : null;
     if (hayAlergenos && cuerpoFinal) cuerpoFinal.appendChild(leyenda());
@@ -579,7 +617,7 @@
         var id = a.getAttribute("href").slice(1), el = document.getElementById(id);
         if (!el) return;
         ev.preventDefault();
-        var off = id === "carta-inicio" ? 0 : 76;
+        var off = id === "carta-inicio" ? 0 : 92;
         var y = el.getBoundingClientRect().top + window.pageYOffset - (id === "carta-inicio" ? 0 : off);
         window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
       });
