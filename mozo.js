@@ -279,7 +279,7 @@
   function revisarAlertas() {
     // mesas que llaman: suena al llegar un aviso nuevo y repite cada 30 s mientras haya pendientes
     // solo suenan las de MIS mesas (o sin mozo); si nadie atiende en 2 minutos, suena para todos
-    var paraMi = S.avisos.filter(function (a) { return (!a.para || a.para === yo() || Date.now() + S.desfase - a.ts > 120000) && !(S.mozo && a.detalle === "Pedida por " + S.mozo.nombre); });
+    var paraMi = S.avisos.filter(function (a) { return !a.silencioso && (!a.para || a.para === yo() || Date.now() + S.desfase - a.ts > 120000) && !(S.mozo && a.detalle === "Pedida por " + S.mozo.nombre); });
     var nuevos = paraMi.filter(function (a) { return !avisosVistos[a.id]; });
     paraMi.forEach(function (a) { avisosVistos[a.id] = true; });
     if (nuevos.length || (paraMi.length && Date.now() - ultimoPitido > 30000)) { pitar(3, 988); ultimoPitido = Date.now(); }
@@ -430,7 +430,7 @@
 
   function barraAvisos() {
     var w = h("div", "avisos"), hz = S.horario;
-    S.avisos.slice().sort(function (a, b) { return a.ts - b.ts; }).forEach(function (a) {
+    S.avisos.filter(function (a) { return !a.silencioso; }).sort(function (a, b) { return a.ts - b.ts; }).forEach(function (a) {   // la cuenta que pidió un mozo no genera alerta
       var otro = a.para && a.para !== yo();
       var d = h("div", "av" + (a.motivo === "cuenta" ? " cuenta" : "") + (otro ? " otro" : ""));
       d.appendChild(h("span", null, (a.motivo === "cuenta" ? "🧾 " : "🙋 ") + "Mesa " + a.mesa + " · " + (a.motivo === "cuenta" ? "Cuenta" : "Llama") + (a.detalle ? " (" + a.detalle + ")" : "") + " · " + a.hora + (otro ? " · de " + a.paraNombre : "")));
@@ -541,7 +541,7 @@
   }
 
   /* ---------- mesas ---------- */
-  var TXT_ESTADO = { libre: "Libre", sentada: "Sentados · sin pedido", cocina: "En cocina", listo: "🔔 Listo para servir", servida: "Servida", llama: "🙋 Llama", cuenta: "🧾 Cuenta pedida" };
+  var TXT_ESTADO = { libre: "Libre", sentada: "Sentados · sin pedido", cocina: "En cocina", listo: "🔔 Listo para servir", servida: "Servida", llama: "🙋 Llama", cuenta: "🧾 Cuenta solicitada" };
   function estadoMesa(m) {
     var av = S.avisos.filter(function (a) { return String(a.mesa) === String(m.mesa); });
     if (av.some(function (a) { return a.motivo === "mozo"; })) return "llama";
