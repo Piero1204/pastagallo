@@ -1,5 +1,5 @@
 /* Pasta Gallo · módulo Comercio (lado cliente). Solo se carga si la carta trae CARTA.ext.comercio (módulo encendido en el panel).
-   Lo que hace: catálogo por horario, QR de barra (?origen=barra), horas programadas configurables con cupo, aviso de cierre de cocina,
+   Lo que hace: catálogo por horario (ordena y avisa; no oculta), QR de barra (?origen=barra), horas programadas configurables con cupo, aviso de cierre de cocina,
    botón de reseña y sesión de mesa. pedido.js lo consulta por window.PG_COMERCIO en pocos puntos; si este archivo no está, todo sigue igual. */
 (function () {
   "use strict";
@@ -48,32 +48,112 @@
     }
     return false;
   }
+  function tr(k, v, def) { try { var r = window.PG_I18N && window.PG_I18N.t(k, v); if (r && r !== k) return r; } catch (e) {} return def; }
+  var EN = !!(window.PG_I18N && window.PG_I18N.lang === "en");
   function cuando(reg) {
-    var t = (reg.h && reg.h.length) ? "de " + reg.h.map(function (x) { return fmt12(minutos(x[0])) + " a " + fmt12(minutos(x[1])); }).join(" y de ") : "todo el día";
-    if (reg.d) t += " (" + reg.d.map(function (x) { return NOMBRE_DIA[x]; }).join(", ") + ")";
+    var t = (reg.h && reg.h.length)
+      ? (EN ? "from " : "de ") + reg.h.map(function (x) { return fmt12(minutos(x[0])) + (EN ? " to " : " a ") + fmt12(minutos(x[1])); }).join(EN ? " and from " : " y de ")
+      : (EN ? "all day" : "todo el día");
+    if (reg.d) t += " (" + reg.d.map(function (x) { return EN ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][x] : NOMBRE_DIA[x]; }).join(", ") + ")";
     return t;
   }
   function disponible(id, secId, dia, min) {
     return disponibleReg((X.p || {})[id], dia, min) && disponibleReg((X.s || {})[secId], dia, min);
   }
-  /** Quita de la carta lo que no se puede pedir ahora (antes de que app.js y pedido.js la lean). */
+  /** Reglas de horario que aplican a un producto (la suya y la de su sección). */
+  function regsDe(it, sec) {
+    var r = [], rp = (X.p || {})[it.id], rs = sec && (X.s || {})[sec.id];
+    if (rp) r.push(rp); if (rs) r.push(rs);
+    return r;
+  }
+  function fuera(it, sec) {
+    if (!it || it.tipo === "salsa") return false;
+    var ah = ahora();
+    return !disponible(it.id, sec && sec.id, ah.dia, ah.min);
+  }
+  /** Próximo inicio de una regla: { dias: 0..7, min: minutos | null (todo el día), dia } o null. */
+  function proxima(reg, dia, min) {
+    var h = reg.h || [];
+    for (var i = 0; i <= 7; i++) {
+      var d = (dia + i) % 7;
+      if (reg.d && reg.d.indexOf(d) < 0) continue;
+      if (!h.length) { if (i > 0) return { dias: i, min: null, dia: d }; continue; }
+      var mejor = null;
+      h.forEach(function (x) { var a = minutos(x[0]); if ((i > 0 || a > min) && (mejor == null || a < mejor)) mejor = a; });
+      if (mejor != null) return { dias: i, min: mejor, dia: d };
+    }
+    return null;
+  }
+  /** "Disponible a partir de las 6:00 pm" / "Disponible mañana desde las 6:00 pm" / "Disponible el jueves desde las 6:00 pm". */
+  function textoDesde(reg) {
+    var ah = ahora(), p = proxima(reg, ah.dia, ah.min);
+    if (!p) return tr("hrNo", null, "No disponible por ahora");
+    var dias = tr("dias", null, null) || ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+    var hh = p.min == null ? "" : fmt12(p.min);
+    if (p.dias === 0) return tr("hrHoy", { h: hh }, "Disponible a partir de las " + hh);
+    if (p.dias === 1) return hh ? tr("hrManana", { h: hh }, "Disponible mañana desde las " + hh) : tr("hrMananaSin", null, "Disponible mañana");
+    return hh ? tr("hrDia", { d: dias[p.dia], h: hh }, "Disponible el " + dias[p.dia] + " desde las " + hh) : tr("hrDiaSin", { d: dias[p.dia] }, "Disponible el " + dias[p.dia]);
+  }
+  /** Aviso para la tarjeta ("" si se puede pedir ahora). */
+  function aviso(it, sec) {
+    if (!fuera(it, sec)) return "";
+    var ah = ahora(), r = regsDe(it, sec).filter(function (x) { return !disponibleReg(x, ah.dia, ah.min); })[0];
+    return r ? textoDesde(r) : "";
+  }
+  /** Aviso para la cabecera de la sección: su propio horario, o el del primer producto si todos están fuera de hora. */
+  function avisoSec(sec) {
+    var ah = ahora(), rs = (X.s || {})[sec.id];
+    if (rs && !disponibleReg(rs, ah.dia, ah.min)) return textoDesde(rs);
+    var its = [];
+    (sec.grupos || []).forEach(function (g) { (g.items || []).forEach(function (i) { if (i.tipo !== "salsa") its.push(i); }); });
+    if (!its.length || !its.every(function (i) { return fuera(i, sec); })) return "";
+    return aviso(its[0], sec);
+  }
+  /** Reparto de la carta: en delivery se conserva TODO (el cliente puede programar), lo disponible ahora va primero y lo demás
+      después en su orden original. En mesa se quita lo que no se puede pedir ahora (se pide en el momento). */
   function filtrarCarta() {
     if (!X.p && !X.s) return;
     var ah = ahora();
-    C.secciones = (C.secciones || []).filter(function (s) {
-      s.grupos = (s.grupos || []).filter(function (g) {
-        g.items = (g.items || []).filter(function (it) { return it.tipo === "salsa" || disponible(it.id, s.id, ah.dia, ah.min); });
-        return g.items.length;
+    if (MODO === "mesa") {
+      C.secciones = (C.secciones || []).filter(function (s) {
+        s.grupos = (s.grupos || []).filter(function (g) {
+          g.items = (g.items || []).filter(function (it) { return it.tipo === "salsa" || disponible(it.id, s.id, ah.dia, ah.min); });
+          return g.items.length;
+        });
+        return s.grupos.length;
       });
-      return s.grupos.length;
+      return;
+    }
+    var particion = function (arr, ok) { return arr.filter(ok).concat(arr.filter(function (x) { return !ok(x); })); };
+    (C.secciones || []).forEach(function (s) {
+      (s.grupos || []).forEach(function (g) { g.items = particion(g.items || [], function (it) { return it.tipo === "salsa" || disponible(it.id, s.id, ah.dia, ah.min); }); });
     });
+    var ahoraSec = function (s) {
+      if (!disponibleReg((X.s || {})[s.id], ah.dia, ah.min)) return false;
+      var hay = false, algo = false;
+      (s.grupos || []).forEach(function (g) { (g.items || []).forEach(function (it) { if (it.tipo === "salsa") return; hay = true; if (disponible(it.id, s.id, ah.dia, ah.min)) algo = true; }); });
+      return !hay || algo;
+    };
+    C.secciones = particion(C.secciones || [], ahoraSec);
   }
-  /** Mensaje si el producto dejó de estar disponible mientras la página seguía abierta; "" si se puede pedir. */
+  /** Productos del pedido que no se pueden pedir para esa hora. cuando = null (ahora) o { dia, min }. Devuelve [{ it, sec, solo }]. */
+  function revisar(entradas, cuandoPed) {
+    var ah = cuandoPed || ahora(), mal = [], vistos = {};
+    (entradas || []).forEach(function (e) {
+      if (!e || !e.it || e.it.tipo === "salsa" || vistos[e.it.id]) return;
+      if (disponible(e.it.id, e.sec && e.sec.id, ah.dia, ah.min)) return;
+      vistos[e.it.id] = 1;
+      var r = regsDe(e.it, e.sec).filter(function (x) { return !disponibleReg(x, ah.dia, ah.min); })[0];
+      mal.push({ it: e.it, sec: e.sec, solo: r ? cuando(r) : "", desde: r ? textoDesde(r) : "" });
+    });
+    return mal;
+  }
+  /** Solo en mesa: mensaje si el producto no se puede pedir ahora; "" si sí. En delivery nunca bloquea (se valida al enviar). */
   function motivo(it, sec) {
-    if (!it || it.tipo === "salsa") return "";
+    if (MODO !== "mesa" || !it || it.tipo === "salsa") return "";
     var ah = ahora(), rp = (X.p || {})[it.id], rs = sec && (X.s || {})[sec.id];
-    if (rp && !disponibleReg(rp, ah.dia, ah.min)) return "Solo " + cuando(rp);
-    if (rs && !disponibleReg(rs, ah.dia, ah.min)) return "No disponible ahora: " + cuando(rs);
+    if (rp && !disponibleReg(rp, ah.dia, ah.min)) return (EN ? "Only " : "Solo ") + cuando(rp);
+    if (rs && !disponibleReg(rs, ah.dia, ah.min)) return (EN ? "Not available now: " : "No disponible ahora: ") + cuando(rs);
     return "";
   }
 
@@ -195,7 +275,7 @@
   filtrarCarta();
   iniciarSesionMesa();
   window.PG_COMERCIO = {
-    barra: BARRA, motivo: motivo, ventana: ventana, filtrarHoras: filtrarHoras, cuerpo: cuerpo, resena: resena,
+    barra: BARRA, motivo: motivo, fuera: fuera, aviso: aviso, avisoSec: avisoSec, revisar: revisar, cuando: cuando, ventana: ventana, filtrarHoras: filtrarHoras, cuerpo: cuerpo, resena: resena,
     _t: { disponibleReg: disponibleReg, ahora: ahora, ventana: ventana, minutosParaCerrar: minutosParaCerrar, filtrarCarta: filtrarCarta, llena: llena, disponible: disponible }
   };
 })();
