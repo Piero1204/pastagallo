@@ -171,6 +171,15 @@
   }
   function pintarEstado() {
     var e = estadoActual();
+    if (COM && COM.barra && PED && PED.activo()) {   // QR de barra: sin horario ni "cerrado"; la persona ya está en el local
+      estadoBarra.className = "estado abierto"; estadoBarra.textContent = "";
+      estadoBarra.appendChild(h("i")); estadoBarra.appendChild(h("span", null, t("barraEstado")));
+      bienvenida.textContent = "";
+      bienvenida.appendChild(h("h1", null, t("barraTitulo")));
+      bienvenida.appendChild(h("p", null, t("barraTexto")));
+      if (fabTxt) fabTxt.textContent = t("pedirAhora");
+      return;
+    }
     estadoBarra.className = "estado " + (e.abierto ? "abierto" : "cerrado");
     estadoBarra.textContent = "";
     estadoBarra.appendChild(h("i"));
@@ -213,7 +222,8 @@
 
   /* ---------- portada ---------- */
   function portada() {
-    var compacta = PED && PED.modo === "mesa";
+    var enBarra = !!(COM && COM.barra && PED && PED.activo());
+    var compacta = (PED && PED.modo === "mesa") || enBarra;
     var s = h("header", "portada" + (compacta ? " portada--compacta" : "")); s.id = "inicio";
     s.appendChild(h("div", "marco"));
     s.appendChild(botonIdioma("idioma idioma--portada"));
@@ -227,9 +237,9 @@
     bienvenida = h("div", "bienvenida"); in_.appendChild(bienvenida);
     var ac = h("div", "acciones");
     if (PED && PED.activo()) {
-      var b1 = h("a", "btn btn--oro", PED.modo === "mesa" ? t("verCartaPedir") : t("hacerPedido")); b1.href = "#carta-inicio";
+      var b1 = h("a", "btn btn--oro", PED.modo === "mesa" ? t("verCartaPedir") : enBarra ? t("verCarta") : t("hacerPedido")); b1.href = "#carta-inicio";
       ac.appendChild(b1);
-      if (PED.modo !== "mesa") {
+      if (PED.modo !== "mesa" && !enBarra) {
         var b2 = h("a", "btn btn--linea"); b2.href = waUrl(); b2.target = "_blank"; b2.rel = "noopener";
         b2.appendChild(waSvg()); b2.appendChild(document.createTextNode(t("consultasWa"))); ac.appendChild(b2);
       }
@@ -725,6 +735,7 @@
 
     var f = h("a", "fab"); f.href = waUrl(); f.target = "_blank"; f.rel = "noopener";
     f.appendChild(waSvg()); fabTxt = h("span", null, t("pedirAhora")); f.appendChild(fabTxt);
+    if (COM && COM.barra) f.style.display = "none";   // barra: nada de WhatsApp flotante, se pide aquí
     document.body.appendChild(f); fab = f;
 
     pintarEstado();
@@ -785,7 +796,8 @@
     if (ti >= 0) {
       var tienda = lista.splice(ti, 1)[0], li = -1;
       lista.forEach(function (x, i) { if (x.id === "lasagne") li = i; });
-      lista.splice(li >= 0 ? li + 1 : lista.length, 0, tienda);
+      if (COM && COM.barra) lista.unshift(tienda);   // barra: Nostri Prodotti (para llevar) primero
+      else lista.splice(li >= 0 ? li + 1 : lista.length, 0, tienda);
       if (COM && COM.avisoSec) {   // reparte otra vez: disponibles ahora primero, el resto después, cada grupo en su orden
         var ok = function (x) { return !COM.avisoSec(x); };
         lista = lista.filter(ok).concat(lista.filter(function (x) { return !ok(x); }));

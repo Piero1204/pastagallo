@@ -33,10 +33,14 @@
     if (document.body) poner(); else document.addEventListener("DOMContentLoaded", poner);
   }
   if (mozo) {
-    document.title = "Pasta Gallo · Equipo";
-    var m = document.createElement("link"); m.rel = "manifest"; m.href = "/mozo.webmanifest"; document.head.appendChild(m);
-    var a = document.createElement("link"); a.rel = "apple-touch-icon"; a.href = "/mozo-192.png"; document.head.appendChild(a);
-    [["apple-mobile-web-app-capable", "yes"], ["mobile-web-app-capable", "yes"], ["apple-mobile-web-app-title", "PG Mozo"], ["apple-mobile-web-app-status-bar-style", "black-translucent"]].forEach(function (x) {
+    /* ¿app de tienda? El enlace de instalación lleva ?app=tienda; si no, se mira el rol guardado en este equipo (cajero). */
+    var tienda = /[?&]app=tienda\b/.test(location.search);
+    try { var yo = JSON.parse(localStorage.getItem("pg-mozo") || "null"); if (yo && String(yo.rol || "").toLowerCase() === "cajero") tienda = true; } catch (e) {}
+    document.title = tienda ? "Pasta Gallo · Tienda" : "Pasta Gallo · Equipo";
+    var m = document.createElement("link"); m.rel = "manifest"; m.href = tienda ? "/tienda.webmanifest" : "/mozo.webmanifest"; document.head.appendChild(m);
+    var a = document.createElement("link"); a.rel = "apple-touch-icon"; a.href = tienda ? "/tienda-192.png" : "/mozo-192.png"; document.head.appendChild(a);
+    if (tienda) document.querySelector('meta[name=theme-color]').content = "#24402f";
+    [["apple-mobile-web-app-capable", "yes"], ["mobile-web-app-capable", "yes"], ["apple-mobile-web-app-title", tienda ? "PG Tienda" : "PG Mozo"], ["apple-mobile-web-app-status-bar-style", "black-translucent"]].forEach(function (x) {
       var me = document.createElement("meta"); me.name = x[0]; me.content = x[1]; document.head.appendChild(me);
     });
     document.querySelector('meta[name=viewport]').content += ", user-scalable=no";

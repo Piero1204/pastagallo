@@ -41,7 +41,7 @@
   function leerJson(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
   function guardarJson(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function recordarCliente() {
-    var o = {}; CAMPOS_CLIENTE.forEach(function (k) { if (form[k]) o[k] = String(form[k]).slice(0, 200); });
+    var o = {}; CAMPOS_CLIENTE.forEach(function (k) { if (esBarra() && (k === "canal" || k === "pago")) return; if (form[k]) o[k] = String(form[k]).slice(0, 200); });
     guardarJson(CLAVE_CLIENTE, o);
   }
   function cargarCliente() {
@@ -129,6 +129,20 @@
     return m >= c && m < c + x;
   }
   function abiertoAhora() { return P.estadoActual().abierto || enExtra(); }
+  /* QR de barra/mostrador (?origen=barra): la persona ya está en el local. Pedido inmediato para recoger: sin dirección, sin hora y sin bloqueo por horario. */
+  function esBarra() { return MODO !== "mesa" && !!(window.PG_COMERCIO && PG_COMERCIO.barra && CFG.recojo); }
+  /* Medios de pago de la barra: ninguno obligatorio ni preseleccionado (el cobro se hace o se confirma en caja) */
+  function metodosBarra() {
+    var mesa = CFG.metodosPagoMesa || [], cb = CFG.cobro || {}, r = [];
+    var ok = function (m) { return !mesa.length || mesa.indexOf(m) >= 0; };
+    if (ok("Efectivo")) r.push("Efectivo");
+    if (cb.Yape || cb.Plin) { if (cb.Yape) r.push("Yape"); if (cb.Plin) r.push("Plin"); }
+    else if ((CFG.metodosPago || []).indexOf(YP) >= 0 || mesa.indexOf(YP) >= 0) r.push(YP);
+    if (cb.Transferencia) r.push("Transferencia");
+    if (ok("Tarjeta")) r.push("Tarjeta");
+    return r;
+  }
+  function celularBarra(v) { var d = String(v || "").replace(/\D/g, ""); if (/^519\d{8}$/.test(d)) d = d.slice(2); return /^9\d{8}$/.test(d) ? d : ""; }
   function mesaValida() { return MODO !== "mesa" || (MESA && CODIGO); }
   function activo() {
     if (!CFG.activos) return false;
@@ -137,7 +151,7 @@
   }
   function aceptaAhora() {
     if (!activo()) return false;
-    if (abiertoAhora()) return true;
+    if (esBarra() || abiertoAhora()) return true;
     return MODO === "delivery" && !!CFG.fueraHorario;
   }
   function motivoNoPedible(it, sec) {
@@ -716,7 +730,7 @@
     var f = h("form", "form"); f.noValidate = true; f.id = "form-pedido";
     var hp = h("input", "trampa"); hp.name = "web"; hp.tabIndex = -1; hp.autocomplete = "off"; hp.setAttribute("aria-hidden", "true");
     f.appendChild(hp);
-    var zona = h("div");
+    var zona = h("div"), cajaCobro = null;
     var pie = h("div", "pie-fijo");
     var resumen = h("div", "resumen"); resumen.setAttribute("aria-live", "polite");
     refrescarResumen = null;
@@ -725,11 +739,31 @@
       f.appendChild(campo("notas", t("comentCocina"), "area", { max: 300 }));
       // En la mesa el pago y el comprobante se piden al final, con "Pedir la cuenta"
       form.comprobante = "";
+    } else if (esBarra()) {
+      /* Barra: solo nombre y celular; el pago se muestra pero no es obligatorio (ni viene marcado) */
+      form.canal = "recojo"; form.programado = ""; form.programadoFecha = ""; form.programadoTxt = "";
+      f.appendChild(h("h3", "hoja__sub", t("tusDatos")));
+      f.appendChild(campo("nombre", t("nombre"), "text", { max: 60, auto: "name" }));
+      f.appendChild(campo("telefono", t("celular"), "tel", { max: 16, auto: "tel", modo: "tel", ph: "9XX XXX XXX" }));
+      var metB = metodosBarra();
+      if (metB.indexOf(form.pago) < 0) form.pago = "";
+      if (metB.length) {
+        f.appendChild(h("h3", "hoja__sub", t("comoPagar")));
+        cajaCobro = h("div");
+        f.appendChild(opcionesOpc("pago", metB.map(function (m) { return { valor: m, texto: m, marcado: form.pago === m }; }), function (v) { form.pago = v; pintarCobro(cajaCobro, form.pago, true); }));
+        f.appendChild(cajaCobro);
+        pintarCobro(cajaCobro, form.pago, true);
+      }
+      if (carrito.some(function (l) { return l.alcohol; })) {
+        var lbB = h("label", "check");
+        var ckB = h("input"); ckB.type = "checkbox"; ckB.checked = !!form.mayorEdad;
+        ckB.addEventListener("change", function () { form.mayorEdad = ckB.checked; });
+        lbB.appendChild(ckB); lbB.appendChild(h("span", null, t("mayor")));
+        f.appendChild(lbB);
+      }
     } else {
       if (!form.canal || !CFG.recojo) form.canal = "delivery";
-      var enBarra = !!(window.PG_COMERCIO && PG_COMERCIO.barra && CFG.recojo);   // módulo comercio: QR de barra = recojo en el local
-      if (enBarra) form.canal = "recojo";
-      if (CFG.recojo && !enBarra) {
+      if (CFG.recojo) {
         f.appendChild(h("h3", "hoja__sub", t("comoLoQuieres")));
         f.appendChild(opcionesUI("canal", [
           { valor: "delivery", texto: t("delivery"), marcado: form.canal === "delivery" },
@@ -746,7 +780,7 @@
         f.appendChild(h("h3", "hoja__sub", t("comoPagar")));
         if (CFG.metodosPago.indexOf(form.pago) < 0) form.pago = "";
         if (!pagoObl) f.appendChild(h("p", "pago-ayuda", t("pagoAdelanto")));
-        var cajaCobro = h("div");
+        cajaCobro = h("div");
         var lisPago = CFG.metodosPago.map(function (m) { return { valor: m, texto: m, marcado: form.pago === m }; });
         var alPago = function (v) { form.pago = Array.isArray(v) ? v[0] : v; pintarCobro(cajaCobro, form.pago, true); };
         f.appendChild(pagoObl ? opcionesUI("pago", lisPago, false, alPago) : opcionesOpc("pago", lisPago, alPago));
@@ -815,7 +849,7 @@
     function pintarZona() {
       zona.textContent = "";
       if (MODO === "mesa" || form.canal !== "delivery") {
-        if (form.canal === "recojo") zona.appendChild(h("p", "hoja__ayuda", t("recogeEn") + C.negocio.direccion + "."));
+        if (form.canal === "recojo" && !esBarra()) zona.appendChild(h("p", "hoja__ayuda", t("recogeEn") + C.negocio.direccion + "."));
         return;
       }
       /* Entrega automática: el cliente da su ubicación (GPS o dirección buscada en el mapa) y el costo se calcula solo. */
@@ -885,7 +919,7 @@
     /* Resumen fijo abajo: subtotal, delivery y total (el delivery se calcula solo con la ubicación) */
     function pintarResumen() {
       resumen.textContent = "";
-      var cobro = typeof cajaCobro !== "undefined" && cajaCobro;
+      var cobro = cajaCobro;
       if (cobro) pintarCobro(cajaCobro, form.pago, true);
       var e = entregaActual();
       var fila = function (a, b, cls) { var d = h("div", cls); d.appendChild(h("span", null, a)); d.appendChild(h("span", null, b)); resumen.appendChild(d); };
@@ -910,7 +944,7 @@
     pie.appendChild(err);
     f.addEventListener("input", function () { err.textContent = ""; });
     f.addEventListener("change", function () { err.textContent = ""; });
-    var enviar = h("button", "btn-ped" + (MODO === "mesa" ? "" : " btn-ped--wa"), MODO === "mesa" ? t("enviarCocina") : t("enviarWaDirecto"));
+    var enviar = h("button", "btn-ped" + (MODO === "mesa" || esBarra() ? "" : " btn-ped--wa"), MODO === "mesa" ? t("enviarCocina") : t("enviarWaDirecto"));
     enviar.type = "submit"; enviar.setAttribute("form", "form-pedido");
     pie.appendChild(enviar);
     // Mesa: antes de mandar a cocina se confirma, porque ya no se puede cambiar
@@ -929,7 +963,7 @@
       var e = validar();
       if (e) {
         err.textContent = e;
-        if (avisoFuera) {
+        if (avisoFuera && !esBarra()) {
           var bp = h("button", "btn-ped btn-ped--linea hr-prog", t("hrProgramar")); bp.type = "button";
           bp.addEventListener("click", function () {
             var d0 = f.querySelector("details.prog"); if (d0) d0.open = true;
@@ -938,6 +972,14 @@
           });
           err.appendChild(document.createElement("br")); err.appendChild(bp);
         }
+        return;
+      }
+      if (esBarra()) {
+        enviar.disabled = true; enviar.textContent = t("enviando");
+        enviarBarra(hp.value).then(function (r) {
+          enviar.disabled = false; enviar.textContent = t("enviarWaDirecto");
+          if (r && r.error) err.textContent = r.error;
+        });
         return;
       }
       if (MODO !== "mesa") {
@@ -1009,12 +1051,12 @@
     if (c.titular) w.appendChild(h("p", "cobro__tit", t("titular") + " " + c.titular));
     if (c.texto) w.appendChild(h("p", "cobro__banco", c.texto));
     if (!conCaptura) { w.appendChild(h("p", "hoja__ayuda", t("pagoMesaQr"))); return; }
-    w.appendChild(h("p", "hoja__ayuda", t("pagoAnticipado")));
+    w.appendChild(h("p", "hoja__ayuda", t(esBarra() ? "barraCaptura" : "pagoAnticipado")));
     var lb = h("label", "cobro__subir");
     var inp = h("input"); inp.type = "file"; inp.accept = "image/*";
     var txt = h("span", null, form.captura ? "✓ " + t("capturaLista") + " · " + t("cambiarCaptura") : "📎 " + t("subirCaptura"));
     var prev = h("img", "cobro__prev"); prev.alt = ""; if (form.captura) prev.src = form.captura; else prev.style.display = "none";
-    var est = h("span", "hoja__ayuda", t("capturaAyuda"));
+    var est = h("span", "hoja__ayuda", esBarra() ? "" : t("capturaAyuda"));
     inp.addEventListener("change", function () {
       var file = inp.files && inp.files[0]; if (!file) return;
       txt.textContent = t("enviando");
@@ -1096,6 +1138,16 @@
   function validar() {
     if (!carrito.length) return t("vacio");
     if (MODO === "mesa") return "";
+    if (esBarra()) {
+      if (!form.nombre || form.nombre.trim().length < 2) return t("errNombre");
+      if (!celularBarra(form.telefono)) return t("barraErrCel");
+      if (window.PG_COMERCIO && PG_COMERCIO.revisar) {   // un producto fuera de su horario no se puede pedir ahora (no hay "programar" en barra)
+        var malB = PG_COMERCIO.revisar(carrito.map(function (l) { return { it: productos[l.id], sec: seccionDe[l.id] }; }), null);
+        if (malB.length) return t("barraNoDisp", { n: tx(malB[0].it, "n") });
+      }
+      if (carrito.some(function (l) { return l.alcohol; }) && !form.mayorEdad) return t("errMayor");
+      return "";
+    }
     if (!form.nombre || form.nombre.trim().length < 2) return t("errNombre");
     if (String(form.telefono || "").replace(/\D/g, "").length < 9) return t("errCel");
     if (form.canal === "delivery") {
@@ -1240,6 +1292,42 @@
         enviarPorWhatsapp(trampa);
         return {};
       });
+  }
+
+  /* Barra: el pedido va directo al sistema (se imprime solo en el local). Sin WhatsApp, sin seguimiento, sin hora. */
+  function enviarBarra(trampa) {
+    if (!CFG.api) return Promise.resolve({ error: t("barraSinConexion") });
+    form.ref = codigoCorto();
+    var cuerpo = cuerpoPedido(trampa);
+    cuerpo.canal = "recojo"; cuerpo.programado = ""; cuerpo.programadoFecha = ""; cuerpo.direccion = ""; cuerpo.referencia = "";
+    cuerpo.telefono = celularBarra(form.telefono) || cuerpo.telefono;
+    if (form.captura && cobroDe(form.pago)) cuerpo.captura = form.captura;
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var tm = setTimeout(function () { if (ctrl) ctrl.abort(); }, 40000);
+    return fetch(CFG.api, { method: "POST", body: JSON.stringify(cuerpo), signal: ctrl ? ctrl.signal : undefined })
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        clearTimeout(tm);
+        if (!r || !r.ok) { form.ref = ""; return { error: (r && r.error) || t("barraSinConexion") }; }
+        recordarCliente();
+        exitoBarra(r);
+        return {};
+      })
+      .catch(function () { clearTimeout(tm); form.ref = ""; return { error: t("barraSinConexion") }; });
+  }
+  function exitoBarra(r) {
+    var c = h("div", "hoja__cuerpo exito");
+    var nombre = String(form.nombre || "").trim().split(/\s+/)[0];
+    var digital = /^(yape|plin|transf)/i.test(String(form.pago || ""));
+    c.appendChild(h("div", "exito__ic", "✓"));
+    c.appendChild(h("h3", null, t("barraListo", { n: nombre })));
+    c.appendChild(h("p", null, t("barraPrep", { num: r && r.numero != null ? r.numero : "" })));
+    c.appendChild(h("p", null, t(digital ? "barraCajaDig" : "barraCaja")));
+    if (window.PG_COMERCIO) PG_COMERCIO.resena(c, h);
+    c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
+    carrito = []; guardar(); pintarBarra();
+    form.ref = ""; form.pago = ""; form.captura = ""; form.capturaSubida = false; form.mayorEdad = false;
+    abrirHoja(c, t("tuPedido"));
   }
 
   function enviarPedido(trampa) {
@@ -1449,7 +1537,7 @@
   }
   function pintarRepetir() {
     if (!repetirEl) return;
-    var ver = MODO === "delivery" && !carrito.length && !!ultimoPedido() && aceptaAhora();
+    var ver = MODO === "delivery" && !esBarra() && !carrito.length && !!ultimoPedido() && aceptaAhora();
     repetirEl.classList.toggle("on", ver);
   }
   function repetirUltimo() {

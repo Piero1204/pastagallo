@@ -36,6 +36,7 @@
     for (var i = 0; i < (lista || []).length; i++) {
       var p = lista[i];
       if (p.sku && L.norm(p.sku) === n) return p;
+      if (p.id && L.norm(p.id) === n) return p;   // código interno de etiqueta cuando el producto no tiene SKU ni barras
       if (num && p.barras && L.sinCeros(p.barras) === num) return p;
       if (!num && p.barras && L.norm(p.barras) === n) return p;
     }
@@ -104,6 +105,23 @@
     r.ok = true; return r;
   };
 
+  /** Kilos de una línea de venta: por kg o g directo; por presentación ("1 kg", "1/2 kg", "1/4 kg", "250 g") × cantidad. Si no se sabe, 0. */
+  L.kilosDe = function (l) {
+    var c = Number(l.cant) || 0;
+    if (l.unidad === "kg") return L.r2(c * 1000) / 1000;
+    if (l.unidad === "g") return L.r2(c) / 1000;
+    var m = String(l.tam || "").toLowerCase().replace(",", ".").match(/^(\d+(?:\.\d+)?)(?:\s*\/\s*(\d+))?\s*(kg|g|gr)\b/);
+    if (!m) return 0;
+    var v = parseFloat(m[1]); if (m[2]) v = v / parseFloat(m[2]);
+    if (m[3] !== "kg") v = v / 1000;
+    return Math.round(v * c * 1000) / 1000;
+  };
+  /** Código interno que lleva la etiqueta de un producto: SKU, si no código de barras, si no su id. */
+  L.codigoInterno = function (p) { return String(p.sku || p.barras || p.id || ""); };
+  /** Orden de la tienda: primero lo de la sección tienda, luego lo que no depende de cocina, al final el resto. */
+  var SIN_COCINA = ["dolci", "italia", "caffetteria", "caffe", "vini", "aperitivi"];
+  L.prioridad = function (seccion) { return seccion === "tienda" ? 0 : SIN_COCINA.indexOf(seccion) >= 0 ? 1 : 2; };
+
   L.nuevoCid = function () {
     var a = "abcdefghijklmnopqrstuvwxyz0123456789", s = "v", i;
     try { var b = new Uint8Array(14); root.crypto.getRandomValues(b); for (i = 0; i < b.length; i++) s += a.charAt(b[i] % a.length); }
@@ -138,7 +156,9 @@
     lin.push(String(neg.nombre || "Pasta Gallo").toUpperCase());
     if (neg.direccion) lin.push(neg.direccion);
     if (neg.telefono) lin.push("Tel. " + neg.telefono);
-    lin.push(raya, "Venta " + v.id, L.fechaLima(v.fecha) + (v.cajero ? " · " + v.cajero : ""), raya);
+    lin.push(raya, "Venta " + v.id, L.fechaLima(v.fecha) + (v.cajero ? " · " + v.cajero : ""));
+    if (v.cliente) lin.push("Cliente: " + [v.cliente.nombre, v.cliente.empresa, v.cliente.celular].filter(Boolean).join(" · "));
+    lin.push(raya);
     (v.lineas || []).forEach(function (l) {
       lin.push(l.nombre + (l.tam ? " (" + l.tam + ")" : ""));
       lin.push("   " + L.fmtCant(l.cant, l.unidad) + " x " + L.soles(l.unit) + (l.unidad !== "unid" ? "/" + l.unidad : "") + " = " + L.soles(l.subtotal));
@@ -174,7 +194,7 @@
     function llamar(o) { o.ext = "tienda"; o.t = TOKEN; return api(o); }
 
     var S = { prods: [], metodos: ["Efectivo", "Yape", "Plin", "Tarjeta"], descMax: null, anularCajero: true, negocio: {}, q: "", vista: "vender",
-      carro: leer(K, []), pend: null, recoger: [], enCocina: 0, hist: null, cargado: false, error: "" };
+      carro: leer(K, []), cliente: leer("pg-cajero-cliente", null), cat: "", etq: {}, clientes: null, pend: null, recoger: [], enCocina: 0, hist: null, cargado: false, error: "" };
     function guardarCarro() { guardar(K, S.carro); }
 
     /* ---------- estilos ---------- */
@@ -220,7 +240,15 @@
         ".cj-err{color:var(--rojo,#b6232a);font-weight:700;min-height:20px;margin-top:6px}",
         ".cj-rec{font:13px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;background:#fff;border:1px dashed var(--gris,#6f5f57);border-radius:8px;padding:12px;margin-bottom:6px;-webkit-user-select:text;user-select:text}",
         ".cj-video{width:100%;max-height:50vh;background:#000;border-radius:12px}",
-        "#cj-print{display:none}",
+        ".cj-cats{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px}.cj-cats button{flex:none;height:40px;padding:0 14px;border-radius:999px;background:#fff;border:2px solid var(--linea,#dccdb0);font-weight:700}",
+        ".cj-cats button.on{background:var(--vino,#4a1519);color:#fff;border-color:var(--vino,#4a1519)}",
+        ".cj-p .ft{height:84px;margin:-10px -10px 0;border-radius:11px 11px 0 0;background:var(--crema-2,#e6dac0) center/cover no-repeat}.cj-p .ft.sin{background-size:46% auto;opacity:.5}",
+        ".cj-cli{height:40px;padding:0 12px;border-radius:10px;background:var(--crema-2,#e6dac0);font-weight:700;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+        ".cj-chk{display:flex;align-items:center;gap:8px;padding:8px;background:#fff;border:1px solid var(--linea,#dccdb0);border-radius:10px;margin-bottom:6px}.cj-chk input[type=checkbox]{width:24px;height:24px;flex:none}.cj-chk .t{flex:1;min-width:0}.cj-chk input[type=number]{width:64px;height:40px;flex:none}",
+        "@media(min-width:1000px){.cj.vende{padding-right:400px;padding-bottom:0}.cj.vende .cj-cart{left:auto;width:400px;top:62px;border-top:0;border-left:3px solid var(--oro,#a9803f);display:flex;flex-direction:column;padding-bottom:12px}.cj.vende .cj-lineas{max-height:none;flex:1}.cj-body{max-width:none}.cj-prods{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}}",
+        "#cj-print,#cj-etq{display:none}",
+        "#cj-etq .et{border:1px dashed #999;padding:2mm;break-inside:avoid;text-align:center;font:11px/1.2 sans-serif;color:#000}#cj-etq .et b{display:block;font-size:12px}#cj-etq .et svg{display:block;margin:1mm auto;max-width:100%}#cj-etq .et span{display:block}",
+        "@media print{body>#cj-etq{display:grid!important;grid-template-columns:repeat(3,1fr);gap:2mm;margin:0;width:auto}}",
         "@media print{body>*{display:none!important}body>#cj-print{display:block!important;font:12px/1.3 monospace;white-space:pre-wrap;width:72mm;margin:0;color:#000}@page{margin:4mm}}"
       ].join("\n");
       doc.head.appendChild(st);
@@ -262,13 +290,24 @@
     var raiz = h("div", "cj"), top = h("div", "cj-top"), tabs = h("div", "cj-tabs"), cuerpo = h("div", "cj-body"), carrito = h("div", "cj-cart");
     app.innerHTML = "";
     top.appendChild(h("b", "", "Caja · " + (ctx.mozo && ctx.mozo.nombre || "")));
+    var bInst = btn("⬇ Instalar", "", function () {
+      if (ctx.instalar && ctx.instalar.disponible()) ctx.instalar.pedir().then(function () { pintarInstalar(); });
+      else toast("En iPhone/iPad: Compartir (□↑) → “Agregar a inicio”. En Chrome o Edge: menú ⋮ → “Instalar PG Tienda”.", "ok");
+    });
+    function pintarInstalar() { var inst = ctx.instalar || {}; bInst.style.display = inst.instalada || (!inst.disponible() && !inst.ios) ? "none" : ""; }
+    pintarInstalar(); doc.addEventListener("pg-instalable", pintarInstalar);
+    top.appendChild(bInst);
     top.appendChild(btn("Salir", "", function () { if (S.carro.length && !root.confirm("Hay una venta sin cobrar. ¿Salir igual?")) return; ctx.salir(); }));
-    raiz.appendChild(top); raiz.appendChild(tabs); raiz.appendChild(cuerpo); raiz.appendChild(carrito); app.appendChild(raiz);
+    raiz.appendChild(top);
+    var mapaHost = h("div"); raiz.appendChild(mapaHost);
+    if (ctx.mapaSalon) ctx.mapaSalon(mapaHost, { onMesa: verMesa });   // mapa del salón desplegable (solo mira; el cobro de mesas lo hace el mozo)
+    raiz.appendChild(tabs); raiz.appendChild(cuerpo); raiz.appendChild(carrito); app.appendChild(raiz);
 
     function pintarTabs() {
       tabs.innerHTML = "";
-      [["vender", "Vender"], ["recoger", "Por recoger"], ["hoy", "Hoy"]].forEach(function (t) {
-        var b = btn(t[1], t[0] === S.vista ? "on" : "", function () { S.vista = t[0]; pintar(); if (t[0] === "hoy") cargarHist().then(pintar); if (t[0] === "recoger") cargarRecoger().then(pintar); });
+      raiz.className = "cj" + (S.vista === "vender" ? " vende" : "");
+      [["vender", "Vender"], ["recoger", "Por recoger"], ["hoy", "Hoy"], ["clientes", "Clientes"], ["etiquetas", "Etiquetas"]].forEach(function (t) {
+        var b = btn(t[1], t[0] === S.vista ? "on" : "", function () { S.vista = t[0]; pintar(); if (t[0] === "hoy") cargarHist().then(pintar); if (t[0] === "recoger") cargarRecoger().then(pintar); if (t[0] === "clientes") cargarClientes().then(pintar); });
         if (t[0] === "recoger" && S.recoger.length) b.appendChild(h("span", "cj-n", String(S.recoger.length)));
         tabs.appendChild(b);
       });
@@ -283,6 +322,8 @@
       }
       if (S.vista === "vender") { pintarVender(); pintarCarrito(); }
       else if (S.vista === "recoger") pintarRecoger();
+      else if (S.vista === "clientes") pintarClientes();
+      else if (S.vista === "etiquetas") pintarEtiquetas();
       else pintarHoy();
     }
 
@@ -298,17 +339,42 @@
       if (camaraOk) { var c = btn("📷", "", abrirCamara); c.setAttribute("aria-label", "Escanear con la cámara"); f.appendChild(c); }
       cuerpo.appendChild(f);
       if (!S.prods.length) cuerpo.appendChild(h("p", "cj-vacio", "Todavía no hay productos para la tienda. El administrador debe marcarlos en el panel (Tienda > Catálogo)."));
+      var cats = h("div", "cj-cats"), secs = {};
+      S.prods.forEach(function (p) { secs[p.seccion || ""] = 1; });
+      var orden = Object.keys(secs).sort(function (a, b) { return L.prioridad(a) - L.prioridad(b) || (tituloSec(a) < tituloSec(b) ? -1 : 1); });
+      if (orden.length > 1) {
+        [""].concat(orden).forEach(function (k) {
+          var b = btn(k ? tituloSec(k) : "Todo", k === S.cat ? "on" : "", function () { S.cat = k; Array.prototype.forEach.call(cats.children, function (x) { x.classList.toggle("on", x === b); }); pintarProds(); });
+          cats.appendChild(b);
+        });
+        cuerpo.appendChild(cats);
+      }
       zonaProds = h("div", "cj-prods"); cuerpo.appendChild(zonaProds);
       pintarProds();
-      if (!camaraOk) { var n = h("p", "cj-hint", "Lector USB: escanea el código y el producto se agrega solo."); cuerpo.insertBefore(n, zonaProds); }
+      cuerpo.insertBefore(h("p", "cj-hint", camaraOk ? "Busca, toca una tarjeta, escanea con la cámara (📷), con lector USB, o escribe el código y pulsa Enter." : "Lector USB: escanea el código y el producto se agrega solo. También puedes escribir el código y pulsar Enter."), zonaProds);
     }
+    var fotoPorId = null;
+    function fotoDe(id) {
+      if (!fotoPorId) {
+        fotoPorId = {};
+        ((ctx.cfg && ctx.cfg.secciones) || []).forEach(function (s) { (s.grupos || []).forEach(function (g) { (g.items || []).forEach(function (it) { if (it.foto) fotoPorId[it.id] = it.foto; }); }); });
+      }
+      return fotoPorId[id] || "";
+    }
+    function tituloSec(id) { var r = ((ctx.cfg && ctx.cfg.secciones) || []).filter(function (s) { return s.id === id; })[0]; return r ? r.titulo : (id || "Otros"); }
     function pintarProds() {
       if (!zonaProds) return;
       zonaProds.innerHTML = "";
-      var lista = L.buscar(S.prods, S.q, 80);
+      var base = S.cat && !S.q ? S.prods.filter(function (p) { return p.seccion === S.cat; }) : S.prods;
+      var lista = L.buscar(base, S.q, 80);
+      if (!S.q && !S.cat) lista = lista.slice().sort(function (a, b) { return L.prioridad(a.seccion) - L.prioridad(b.seccion); });
       if (!lista.length && S.prods.length) { zonaProds.appendChild(h("p", "cj-vacio", "No hay productos con \"" + S.q + "\".")); return; }
       lista.forEach(function (p) {
         var b = h("button", "cj-p"); b.type = "button";
+        var ft = h("div", "ft"), fu = fotoDe(p.id);
+        if (fu) { fu = String(fu); if (!/^(https?:|data:|\/)/.test(fu)) fu = "/" + fu; ft.style.backgroundImage = "url('" + fu.replace(/'/g, "%27") + "')"; }
+        else { ft.className = "ft sin"; ft.style.backgroundImage = "url('/gallo-oro.png')"; ft.style.backgroundRepeat = "no-repeat"; }
+        b.appendChild(ft);
         b.appendChild(h("b", "", p.nombre));
         b.appendChild(h("span", "", (p.sku ? p.sku + " · " : "") + (p.unidad !== "unid" ? "por " + p.unidad : "")));
         var pr = p.tam && p.tam.length ? "desde " + L.soles(Math.min.apply(null, p.tam.map(function (x) { return x[1]; }))) : L.soles(p.precio);
@@ -440,6 +506,8 @@
       m.appendChild(h("small", "", u + (u === 1 ? " línea" : " líneas")));
       m.appendChild(doc.createTextNode(L.soles(L.totalCarro(S.carro))));
       tot.appendChild(m);
+      var cb = btn(S.cliente ? "👤 " + (S.cliente.nombre || S.cliente.empresa || S.cliente.celular) : "👤 Cliente", "cj-cli", abrirCliente);
+      tot.appendChild(cb);
       if (u) tot.appendChild(btn("Vaciar", "", function () { if (root.confirm("¿Vaciar la venta?")) { S.carro = []; cambioCarro(); } }));
       var go = btn("Cobrar", "cj-go", abrirCobro); go.disabled = !u; tot.appendChild(go);
       carrito.appendChild(tot);
@@ -508,13 +576,15 @@
         Object.keys(pa).forEach(function (m) { if (pa[m] > 0) pagos.push({ metodo: m, monto: pa[m] }); });
         var carga = { op: "venta", items: S.carro.map(function (l) { var o = { id: l.id, cant: l.cant }; if (l.tam) o.tam = l.tam; return o; }), pagos: pagos };
         if (dTipo) carga.descuento = { tipo: dTipo, valor: dVal.value, motivo: dMot.value.trim() };
+        var snapCli = S.cliente, snapLin = S.carro.map(function (l) { return { id: l.id, nombre: l.nombre, unidad: l.unidad, tam: l.tam || "", cant: l.cant, kilos: L.kilosDe(l), subtotal: L.subtotal(l.unit, l.cant) }; });
         var firma = JSON.stringify(carga);
         if (!S.pend || S.pend.firma !== firma) S.pend = { firma: firma, cid: L.nuevoCid() };   // mismo contenido = mismo id: un reintento no duplica la venta
         carga.cid = S.pend.cid;
         ok.disabled = true; ok.textContent = "Guardando…"; err.textContent = "";
         llamar(carga).then(function (rs) {
           if (!rs.ok) { ok.textContent = "Confirmar venta"; ok.disabled = false; err.textContent = rs.error || "No se pudo guardar."; if (/otros datos/.test(rs.error || "")) S.pend = null; return; }
-          S.pend = null; S.carro = []; guardarCarro(); S.q = "";
+          if (snapCli) { rs.venta.cliente = snapCli; registrarSalida(carga.cid, rs.venta.id, snapCli, snapLin); }
+          S.pend = null; S.carro = []; guardarCarro(); S.q = ""; S.cliente = null; guardar("pg-cajero-cliente", null);
           cerrarHoja(); if (rs.repetida) toast("Esa venta ya estaba registrada: no se duplicó.", "ok");
           pintar(); verRecibo(rs.venta, true);
         }).catch(function () { ok.textContent = "Confirmar venta"; ok.disabled = false; err.textContent = "Sin conexión. Toca de nuevo \"Confirmar venta\": si la venta ya se guardó, no se duplica."; });
@@ -628,8 +698,137 @@
         campo("Efectivo con el que abriste la caja (fondo)", fondo), campo("Efectivo contado ahora", contado), info, campo("Nota", nota), err], [btn("Volver", "", cerrarHoja), ok]);
     }
 
+    /* ---------- efectivo de caja (caja.js: abrir, ingreso, retiro, arqueo) ---------- */
+    function abrirEfectivo() {
+      var ir = function () { root.PG_CAJA.abrir({ api: api, token: TOKEN, mozo: ctx.mozo, toast: toast }); };
+      if (root.PG_CAJA) { ir(); return; }
+      var sc = doc.createElement("script"); sc.src = "/caja.js"; sc.onload = ir;
+      sc.onerror = function () { toast("No se pudo cargar la caja. Revisa la conexión.", "mal"); };
+      doc.head.appendChild(sc);
+    }
+    top.insertBefore(btn("Efectivo", "", abrirEfectivo), top.lastChild);
+
+    /* ---------- cliente (mayoristas y otros locales que piden por WhatsApp): kilos salidos por producto y cliente ---------- */
+    var K_PEND = "pg-cajero-salidas-pend";
+    function registrarSalida(cid, ventaId, cli, lineas) {
+      var pend = leer(K_PEND, []);
+      pend.push({ cid: cid, venta: ventaId, cliente: cli, mayorista: !!cli.mayorista, lineas: lineas });
+      guardar(K_PEND, pend.slice(-30)); enviarSalidas();
+    }
+    function enviarSalidas() {
+      var pend = leer(K_PEND, []); if (!pend.length) return;
+      var x = pend[0], c = { mz: "tiendasalida", t: TOKEN }; Object.keys(x).forEach(function (k) { c[k] = x[k]; });
+      api(c).then(function (r) {
+        if (r && (r.ok || /Falta/.test(r.error || ""))) { guardar(K_PEND, leer(K_PEND, []).slice(1)); enviarSalidas(); }
+      }).catch(function () {});
+    }
+    function abrirCliente() {
+      var c = S.cliente || {}, nom = entrada("text", "Nombre"), cel = entrada("tel", "Celular"), emp = entrada("text", "Empresa o local (opcional)"), err = h("div", "cj-err");
+      nom.value = c.nombre || ""; cel.value = c.celular || ""; emp.value = c.empresa || "";
+      [nom, emp].forEach(function (i) { i.setAttribute("maxlength", "60"); });
+      var lista = h("div", "cj-chips");
+      api({ mz: "tiendaclientes", t: TOKEN }).then(function (r) {
+        (r && r.clientes || []).slice(0, 12).forEach(function (k) {
+          lista.appendChild(btn(k.empresa || k.nombre || k.celular, "", function () { nom.value = k.nombre; cel.value = k.celular; emp.value = k.empresa; }));
+        });
+      }).catch(function () {});
+      var ok = btn("Guardar cliente", "ok", function () {
+        if (!nom.value.trim() && !emp.value.trim() && !cel.value.trim()) { err.textContent = "Escribe al menos el nombre, la empresa o el celular."; return; }
+        S.cliente = { nombre: nom.value.trim(), celular: cel.value.replace(/[^\d+]/g, ""), empresa: emp.value.trim(), mayorista: !!emp.value.trim() };
+        guardar("pg-cajero-cliente", S.cliente); cerrarHoja(); pintarCarrito();
+      });
+      var bs = [btn("Cancelar", "", cerrarHoja), ok];
+      if (S.cliente) bs.splice(1, 0, btn("Quitar", "mal", function () { S.cliente = null; guardar("pg-cajero-cliente", null); cerrarHoja(); pintarCarrito(); }));
+      abrirHoja("Cliente de esta venta", [h("p", "cj-hint", "Para mayoristas y locales que piden por WhatsApp: con empresa, se anotan los kilos que salen."), lista, campo("Nombre", nom), campo("Celular", cel), campo("Empresa o local", emp), err], bs);
+    }
+    function cargarClientes() {
+      return api({ mz: "tiendasalidas", t: TOKEN, dias: 30 }).then(function (r) { S.clientes = r && r.ok ? r.clientes : []; }).catch(function () { S.clientes = []; toast("Sin conexión.", "mal"); });
+    }
+    function pintarClientes() {
+      cuerpo.appendChild(h("p", "cj-hint", "Kilos salidos por cliente en los últimos 30 días (ventas con cliente registrado)."));
+      if (!S.clientes) { cuerpo.appendChild(h("p", "cj-vacio", "Cargando…")); return; }
+      if (!S.clientes.length) cuerpo.appendChild(h("p", "cj-vacio", "Todavía no hay ventas con cliente."));
+      S.clientes.forEach(function (c) {
+        var d = h("div", "cj-sec");
+        d.appendChild(h("h3", "", (c.empresa ? c.empresa + " · " : "") + (c.nombre || "Sin nombre") + (c.celular ? " · " + c.celular : "")));
+        d.appendChild(h("div", "", L.fmtCant(c.kilos, "kg") + " en total · " + L.soles(c.total)));
+        c.productos.forEach(function (p) { d.appendChild(h("div", "cj-hint", p.producto + (p.tam ? " (" + p.tam + ")" : "") + ": " + p.cant + " " + (p.unidad === "unid" ? "unid." : p.unidad) + (p.kilos ? " · " + L.fmtCant(p.kilos, "kg") : ""))); });
+        cuerpo.appendChild(d);
+      });
+    }
+
+    /* ---------- mapa del salón: ver una mesa ---------- */
+    function verMesa(m, estado) {
+      var caja = h("div"); caja.appendChild(h("p", "cj-vacio", "Cargando…"));
+      abrirHoja("Mesa " + m.mesa, [caja], [btn("Cerrar", "", cerrarHoja)]);
+      api({ mz: "cuenta", t: TOKEN, mesa: m.mesa }).then(function (r) {
+        caja.innerHTML = "";
+        caja.appendChild(h("p", "cj-hint", "Estado: " + estado + (m.atiende ? " · atiende " + m.atiende.nombre : "") + ". El cobro de mesas lo hace el mozo."));
+        if (!r.ok || !r.pedidos || !r.pedidos.length) { caja.appendChild(h("p", "cj-vacio", "La mesa no tiene pedidos.")); return; }
+        r.pedidos.forEach(function (p) {
+          var f = h("div", "cj-row"), t = h("div", "t");
+          t.appendChild(h("b", "", "#" + p.numero + " · " + p.hora + " · " + p.estado));
+          (p.lineas ? p.lineas.map(function (l) { return l.t; }) : [String(p.detalle || "").replace(/ — S\/ [\d.]+/g, "")]).forEach(function (x) { t.appendChild(h("span", "", x)); });
+          f.appendChild(t); caja.appendChild(f);
+        });
+        caja.appendChild(h("div", "cj-res ok", "Total de la mesa: " + L.soles(r.total)));
+      }).catch(function () { caja.innerHTML = ""; caja.appendChild(h("p", "cj-vacio", "Sin conexión.")); });
+    }
+
+    /* ---------- etiquetas con código interno (QR o código de barras) ---------- */
+    function conLib(fn) {
+      if (root.PG_CODIGOS) { fn(); return; }
+      var sc = doc.createElement("script"); sc.src = "/tienda-codigos.js"; sc.onload = fn;
+      sc.onerror = function () { toast("No se pudo cargar el generador de códigos. Revisa la conexión.", "mal"); };
+      doc.head.appendChild(sc);
+    }
+    function pintarEtiquetas() {
+      cuerpo.appendChild(h("p", "cj-hint", "Marca los productos y las copias; al imprimir sale una hoja de etiquetas con el código interno (SKU, o el código de barras, o el identificador)."));
+      var tipo = h("select"); [["qr", "Código QR"], ["barras", "Código de barras (Code 128)"]].forEach(function (o) { var op = h("option", "", o[1]); op.value = o[0]; tipo.appendChild(op); });
+      tipo.style.cssText = "width:100%;height:46px;margin-bottom:8px;border-radius:10px;font-size:16px";
+      cuerpo.appendChild(tipo);
+      var bus = entrada("search", "Buscar producto"), lista = h("div"); bus.style.cssText = "width:100%;height:46px;margin-bottom:8px;border-radius:10px;border:2px solid var(--linea,#dccdb0);padding:0 12px";
+      cuerpo.appendChild(bus); cuerpo.appendChild(lista);
+      function dibujar() {
+        lista.innerHTML = "";
+        L.buscar(S.prods, bus.value, 200).forEach(function (p) {
+          var f = h("label", "cj-chk"), cb = h("input"), n = h("input"), t = h("div", "t");
+          cb.type = "checkbox"; cb.checked = !!S.etq[p.id]; n.type = "number"; n.min = "1"; n.max = "99"; n.value = S.etq[p.id] || 1; n.setAttribute("aria-label", "Copias");
+          cb.addEventListener("change", function () { if (cb.checked) S.etq[p.id] = Math.max(1, parseInt(n.value, 10) || 1); else delete S.etq[p.id]; });
+          n.addEventListener("input", function () { if (S.etq[p.id]) S.etq[p.id] = Math.max(1, Math.min(99, parseInt(n.value, 10) || 1)); });
+          t.appendChild(h("b", "", p.nombre)); t.appendChild(h("span", "cj-hint", L.codigoInterno(p)));
+          f.appendChild(cb); f.appendChild(t); f.appendChild(n); lista.appendChild(f);
+        });
+      }
+      bus.addEventListener("input", dibujar); dibujar();
+      var acc = h("div", "cj-acc");
+      acc.appendChild(btn("Marcar todos", "", function () { S.prods.forEach(function (p) { S.etq[p.id] = S.etq[p.id] || 1; }); dibujar(); }));
+      acc.appendChild(btn("🖨 Imprimir etiquetas", "ok", function () {
+        var ids = Object.keys(S.etq); if (!ids.length) { toast("Marca al menos un producto.", "mal"); return; }
+        conLib(function () { imprimirEtiquetas(ids, tipo.value); });
+      }));
+      cuerpo.appendChild(acc);
+    }
+    function imprimirEtiquetas(ids, tipo) {
+      var hoja = doc.getElementById("cj-etq") || doc.body.appendChild(h("div")); hoja.id = "cj-etq"; hoja.innerHTML = "";
+      ids.forEach(function (id) {
+        var p = S.prods.filter(function (x) { return x.id === id; })[0]; if (!p) return;
+        var cod = L.codigoInterno(p), svg;
+        try { svg = tipo === "qr" ? root.PG_CODIGOS.qrSvg(cod, { px: 110, margen: 2 }) : root.PG_CODIGOS.code128Svg(cod, { ancho: 170, alto: 44 }); } catch (e) { return; }
+        var pr = p.tam && p.tam.length ? "desde " + L.soles(Math.min.apply(null, p.tam.map(function (x) { return x[1]; }))) : L.soles(p.precio) + (p.unidad !== "unid" ? "/" + p.unidad : "");
+        for (var i = 0; i < (S.etq[id] || 1); i++) {
+          var e = h("div", "et"); e.appendChild(h("b", "", p.nombre));
+          var g = h("div"); g.innerHTML = svg; e.appendChild(g);   // svg generado por nosotros (solo números)
+          e.appendChild(h("span", "", cod)); e.appendChild(h("span", "", pr)); hoja.appendChild(e);
+        }
+      });
+      var limpiar = function () { root.removeEventListener("afterprint", limpiar); if (hoja.parentNode) hoja.parentNode.removeChild(hoja); };
+      root.addEventListener("afterprint", limpiar);
+      root.print();
+    }
+
     /* ---------- arranque ---------- */
-    pintar();
+    pintar(); enviarSalidas();
     cargar().then(function () { pintar(); return cargarRecoger(); });
     setInterval(function () { if (doc.hidden || !doc.body.contains(raiz)) return; cargarRecoger(); }, 45000);
   }
