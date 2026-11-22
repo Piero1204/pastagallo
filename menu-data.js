@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T13:15:13-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T15:51:49-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -12,10 +12,10 @@ window.CARTA = {
   "tiktok": "pastagallotrattoria",
   "facebookUrl": "https://www.facebook.com/pizzeriapastagallo",
   "horarioTexto": "Martes a domingo · 18:00 – 23:00",
-  "cerradoTexto": "Lunes cerrado",
+  "cerradoTexto": "",
   "sitioUrl": "https://pastagallo.pages.dev",
   "horarioTexto_en": "Tuesday to Sunday · 6:00 pm – 11:00 pm",
-  "cerradoTexto_en": "Closed on Mondays"
+  "cerradoTexto_en": ""
  },
  "horario": {
   "zona": "America/Lima",
@@ -184,7 +184,35 @@ window.CARTA = {
        "23:00"
       ]
      ]
-    }
+    },
+    "tienda": [
+     {
+      "h": [
+       [
+        "10:00",
+        "23:00"
+       ]
+      ],
+      "d": [
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     },
+     {
+      "h": [
+       [
+        "16:00",
+        "23:00"
+       ]
+      ],
+      "d": [
+       0
+      ]
+     }
+    ]
    },
    "prog": {
     "paso": 15,
@@ -2378,7 +2406,7 @@ window.CARTA = {
       {
        "id": "pasta-fettuccine",
        "n": "Fettuccine",
-       "d": "Cintas largas y planas, ideales para las salsas cremosas. Clásicos o verdes (de espinaca).",
+       "d": "Cintas largas y planas, ideales para las salsas cremosas.",
        "p": 30,
        "salsa": true,
        "al": [
@@ -2386,10 +2414,22 @@ window.CARTA = {
         "huevo"
        ],
        "foto": "fotos/pasta-fettuccine-1794629537790.jpg",
-       "op": [
-        "fettuccine-tipo"
+       "d_en": "Long, flat ribbons, ideal for creamy sauces."
+      },
+      {
+       "id": "pasta-fettuccine-verdi",
+       "n": "Fettuccine Verdi",
+       "g": "fettuccine verde",
+       "d": "Cintas largas y planas de pasta verde, hechas con espinaca, ideales para las salsas cremosas.",
+       "p": 30,
+       "salsa": true,
+       "al": [
+        "gluten",
+        "huevo"
        ],
-       "d_en": "Long, flat ribbons, ideal for creamy sauces. Classic or green (spinach)."
+       "foto": "fotos/pasta-fettuccine-1794629537790.jpg",
+       "g_en": "green fettuccine",
+       "d_en": "Long, flat ribbons of green pasta made with spinach, ideal for creamy sauces."
       },
       {
        "id": "pasta-pappardelle",
@@ -3584,7 +3624,8 @@ window.CARTA = {
      "items": [
       {
        "id": "tienda-ravioles-carne",
-       "n": "Ravioles de carne",
+       "n": "Ravioli di Carne",
+       "g": "ravioles de carne",
        "d": "Pasta fresca rellena de carne, lista para cocinar en casa.",
        "t": [
         [
@@ -3597,12 +3638,14 @@ window.CARTA = {
         ]
        ],
        "foto": "fotos/pasta-ravioli-di-carne-1795062531153.jpg",
-       "n_en": "Beef ravioli",
+       "n_en": "Ravioli di Carne",
+       "g_en": "beef ravioli",
        "d_en": "Fresh pasta filled with beef, ready to cook at home."
       },
       {
        "id": "tienda-ravioles-queso",
-       "n": "Ravioles de queso",
+       "n": "Ravioli di Ricotta",
+       "g": "ravioles de queso ricotta",
        "d": "Pasta fresca rellena de queso, lista para cocinar en casa.",
        "t": [
         [
@@ -3615,13 +3658,14 @@ window.CARTA = {
         ]
        ],
        "foto": "fotos/pasta-ravioli-di-formaggio-1795062570951.jpg",
-       "n_en": "Cheese ravioli",
+       "n_en": "Ravioli di Ricotta",
+       "g_en": "ricotta cheese ravioli",
        "d_en": "Fresh pasta filled with cheese, ready to cook at home."
       },
       {
        "id": "tienda-fettuccini",
-       "n": "Fettuccini",
-       "d": "Fettuccini fresco, hecho cada día.",
+       "n": "Fettuccine",
+       "d": "Fettuccine fresco, hecho cada día.",
        "t": [
         [
          "1 kg",
@@ -3633,8 +3677,28 @@ window.CARTA = {
         ]
        ],
        "foto": "fotos/pasta-fettuccine-1794449529303.jpg",
-       "n_en": "Fettuccini",
-       "d_en": "Fresh fettuccini, made daily."
+       "n_en": "Fettuccine",
+       "d_en": "Fresh fettuccine, made daily."
+      },
+      {
+       "id": "tienda-fettuccini-verde",
+       "n": "Fettuccine Verdi",
+       "g": "fettuccine verde",
+       "d": "Fettuccine verde fresco, con espinaca, hecho cada día.",
+       "t": [
+        [
+         "1 kg",
+         20
+        ],
+        [
+         "1/2 kg",
+         10
+        ]
+       ],
+       "foto": "fotos/pasta-fettuccine-1794449529303.jpg",
+       "n_en": "Fettuccine Verdi",
+       "g_en": "green fettuccine",
+       "d_en": "Fresh green fettuccine, made with spinach, made daily."
       },
       {
        "id": "tienda-spaghetti",
@@ -3695,7 +3759,8 @@ window.CARTA = {
      "items": [
       {
        "id": "tienda-lasagna-carne",
-       "n": "Lasagna de carne",
+       "n": "Lasagna di Carne",
+       "g": "lasagna de carne",
        "d": "Lasagna de carne al horno, lista para calentar.",
        "t": [
         [
@@ -3708,12 +3773,14 @@ window.CARTA = {
         ]
        ],
        "foto": "fotos/lasagne-lasagna-di-carne-1795062419715.jpg",
-       "n_en": "Beef lasagna",
+       "n_en": "Lasagna di Carne",
+       "g_en": "beef lasagna",
        "d_en": "Baked beef lasagna, ready to heat."
       },
       {
        "id": "tienda-lasagna-espinaca",
-       "n": "Lasagna de espinaca",
+       "n": "Lasagna di Spinaci",
+       "g": "lasagna de espinaca",
        "d": "Lasagna de espinaca al horno, lista para calentar.",
        "t": [
         [
@@ -3725,12 +3792,14 @@ window.CARTA = {
          20
         ]
        ],
-       "n_en": "Spinach lasagna",
+       "n_en": "Lasagna di Spinaci",
+       "g_en": "spinach lasagna",
        "d_en": "Baked spinach lasagna, ready to heat."
       },
       {
        "id": "tienda-lasagna-champinones",
-       "n": "Lasagna de champiñones",
+       "n": "Lasagna ai Funghi",
+       "g": "lasagna de champiñones",
        "d": "Lasagna de champiñones al horno, lista para calentar.",
        "t": [
         [
@@ -3742,7 +3811,8 @@ window.CARTA = {
          22
         ]
        ],
-       "n_en": "Mushroom lasagna",
+       "n_en": "Lasagna ai Funghi",
+       "g_en": "mushroom lasagna",
        "d_en": "Baked mushroom lasagna, ready to heat."
       }
      ]
@@ -3753,7 +3823,8 @@ window.CARTA = {
      "items": [
       {
        "id": "tienda-salsa-carne",
-       "n": "Salsa de carne",
+       "n": "Salsa Bolognese",
+       "g": "salsa de carne",
        "d": "Salsa de carne para tus pastas.",
        "t": [
         [
@@ -3769,12 +3840,14 @@ window.CARTA = {
          9.5
         ]
        ],
-       "n_en": "Meat sauce",
+       "n_en": "Salsa Bolognese",
+       "g_en": "meat sauce",
        "d_en": "Meat sauce for your pasta."
       },
       {
        "id": "tienda-salsa-tomate",
-       "n": "Salsa de tomate",
+       "n": "Salsa Pomodoro",
+       "g": "salsa de tomate",
        "d": "Salsa de tomate casera para tus pastas.",
        "t": [
         [
@@ -3790,7 +3863,8 @@ window.CARTA = {
          9
         ]
        ],
-       "n_en": "Tomato sauce",
+       "n_en": "Salsa Pomodoro",
+       "g_en": "tomato sauce",
        "d_en": "Homemade tomato sauce for your pasta."
       },
       {
@@ -3816,8 +3890,8 @@ window.CARTA = {
       },
       {
        "id": "tienda-salsa-amatriciana",
-       "n": "Salsa Amatricciana",
-       "d": "Salsa Amatricciana para tus pastas.",
+       "n": "Salsa Amatriciana",
+       "d": "Salsa Amatriciana para tus pastas.",
        "t": [
         [
          "1 kg",
@@ -3858,7 +3932,8 @@ window.CARTA = {
       },
       {
        "id": "tienda-salsa-champinones",
-       "n": "Salsa de champiñones",
+       "n": "Salsa Funghi",
+       "g": "salsa de champiñones",
        "d": "Salsa de champiñones para tus pastas.",
        "t": [
         [
@@ -3874,7 +3949,8 @@ window.CARTA = {
          16
         ]
        ],
-       "n_en": "Mushroom sauce",
+       "n_en": "Salsa Funghi",
+       "g_en": "mushroom sauce",
        "d_en": "Mushroom sauce for your pasta."
       }
      ]
@@ -3886,5 +3962,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-22T13:15:13-05:00"
+ "publicado": "2026-11-22T15:51:49-05:00"
 };
