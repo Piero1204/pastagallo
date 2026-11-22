@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-21T21:41:39-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T08:40:15-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -74,7 +74,23 @@ window.CARTA = {
   "soya": "Soya",
   "sulfitos": "Sulfitos"
  },
+ "ext": {
+  "busqueda": {
+   "activo": true
+  },
+  "comercio": {
+   "v": 1,
+   "prog": {
+    "paso": 15,
+    "ant": 30,
+    "cupo": 0
+   },
+   "barra": true,
+   "mesaRevocar": true
+  }
+ },
  "pedidos": {
+  "extraLlevarMin": 0,
   "api": "https://script.google.com/macros/s/AKfycbyR-cpNUiFhkrM7uOequH9O8ebYC6BSMQPhgf7Io63fx294K1oAoABz6R_8f1PNYWs0ew/exec",
   "activos": true,
   "fueraHorario": true,
@@ -83,6 +99,7 @@ window.CARTA = {
   "metodosPago": [
    "Yape o Plin"
   ],
+  "pagoObligatorio": true,
   "metodosPagoMesa": [
    "Yape o Plin",
    "Efectivo",
@@ -100,6 +117,12 @@ window.CARTA = {
     "qr": "fotos/pago-plin.jpg"
    },
    "Transferencia": {
+    "transf": true,
+    "banco": "",
+    "moneda": "",
+    "numero": "",
+    "cci": "",
+    "titular": "",
     "texto": "",
     "qr": ""
    },
@@ -3286,5 +3309,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-21T21:41:39-05:00"
+ "publicado": "2026-11-22T08:40:15-05:00"
 };
