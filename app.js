@@ -156,6 +156,16 @@
   }
 
   var estadoBarra, bienvenida, fab, fabTxt, buscadorEl;
+  /* La tienda ahora es "Nostri Prodotti": una sección más de la carta (id interno "tienda") */
+  function tituloSec(s) { return s.id === "tienda" ? t("tiendaTit") : tx(s, "titulo"); }
+  function subSec(s) { return s.id === "tienda" ? t("tiendaSub") : tx(s, "subtitulo"); }
+  /* Alto de lo que queda pegado arriba (barra de estado + barra de secciones): offset para saltar a una sección */
+  function barraAlto() { var e = q(".estado"), n = q("#nav"); return (e ? e.offsetHeight : 0) + (n ? n.offsetHeight : 0) + 6; }
+  function irSeccion(id) {
+    var el = id && document.getElementById(id); if (!el) return false;
+    window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.pageYOffset - barraAlto()), behavior: "instant" });
+    return true;
+  }
   function waUrl() {
     return "https://wa.me/" + N.whatsapp + "?text=" + encodeURIComponent(N.mensajeWhatsapp);
   }
@@ -169,7 +179,10 @@
       var s = h("span"); s.appendChild(document.createTextNode(t("abierto"))); s.appendChild(h("b", null, e.cierra));
       estadoBarra.appendChild(s);
     } else {
-      var s2 = h("span"); s2.appendChild(document.createTextNode(t("cerrado"))); s2.appendChild(h("b", null, e.cuando.replace(t("aLas"), " · ")));
+      var s2 = h("span"); s2.appendChild(document.createTextNode(t("cerrado"))); s2.appendChild(h("b", null, e.cuando));
+      /* pedidos programados: desde qué hora se puede dejar el pedido (sin explicar la ventana de atención) */
+      var dp = PED && PED.modo === "delivery" && PED.aceptaAhora && PED.aceptaAhora() && PED.desdeProg ? PED.desdeProg() : "";
+      if (dp) s2.appendChild(document.createTextNode(t("pedidosDesde", { h: dp })));
       estadoBarra.appendChild(s2);
     }
     bienvenida.textContent = "";
@@ -231,6 +244,11 @@
       var lh = h("a", "link-historia", t("nuestraHistoria") + " →"); lh.href = "#historia"; in_.appendChild(lh);
     }
     s.appendChild(in_);
+    if (!compacta) {
+      var bj = h("a", "bajar"); bj.href = "#carta-inicio"; bj.setAttribute("aria-label", t("verCarta"));
+      bj.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+      s.appendChild(bj);
+    }
     return s;
   }
 
@@ -279,8 +297,11 @@
       a.appendChild(bd);
     }
     if (it.destacado === "tris") a.className += " it--dest";
-    var avHr = COM && COM.aviso && it.tipo !== "salsa" && !it.agotado ? COM.aviso(it, sec) : "";
-    if (avHr) a.className += " it--fuera";
+    /* horario: la tarjeta se atenúa si no se puede pedir ahora, pero el aviso "Disponible a partir de…" va en la cabecera de la sección;
+       en el producto solo si su horario propio difiere del de su sección */
+    var fueraAhora = COM && COM.aviso && it.tipo !== "salsa" && !it.agotado ? COM.aviso(it, sec) : "";
+    var avHr = fueraAhora && COM.avisoProd ? COM.avisoProd(it, sec) : fueraAhora;
+    if (fueraAhora) a.className += " it--fuera";
     var tieneFoto = !!it.foto;
     var esTienda = !!(sec && sec.id === "tienda");
     /* selector de tamaño como chips: tienda, o cualquier producto cuyos tamaños son pesos (1 kg, 1/2 kg, 1/4 kg) */
@@ -292,6 +313,8 @@
     if (it.nuevo) top.appendChild(h("span", "tag tag--nuevo", t("nuevo")));
     else if (it.popular) top.appendChild(h("span", "tag tag--popular", t("popular")));
     top.appendChild(h("h4", "it__n", tx(it, "n")));
+    var subEs = I.lang === "en" ? it.sub_en : it.sub;   // subtítulo en español bajo el nombre italiano (en inglés solo si hay traducción)
+    if (subEs) top.appendChild(h("span", "it__sub", subEs));
     var tamSel = it.t && it.t.length ? it.t[0][0] : "", cajaPrecio = null;
     function pintarPrecioTam() {
       cajaPrecio.textContent = "";
@@ -385,17 +408,64 @@
       if (btnAdd) fw.appendChild(btnAdd);
       a.appendChild(fw);
     } else if (btnAdd) a.appendChild(btnAdd);
-    a.setAttribute("data-q", norm([it.n, it.g, it.d, it.n_en, it.g_en, it.d_en].join(" ")));
+    a.setAttribute("data-q", norm([it.n, it.sub, it.g, it.d, it.n_en, it.sub_en, it.g_en, it.d_en].join(" ")));
     return a;
   }
 
   /* ---------- secciones ---------- */
   var seccionesVisibles = [];
-  var tiendaSec = null;   // la tienda (productos para cocinar en casa) va en su propia vista, fuera de la carta
   var hayAlergenos = false;
+
+  /* Enlace directo a una sección: /?s=pizze (y /#pizze abre lo mismo) */
+  function enlaceSeccion(id) { return location.origin + location.pathname.replace(/[^\/]*$/, "") + "?s=" + encodeURIComponent(id); }
+  function avisoBreve(texto) {
+    var a = h("div", "aviso-copia", texto); document.body.appendChild(a);
+    setTimeout(function () { a.classList.add("on"); }, 10);
+    setTimeout(function () { a.classList.remove("on"); setTimeout(function () { a.remove(); }, 300); }, 2000);
+  }
+  function copiarEnlaceSec(id) {
+    var url = enlaceSeccion(id), ok = function () { avisoBreve(t("enlaceCopiadoSec")); };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(url).then(ok, function () { window.prompt(t("copiaEnlace"), url); }); return; }
+    var ta = h("textarea"); ta.value = url; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy") ? ok() : window.prompt(t("copiaEnlace"), url); } catch (e) { window.prompt(t("copiaEnlace"), url); }
+    ta.remove();
+  }
+  function botonEnlace(id) {
+    var b = h("button", "sec__copiar"); b.type = "button"; b.setAttribute("aria-label", t("copiarEnlace")); b.title = t("copiarEnlace");
+    var sv = document.createElementNS(NS, "svg"); sv.setAttribute("viewBox", "0 0 24 24"); sv.setAttribute("aria-hidden", "true");
+    var p1 = document.createElementNS(NS, "path"); p1.setAttribute("d", "M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1");
+    sv.appendChild(p1); b.appendChild(sv);
+    b.addEventListener("click", function () { copiarEnlaceSec(id); });
+    return b;
+  }
+
+  /** Promociones de otros días: plegadas bajo un control discreto, agrupadas por el día en que vuelven. */
+  function promosOtrosDias(otros, sec) {
+    var w = h("div", "promo-otros-w");
+    var b = h("button", "promo-mas", t("masPromos")); b.type = "button"; b.setAttribute("aria-expanded", "false");
+    var box = h("div", "promo-otros");
+    var ah = ahoraLugar(new Date()), manana = sumarDias(ah.fecha, 1), fechas = [], porFecha = {};
+    otros.forEach(function (it) { var f = it._prox || "9999"; if (!porFecha[f]) { porFecha[f] = []; fechas.push(f); } porFecha[f].push(it); });
+    fechas.sort();
+    fechas.forEach(function (f) {
+      var nom = f === "9999" ? "" : t("dias")[diaDe(f)];
+      box.appendChild(h("h3", "promo-otros__dia", (f === manana ? t("manana2") + " · " : "") + nom.charAt(0).toUpperCase() + nom.slice(1)));
+      porFecha[f].forEach(function (it) { box.appendChild(plato(it, sec)); });
+    });
+    b.addEventListener("click", function () {
+      var ab = !box.classList.contains("abierto");
+      box.classList.toggle("abierto", ab); b.setAttribute("aria-expanded", ab ? "true" : "false");
+      b.textContent = ab ? t("menosPromos") : t("masPromos");
+      if (ab) box.querySelectorAll(".rev").forEach(function (x) { x.classList.add("ya"); });
+    });
+    w.appendChild(b); w.appendChild(box);
+    return w;
+  }
 
   function seccion(sec, idx) {
     var modo = PED ? PED.modo : "delivery";
+    if (sec.id === "tienda" && modo === "mesa") return null;   // los productos para llevar a casa no se piden desde la mesa
     var grupos = sec.grupos.filter(function (g) {
       g.items = (g.items || []).filter(function (i) {
         if (i.oculto || i._oculto) return false;
@@ -415,22 +485,27 @@
     seccionesVisibles.push(sec);
     sec._fuera = COM && COM.avisoSec ? COM.avisoSec(sec) : "";
     var n = seccionesVisibles.length;
-    var s = h("section", "sec " + (sec.id === "promociones" ? "sec--promo" : (n % 2 ? "sec--a" : "sec--b"))); s.id = sec.id;
+    var esPromo = sec.id === "promociones";
+    var s = h("section", "sec " + (esPromo ? "sec--promo" : (n % 2 ? "sec--a" : "sec--b"))); s.id = sec.id;
     var cab = h("header", "sec__cab anim");
     cab.appendChild(h("div", "m"));
+    if (modo !== "mesa") cab.appendChild(botonEnlace(sec.id));
     var c = h("div");
     c.appendChild(h("div", "num", ROMANOS[n - 1] || String(n)));
-    c.appendChild(h("h2", null, tx(sec, "titulo")));
-    c.appendChild(h("div", "sub", tx(sec, "subtitulo")));
+    c.appendChild(h("h2", null, tituloSec(sec)));
+    c.appendChild(h("div", "sub", subSec(sec)));
     c.appendChild(ornamento());
-    var avSec = COM && COM.avisoSec ? COM.avisoSec(sec) : "";
-    if (avSec) { s.className += " sec--fuera"; c.appendChild(h("div", "hr-sec", avSec)); }
-    if (tx(sec, "intro")) c.appendChild(h("p", "intro" + (tx(sec, "intro").charAt(0) === "\u26a0" ? " intro--aviso" : ""), tx(sec, "intro")));
-    if (sec.id === "promociones") { var sem = semanaPromos(grupos); if (sem) c.appendChild(sem); }
+    /* "Disponible a partir de…": una sola vez, en la cabecera de la sección */
+    if (sec._fuera) { s.className += " sec--fuera"; c.appendChild(h("div", "hr-sec", sec._fuera)); }
+    if (tx(sec, "intro")) c.appendChild(h("p", "intro" + (tx(sec, "intro").charAt(0) === "⚠" ? " intro--aviso" : ""), tx(sec, "intro")));
     cab.appendChild(c); s.appendChild(cab);
 
     var cuerpo = h("div", "sec__cuerpo");
+    var otros = [];
     grupos.forEach(function (g) {
+      var items = g.items;
+      if (esPromo) { otros = otros.concat(items.filter(function (i) { return !i._hoy; })); items = items.filter(function (i) { return i._hoy; }); }
+      if (!items.length) return;
       var gr = h("div", "grupo");
       if (g.titulo) {
         var gc = h("div", "grupo__cab anim");
@@ -439,32 +514,18 @@
         gc.appendChild(ornamento());
         gr.appendChild(gc);
       }
-      g.items.forEach(function (it) { if (it.al && it.al.length) hayAlergenos = true; gr.appendChild(plato(it, sec)); });
+      items.forEach(function (it) { if (it.al && it.al.length) hayAlergenos = true; gr.appendChild(plato(it, sec)); });
       cuerpo.appendChild(gr);
     });
+    if (esPromo) {
+      /* por defecto solo las promociones de HOY; el resto, plegado */
+      if (!cuerpo.firstChild && otros.length) cuerpo.appendChild(h("p", "promo-vacio", t("sinPromosHoy")));
+      if (otros.length) cuerpo.appendChild(promosOtrosDias(otros, sec));
+    }
     if (tx(sec, "pie")) cuerpo.appendChild(h("div", "pie", tx(sec, "pie")));
     if (sec.alcohol) cuerpo.appendChild(h("p", "aviso18", t("alcohol")));
     s.appendChild(cuerpo);
     return s;
-  }
-
-  /** Tira "la semana": qué combo va cada día (solo días con atención y con alguna promo). */
-  function semanaPromos(grupos) {
-    var items = []; grupos.forEach(function (g) { g.items.forEach(function (i) { if (i.promo) items.push(i); }); });
-    if (items.length < 2) return null;
-    var ah = ahoraLugar(new Date()), w = h("div", "semana"), hay = 0;
-    for (var k = 0; k < 7; k++) {
-      var f = sumarDias(ah.fecha, k), d = diaDe(f);
-      if (!C.horario.dias[d]) continue;
-      var deDia = items.filter(function (i) { return promoEnFecha(i.promo, f); });
-      if (!deDia.length) continue;
-      var col = h("a", "semana__d" + (k === 0 ? " hoy" : ""));
-      col.href = "#p-" + deDia[0].id;
-      col.appendChild(h("span", "semana__n", k === 0 ? t("hoy") : t("dias")[d].slice(0, 3)));
-      col.appendChild(h("span", "semana__p", deDia.map(function (i) { return tx(i, "n"); }).join(" · ")));
-      w.appendChild(col); hay++;
-    }
-    return hay ? w : null;
   }
 
   function leyenda() {
@@ -483,11 +544,8 @@
     var nav = h("nav", "nav"); nav.id = "nav"; nav.setAttribute("aria-label", t("seccionesAria"));
     var in_ = h("div", "nav__in");
     var ch = h("div", "chips"); ch.id = "chips";
-    if (tiendaSec) {
-      var ct = h("a", "chip chip--tienda", t("tiendaBoton")); ct.href = "#tienda"; ct.setAttribute("data-tienda", "1"); ch.appendChild(ct);
-    }
     seccionesVisibles.forEach(function (s) {
-      var a = h("a", "chip" + (s._fuera ? " chip--fuera" : ""), tx(s, "titulo")); a.href = "#" + s.id; a.setAttribute("data-id", s.id);
+      var a = h("a", "chip" + (s._fuera ? " chip--fuera" : ""), tituloSec(s)); a.href = "#" + s.id; a.setAttribute("data-id", s.id);
       if (s._fuera) a.title = s._fuera;
       ch.appendChild(a);
     });
@@ -497,13 +555,8 @@
     hb.innerHTML = '<span></span><span></span><span></span>';
     var menu = h("div", "menu-sec"); menu.id = "menu-sec";
     var ul = h("ul");
-    if (tiendaSec) {
-      var lt = h("li"), at = h("a", "menu-sec__tienda", t("tiendaBoton")); at.href = "#tienda";
-      at.addEventListener("click", function (ev) { ev.preventDefault(); cerrarMenu(); irTienda(); });
-      lt.appendChild(at); ul.appendChild(lt);
-    }
     seccionesVisibles.forEach(function (s) {
-      var li = h("li"), a = h("a", s._fuera ? "menu-fuera" : null, tx(s, "titulo")); a.href = "#" + s.id;
+      var li = h("li"), a = h("a", s._fuera ? "menu-fuera" : null, tituloSec(s)); a.href = "#" + s.id;
       a.addEventListener("click", function (ev) {
         ev.preventDefault(); cerrarMenu();
         var chip = ch.querySelector('[data-id="' + s.id + '"]'); if (chip) chip.click();
@@ -569,6 +622,52 @@
     if (c) window.scrollTo({ top: Math.max(0, q("#busca").offsetTop - 42), behavior: "auto" });
   }
 
+  /* ---------- horario (derivado de los datos; sin "lunes cerrado") ---------- */
+  function hm12(hhmm) {   // "18:00" -> { t: "6:00", suf: "pm" }
+    var p = String(hhmm).split(":"), hh = +p[0] % 24;
+    return { t: (hh % 12 || 12) + ":" + p[1], suf: hh >= 12 ? "pm" : "am" };
+  }
+  function rango12(a, b) {   // "6:00 – 11:00 pm" / "10:00 am – 11:00 pm"
+    var x = hm12(a), y = hm12(b);
+    return (x.suf === y.suf ? x.t : x.t + " " + x.suf) + " \u2013 " + y.t + " " + y.suf;
+  }
+  function textoDiasCorto(dias) {   // [2,3,4,5,6] -> "mar–sáb"; [0] -> "dom"
+    var orden = [1, 2, 3, 4, 5, 6, 0], ab = t("dias3");
+    var l = orden.filter(function (d) { return dias.indexOf(d) >= 0; }), out = [], i = 0;
+    while (i < l.length) {
+      var j = i; while (j + 1 < l.length && orden.indexOf(l[j + 1]) === orden.indexOf(l[j]) + 1) j++;
+      out.push(j > i ? ab[l[i]] + "\u2013" + ab[l[j]] : ab[l[i]]); i = j + 1;
+    }
+    return out.join(", ");
+  }
+  function bloqueHorario() {
+    var b = h("div"); b.appendChild(h("h3", null, t("horario")));
+    var lineas = [], hor = C.horario && C.horario.dias;
+    if (hor) {
+      var orden = [1, 2, 3, 4, 5, 6, 0], grupos = [];
+      orden.forEach(function (d) {
+        var r = hor[d]; if (!r) return;
+        var k = r[0] + "|" + r[1], g = grupos[grupos.length - 1];
+        if (g && g.k === k && orden.indexOf(g.dias[g.dias.length - 1]) === orden.indexOf(d) - 1) g.dias.push(d); else grupos.push({ k: k, dias: [d], r: r });
+      });
+      grupos.forEach(function (g) { var dt = diasTexto(g.dias); lineas.push(dt.charAt(0).toUpperCase() + dt.slice(1) + " \u00b7 " + rango12(g.r[0], g.r[1])); });
+    }
+    if (!lineas.length) lineas.push(tx(N, "horarioTexto"));
+    lineas.forEach(function (x) { b.appendChild(h("p", null, x)); });
+    /* Nostri Prodotti (tienda): su horario sale de los datos estructurados del módulo comercio; si faltan, no se muestra */
+    var rt = C.ext && C.ext.comercio && C.ext.comercio.s && C.ext.comercio.s.tienda;
+    if (rt) {
+      var regs = Array.isArray(rt) ? rt : [rt], partes = [];
+      regs.forEach(function (r) {
+        if (!r || !r.h || !r.h.length) return;
+        var dt = r.d && r.d.length ? textoDiasCorto(r.d) : t("todosDias2");
+        partes.push(dt + " " + r.h.map(function (x) { return rango12(x[0], x[1]); }).join(", "));
+      });
+      if (partes.length) b.appendChild(h("p", "datos__tienda", t("tiendaTit") + " \u00b7 " + partes.join(" \u00b7 ")));
+    }
+    return b;
+  }
+
   /* ---------- gracias ---------- */
   function gracias() {
     var s = h("footer", "gracias rev"); s.id = "gracias";
@@ -581,7 +680,7 @@
     var d = h("div", "datos");
     function dato(t, x) { var b = h("div"); b.appendChild(h("h3", null, t)); b.appendChild(h("p", null, x)); return b; }
     d.appendChild(dato(t("donde"), N.direccion));
-    d.appendChild(dato(t("horario"), tx(N, "horarioTexto") + (tx(N, "cerradoTexto") ? " · " + tx(N, "cerradoTexto") : "")));
+    d.appendChild(bloqueHorario());
     d.appendChild(dato(t("reservas"), N.telefono));
     var rb = h("div"); rb.appendChild(h("h3", null, t("siguenos")));
     var rd = h("div", "redes");
@@ -608,10 +707,8 @@
     estadoBarra = h("div", "estado"); estadoBarra.setAttribute("role", "status");
     document.body.insertBefore(estadoBarra, app);
 
-    var secs = [], secTienda = null;
-    tiendaSec = C.secciones.filter(function (s) { return s.id === "tienda"; })[0] || null;
-    C.secciones.forEach(function (s, i) { if (s === tiendaSec) return; var e = seccion(s, i); if (e) secs.push(e); });
-    if (tiendaSec) { secTienda = seccion(tiendaSec, 0); seccionesVisibles.pop(); if (!secTienda) tiendaSec = null; }
+    var secs = [];
+    ordenarSecciones().forEach(function (s, i) { var e = seccion(s, i); if (e) secs.push(e); });
 
     var vCarta = h("div"); vCarta.id = "vista-carta";
     vCarta.appendChild(portada());
@@ -624,14 +721,6 @@
     var vacio = h("p", "vacio", t("noEncontrado")); vacio.id = "vacio"; vCarta.appendChild(vacio);
     if (C.historia && C.historia.parrafos && C.historia.parrafos.length) vCarta.appendChild(historia());
     app.appendChild(vCarta);
-    if (secTienda) {
-      var vTienda = h("div"); vTienda.id = "vista-tienda"; vTienda.hidden = true;
-      var barraT = h("div", "tienda-barra");
-      var volver = h("a", "tienda-volver", t("volverCarta")); volver.href = "#carta"; barraT.appendChild(volver);
-      barraT.appendChild(botonIdioma("idioma idioma--tienda"));
-      vTienda.appendChild(barraT); vTienda.appendChild(secTienda);
-      app.appendChild(vTienda);
-    }
     app.appendChild(gracias());
 
     var f = h("a", "fab"); f.href = waUrl(); f.target = "_blank"; f.rel = "noopener";
@@ -645,14 +734,9 @@
     document.querySelectorAll('a[href^="#"]').forEach(function (a) {
       a.addEventListener("click", function (ev) {
         var id = a.getAttribute("href").slice(1), el = document.getElementById(id);
-        if (id === "tienda" && tiendaSec) { ev.preventDefault(); irTienda(); return; }
-        if (id === "carta") { ev.preventDefault(); irCarta(); return; }
-        if (el && el.closest("#vista-tienda")) return;
-        if (el && !el.offsetParent && document.body.classList.contains("vista-tienda")) { ev.preventDefault(); irCarta(id); return; }
         if (!el) return;
         ev.preventDefault();
-        var off = id === "carta-inicio" ? 0 : 92;
-        var y = el.getBoundingClientRect().top + window.pageYOffset - (id === "carta-inicio" ? 0 : off);
+        var y = el.getBoundingClientRect().top + window.pageYOffset - (id === "carta-inicio" ? 0 : barraAlto());
         window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
       });
     });
@@ -692,26 +776,22 @@
     }
   }
 
-  /* ---------- vistas: carta / tienda (misma página, sin recargar; hash #tienda) ---------- */
-  function mostrarVista(tienda) {
-    var vt = q("#vista-tienda"), vc = q("#vista-carta"); if (!vt || !vc) return;
-    vt.hidden = !tienda; vc.hidden = !!tienda;
-    document.body.classList.toggle("vista-tienda", !!tienda);
-    document.querySelectorAll("#vista-tienda .rev, #vista-tienda .anim").forEach(function (x) { x.classList.add("ya"); });
-    if (fab) fab.classList.toggle("ver", !!tienda);
-  }
-  function irTienda() { if (location.hash !== "#tienda") location.hash = "#tienda"; else { mostrarVista(true); window.scrollTo({ top: 0, behavior: "auto" }); } }
-  var saltoPend = null;
-  function irCarta(id) {
-    saltoPend = id || null;
-    if (location.hash === "#tienda") { location.hash = "#carta"; return; }   // hashchange hace el resto
-    sincronizarVista();
-  }
-  function sincronizarVista() {
-    var esT = location.hash === "#tienda" && !!q("#vista-tienda");
-    mostrarVista(esT);
-    var el = !esT && saltoPend && document.getElementById(saltoPend); saltoPend = null;
-    window.scrollTo({ top: el ? el.getBoundingClientRect().top + window.pageYOffset - 92 : 0, behavior: "auto" });
+  /* Orden de las secciones: lo disponible ahora va primero (lo decide comercio.js); la tienda "Nostri Prodotti" se coloca justo después de
+     Lasagne (ahí el cliente ya está eligiendo pasta fresca, y es el mejor momento para ofrecerle llevarla a casa), antes de Parrillas y las
+     bebidas, y siempre respetando la regla de horario (lo disponible ahora, primero). */
+  function ordenarSecciones() {
+    var lista = C.secciones.slice(), ti = -1;
+    lista.forEach(function (x, i) { if (x.id === "tienda") ti = i; });
+    if (ti >= 0) {
+      var tienda = lista.splice(ti, 1)[0], li = -1;
+      lista.forEach(function (x, i) { if (x.id === "lasagne") li = i; });
+      lista.splice(li >= 0 ? li + 1 : lista.length, 0, tienda);
+      if (COM && COM.avisoSec) {   // reparte otra vez: disponibles ahora primero, el resto después, cada grupo en su orden
+        var ok = function (x) { return !COM.avisoSec(x); };
+        lista = lista.filter(ok).concat(lista.filter(function (x) { return !ok(x); }));
+      }
+    }
+    return lista;
   }
 
   /* Enlace directo a un producto o combo (para historias de Instagram): ?p=ID&o=ig */
@@ -721,7 +801,7 @@
     if (o) { try { sessionStorage.setItem("pg-origen", o); } catch (e) {} }
     var id = params.get("p"); if (!id) return;
     var art = document.getElementById("p-" + id); if (!art) return;
-    if (art.closest("#vista-tienda")) { if (location.hash !== "#tienda") location.hash = "#tienda"; mostrarVista(true); }
+    var otros = art.closest(".promo-otros"); if (otros) { otros.classList.add("abierto"); var bm = otros.parentNode.querySelector(".promo-mas"); if (bm) { bm.setAttribute("aria-expanded", "true"); bm.textContent = t("menosPromos"); } }
     var it = null, sec = null;
     C.secciones.forEach(function (s) { s.grupos.forEach(function (g) { g.items.forEach(function (i) { if (i.id === id) { it = i; sec = s; } }); }); });
     setTimeout(function () {
@@ -749,10 +829,24 @@
       }); }); });
     }).catch(function () {});
   }
+  /* Enlace a una sección: /?s=pizze y /#pizze abren la misma página y bajan solos a esa sección (bajo la barra pegajosa).
+     Como las fotos cargan después y mueven el alto de la página, se reajusta unos segundos, salvo que la persona ya haya movido la pantalla. */
+  function entrarASeccion() {
+    var id = new URLSearchParams(location.search).get("s") || decodeURIComponent(location.hash.slice(1) || "");
+    id = String(id || "").replace(/[^a-zA-Z0-9_-]/g, "");
+    if (!id || id.indexOf("p-") === 0 || !document.getElementById(id)) return;
+    var quieto = true;
+    ["wheel", "touchstart", "keydown", "mousedown"].forEach(function (ev) { window.addEventListener(ev, function () { quieto = false; }, { once: true, passive: true }); });
+    var ir = function () { if (quieto) irSeccion(id); };
+    ir(); setTimeout(ir, 250); setTimeout(ir, 800);
+    window.addEventListener("load", function () { setTimeout(ir, 60); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(ir);
+    setTimeout(function () { quieto = false; }, 3500);
+  }
   function iniciar() {
     construir();
-    if (location.hash === "#tienda") mostrarVista(true);
-    window.addEventListener("hashchange", sincronizarVista);
+    window.addEventListener("hashchange", function () { var id = location.hash.slice(1); if (id && id.indexOf("p-") !== 0) irSeccion(id); });
+    entrarASeccion();
     abrirEnlace(); agotadosEnVivo();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();

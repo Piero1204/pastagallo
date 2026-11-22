@@ -36,8 +36,10 @@
 
   /* ---------- catálogo por horario (misma regla que el servidor) ---------- */
   /* reg = { h: [["12:00","16:00"], ...], d: [días] | ausente }. Un rango que cruza la medianoche (22:00-02:00) es del día en que EMPIEZA. */
+  /* Una regla puede ser un objeto {h,d} o un ARRAY de objetos (la tienda tiene horario distinto por día): cumplir cualquiera = disponible. */
   function disponibleReg(reg, dia, min) {
     if (!reg) return true;
+    if (Array.isArray(reg)) { if (!reg.length) return true; for (var k = 0; k < reg.length; k++) if (disponibleReg(reg[k], dia, min)) return true; return false; }
     var h = reg.h || [], d = reg.d;
     var diaOk = function (x) { return !d || d.indexOf(x) >= 0; };
     if (!h.length) return diaOk(dia);
@@ -51,6 +53,7 @@
   function tr(k, v, def) { try { var r = window.PG_I18N && window.PG_I18N.t(k, v); if (r && r !== k) return r; } catch (e) {} return def; }
   var EN = !!(window.PG_I18N && window.PG_I18N.lang === "en");
   function cuando(reg) {
+    if (Array.isArray(reg)) return reg.map(cuando).join(EN ? "; " : "; ");
     var t = (reg.h && reg.h.length)
       ? (EN ? "from " : "de ") + reg.h.map(function (x) { return fmt12(minutos(x[0])) + (EN ? " to " : " a ") + fmt12(minutos(x[1])); }).join(EN ? " and from " : " y de ")
       : (EN ? "all day" : "todo el día");
@@ -73,6 +76,14 @@
   }
   /** Próximo inicio de una regla: { dias: 0..7, min: minutos | null (todo el día), dia } o null. */
   function proxima(reg, dia, min) {
+    if (Array.isArray(reg)) {
+      var mejorR = null;
+      reg.forEach(function (r) {
+        var p = proxima(r, dia, min); if (!p) return;
+        if (!mejorR || p.dias < mejorR.dias || (p.dias === mejorR.dias && (p.min == null ? -1 : p.min) < (mejorR.min == null ? -1 : mejorR.min))) mejorR = p;
+      });
+      return mejorR;
+    }
     var h = reg.h || [];
     for (var i = 0; i <= 7; i++) {
       var d = (dia + i) % 7;
@@ -99,6 +110,16 @@
     if (!fuera(it, sec)) return "";
     var ah = ahora(), r = regsDe(it, sec).filter(function (x) { return !disponibleReg(x, ah.dia, ah.min); })[0];
     return r ? textoDesde(r) : "";
+  }
+  /** Aviso para la TARJETA del producto: solo si el producto tiene un horario propio que DIFIERE del de su sección
+      (si toda la sección comparte horario, el aviso va solo en la cabecera de la sección). */
+  function avisoProd(it, sec) {
+    if (!it || it.tipo === "salsa") return "";
+    var rp = (X.p || {})[it.id], rs = sec && (X.s || {})[sec.id];
+    if (!rp) return "";
+    if (rs && JSON.stringify(rp) === JSON.stringify(rs)) return "";
+    var ah = ahora();
+    return disponibleReg(rp, ah.dia, ah.min) ? "" : textoDesde(rp);
   }
   /** Aviso para la cabecera de la sección: su propio horario, o el del primer producto si todos están fuera de hora. */
   function avisoSec(sec) {
@@ -275,7 +296,7 @@
   filtrarCarta();
   iniciarSesionMesa();
   window.PG_COMERCIO = {
-    barra: BARRA, motivo: motivo, fuera: fuera, aviso: aviso, avisoSec: avisoSec, revisar: revisar, cuando: cuando, ventana: ventana, filtrarHoras: filtrarHoras, cuerpo: cuerpo, resena: resena,
+    barra: BARRA, motivo: motivo, fuera: fuera, aviso: aviso, avisoProd: avisoProd, avisoSec: avisoSec, revisar: revisar, cuando: cuando, ventana: ventana, filtrarHoras: filtrarHoras, cuerpo: cuerpo, resena: resena,
     _t: { disponibleReg: disponibleReg, ahora: ahora, ventana: ventana, minutosParaCerrar: minutosParaCerrar, filtrarCarta: filtrarCarta, llena: llena, disponible: disponible }
   };
 })();

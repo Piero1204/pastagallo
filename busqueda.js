@@ -26,6 +26,7 @@
                      familiar: "F", familiares: "F", personali: "P", grandi: "G", piccola: "S", piccole: "S", familia: "F", famiglia: "F", grande: "G", grandes: "G", gigante: "G",
                      chica: "S", chico: "S", chicas: "S", pequena: "S", pequeno: "S", pequenas: "S", chiquita: "S" };
   var WEAK = { fonte: 1, tre: 1, marie: 1, tabernero: 1, box: 1, casa: 1, classic: 1, york: 1, new: 1, gran: 1, tuyo: 1 };
+  var TIENDA = "tienda";   // sección de la carta con la pasta y salsas para llevar a casa (precocidas)
   var ALERGIA_RE = /^(alerg|celiac|gluten|lactosa|intoler|anafil)/;
 
   function plano(s) {
@@ -83,6 +84,7 @@
     [/^gomiti$/, ["codito", "codo", "coditos"]],
     [/^maccheroni$/, ["macarron", "macarrones", "macarroni"]],
     [/^conchiglie$/, ["conchas", "conchitas", "conchita"]],
+    [/^fettuccine verdi$/, ["fettuccine verde", "fettuccine verdes", "fettuccini verde", "fettuccini verdi", "fetuccine verde", "fetuccini verde", "fettuccine de espinaca", "fideos verdes"]],
     [/^spaghetti$/, ["espagueti", "espaguetis", "spagueti"]],
     [/^ravioli di carne$/, ["ravioles de carne", "ravioli carne"]],
     [/^ravioli di ricotta$/, ["ravioles de ricota", "ravioles de queso", "ravioli de queso", "ravioli de formaggio", "ravioles de formaggio", "ravioli formaggio"]],
@@ -139,17 +141,32 @@
 
     (carta.secciones || []).forEach(function (sec) {
       SEC[sec.id] = sec;
+      if (sec.id === TIENDA && modo === "mesa") return;   // la tienda (para llevar a casa) no se pide desde la mesa
       (sec.grupos || []).forEach(function (g) {
         (g.items || []).forEach(function (it) {
           if (it.tipo === "salsa") return;
           var p = { id: it.id, n: it.n, n_en: it.n_en || "", sec: sec.id, t: it.t || null, p: it.p, op: (it.op || []).slice(), salsa: !!it.salsa,
-                    agotado: !!it.agotado, canal: it.canal || "", promo: it.promo || null, d: it.d || "", g: it.g || "", orden: prods.length };
+                    agotado: !!it.agotado, canal: it.canal || "", promo: it.promo || null, d: it.d || "", g: it.g || "", orden: prods.length,
+                    foto: it.foto || "", tienda: sec.id === TIENDA };
           prods.push(p); porId[p.id] = p;
           if (sec.id === "pizze" && p.t && p.t.length > 1) soportaMitad = true;
         });
       });
     });
     (carta.salsas || []).forEach(function (s) { if (!s.agotado) { salsas.push(s); salsaPorId[s.id] = s; } });
+
+    /* Ficha corta de un producto para las listas de alternativas y las tarjetas de "¿restaurante o para llevar?". */
+    function info(p) {
+      var precios = p.t && p.t.length ? p.t.map(function (x) { return { n: x[0], p: x[1] }; }) : (p.p != null ? [{ n: "", p: p.p }] : []);
+      return { id: p.id, nombre: p.n, sub: p.g || "", tienda: !!p.tienda, foto: p.foto || "", precios: precios,
+               etiqueta: p.tienda ? "Precocida para llevar" : "Del restaurante" };
+    }
+    /* ¿Las alternativas mezclan un plato del restaurante con su equivalente de la tienda? → se pregunta dónde lo quiere comer. */
+    function mezclaOrigen(alts) {
+      var r = false, t = false;
+      alts.forEach(function (a) { if (a.tienda) t = true; else r = true; });
+      return r && t;
+    }
 
     /* ---------- estado de un producto (misma idea que pedido.js; el servidor vuelve a validar todo) ---------- */
     function estado(p) {
@@ -711,18 +728,25 @@
           else if (r.rank >= it.c.rank * 0.4) { lejanas.push(r); vistos[r.al.dueno.id] = 1; }
         });
         if (cercanas.length) {
-          L.alternativas = [{ id: dueno.id, nombre: dueno.p.n }].concat(cercanas.map(function (r) { return { id: r.al.dueno.id, nombre: r.al.dueno.p.n }; })).slice(0, 8);
+          L.alternativas = [info(dueno.p)].concat(cercanas.map(function (r) { return info(r.al.dueno.p); })).slice(0, 8);
           L.id = ""; L.nombre = ""; L.confianza = Math.min(0.45, it.c.conf);
-          L.avisos.push("Hay varias opciones parecidas: elige cuál quieres.");
+          if (mezclaOrigen(L.alternativas)) L.origen = true;   // restaurante vs tienda con nombre parecido: la pantalla pregunta con tarjetas
+          else L.avisos.push("Hay varias opciones parecidas: elige cuál quieres.");
         } else {
-          L.alternativas = lejanas.slice(0, 4).map(function (r) { return { id: r.al.dueno.id, nombre: r.al.dueno.p.n }; });
+          L.alternativas = lejanas.slice(0, 4).map(function (r) { return info(r.al.dueno.p); });
           if (it.c.rank < 0.5 && L.alternativas.length) { L.confianza = Math.min(L.confianza, 0.6); }
         }
       } else {    // categoría genérica: el cliente elige
         L.categoria = dueno.secs[0]; L.confianza = 0.3;
         L.alternativas = [];
-        dueno.secs.forEach(function (sid) { prods.forEach(function (p) { if (p.sec === sid && !p.agotado && !estado(p)) L.alternativas.push({ id: p.id, nombre: p.n }); }); });
+        dueno.secs.forEach(function (sid) { prods.forEach(function (p) { if (p.sec === sid && !p.agotado && !estado(p)) L.alternativas.push(info(p)); }); });
         L.avisos.push("Elige cuál " + (dueno.id === "pasta" || it.huerfana ? "pasta" : dueno.id) + " quieres.");
+        if (it.huerfana && it.salsa && salsaPorId[it.salsa]) {
+          // "salsa alfredo" suelta: puede ser la salsa de una pasta del restaurante o el frasco de la tienda para llevar a casa
+          var bs = plano(salsaPorId[it.salsa].n);
+          var ts = prods.filter(function (p) { return p.tienda && !p.agotado && !estado(p) && /^salsa /.test(plano(p.n)) && (" " + plano(p.n) + " ").indexOf(" " + bs + " ") >= 0; }).map(info);
+          if (ts.length) L.salsaTienda = ts;
+        }
         L.seccion = dueno.secs[0];
       }
       L.revisar = L.confianza < 0.7 || !L.id;
@@ -787,7 +811,7 @@
       };
     }
     function listaCategoria(sec) {
-      var out = []; prods.forEach(function (p) { if (p.sec === sec && !p.agotado && !estado(p)) out.push({ id: p.id, nombre: p.n }); }); return out;
+      var out = []; prods.forEach(function (p) { if (p.sec === sec && !p.agotado && !estado(p)) out.push(info(p)); }); return out;
     }
     function otrasPizzas(id, tam) {
       var out = [];
@@ -869,7 +893,7 @@
     }
 
     return { interpretar: interpretar, completar: completar, requisitos: requisitos, buscar: buscar, listaCategoria: listaCategoria, otrasPizzas: otrasPizzas,
-             producto: function (id) { return porId[id] || null; }, soportaMitad: soportaMitad, precio: precio, salsas: salsas };
+             producto: function (id) { return porId[id] || null; }, info: info, mezclaOrigen: mezclaOrigen, soportaMitad: soportaMitad, precio: precio, salsas: salsas };
   }
 
   /* =====================================================================
@@ -919,7 +943,21 @@
         ".bq-quitar{margin-left:auto;background:none;border:0;color:var(--rojo,#b6232a);font:600 14px var(--sans,system-ui);min-height:44px;cursor:pointer;text-decoration:underline}" +
         ".bq-no{background:#fff7e0;border:1px solid var(--oro-claro,#c9a45c);padding:10px 12px;border-radius:6px;margin:10px 0}" +
         ".bq-total{display:flex;justify-content:space-between;font-weight:700;margin:12px 0 4px}" +
-        ".bq-ok{color:var(--verde,#2f7a3a)}";
+        ".bq-ok{color:var(--verde,#2f7a3a)}" +
+        ".bq-pre{margin:8px 0 2px;font-weight:700}" +
+        ".bq-orig{display:grid;gap:10px;margin:8px 0 4px}" +
+        ".bq-opc{display:flex;gap:12px;align-items:stretch;width:100%;min-height:96px;padding:8px;border:2px solid rgba(169,128,63,.55);border-radius:8px;background:#fff;color:inherit;text-align:left;font:inherit;cursor:pointer}" +
+        ".bq-opc:focus-visible{outline:3px solid var(--oro-claro,#c9a45c);outline-offset:2px}" +
+        ".bq-opc[aria-pressed=true]{border-color:var(--verde,#2f7a3a);background:#f1f8ef}" +
+        ".bq-foto{flex:0 0 84px;width:84px;min-height:80px;border-radius:6px;object-fit:cover;background:var(--crema,#efe6d3)}" +
+        "div.bq-foto{display:flex;align-items:center;justify-content:center;color:var(--oro,#a9803f)}" +
+        "div.bq-foto svg{width:36px;height:36px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}" +
+        ".bq-opc__t{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}" +
+        ".bq-opc__n{font:600 1.02rem var(--serif,Georgia,serif)}" +
+        ".bq-opc__s{font-size:13.5px;color:var(--tinta-2,#5a463f)}" +
+        ".bq-opc__e{align-self:flex-start;font:700 12.5px var(--sans,system-ui);padding:3px 9px;border-radius:999px;background:var(--vino,#4a1519);color:var(--crema,#efe6d3)}" +
+        ".bq-opc__e--t{background:var(--oro-claro,#c9a45c);color:var(--vino,#4a1519)}" +
+        ".bq-opc__p{font-size:14px;font-weight:600}";
       document.head.appendChild(s);
     }
 
@@ -1057,15 +1095,23 @@
     }
     function tarjeta(l, ix) {
       var c = e("div", "bq-lin" + (l.revisar || l.faltan.length ? " bq-lin--rev" : ""));
-      c.appendChild(e("h3", null, l.nombre || "¿Cuál quieres?"));
+      var comun = l.origen && l.alternativas.length && l.alternativas.every(function (a) { return a.nombre === l.alternativas[0].nombre; }) ? l.alternativas[0].nombre : "";
+      c.appendChild(e("h3", null, l.nombre || comun || "¿Cuál quieres?"));
       if (l.texto) c.appendChild(e("p", "bq-nota", "Dijiste: «" + l.texto + "»"));
       // elegir producto (siempre editable: lista de alternativas o de la categoría)
       var alt = l.alternativas.slice();
       if (l.id && !alt.some(function (a) { return a.id === l.id; })) alt.unshift({ id: l.id, nombre: l.nombre });
       if (!l.id && !alt.length && l.categoria) alt = B.listaCategoria(l.categoria);
-      if (alt.length > 1 || !l.id) {
+      if (l.salsaTienda && !l.id) {
+        c.appendChild(preguntaSalsaTienda(l, ix));
+        c.appendChild(e("p", "bq-pre", "O elige la pasta del restaurante que llevará esta salsa:"));
+      }
+      if (l.origen && alt.length > 1 && B.mezclaOrigen(alt)) {
+        c.appendChild(preguntaOrigen(alt, l, ix));
+      } else if (alt.length > 1 || !l.id) {
         var s = e("select");
-        opt(s, "", "Elige…", !l.id); alt.forEach(function (a) { opt(s, a.id, a.nombre, a.id === l.id); });
+        var mixto = B.mezclaOrigen(alt);   // restaurante y tienda en la misma lista: se indica de dónde es cada uno
+        opt(s, "", "Elige…", !l.id); alt.forEach(function (a) { opt(s, a.id, a.nombre + (mixto && a.etiqueta ? " · " + a.etiqueta : ""), a.id === l.id); });
         s.addEventListener("change", function () { cambiarProducto(ix, s.value); });
         campo(c, "Plato", s, !l.id);
       }
@@ -1122,6 +1168,49 @@
       cant.appendChild(q);
       c.appendChild(cant);
       return c;
+    }
+    /* "¿Para comer en el restaurante o para llevar y cocinar en casa?": tarjetas con foto, nombre, tamaño/precio y etiqueta. */
+    function fotoSegura(u) { u = String(u || ""); return /^(fotos\/|https:\/\/)[^\s"'<>]+$/.test(u) ? u : ""; }
+    function preguntaOrigen(alt, l, ix) {
+      var cont = e("div");
+      cont.appendChild(e("p", "bq-pre", "¿Para comer en el restaurante (caliente, lista para servir) o para llevar y cocinar en casa (precocida)?"));
+      var lista = e("div", "bq-orig"); lista.setAttribute("role", "group"); lista.setAttribute("aria-label", "Elige dónde lo quieres");
+      alt.slice().sort(function (a, b) { return (a.tienda ? 1 : 0) - (b.tienda ? 1 : 0); }).forEach(function (a) {
+        lista.appendChild(tarjetaOpcion(a, a.id === l.id, function () { cambiarProducto(ix, a.id); }));
+      });
+      cont.appendChild(lista);
+      return cont;
+    }
+    function tarjetaOpcion(a, marcada, alElegir) {
+      var b = e("button", "bq-opc"); b.type = "button"; b.setAttribute("aria-pressed", marcada ? "true" : "false");
+      var f = fotoSegura(a.foto), im;
+      if (f) { im = e("img", "bq-foto"); im.src = f; im.alt = ""; im.loading = "lazy"; im.addEventListener("error", function () { if (im.parentNode) im.parentNode.replaceChild(placeholderFoto(), im); }); }
+      else im = placeholderFoto();
+      b.appendChild(im);
+      var t = e("span", "bq-opc__t");
+      t.appendChild(e("span", "bq-opc__e" + (a.tienda ? " bq-opc__e--t" : ""), a.etiqueta));
+      t.appendChild(e("span", "bq-opc__n", a.nombre));
+      if (a.sub) t.appendChild(e("span", "bq-opc__s", a.sub));
+      t.appendChild(e("span", "bq-opc__s", a.tienda ? "Para cocinar en casa" : "Caliente, lista para servir"));
+      var pr = a.precios.map(function (x) { return (x.n ? x.n + " · " : "") + soles(x.p); }).join("   ");
+      if (pr) t.appendChild(e("span", "bq-opc__p", pr));
+      b.appendChild(t);
+      b.setAttribute("aria-label", a.etiqueta + ": " + a.nombre + (pr ? ", " + pr : ""));
+      b.addEventListener("click", alElegir);
+      return b;
+    }
+    function preguntaSalsaTienda(l, ix) {
+      var cont = e("div");
+      cont.appendChild(e("p", "bq-pre", "¿Quieres la salsa para llevar y calentar en casa (precocida), sin pasta del restaurante?"));
+      var lista = e("div", "bq-orig");
+      l.salsaTienda.forEach(function (a) { lista.appendChild(tarjetaOpcion(a, false, function () { cambiarProducto(ix, a.id); })); });
+      cont.appendChild(lista);
+      return cont;
+    }
+    function placeholderFoto() {
+      var d = e("div", "bq-foto"); d.setAttribute("aria-hidden", "true");
+      d.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>';
+      return d;
     }
     function cambiarProducto(ix, id) {
       var l = ESTADO.lineas[ix];
