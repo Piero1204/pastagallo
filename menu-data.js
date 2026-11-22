@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T08:40:15-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T09:08:47-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -80,13 +80,120 @@ window.CARTA = {
   },
   "comercio": {
    "v": 1,
+   "s": {
+    "promociones": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    },
+    "antipasti": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    },
+    "italia": {
+     "h": [
+      [
+       "10:00",
+       "00:00"
+      ]
+     ]
+    },
+    "pizze": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    },
+    "pasta": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    },
+    "lasagne": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    },
+    "parrillas": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    },
+    "dolci": {
+     "h": [
+      [
+       "10:00",
+       "00:00"
+      ]
+     ]
+    },
+    "caffe": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    },
+    "aperitivi": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    },
+    "vini": {
+     "h": [
+      [
+       "10:00",
+       "00:00"
+      ]
+     ]
+    },
+    "caffetteria": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    },
+    "cargos": {
+     "h": [
+      [
+       "18:00",
+       "23:00"
+      ]
+     ]
+    }
+   },
    "prog": {
     "paso": 15,
     "ant": 30,
     "cupo": 0
    },
    "barra": true,
-   "mesaRevocar": true
+   "mesaRevocar": true,
+   "resena": "https://search.google.com/local/writereview?placeid=ChIJixYWQm09rZERPrmXDSlZD1w"
   }
  },
  "pedidos": {
@@ -99,7 +206,160 @@ window.CARTA = {
   "metodosPago": [
    "Yape o Plin"
   ],
-  "pagoObligatorio": true,
+  "pagoObligatorio": false,
+  "deliveryTarifas": {
+   "local": {
+    "lat": -8.1278775,
+    "lng": -79.040603
+   },
+   "factor_pista": 1.3,
+   "base": 4.5,
+   "por_km": 1.55,
+   "minimo": 5,
+   "maximo": 30,
+   "max_km": 14.5,
+   "zonas": [
+    {
+     "nombre": "La Merced",
+     "precio": 5,
+     "lat": -8.126,
+     "lng": -79.0393,
+     "radio_km": 0.5
+    },
+    {
+     "nombre": "California",
+     "precio": 6,
+     "lat": -8.1309,
+     "lng": -79.0377,
+     "radio_km": 0.6
+    },
+    {
+     "nombre": "San Andrés",
+     "precio": 7,
+     "lat": -8.1124,
+     "lng": -79.034,
+     "radio_km": 0.8
+    },
+    {
+     "nombre": "Golf",
+     "precio": 7,
+     "lat": -8.134,
+     "lng": -79.035,
+     "radio_km": 0.8
+    },
+    {
+     "nombre": "Santa María",
+     "precio": 10,
+     "lat": -8.1199,
+     "lng": -79.0222,
+     "radio_km": 0.9
+    },
+    {
+     "nombre": "Las Quintanas",
+     "precio": 10,
+     "lat": -8.0994,
+     "lng": -79.0273,
+     "radio_km": 0.9
+    },
+    {
+     "nombre": "San Isidro",
+     "precio": 10,
+     "lat": -8.1019,
+     "lng": -79.0326,
+     "radio_km": 0.9
+    },
+    {
+     "nombre": "El Bosque",
+     "precio": 10,
+     "lat": -8.1102,
+     "lng": -79.006,
+     "radio_km": 1
+    },
+    {
+     "nombre": "La Esperanza",
+     "precio": 20,
+     "lat": -8.083,
+     "lng": -79.041,
+     "radio_km": 1.5
+    },
+    {
+     "nombre": "La Rinconada",
+     "precio": 15,
+     "lat": -8.0924,
+     "lng": -79.0052,
+     "radio_km": 1
+    },
+    {
+     "nombre": "El Milagro",
+     "precio": 20,
+     "lat": -8.0338,
+     "lng": -79.0632,
+     "radio_km": 1.5
+    },
+    {
+     "nombre": "Covicorti",
+     "precio": 8,
+     "lat": -8.1129,
+     "lng": -79.0465,
+     "radio_km": 0.8
+    },
+    {
+     "nombre": "La Perla",
+     "precio": 8,
+     "lat": -8.128,
+     "lng": -79.0274,
+     "radio_km": 0.8
+    },
+    {
+     "nombre": "Buenos Aires",
+     "precio": 8,
+     "lat": -8.1435,
+     "lng": -79.0562,
+     "radio_km": 0.9
+    },
+    {
+     "nombre": "Centro de Trujillo",
+     "precio": 8,
+     "lat": -8.1118,
+     "lng": -79.0287,
+     "radio_km": 0.8
+    },
+    {
+     "nombre": "El Salvador",
+     "precio": 10,
+     "lat": -8.1027,
+     "lng": -79.0232,
+     "radio_km": 0.9
+    },
+    {
+     "nombre": "Tacora",
+     "precio": 12,
+     "lat": -8.095,
+     "lng": -79.05,
+     "radio_km": 1
+    },
+    {
+     "nombre": "Huanchaco",
+     "precio": 30,
+     "lat": -8.08,
+     "lng": -79.1205,
+     "radio_km": 1.5
+    },
+    {
+     "nombre": "Ramón Castilla",
+     "precio": 20,
+     "lat": -8.0877,
+     "lng": -79.0109,
+     "radio_km": 1
+    }
+   ]
+  },
+  "programado": {
+   "desde": "18:30",
+   "hasta": "23:00",
+   "paso": 15,
+   "prep": 30
+  },
   "metodosPagoMesa": [
    "Yape o Plin",
    "Efectivo",
@@ -3309,5 +3569,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-22T08:40:15-05:00"
+ "publicado": "2026-11-22T09:08:47-05:00"
 };
