@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Seguimiento de tu pedido · Pasta Gallo</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#4a1519">
+<link rel="icon" href="/favicon.png" type="image/png">
+<style>
+:root{--vino:#4a1519;--crema:#efe6d3;--papel:#faf6ec;--oro:#a9803f;--tinta:#2a1b17;--gris:#6f5f57;--linea:#dccdb0;--verde:#2f7a3a;--rojo:#b6232a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--crema);color:var(--tinta);min-height:100vh}
+header{background:var(--vino);color:var(--crema);padding:16px;text-align:center;font:600 22px Georgia,serif}
+main{max-width:480px;margin:0 auto;padding:18px 16px 40px;display:grid;gap:14px}
+.caja{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:16px;display:grid;gap:10px}
+h1{font:600 24px/1.2 Georgia,serif;color:var(--vino)}
+.eta{font-size:34px;font-weight:800;color:var(--vino)}.chico{font-size:14px;color:var(--gris)}
+.pasos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:4px 0}
+.pasos span{height:8px;border-radius:6px;background:var(--linea)}.pasos span.on{background:var(--verde)}
+.etiquetas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:12px;color:var(--gris);text-align:center}
+.estrellas{display:flex;gap:6px;justify-content:center}
+.estrellas button{font-size:38px;line-height:1;background:none;border:0;cursor:pointer;color:var(--linea);min-width:48px;min-height:48px}
+.estrellas button.on{color:var(--oro)}
+textarea{width:100%;min-height:80px;border:2px solid var(--linea);border-radius:10px;padding:10px;font:inherit}
+.btn{min-height:52px;border-radius:12px;border:0;background:var(--vino);color:#fff;font:700 18px inherit;cursor:pointer;width:100%}
+.btn[disabled]{opacity:.5}.mal{color:var(--rojo);font-weight:700}.ok{color:var(--verde);font-weight:700}
+.trampa{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+</style>
+</head>
+<body>
+<header>Pasta Gallo</header>
+<main id="app" aria-live="polite"><div class="caja"><p>Cargando tu pedido…</p></div></main>
+<script src="menu-data.js"></script>
+<script>
+/* Seguimiento del pedido de delivery: solo estado, tiempo estimado y nombre de pila del repartidor. No se muestran datos personales.
+   El enlace lleva un código secreto (?t=...). No usa GPS ni mapas. */
+(function () {
+  var API = ((window.CARTA || {}).pedidos || {}).api || "", app = document.getElementById("app");
+  var TK = (location.search.match(/[?&]t=([A-Za-z0-9]{1,40})/) || [])[1] || "", timer = null;
+  function h(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function llamar(o) {
+    if (!API) return Promise.reject(new Error("sin api"));
+    o.ext = "reparto";
+    return fetch(API, { method: "POST", body: JSON.stringify(o) }).then(function (r) { return r.json(); });
+  }
+  var NOMBRES = ["Recibido", "Preparando", "En camino", "Entregado"];
+  function pintar(r) {
+    app.textContent = "";
+    var c = h("div", "caja");
+    if (!r.ok) { c.appendChild(h("p", "mal", r.error || "No se pudo cargar el seguimiento.")); app.appendChild(c); clearInterval(timer); return; }
+    c.appendChild(h("h1", "", "Pedido #" + r.nd));
+    c.appendChild(h("p", "", r.texto));
+    if (r.paso > 0) {
+      var p = h("div", "pasos"), e = h("div", "etiquetas");
+      for (var i = 1; i <= 4; i++) { var s = h("span", i <= r.paso ? "on" : ""); p.appendChild(s); e.appendChild(h("span", "", NOMBRES[i - 1])); }
+      c.appendChild(p); c.appendChild(e);
+    }
+    if (r.etaMin !== undefined) {
+      c.appendChild(h("div", "eta", r.retraso ? "Llegando, gracias por tu paciencia" : "Llega en ~" + r.etaMin + " min"));
+      c.appendChild(h("p", "chico", "Hora estimada: " + r.etaHora + ". Es un cálculo aproximado."));
+    }
+    if (r.programado) c.appendChild(h("p", "chico", "Pedido programado para las " + r.programado + "."));
+    app.appendChild(c);
+    if (r.puedeCalificar) app.appendChild(formulario());
+    else if (r.calificado) app.appendChild(h("div", "caja", "¡Gracias por tu opinión!"));
+    if (r.estado === "Entregado" || r.estado === "Cancelado") clearInterval(timer);
+  }
+  function formulario() {
+    var c = h("div", "caja"), n = 0;
+    c.appendChild(h("h1", "", "¿Cómo estuvo tu entrega?"));
+    var est = h("div", "estrellas"), bs = [];
+    for (var i = 1; i <= 5; i++) (function (i) {
+      var b = h("button", "", "★"); b.type = "button"; b.setAttribute("aria-label", i + (i === 1 ? " estrella" : " estrellas"));
+      b.addEventListener("click", function () { n = i; bs.forEach(function (x, j) { x.className = j < i ? "on" : ""; }); enviar.disabled = false; });
+      bs.push(b); est.appendChild(b);
+    })(i);
+    var com = h("textarea"); com.maxLength = 300; com.placeholder = "Cuéntanos (opcional)"; com.setAttribute("aria-label", "Comentario");
+    var trampa = h("input", "trampa"); trampa.type = "text"; trampa.tabIndex = -1; trampa.autocomplete = "off"; trampa.setAttribute("aria-hidden", "true");
+    var msg = h("p", "");
+    var enviar = h("button", "btn", "Enviar opinión"); enviar.type = "button"; enviar.disabled = true;
+    enviar.addEventListener("click", function () {
+      enviar.disabled = true; msg.textContent = "Enviando…"; msg.className = "";
+      llamar({ accion: "calificar", tk: TK, estrellas: n, comentario: com.value, web: trampa.value }).then(function (r) {
+        if (r.ok) { app.removeChild(c); app.appendChild(h("div", "caja ok", "¡Gracias por tu opinión!")); }
+        else { msg.textContent = r.error || "No se pudo enviar."; msg.className = "mal"; enviar.disabled = false; }
+      }).catch(function () { msg.textContent = "Sin conexión. Intenta de nuevo."; msg.className = "mal"; enviar.disabled = false; });
+    });
+    [est, com, trampa, enviar, msg].forEach(function (x) { c.appendChild(x); });
+    return c;
+  }
+  function cargar() {
+    if (document.activeElement && document.activeElement.tagName === "TEXTAREA") return;
+    llamar({ accion: "seguir", tk: TK }).then(pintar).catch(function () { if (!app.firstChild || app.textContent.indexOf("Cargando") >= 0) app.firstChild.firstChild.textContent = "Sin conexión. Reintentando…"; });
+  }
+  if (!TK) { pintar({ ok: false, error: "Este enlace de seguimiento no es válido." }); return; }
+  cargar(); timer = setInterval(cargar, 30000);
+})();
+</script>
+</body>
+</html>
