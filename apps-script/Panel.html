@@ -719,15 +719,16 @@ function cargarPedidos(){
     var avNuevos = (r.avisos || []).filter(function(a){ return !AVISOS_VISTOS[a.id]; });
     (r.avisos || []).forEach(function(a){ AVISOS_VISTOS[a.id] = true; });
     AVISOS = r.avisos || [];
-    if (!primera && avNuevos.length) {
+    var avRuido = avNuevos.filter(function(a){ return !a.silencioso; });   // la cuenta pedida por el mozo se imprime pero no suena ni avisa
+    if (!primera && avRuido.length) {
       sonidoAviso(); ultimoAvisoSon = Date.now();
-      toast('🙋 Mesa ' + avNuevos[0].mesa + ': ' + avNuevos[0].texto.toLowerCase() + (avNuevos[0].detalle ? ' (' + avNuevos[0].detalle + ')' : ''));
+      toast('🙋 Mesa ' + avRuido[0].mesa + ': ' + avRuido[0].texto.toLowerCase() + (avRuido[0].detalle ? ' (' + avRuido[0].detalle + ')' : ''));
     }
     pintarPedidos(primera ? [] : nuevos.map(function(p){ return p.numero; }));
     // delivery/recojo con pago por verificar: la comanda sale recién cuando se confirma el pago
-    if (!primera && autoImp) nuevos.forEach(function(p){ if (!IMPRESOS[p.numero] && p.pagoEstado !== 'Por verificar') imprimirNuevo(p); });
+    if (!primera && autoImp) nuevos.forEach(function(p){ if (!IMPRESOS[p.numero] && p.pagoEstado !== 'Por verificar') imprimirUnaVez('nuevo:' + p.numero, function(){ imprimirNuevo(p); }); });
     // la mesa (QR) o el mozo pidieron la cuenta → sale sola la cuenta completa de la mesa
-    if (!primera && autoImp) avNuevos.forEach(function(a){ if (a.motivo === 'cuenta') imprimirCuentaAviso(a); });
+    if (!primera && autoImp) avNuevos.forEach(function(a){ if (a.motivo === 'cuenta') imprimirUnaVez('cuenta:' + a.id, function(){ imprimirCuentaAviso(a); }); });
     if (!primera && nuevos.length) {
       if (nuevos.some(suenaCanal)) sonidoNuevo(); document.title = '(' + nuevos.length + ') Nuevo pedido';
       var n0 = nuevos[0];
@@ -840,7 +841,7 @@ function imprimirCuenta(c){
    Desde aquí también se puede: pasar la mesa a otro mozo, marcar entregas, imprimir la cuenta y cerrarla. */
 var SALON = null, MOZO_F = '', MESA_SEL = '', EDITANDO = false, ARRASTRANDO = false, VISTA_SALON = 'plano';
 try { VISTA_SALON = localStorage.getItem('pg-vsalon') || 'plano'; } catch(e) {}
-var TXT_MESA = { libre:'Libre', sentada:'Sentados, sin pedido', cocina:'En cocina', listo:'Listo para servir', servida:'Servida (comiendo)', llama:'Llama al mozo', cuenta:'Pide la cuenta' };
+var TXT_MESA = { libre:'Libre', sentada:'Sentados, sin pedido', cocina:'En cocina', listo:'Listo para servir', servida:'Servida (comiendo)', llama:'Llama al mozo', cuenta:'Cuenta solicitada' };
 var FORMAS = ['cuadrada','redonda','larga','barra'];
 function mesaSalon(n){ return SALON ? SALON.mesas.filter(function(m){ return String(m.mesa) === String(n); })[0] : null; }
 function atiendeMesa(n){ var m = mesaSalon(n); return m && m.atiende ? m.atiende.nombre : ''; }
@@ -1186,6 +1187,7 @@ function detalleMesa(m){
   if (m.estado === 'libre') cuerpo.push(el('p', {class:'nota', text: m.zona ? 'Mesa libre · zona de ' + m.zona.nombre + '. Se asigna sola cuando un mozo la sienta o toma su pedido.' : 'Mesa libre.'}));
   else cuerpo.push(el('p', {class:'nota', text:'Desde las ' + m.desde + ' (' + minDesdeTs(m.ts) + ' min)' + (m.n ? ' · ' + m.n + ' pedido(s)' : ' · todavía sin pedido')}));
   AVISOS.filter(function(a){ return String(a.mesa) === String(m.mesa); }).forEach(function(a){
+    if (a.silencioso) { cuerpo.push(el('p', {class:'nota', text:'🧾 Cuenta solicitada' + (a.detalle ? ' · ' + a.detalle : '') + ' · ' + a.hora})); return; }
     cuerpo.push(el('div', {class:'avm ' + a.motivo, style:'padding:6px 10px;font-size:13px'}, [el('span', {text:(a.motivo === 'cuenta' ? '🧾 ' : '🙋 ') + a.texto + (a.detalle ? ' · ' + a.detalle : '') + ' · ' + a.hora}), el('span', {class:'esp'}),
       el('button', {class:'btn ok peq', text:'✓ Atendido', onclick:function(){ run('atenderAviso', a.id).then(cargarPedidos).catch(error); }})]));
   });
@@ -1228,7 +1230,7 @@ function detalleMesa(m){
 function pintarAvisos(){
   var w = $('#avisosMesa'); if (!w) return; w.textContent = '';
   if (AREA === 'llevar') return;
-  AVISOS.forEach(function(a){
+  AVISOS.filter(function(a){ return !a.silencioso; }).forEach(function(a){
     var m = Math.max(0, Math.floor((ahora() - a.ts) / 60000));
     w.appendChild(el('div', {class:'avm ' + a.motivo}, [
       el('span', {style:'font-size:28px', text: a.motivo === 'cuenta' ? '🧾' : '🙋'}),
@@ -1292,6 +1294,7 @@ function tarjeta(p, flash){
       p.ref ? el('div', {class:'ped__dato'}, [el('b', {text:'Código del cliente: '}), p.ref]) : null,
       p.comprobante ? bloqueComp(p) : null,
       el('div', {class:'ped__tot', text: soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '')}),
+      p.ajuste ? el('div', {class:'nota'}, [el('b', {text:'💲 Ajuste ' + signado(p.ajuste) + ' (' + pctAjuste(p) + ')'}), ' sobre el total original ' + soles(p.totalOriginal) + (p.ajusteMotivo ? ' · ' + p.ajusteMotivo : '')]) : null,
       acciones(p)
     ])
   ]);
@@ -1316,6 +1319,7 @@ function bloquePago(p){
   if (p.pagoEstado === 'Confirmado') return el('div', {class:'pago pago--ok', text:'💳 Pago confirmado · ' + p.pago});
   return el('div', {class:'pago'}, [
     el('div', null, [el('b', {text:'💳 PAGO POR VERIFICAR'}), ' · ' + p.pago + ' · ' + soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '')]),
+    p.aceptado ? el('div', {class:'nota', text:'✓ Pedido aceptado (' + p.aceptado + '). Falta verificar el pago.'}) : null,
     el('div', {class:'nota', text: p.captura ? 'El cliente subió la captura. Revisa en la app del banco que el dinero llegó antes de confirmar.' : 'No subió captura en la web: la enviará por WhatsApp. Revisa en la app del banco que el dinero llegó.'}),
     el('div', {style:'display:flex;gap:6px;margin-top:4px;flex-wrap:wrap'}, [
       p.captura ? el('button', {class:'btn peq', text:'👁 Ver captura', onclick:function(){ verCaptura(p); }}) : null,
@@ -1327,7 +1331,7 @@ function confirmarPagoP(p){
   if (!confirm('¿Confirmas que el pago del pedido #' + nro(p) + ' (' + p.pago + ', ' + soles(p.total) + ') YA llegó a la cuenta?\n\nAl confirmar se imprime la comanda y el pedido pasa a cocina.')) return;
   run('confirmarPago', p.numero).then(function(){
     toast('Pago confirmado · pedido #' + nro(p));
-    if (autoImp && !IMPRESOS[p.numero]) imprimirNuevo(p);
+    if (autoImp && !IMPRESOS[p.numero]) imprimirUnaVez('nuevo:' + p.numero, function(){ imprimirNuevo(p); });
     delete AVISADOS[p.numero]; cargarPedidos();
   }).catch(error);
 }
@@ -1345,6 +1349,7 @@ function verCaptura(p){
 
 function acciones(p){
   var w = el('div', {class:'ped__acc'});
+  if (p.estado === 'Nuevo' && p.pagoEstado === 'Por verificar' && !p.aceptado) w.appendChild(el('button', {class:'btn ok peq', text:'✓ Aceptar pedido', title:'Acepta el pedido y apaga la alarma; el pago se verifica aparte', onclick:function(){ aceptar(p); }}));
   (SIG[p.estado] || []).forEach(function(s){
     if (s === 'En camino' && p.canal !== 'delivery') return;
     if (s === 'Confirmado' && p.pagoEstado === 'Por verificar') return;   // se confirma con "✓ Pago recibido"
@@ -1352,6 +1357,7 @@ function acciones(p){
   });
   if (p.estado !== 'Cancelado' && p.estado !== 'Entregado') w.appendChild(el('button', {class:'btn mal peq', text:'Cancelar', onclick: function(){ if (confirm('¿Cancelar el pedido #' + nro(p) + '?')) cambiar(p, 'Cancelado'); }}));
   if (p.canal === 'mesa' && p.estado !== 'Cancelado' && p.compEstado !== 'Emitido') w.appendChild(el('button', {class:'btn peq', text:'✏️ Editar', title:'Corregir el pedido: cantidades, quitar o agregar productos', onclick: function(){ editarPedido(p.numero); }}));
+  if (p.estado !== 'Cancelado' && p.estado !== 'Entregado' && p.pagoEstado !== 'Confirmado') w.appendChild(el('button', {class:'btn peq', text:'💲 Ajustar', title:'Descuento, recargo o precio final solo para este pedido', onclick: function(){ ajustarPrecio(p); }}));
   w.appendChild(el('button', {class:'btn peq', text:'🍳 Cocina', title:'Reimprimir el ticket de cocina', onclick: function(){ imprimirCocina(p); }}));
   w.appendChild(el('button', {class:'btn peq', text:'🖨 Comanda', onclick: function(){ imprimirComanda(p); }}));
   if (p.compEstado !== 'Emitido') w.appendChild(el('button', {class:'btn peq', title:'Eliminar del todo (para pedidos de prueba)', text:'🗑', onclick: function(){ eliminar(p); }}));
@@ -1516,8 +1522,79 @@ function imprimirCambioCocina(r){
 
 function cambiar(p, estado){
   if (estado === 'Confirmado' && p.pagoEstado === 'Por verificar') { confirmarPagoP(p); return; }
-  if (estado === 'Confirmado' && autoImp && !IMPRESOS[p.numero]) imprimirNuevo(p);
-  run('cambiarEstado', p.numero, estado).then(function(){ toast('Pedido #' + nro(p) + ': ' + estado); document.title = 'Panel · Pasta Gallo'; delete AVISADOS[p.numero]; cargarPedidos(); }).catch(error);
+  // el ticket sale DESPUÉS de que el servidor confirma el cambio (antes salía aunque el cambio fallara)
+  run('cambiarEstado', p.numero, estado, p.estado).then(function(){
+    toast('Pedido #' + nro(p) + ': ' + estado); document.title = 'Panel · Pasta Gallo'; delete AVISADOS[p.numero];
+    if (estado === 'Confirmado' && autoImp && !IMPRESOS[p.numero]) imprimirUnaVez('nuevo:' + p.numero, function(){ imprimirNuevo(p); });
+    cargarPedidos();
+  }).catch(function(e){ error(e); cargarPedidos(); });
+}
+/* ---------- ajustes de precio de un pedido (descuento, recargo, precio final) ----------
+   La vista previa usa la misma cuenta que el servidor (calcularAjuste_ en Code.gs); el servidor recalcula y manda. */
+function signado(n){ n = Number(n) || 0; return (n < 0 ? '−' : '+') + 'S/ ' + Math.abs(n).toFixed(2); }
+function pctAjuste(p){ var o = Number(p.totalOriginal) || 0; return o > 0 ? (Math.round(Number(p.ajuste) / o * 10000) / 100).toFixed(2) + ' %' : '0 %'; }
+function calcAjuste(orig, tipo, valor){
+  orig = Number(orig) || 0;
+  var r2 = function(x){ return Math.round(x * 100) / 100; };
+  if (tipo === 'quitar') return {final: orig, dif: 0, pct: 0};
+  var v = Number(String(valor).replace(',', '.')), f;
+  if (tipo === 'precio_final') { if (!isFinite(v) || v < 0 || String(valor).trim() === '') return {error:'Escribe el precio final.'}; f = v; }
+  else {
+    if (!isFinite(v) || v <= 0) return {error:'Escribe un valor mayor que cero.'};
+    if (tipo === 'desc_monto') { if (v > orig) return {error:'El descuento no puede pasar del total.'}; f = orig - v; }
+    else if (tipo === 'desc_pct') { if (v > 100) return {error:'El descuento no puede pasar de 100 %.'}; f = orig * (1 - v / 100); }
+    else if (tipo === 'rec_monto') f = orig + v;
+    else if (tipo === 'rec_pct') { if (v > 300) return {error:'El recargo no puede pasar de 300 %.'}; f = orig * (1 + v / 100); }
+    else return {error:'Tipo de ajuste no válido.'};
+  }
+  f = r2(f); var dif = r2(f - orig);
+  return {final: f, dif: dif, pct: orig > 0 ? r2(dif / orig * 100) : 0};
+}
+function ajustarPrecio(p){
+  var orig = Number(p.totalOriginal) || Number(p.total) || 0;
+  var caja = $('#caja'); caja.textContent = '';
+  caja.appendChild(el('h2', {text:'Ajustar precio · pedido #' + nro(p)}));
+  caja.appendChild(el('p', {class:'nota', text:'Total original ' + soles(orig) + (p.ajuste ? ' · ajuste actual ' + signado(p.ajuste) + (p.ajusteMotivo ? ' (' + p.ajusteMotivo + ')' : '') : '') + '. Solo cambia este pedido, no los precios de la carta. Un ajuste nuevo reemplaza al anterior.'}));
+  var tipos = [['desc_monto','Descuento en S/'],['desc_pct','Descuento en %'],['precio_final','Precio final (S/)'],['rec_monto','Recargo en S/'],['rec_pct','Recargo en %']];
+  if (p.ajuste) tipos.push(['quitar','Quitar el ajuste (volver al total original)']);
+  var sel = el('select', {class:'txt', name:'tipo'}); tipos.forEach(function(t){ sel.appendChild(el('option', {value:t[0], text:t[1]})); });
+  var val = el('input', {class:'txt', name:'valor', type:'text', inputmode:'decimal', placeholder:'Valor'});
+  var mot = el('input', {class:'txt', name:'motivo', type:'text', maxlength:'120', placeholder:'Motivo (obligatorio)'});
+  var vista = el('p', {style:'font-weight:700;min-height:1.4em'}); vista.setAttribute('aria-live', 'polite');
+  var err = el('p', {class:'nota', style:'color:#b3261e'}); err.setAttribute('role', 'alert');
+  caja.appendChild(el('label', null, ['Tipo de ajuste', sel]));
+  var lblVal = el('label', null, ['Valor', val]); caja.appendChild(lblVal);
+  caja.appendChild(el('label', null, ['Motivo', mot]));
+  caja.appendChild(vista); caja.appendChild(err);
+  function pintar(){
+    err.textContent = ''; lblVal.style.display = sel.value === 'quitar' ? 'none' : '';
+    var r = calcAjuste(orig, sel.value, val.value);
+    if (r.error) { vista.textContent = sel.value === 'quitar' ? '' : 'Original ' + soles(orig); return null; }
+    vista.textContent = 'Original ' + soles(orig) + ' → Nuevo ' + soles(r.final) + (r.dif ? ' · ' + (r.dif < 0 ? 'Descuento ' : 'Recargo ') + soles(Math.abs(r.dif)) + ' (' + Math.abs(r.pct).toFixed(2) + ' %)' : ' · sin cambio');
+    return r;
+  }
+  sel.addEventListener('change', pintar); val.addEventListener('input', pintar);
+  var ok = el('button', {class:'btn prim', type:'button', text:'Aplicar ajuste', onclick:function(){
+    var r = calcAjuste(orig, sel.value, val.value);
+    if (r.error) { err.textContent = r.error; return; }
+    if (sel.value !== 'quitar' && mot.value.trim().length < 3) { err.textContent = 'Escribe el motivo del ajuste.'; return; }
+    if (sel.value !== 'quitar' && !r.dif) { err.textContent = 'El total no cambia con ese valor.'; return; }
+    ok.disabled = true;
+    run('ajustarPedido', p.numero, sel.value, val.value, mot.value).then(function(x){
+      cerrarModal(); toast('Pedido #' + nro(p) + ': total ' + soles(x.total) + (x.ajuste ? ' (' + signado(x.ajuste) + ')' : ' (original)')); cargarPedidos();
+    }).catch(function(e){ ok.disabled = false; err.textContent = String(e && e.message || e).replace(/^Error: /, ''); });
+  }});
+  caja.appendChild(el('div', {class:'pie'}, [el('span', {class:'esp'}), el('button', {class:'btn', type:'button', text:'Cancelar', onclick: cerrarModal}), ok]));
+  $('#modal').classList.add('on'); pintar();
+}
+/* Aceptar un pedido cuyo pago se está verificando: apaga la alarma de "pedido nuevo" sin pasarlo a cocina todavía */
+function aceptar(p){
+  run('aceptarPedido', p.numero).then(function(){ toast('Pedido #' + nro(p) + ' aceptado · falta verificar el pago'); delete AVISADOS[p.numero]; cargarPedidos(); }).catch(error);
+}
+/* Impresión automática UNA sola vez aunque haya varios equipos abiertos: el servidor reserva la clave primero.
+   Si no responde (sin internet) se imprime igual: mejor un ticket repetido que ninguno. */
+function imprimirUnaVez(clave, fn){
+  run('reservarImpresion', clave, false).then(function(r){ if (!r || r.primera !== false) fn(); }).catch(function(){ fn(); });
 }
 
 function eliminar(p){
@@ -1641,7 +1718,7 @@ function revisarAtrasos(){
   if (!INFO.usuario) return;
   var abierto = document.activeElement && document.activeElement.tagName === 'SELECT';
   if ($('#v-pedidos').classList.contains('on') && !abierto) pintarPedidos([]); else contadores();
-  var tardes = PEDIDOS.filter(esTarde), nuevosSin = PEDIDOS.filter(function(p){ return p.estado === 'Nuevo'; });
+  var tardes = PEDIDOS.filter(esTarde), nuevosSin = PEDIDOS.filter(function(p){ return p.estado === 'Nuevo' && !p.aceptado; });
   var recien = tardes.filter(function(p){ return !AVISADOS[p.numero]; });
   recien.forEach(function(p){ AVISADOS[p.numero] = true; });
   var tardesS = tardes.filter(suenaCanal), nuevosS = nuevosSin.filter(suenaCanal);
@@ -1652,8 +1729,9 @@ function revisarAtrasos(){
     ultimoRecordatorio = Date.now();       // recordatorio cada 2 minutos mientras haya atrasados o sin confirmar
     if (tardesS.length) sonidoTarde(); else sonidoNuevo();
   }
-  if (AVISOS.length && Date.now() - ultimoAvisoSon > 60000) { ultimoAvisoSon = Date.now(); sonidoAviso(); }   // respeta el ajuste de sonido de llamadas
-  document.title = AVISOS.length ? '🙋 ' + AVISOS.length + ' mesa(s) llamando · Pasta Gallo' : tardes.length ? '⚠ ' + tardes.length + ' atrasado(s) · Pasta Gallo' : (nuevosSin.length ? '(' + nuevosSin.length + ') Nuevo pedido' : 'Panel · Pasta Gallo');
+  var avAct = AVISOS.filter(function(a){ return !a.silencioso; });
+  if (avAct.length && Date.now() - ultimoAvisoSon > 60000) { ultimoAvisoSon = Date.now(); sonidoAviso(); }   // respeta el ajuste de sonido de llamadas
+  document.title = avAct.length ? '🙋 ' + avAct.length + ' mesa(s) llamando · Pasta Gallo' : tardes.length ? '⚠ ' + tardes.length + ' atrasado(s) · Pasta Gallo' : (nuevosSin.length ? '(' + nuevosSin.length + ') Nuevo pedido' : 'Panel · Pasta Gallo');
 }
 setInterval(revisarAtrasos, 20000);
 
@@ -2839,9 +2917,9 @@ function enviarCompCorreo(c){
 
 /* ---------- ajustes ---------- */
 var GRUPOS_AJ = [
-  ['Cobros (Yape, Plin y transferencia)', [['yape_numero','Número de Yape'],['yape_titular','Nombre que aparece en Yape'],['plin_numero','Número de Plin'],['plin_titular','Nombre que aparece en Plin'],['banco_texto','Datos para transferencia (banco, cuenta, CCI y titular)','area']],
-   'El cliente de delivery o recojo ve estos datos al elegir cómo pagar y puede subir la captura. El pedido llega como "PAGO POR VERIFICAR" y la comanda se imprime recién cuando tocas "✓ Pago recibido".'],
-  ['Pedidos', [['minutos_alerta','Minutos para marcar un pedido como atrasado (tarjeta roja parpadeante y sonido)'],['pedidos_activos','Recibir pedidos por la web','si'],['pedidos_mesa_activos','Pedidos desde la mesa (QR)','si'],['recojo_activo','Permitir recojo en local','si'],['pedidos_fuera_de_horario','Aceptar pedidos programados estando cerrado','si'],['metodos_pago','Métodos de pago para DELIVERY y RECOJO (pago anticipado, sin efectivo). Ej.: Yape o Plin, Transferencia. (“Yape” y “Plin” se muestran juntos como una sola opción “Yape o Plin” con el QR de Plin)'],['metodos_pago_mesa','Métodos de pago en el SALÓN (al pedir la cuenta). Ej.: Yape o Plin, Efectivo, Tarjeta (en el salón no se ofrece transferencia)'],['comprobantes','Comprobantes que puede pedir el cliente: Boleta, Factura (en Nuevo RUS solo Boleta; vacío = no se ofrece)'],['texto_delivery','Texto sobre el costo de delivery','area']]],
+  ['Cobros (Yape, Plin y transferencia)', [['yape_numero','Número de Yape'],['yape_titular','Nombre que aparece en Yape'],['plin_numero','Número de Plin'],['plin_titular','Nombre que aparece en Plin'],['banco_nombre','Banco (ej.: Interbank)'],['banco_moneda','Moneda (ej.: PEN)'],['banco_cuenta','N.° de cuenta (solo dígitos)'],['banco_cci','CCI (20 dígitos)'],['banco_titular','Titular de la cuenta'],['banco_texto','Instrucciones adicionales para la transferencia (opcional)','area']],
+   'Los datos de la cuenta se muestran al cliente con un botón de copiar para la cuenta y otro para el CCI. Cada cambio queda en la hoja Auditoría. El cliente de delivery o recojo ve estos datos al elegir cómo pagar y puede subir la captura. El pedido llega como "PAGO POR VERIFICAR" y la comanda se imprime recién cuando tocas "✓ Pago recibido".'],
+  ['Pedidos', [['minutos_alerta','Minutos para marcar un pedido como atrasado (tarjeta roja parpadeante y sonido)'],['pedidos_activos','Recibir pedidos por la web','si'],['pedidos_mesa_activos','Pedidos desde la mesa (QR)','si'],['recojo_activo','Permitir recojo en local','si'],['pedidos_fuera_de_horario','Aceptar pedidos programados estando cerrado','si'],['pago_obligatorio','Exigir que el cliente elija un método de pago (si lo apagas, puede pedir sin elegir y coordinan el pago después)','si1'],['metodos_pago','Métodos de pago para DELIVERY y RECOJO (pago anticipado, sin efectivo). Ej.: Yape o Plin, Transferencia. (“Yape” y “Plin” se muestran juntos como una sola opción “Yape o Plin” con el QR de Plin)'],['metodos_pago_mesa','Métodos de pago en el SALÓN (al pedir la cuenta). Ej.: Yape o Plin, Efectivo, Tarjeta (en el salón no se ofrece transferencia)'],['comprobantes','Comprobantes que puede pedir el cliente: Boleta, Factura (en Nuevo RUS solo Boleta; vacío = no se ofrece)'],['texto_delivery','Texto sobre el costo de delivery','area']]],
   ['Horario', [['horario_texto','Texto del horario para el cliente'],['cerrado_texto','Texto de días cerrados'],['horario_lunes','Lunes'],['horario_martes','Martes'],['horario_miercoles','Miércoles'],['horario_jueves','Jueves'],['horario_viernes','Viernes'],['horario_sabado','Sábado'],['horario_domingo','Domingo']], 'Formato 18:00-23:00 o la palabra cerrado. La web detecta sola si está abierto.'],
   ['Negocio', [['nombre','Nombre'],['desde','Texto bajo el logo'],['direccion','Dirección'],['telefono','Teléfono visible'],['whatsapp','WhatsApp (51 + número, sin espacios)'],['mensaje_whatsapp','Mensaje inicial de WhatsApp'],['instagram','Instagram (sin @)'],['tiktok','TikTok (sin @)'],['facebook_url','Link de Facebook']]],
   ['Nuestra historia', [['historia_eyebrow','Título pequeño'],['historia_titulo','Título'],['historia_texto','Texto (párrafos separados por una línea en blanco)','area']]],
@@ -2854,7 +2932,7 @@ function cargarAjustes(){
     GRUPOS_AJ.forEach(function(g){
       var f = el('div', {class:'form'});
       g[1].forEach(function(c){
-        if (c[2] === 'si') f.appendChild(campo(c[1], c[0], String(a[c[0]]||'').toUpperCase() === 'SI' ? 'SI' : 'NO', 'select', {opciones:[['SI','Sí'],['NO','No']]}));
+        if (c[2] === 'si' || c[2] === 'si1') f.appendChild(campo(c[1], c[0], (String(a[c[0]]||'') === '' && c[2] === 'si1') || String(a[c[0]]||'').toUpperCase() === 'SI' ? 'SI' : 'NO', 'select', {opciones:[['SI','Sí'],['NO','No']]}));   // 'si1' = sin valor guardado cuenta como Sí
         else f.appendChild(campo(c[1], c[0], c[0] === 'minutos_alerta' ? (a[c[0]] || 45) : a[c[0]], c[2] === 'area' ? 'area' : (c[0] === 'minutos_alerta' ? 'number' : 'text'), {ancho: c[2] === 'area'}));
       });
       w.appendChild(el('div', {class:'grupo'}, [el('h3', {text:g[0]}), g[2] ? el('p', {class:'nota', text:g[2], style:'margin-bottom:8px'}) : null, f]));

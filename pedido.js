@@ -701,7 +701,10 @@
     }
     if (c.qr) { var q = h("img", "cobro__qr"); q.src = c.qr; q.alt = "QR " + metodo; q.onerror = function () { q.remove(); }; w.appendChild(q); }
     if (/yape o plin/i.test(metodo) && c.qr) w.appendChild(h("p", "hoja__ayuda", t("yapePlinQr")));
-    if (c.numero) w.appendChild(filaCopiar(t("numeroA"), c.numero));
+    if (c.transf && (c.banco || c.moneda)) w.appendChild(h("p", "cobro__tit", [c.banco, c.moneda].filter(Boolean).join(" · ")));
+    if (c.numero) w.appendChild(filaCopiar(c.transf ? t("cuentaNum") : t("numeroA"), c.numero));
+    if (c.cci) w.appendChild(filaCopiar(t("cci"), c.cci));
+    if (c.transf && (c.numero || c.cci)) w.appendChild(h("p", "hoja__ayuda", t("instrTransf")));
     if (c.titular) w.appendChild(h("p", "cobro__tit", t("titular") + " " + c.titular));
     if (c.texto) w.appendChild(h("p", "cobro__banco", c.texto));
     if (!conCaptura) { w.appendChild(h("p", "hoja__ayuda", t("pagoMesaQr"))); return; }
@@ -771,7 +774,7 @@
     if (!form.nombre || form.nombre.trim().length < 2) return t("errNombre");
     if (String(form.telefono || "").replace(/\D/g, "").length < 9) return t("errCel");
     if (form.canal === "delivery" && (!form.direccion || form.direccion.trim().length < 5)) return t("errDir");
-    if (CFG.metodosPago && CFG.metodosPago.length && !form.pago) return t("errPago");
+    if (CFG.pagoObligatorio !== false && CFG.metodosPago && CFG.metodosPago.length && !form.pago) return t("errPago");
     if (!abiertoAhora() && !form.programado) return t("errHora");
     if (carrito.some(function (l) { return l.alcohol; }) && !form.mayorEdad) return t("errMayor");
     return validarComprobante();

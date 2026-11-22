@@ -986,7 +986,12 @@ function editarPedidoMesa(sesion, numero, cambios) {
     var resumen = agregados.map(function (l) { return '+' + l.cant + ' ' + l.nombre; }).concat(quitados.map(function (l) { return '−' + l.cant + ' ' + l.nombre; })).join(', ');
     var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), cab = asegurarColumnas_(h, COLS.pedidos);
     var set = function (k, v) { h.getRange(p._fila, cab.indexOf(k) + 1).setValue(v); };
-    set('items_json', JSON.stringify(out)); set('total', total); set('detalle', protegerCelda_(detalleDe_(out)));
+    set('items_json', JSON.stringify(out)); set('total', total);
+    if (String(p.total_original || '') !== '') {   // el total se recalculó con los platos: el ajuste anterior ya no corresponde
+      set('total_original', ''); set('ajuste', ''); set('ajuste_motivo', '');
+      try { auditar_(quien, 'Ajuste anulado', 'Pedido #' + p.numero + ' editado: se volvió al total de los platos'); } catch (e) { console.error(e); }
+    }
+    set('detalle', protegerCelda_(detalleDe_(out)));
     set('entregado', ent.join(',')); set('estado', est); set('actualizado', ahora);
     set('historial', protegerCelda_(String(p.historial || '') + ' · Editado ' + fmt_(ahora, 'HH:mm') + ' (' + quien + '): ' + resumen).slice(0, 2000));
     nuevaVersion_();
