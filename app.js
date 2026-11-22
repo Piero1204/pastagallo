@@ -188,7 +188,7 @@
     bienvenida.appendChild(h("p", null, texto));
     var pedir = q("#btn-pedir");
     if (pedir && !conCarrito) pedir.lastChild.textContent = e.abierto ? t("realizarPedido") : t("escribenos");
-    if (fabTxt) fabTxt.textContent = e.abierto ? t("pedirAhora") : "WhatsApp";
+    if (fabTxt) fabTxt.textContent = e.abierto ? t("pedirAhora") : t("consultasWa");
   }
 
   function botonIdioma(cls) {

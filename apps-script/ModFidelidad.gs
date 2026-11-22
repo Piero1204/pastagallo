@@ -90,10 +90,9 @@ EXT_ACCIONES['fidelidad'] = function (body) {
 
 /* ---------- panel (solo administrador) ---------- */
 function fidelidadModulo(sesion, activar) {
-  var q = modExigir_(sesion, 'clientes');
-  guardarClave_('modulo_fidelidad', activar === true ? 'SI' : 'NO');
-  auditar_(q, activar === true ? 'Encendió fidelidad' : 'Apagó fidelidad', '');
-  return { ok: true, activa: activar === true };
+  // Ya no se enciende/apaga: la fidelidad siempre está disponible y se controla solo con la regla (vacía = sin puntos).
+  modExigir_(sesion, 'clientes');
+  return { ok: true, activa: true };
 }
 function fidelidadGuardarRegla(sesion, valor) {
   var q = modExigir_(sesion, 'clientes');

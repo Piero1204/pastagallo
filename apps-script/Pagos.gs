@@ -6,7 +6,7 @@
  *  - La web consulta doPost { verificarPago: id, telefono } cada 8 s (≈3 min).
  *  - Además, un activador revisa cada 5 min los pedidos por verificar de las últimas 3 h (instalarRevisionPagos).
  *  - En el panel, el botón "🔎 Verificar con Gmail" hace lo mismo al instante.
- * Se acepta un aviso de Gmail si: tiene EXACTAMENTE el monto del pedido, llegó entre pago_ventana_min (15) minutos
+ * Se acepta un aviso de Gmail si: tiene EXACTAMENTE el monto a pagar (productos + delivery; columnas total + costo_delivery), llegó entre pago_ventana_min (15) minutos
  * antes del pedido y ahora, y su número de operación (o el id del correo) no se usó antes para otro pedido.
  * Si coincide → pago_estado "Verificado" + estado "Confirmado" → el panel imprime la comanda de cocina.
  * Si no → sigue "Por verificar" (el local revisa la captura y confirma a mano). Nunca se imprime sin pago verificado.
@@ -29,7 +29,7 @@ function verificarPagoPublico_(body) {
   cache.put('verif:' + id, String(n + 1), 3600);
   var p = pedidoPorId_(id);
   if (!p || String(p.telefono).replace(/\D/g, '').slice(-9) !== tel) return { ok: false, estado: 'rechazado', error: 'Pedido no encontrado.' };
-  var res = { ok: true, estado: 'pendiente', num_dia: p.num_dia, total: Number(p.total) || 0 };
+  var res = { ok: true, estado: 'pendiente', num_dia: p.num_dia, total: Number(p.total) || 0, aCobrar: Math.round(((Number(p.total) || 0) + (Number(p.costo_delivery) || 0)) * 100) / 100 };
   if (String(p.estado) === 'Cancelado') { res.estado = 'rechazado'; return res; }
   var pe = String(p.pago_estado || '');
   if (pe === 'Verificado' || pe === 'Confirmado') { res.estado = 'verificado'; return res; }
@@ -86,7 +86,8 @@ function verificarPagoGmail_(id) {
   try {
     var p = pedidoPorId_(id);
     if (!p || String(p.pago_estado) !== 'Por verificar' || String(p.estado) === 'Cancelado') return false;
-    var total = Math.round((Number(p.total) || 0) * 100) / 100;
+    // Monto a pagar = productos + delivery (columna total = solo productos; costo_delivery aparte). Pedidos sin delivery: igual que antes.
+    var total = Math.round(((Number(p.total) || 0) + (Number(p.costo_delivery) || 0)) * 100) / 100;
     var fecha = p.fecha instanceof Date ? p.fecha : new Date(p.fecha);
     if (!(total > 0) || isNaN(fecha.getTime())) return false;
     var cfg = leerConfig_();

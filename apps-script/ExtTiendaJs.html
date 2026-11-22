@@ -33,7 +33,7 @@
         var det = v.lineas.map(function(l){ return l.nombre + ' ×' + l.cant; }).join(', ');
         var acc = el('td');
         if (!anul) acc.appendChild(el('button', { class: 'btn', text: 'Anular', onclick: function(){
-          var m = prompt('Motivo de la anulación de ' + v.id + ' (' + soles(v.total) + '):'); if (!m || m.trim().length < 3) return;
+          var m = prompt('Motivo de la anulación de ' + v.id + ' (' + soles(v.total) + '):'); if (!m || !(m.trim().length > 2)) return;
           run('tiendaAnular', v.id, m.trim()).then(function(){ toast('Venta anulada.'); tiCargarVentas(); }).catch(error);
         } }));
         else acc.appendChild(el('span', { class: 'nota', text: 'ANULADA: ' + v.anuladaMotivo }));

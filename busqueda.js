@@ -662,7 +662,7 @@
       lineas.forEach(function (L) { var src = items.filter(function (it) { return it.c.s === L._s; })[0]; if (src && src.nota) L.nota = limpiarSalida(src.nota); delete L._s; });
       // alergias: no se interpreta nada
       T.forEach(function (t) { if (ALERGIA_RE.test(t.w)) res.alergia = true; });
-      if (res.alergia) avisos.push("Mencionaste alergias o restricciones. No podemos confirmarlas desde aquí: avísanos por WhatsApp o escríbelo en la nota del pedido.");
+      if (res.alergia) avisos.push("Mencionaste alergias o restricciones. No podemos confirmarlas desde aquí: avísanos o escríbelo en la nota del pedido.");
 
       // lo no entendido
       var run = [];
@@ -889,7 +889,8 @@
     function estilos() {
       var s = document.createElement("style");
       s.textContent =
-        ".bq-fab{position:fixed;right:14px;bottom:150px;z-index:47;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:1px solid var(--oro,#a9803f);background:var(--vino,#4a1519);color:var(--crema,#efe6d3);font:600 14px var(--sans,system-ui);box-shadow:0 4px 14px rgba(0,0,0,.35);cursor:pointer}" +
+        ".bq-fab{position:fixed;right:14px;bottom:150px;z-index:47;display:flex;align-items:center;justify-content:center;width:46px;height:46px;padding:0;border-radius:50%;border:2px solid var(--vino,#4a1519);background:var(--oro-claro,#c9a45c);color:var(--vino,#4a1519);box-shadow:0 3px 10px rgba(0,0,0,.35);cursor:pointer}" +
+        ".bq-fab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}" +
         ".bq-fab:focus-visible,.bq-b:focus-visible,.bq-x:focus-visible{outline:3px solid var(--oro-claro,#c9a45c);outline-offset:2px}" +
         ".bq-capa{position:fixed;inset:0;z-index:65;background:rgba(20,8,8,.62);display:flex;align-items:flex-end;justify-content:center}" +
         ".bq-hoja{background:var(--crema-3,#f7f1e3);color:var(--tinta,#2a1b17);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:14px 14px 0 0;font:16px/1.4 var(--sans,system-ui)}" +
@@ -925,8 +926,11 @@
     /* ----- botón flotante ----- */
     function boton() {
       var b = e("button", "bq-fab"); b.type = "button";
-      b.setAttribute("aria-label", "Pedido rápido: escribe o di tu pedido");
-      b.appendChild(e("span", null, SR ? "🎤" : "✍️")); b.appendChild(e("span", null, "Pedido rápido"));
+      b.setAttribute("aria-label", "Pedido rápido: escribe o di tu pedido"); b.title = "Pedido rápido";
+      b.setAttribute("aria-haspopup", "dialog");
+      // ícono compacto: micrófono (con voz) o lápiz (sin voz); plegado por defecto, el cuadro se despliega al tocarlo
+      b.innerHTML = SR ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/></svg>';
       b.addEventListener("click", function () { abrir(""); });
       document.body.appendChild(b);
     }
