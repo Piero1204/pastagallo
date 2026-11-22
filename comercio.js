@@ -275,7 +275,8 @@
     b.textContent = "Pedido en barra: lo recoges en el local";
     document.body.insertBefore(b, document.body.firstChild);
   }
-  function listo() { pintarBarra(); pintarAviso(); if (X.avisoCocina) setInterval(pintarAviso, 60000); }
+  /* En barra la persona ya está en el local: no hay avisos de cierre ni franja de "pedido en barra" (app.js pinta su propia barra de estado) */
+  function listo() { if (BARRA) return; pintarBarra(); pintarAviso(); if (X.avisoCocina) setInterval(pintarAviso, 60000); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", listo); else listo();
 
   /* ---------- reseña ---------- */
