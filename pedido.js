@@ -37,7 +37,7 @@
   /* Datos del cliente y su último pedido: se guardan SOLO en su propio celular (localStorage),
      para no tener que escribirlos otra vez. */
   var CLAVE_CLIENTE = "pg-cliente", CLAVE_ULTIMO = "pg-ultimo-pedido";
-  var CAMPOS_CLIENTE = ["nombre", "telefono", "direccion", "referencia", "zona", "pago", "canal", "doc", "razon", "correo"];
+  var CAMPOS_CLIENTE = ["nombre", "telefono", "direccion", "referencia", "pago", "canal", "doc", "razon", "correo"];
   function leerJson(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
   function guardarJson(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function recordarCliente() {
@@ -111,12 +111,11 @@
     return { ok: true, costo: fin(c), zona: '', km: km, metodo: 'distancia' };
   }
   function tarifas() { return CFG.deliveryTarifas && CFG.deliveryTarifas.zonas && CFG.deliveryTarifas.zonas.length ? CFG.deliveryTarifas : DEL_DEF; }
-  /* Entrega según lo que eligió el cliente: zona de la lista > ubicación. null si no es delivery. */
+  /* Entrega automática: el cliente solo da su ubicación (GPS o dirección buscada en el mapa). Con las coordenadas se mira primero si caen en alguna
+     zona de la lista (precio de la zona); si no, se aplica la fórmula por distancia. La zona es interna: no se muestra, solo viaja en el pedido. null si no es delivery. */
   function entregaActual() {
     if (MODO === "mesa" || form.canal !== "delivery") return null;
-    var r = calcularDelivery(tarifas(), { zona: form.zona, lat: form.lat, lng: form.lng });
-    if (r.ok && r.metodo === "zona" && form.lat != null) { var rc = calcularDelivery(tarifas(), { lat: form.lat, lng: form.lng }); if (rc.fuera) return rc; }
-    return r;
+    return calcularDelivery(tarifas(), { lat: form.lat, lng: form.lng });
   }
   function costoDelivery() { var e = entregaActual(); return e && e.ok ? e.costo : 0; }
   function sumaPagar() { return total() + costoDelivery(); }
@@ -306,7 +305,7 @@
     return w;
   }
 
-  /* Casillas excluyentes que se pueden dejar sin marcar (pago y comprobante son opcionales). alCambiar("") si no queda ninguna. */
+  /* Casillas excluyentes que se pueden dejar sin marcar (pago y comprobante: sin marcar = no se usa). alCambiar("") si no queda ninguna. */
   function opcionesOpc(nombre, opciones, alCambiar) {
     var w = h("div", "opciones"); w.setAttribute("role", "group");
     opciones.forEach(function (o) {
@@ -322,14 +321,35 @@
     return w;
   }
 
-  /* ---------- ficha del producto (detalle + opciones) ---------- */
-  function abrirDetalle(it, sec, tamPre) {
+  /* Selector de tamaño en segmentos (una sola fila: nombre + precio) */
+  function segmentos(nombre, opciones, alCambiar) {
+    var w = h("div", "seg"); w.setAttribute("role", "radiogroup");
+    opciones.forEach(function (o) {
+      var l = h("label", "seg__o"), r = h("input"); r.type = "radio"; r.name = nombre; r.value = o.valor;
+      if (o.marcado) r.checked = true;
+      r.addEventListener("change", function () { alCambiar([o.valor]); });
+      l.appendChild(r); l.appendChild(h("span", "seg__t", o.texto));
+      if (o.extra) l.appendChild(h("span", "seg__p", o.extra));
+      w.appendChild(l);
+    });
+    return w;
+  }
+  function tarjeta(titulo) { var w = h("section", "tarj"); if (titulo) w.appendChild(h("h3", "hoja__sub", titulo)); return w; }
+
+  /* ---------- ficha del producto (detalle + opciones): foto grande, tarjetas de opciones, botón fijo abajo ---------- */
+  function abrirDetalle(it, sec, tamPre, opts) {
+    opts = opts || {};
     var c = h("div", "hoja__cuerpo");
+    var esProd = sec && (sec.id === "italia" || (sec.id === "vini" && /^fotos\//.test(it.foto || "")));
+    var fotoW = h("div", "detalle__fw" + (it.foto ? "" : " detalle__fw--vacia"));
+    var im = h("img", "detalle__foto" + (it.foto && esProd ? " detalle__foto--producto" + (sec.id === "vini" ? " detalle__foto--botella" : "") : "")); im.alt = it.foto ? tx(it, "n") : "";
     if (it.foto) {
-      var im = h("img", "detalle__foto" + (sec && (sec.id === "italia" || (sec.id === "vini" && /^fotos\//.test(it.foto))) ? " detalle__foto--producto" + (sec.id === "vini" ? " detalle__foto--botella" : "") : "")); im.src = it.foto; im.alt = tx(it, "n");
-      im.onerror = function () { im.remove(); };
-      c.appendChild(im);
-    }
+      im.src = it.foto;
+      im.onerror = function () { im.onerror = null; im.src = "gallo-oro.png"; im.className = "detalle__foto detalle__foto--vacia"; im.alt = ""; fotoW.className = "detalle__fw detalle__fw--vacia"; };
+    } else { im.src = "gallo-oro.png"; im.className = "detalle__foto detalle__foto--vacia"; }
+    fotoW.appendChild(im); c.appendChild(fotoW);
+    var sb = I.lang === "en" ? it.sub_en : it.sub;
+    if (sb) c.appendChild(h("p", "detalle__sub", sb));
     var avDet = window.PG_COMERCIO && PG_COMERCIO.aviso ? PG_COMERCIO.aviso(it, sec) : "";
     if (avDet) c.appendChild(h("p", "hr-aviso", avDet));
     if (tx(it, "g")) c.appendChild(h("p", "detalle__g", tx(it, "g")));
@@ -386,14 +406,14 @@
 
     function bloqueGrupo(gid) {
       var g = GRUPOS[gid];
-      // los adicionales opcionales de varias opciones (ej.: ingredientes extra) van plegados
+      // los adicionales de varias opciones (ej.: ingredientes extra) van plegados
       var plegable = g.tipo === "varias" && !g.req;
-      var w = h(plegable ? "details" : "div", "grupo-op" + (plegable ? " grupo-op--plegable" : ""));
+      var w = h(plegable ? "details" : "section", "grupo-op tarj" + (plegable ? " grupo-op--plegable" : ""));
       if (plegable) {
         var min = g.ops.reduce(function (m, o) { return o.p && (m == null || o.p < m) ? o.p : m; }, null);
         w.appendChild(h("summary", "hoja__sub", t("extrasOpc", { g: tx(g, "n").toLowerCase() }) + (min ? " · " + t("masPrecio") + Number(min).toFixed(2) : "")));
         if ((sel.ops[gid] || []).length) w.open = true;
-      } else w.appendChild(h("h3", "hoja__sub", tx(g, "n") + (g.req ? "" : " (" + t("opcional") + ")")));
+      } else w.appendChild(h("h3", "hoja__sub", tx(g, "n")));
       w.appendChild(opcionesUI("g-" + gid, g.ops.map(function (o) {
         return { valor: o.n, texto: tx(o, "n"), extra: o.p ? t("masPrecio") + Number(o.p).toFixed(2) : "",
           marcado: (sel.ops[gid] || []).indexOf(o.n) >= 0 };
@@ -402,14 +422,15 @@
     }
 
     if (it.t) {
-      c.appendChild(h("h3", "hoja__sub", t("tamano")));
-      c.appendChild(opcionesUI("tam", it.t.map(function (x, i) { return { valor: x[0], texto: x[0], extra: soles(x[1]), marcado: x[0] === sel.tam }; }),
-        false, function (v) { sel.tam = v[0]; pintarMitad(); pintar(); }));
+      var tt = tarjeta(t("tamano"));
+      tt.appendChild(segmentos("tam", it.t.map(function (x) { return { valor: x[0], texto: x[0], extra: soles(x[1]), marcado: x[0] === sel.tam }; }),
+        function (v) { sel.tam = v[0]; pintarMitad(); pintar(); }));
+      c.appendChild(tt);
     }
     /* Mitad y mitad: pizzas Media y Famiglia pueden llevar 2 sabores; se cobra el precio del sabor más caro. */
     var zonaMitad = h("div");
     function pintarMitad() {
-      zonaMitad.textContent = "";
+      zonaMitad.textContent = ""; zonaMitad.className = "";
       var puede = sec && sec.id === "pizze" && it.t && it.t.length > 1 && sel.tam !== it.t[0][0];
       if (!puede) { sel.mitad = ""; return; }
       var otras = [];
@@ -420,7 +441,8 @@
       if (!otras.length) { sel.mitad = ""; return; }
       if (!otras.some(function (x) { return x.o.id === sel.mitad; })) sel.mitad = "";
       var en = I.lang === "en";
-      zonaMitad.appendChild(h("h3", "hoja__sub", en ? "Half & half (optional)" : "Mitad y mitad (opcional)"));
+      zonaMitad.className = "tarj";
+      zonaMitad.appendChild(h("h3", "hoja__sub", en ? "Half & half" : "Mitad y mitad"));
       zonaMitad.appendChild(h("p", "hoja__ayuda", en ? "Pick a second flavour: you pay the price of the more expensive one." : "Elige un segundo sabor: se cobra el precio de la pizza más cara."));
       var lista = [{ valor: "", texto: en ? "One flavour only" : "Un solo sabor", extra: "", marcado: !sel.mitad }];
       otras.forEach(function (x) { lista.push({ valor: x.o.id, texto: tx(x.o, "n"), extra: soles(x.p), marcado: x.o.id === sel.mitad }); });
@@ -430,9 +452,9 @@
     pintarMitad();
     var zonaSalsa = h("div");
     if (it.salsa) {
-      c.appendChild(h("h3", "hoja__sub", t("eligeSalsa")));
-      if (/tris/.test(it.id)) c.appendChild(h("p", "hoja__ayuda", t("salsaTris")));
-      c.appendChild(opcionesUI("salsa", salsas.map(function (s) {
+      var ts = tarjeta(t("eligeSalsa"));
+      if (/tris/.test(it.id)) ts.appendChild(h("p", "hoja__ayuda", t("salsaTris")));
+      ts.appendChild(opcionesUI("salsa", salsas.map(function (s) {
         var sp = productos[s.id];
         return { valor: s.id, texto: sp ? tx(sp, "n") : s.n, extra: s.extra ? t("masPrecio") + Number(s.extra).toFixed(2) : "" };
       }), false, function (v) {
@@ -444,14 +466,16 @@
         (s && s.op || []).forEach(function (gid) { if (GRUPOS[gid] && (it.op || []).indexOf(gid) < 0) zonaSalsa.appendChild(bloqueGrupo(gid)); });
         pintar();
       }));
+      c.appendChild(ts);
       c.appendChild(zonaSalsa);
     }
     (it.op || []).forEach(function (gid) { if (GRUPOS[gid]) c.appendChild(bloqueGrupo(gid)); });
 
-    c.appendChild(h("h3", "hoja__sub", t("indicaciones")));
+    var tn = tarjeta(t("indicaciones"));
     var nota = h("input", "campo"); nota.type = "text"; nota.maxLength = 120; nota.placeholder = t("indicacionesPh");
     nota.addEventListener("input", function () { sel.nota = nota.value; });
-    c.appendChild(nota);
+    tn.appendChild(nota);
+    c.appendChild(tn);
     c.appendChild(err);
     var pie = h("div", "hoja__pie");
     pie.appendChild(stepper(1, 1, 20, function (v) { sel.cant = v; pintar(); }));
@@ -460,12 +484,20 @@
       var falta = gruposDe(it, sel.salsa).filter(function (g) { return GRUPOS[g].req && !(sel.ops[g] || []).length; })[0];
       if (falta) { err.textContent = t("eligeAlgo", { g: tx(GRUPOS[falta], "n").toLowerCase() }); return; }
       agregar(it, sel, precioUnit());
+      if (opts.reemplaza) quitarUnidad(opts.reemplaza);   // "llévate otro": el producto suelto se cambia por el pack de 2
       cerrarHoja();
+      if (opts.volverCarrito) setTimeout(abrirCarrito, 80);
     });
     pie.appendChild(add);
     c.appendChild(pie);
     pintar();
     abrirHoja(c, tx(it, "n"), "hoja--detalle"); botonCompartir(it);
+  }
+  function quitarUnidad(key) {
+    var i = -1; carrito.forEach(function (l, k) { if (l.key === key) i = k; });
+    if (i < 0) return;
+    if (carrito[i].cant > 1) carrito[i].cant--; else carrito.splice(i, 1);
+    guardar(); pintarBarra();
   }
 
   function textoOpciones(it, sel, en) {
@@ -529,15 +561,72 @@
 
   /* ---------- carrito y formulario ---------- */
   var form = {}, refrescarResumen = null;
+  function miniatura(it, cls) {
+    var fw = h("span", cls + "__fw");
+    var im = h("img", cls + "__img"); im.alt = ""; im.loading = "lazy";
+    var vacia = function () { im.onerror = null; im.src = "gallo-oro.png"; im.className = cls + "__img " + cls + "__img--vacia"; };
+    if (it && it.foto) { im.src = it.foto; im.onerror = vacia; } else vacia();
+    fw.appendChild(im);
+    return fw;
+  }
+
+  /* "Llévate otro": un producto suelto cuyo pack de 2 (ej.: "Wafer Tre Marie × 2") cuesta menos que dos sueltos.
+     Se detecta con los datos de la carta: pack.pa (precio de antes) = 2 × precio del suelto, y pack.p es el precio real del pack.
+     El precio de la segunda unidad = pack.p − suelto.p. Sin ese descuento no se muestra nada. */
+  var PAREJAS = {};
+  Object.keys(productos).forEach(function (pid) {
+    var pk = productos[pid];
+    if (pk.tipo === "salsa" || pk.t || pk.p == null || !(pk.pa > pk.p)) return;
+    Object.keys(productos).forEach(function (sid) {
+      var u = productos[sid];
+      if (sid === pid || u.tipo === "salsa" || u.t || u.p == null || seccionDe[sid] !== seccionDe[pid]) return;
+      if (Math.abs(pk.pa - 2 * u.p) < 0.015 && pk.p > u.p && pk.p < 2 * u.p && !PAREJAS[sid]) PAREJAS[sid] = pid;
+    });
+  });
+  function ofertasOtro() {
+    var r = [], vistos = {};
+    carrito.forEach(function (l) {
+      var pid = PAREJAS[l.id]; if (!pid || l.cant !== 1 || vistos[pid]) return;
+      var u = productos[l.id], pk = productos[pid], sec = seccionDe[pid];
+      if (!u || !pk || !puedePedir(pk, sec) || (window.PG_COMERCIO && PG_COMERCIO.fuera && PG_COMERCIO.fuera(pk, sec))) return;
+      if (carrito.some(function (x) { return x.id === pid; })) return;
+      vistos[pid] = 1;
+      r.push({ linea: l, pack: pk, sec: sec, x: Math.round((pk.p - u.p) * 100) / 100, antes: pk.pa });
+    });
+    return r.slice(0, 2);
+  }
+  function aceptarOtro(o) {
+    cerrarHoja();
+    if (tieneOpciones(o.pack)) { setTimeout(function () { abrirDetalle(o.pack, o.sec, "", { reemplaza: o.linea.key, volverCarrito: true }); }, 80); return; }
+    agregar(o.pack, { tam: "", salsa: "", cant: 1, nota: "", ops: {} }, o.pack.p);
+    quitarUnidad(o.linea.key);
+    setTimeout(abrirCarrito, 80);
+  }
+
+  /* ---------- carrito: hoja inferior con foto, resumen por líneas, extras y botón fijo ---------- */
   function abrirCarrito() {
-    var c = h("div", "hoja__cuerpo");
+    var c = h("div", "hoja__cuerpo carrito");
     if (!carrito.length) { c.appendChild(h("p", "hoja__desc", t("vacio"))); abrirHoja(c, t("tuPedido")); return; }
     var lista = h("ul", "lineas");
-    var tot = h("strong");
+    var ofertas = h("div", "otros");
+    function pintarOfertas() {
+      ofertas.textContent = "";
+      ofertasOtro().forEach(function (o) {
+        var card = h("div", "otro");
+        card.appendChild(miniatura(o.pack, "otro"));
+        var tx_ = h("div", "otro__t");
+        tx_.appendChild(h("strong", null, t("llevateOtro", { x: dinero2(o.x) })));
+        tx_.appendChild(h("span", null, t("llevateOtroSub", { n: tx(o.pack, "n"), p: dinero2(o.pack.p), a: dinero2(o.antes) })));
+        card.appendChild(tx_);
+        card.appendChild(boton(t("agregarMas"), "otro__b", function () { aceptarOtro(o); }));
+        ofertas.appendChild(card);
+      });
+    }
     function pintarLista() {
       lista.textContent = "";
       carrito.forEach(function (l, i) {
         var li = h("li", "linea");
+        li.appendChild(miniatura(productos[l.id], "linea"));
         var info = h("div", "linea__info");
         info.appendChild(h("strong", null, l.n + (l.tam ? " · " + l.tam : "")));
         if (l.salsaN) info.appendChild(h("span", null, t("salsa") + l.salsaN));
@@ -545,17 +634,20 @@
         if (l.nota) info.appendChild(h("span", null, t("nota") + l.nota));
         var avL = window.PG_COMERCIO && PG_COMERCIO.aviso && productos[l.id] ? PG_COMERCIO.aviso(productos[l.id], seccionDe[l.id]) : "";
         if (avL) info.appendChild(h("span", "hr-aviso hr-aviso--linea", avL));
-        info.appendChild(h("span", "linea__p", soles(l.unit * l.cant)));
         li.appendChild(info);
-        li.appendChild(stepper(l.cant, 0, 20, function (v) {
+        var acc = h("div", "linea__acc");
+        acc.appendChild(h("span", "linea__p", soles(l.unit * l.cant)));
+        acc.appendChild(stepper(l.cant, 0, 20, function (v) {
           if (v === 0) carrito.splice(i, 1); else l.cant = v;
-          guardar(); pintarBarra(); if (!carrito.length) { cerrarHoja(); return; } pintarLista(); if (refrescarResumen) refrescarResumen();
+          guardar(); pintarBarra(); if (!carrito.length) { cerrarHoja(); return; } pintarLista(); pintarOfertas(); if (refrescarResumen) refrescarResumen();
         }));
+        li.appendChild(acc);
         lista.appendChild(li);
       });
-      tot.textContent = soles(total());
     }
     c.appendChild(lista);
+    pintarLista(); pintarOfertas();
+    c.appendChild(ofertas);
     var sug = sugerencias();
     if (sug.length) {
       var sw = h("div", "sugiere");
@@ -563,16 +655,13 @@
       var fila = h("div", "sugiere__fila");
       sug.forEach(function (x) {
         var b = h("button", "sugiere__it"); b.type = "button";
-        var fw = h("span", "sugiere__fw");
-        var si = h("img", "sugiere__img"); si.alt = ""; si.loading = "lazy";
-        var ponerVacia = function () { si.onerror = null; si.src = "gallo-oro.png"; si.className = "sugiere__img sugiere__img--vacia"; };
-        if (x.it.foto) { si.src = x.it.foto; si.onerror = ponerVacia; } else ponerVacia();
-        fw.appendChild(si); fw.appendChild(h("span", "sugiere__mas", "+"));
+        var fw = miniatura(x.it, "sugiere");
+        fw.appendChild(h("span", "sugiere__mas", "+"));
         b.appendChild(fw);
         b.appendChild(h("span", "sugiere__n", tx(x.it, "n")));
         b.appendChild(h("span", "sugiere__p", x.it.t ? (I.lang === "en" ? "from " : "desde ") + soles(x.it.t[0][1]) : soles(x.it.p)));
         b.addEventListener("click", function () {
-          if (tieneOpciones(x.it)) { cerrarHoja(); setTimeout(function () { abrirDetalle(x.it, x.sec); }, 80); return; }
+          if (tieneOpciones(x.it)) { cerrarHoja(); setTimeout(function () { abrirDetalle(x.it, x.sec, "", { volverCarrito: true }); }, 80); return; }
           agregar(x.it, { tam: "", salsa: "", cant: 1, nota: "", ops: {} }, x.it.p);
           cerrarHoja(); setTimeout(abrirCarrito, 80);
         });
@@ -581,12 +670,10 @@
       sw.appendChild(fila);
       c.appendChild(sw);
     }
-    var tl = h("div", "total"); tl.appendChild(h("span", null, MODO === "mesa" ? t("total") : t("totalProd"))); tl.appendChild(tot);
-    c.appendChild(tl);
-    pintarLista();
-    c.appendChild(formulario());
-    abrirHoja(c, MODO === "mesa" ? t("pedidoMesa") + MESA : t("tuPedido"));
+    formulario(c);   // agrega el formulario y, al final, el resumen (subtotal, delivery, total) con el botón fijo abajo
+    abrirHoja(c, MODO === "mesa" ? t("pedidoMesa") + MESA : t("tuPedido"), "hoja--carrito");
   }
+  function dinero2(n) { n = Math.round(Number(n) * 100) / 100; return Number.isInteger(n) ? String(n) : n.toFixed(2); }
 
   /* "¿Le sumas algo?": bebida, postre o pan al ajo, solo si aún no están en el pedido y se pueden pedir ahora. */
   function sugerencias() {
@@ -625,11 +712,12 @@
     return w;
   }
 
-  function formulario() {
-    var f = h("form", "form"); f.noValidate = true;
+  function formulario(cont) {
+    var f = h("form", "form"); f.noValidate = true; f.id = "form-pedido";
     var hp = h("input", "trampa"); hp.name = "web"; hp.tabIndex = -1; hp.autocomplete = "off"; hp.setAttribute("aria-hidden", "true");
     f.appendChild(hp);
     var zona = h("div");
+    var pie = h("div", "pie-fijo");
     var resumen = h("div", "resumen"); resumen.setAttribute("aria-live", "polite");
     refrescarResumen = null;
     if (MODO === "mesa") {
@@ -648,12 +736,14 @@
           { valor: "recojo", texto: t("recojo"), marcado: form.canal === "recojo" }
         ], false, function (v) { form.canal = v[0]; pintarZona(); pintarResumen(); }));
       }
+      f.appendChild(h("h3", "hoja__sub", t("entregaTit")));
       f.appendChild(zona);
+      f.appendChild(h("h3", "hoja__sub", t("tusDatos")));
       f.appendChild(campo("nombre", t("nombre"), "text", { max: 60, auto: "name" }));
       f.appendChild(campo("telefono", t("celular"), "tel", { max: 16, auto: "tel", modo: "tel", ph: "9XX XXX XXX" }));
       if (CFG.metodosPago && CFG.metodosPago.length) {
         var pagoObl = CFG.pagoObligatorio === true;   // por defecto el pago es opcional (Config pago_obligatorio)
-        f.appendChild(h("h3", "hoja__sub", t("comoPagar") + (pagoObl ? "" : " (" + t("opcional") + ")")));
+        f.appendChild(h("h3", "hoja__sub", t("comoPagar")));
         if (CFG.metodosPago.indexOf(form.pago) < 0) form.pago = "";
         if (!pagoObl) f.appendChild(h("p", "pago-ayuda", t("pagoAdelanto")));
         var cajaCobro = h("div");
@@ -681,8 +771,7 @@
           form.programadoTxt = sh.value ? sh.options[sh.selectedIndex].text : "";
         });
         wh.appendChild(sh);
-        wh.appendChild(h("span", "hoja__ayuda", t("horarioRango", { a: fmtHora(vent.desde), b: fmtHora(vent.hasta), d: vent.etiqueta })));
-        if (abiertoYa) {
+                if (abiertoYa) {
           var det = h("details", "prog"); if (form.programado) det.open = true;
           det.appendChild(h("summary", null, t("programarMasTarde")));
           var dcu = h("div", "prog__cuerpo"); dcu.appendChild(wh); det.appendChild(dcu);
@@ -706,7 +795,7 @@
       if (!tipos.length) return w;
       var datos = h("div");
       w.appendChild(h("h3", "hoja__sub", t("comprobante")));
-      // Boleta y Factura sin ninguna marcada: es opcional (sin marcar = sin comprobante)
+      // Boleta y Factura sin ninguna marcada = sin comprobante
       w.appendChild(opcionesOpc("comp", tipos.map(function (x) {
         return { valor: x, texto: t(x === "Boleta" ? "boleta" : "factura"), marcado: form.comprobante === x };
       }), function (v) { form.comprobante = v; pintarDatos(); }));
@@ -729,69 +818,104 @@
         if (form.canal === "recojo") zona.appendChild(h("p", "hoja__ayuda", t("recogeEn") + C.negocio.direccion + "."));
         return;
       }
-      zona.appendChild(campo("direccion", t("direccion") + " *", "text", { max: 200, auto: "street-address" }));
-      zona.appendChild(campo("referencia", t("referencia") + " *", "text", { max: 200, ph: t("referenciaPh") }));
-      // zona de la lista (precio de lista) o ubicación del cliente (zona o distancia)
-      var wz = h("label", "campo-w"); wz.appendChild(h("span", "campo-l", t("zonaEtq") + " *"));
-      var sz = h("select", "campo"); sz.name = "zona";
-      var o0 = h("option", null, t("zonaElige")); o0.value = ""; sz.appendChild(o0);
-      tarifas().zonas.forEach(function (zn) { var o = h("option", null, zn.nombre + " · S/ " + Math.ceil(Number(zn.precio))); o.value = zn.nombre; if (form.zona === zn.nombre) o.selected = true; sz.appendChild(o); });
-      sz.addEventListener("change", function () { form.zona = sz.value; pintarResumen(); });
-      wz.appendChild(sz); zona.appendChild(wz);
+      /* Entrega automática: el cliente da su ubicación (GPS o dirección buscada en el mapa) y el costo se calcula solo. */
+      var ub = h("div", "ubic");
+      var ubEst = h("p", "ubic__estado"); ubEst.setAttribute("aria-live", "polite");
+      function estadoUbic(msg, mal) {
+        if (msg) { ubEst.textContent = msg; ubEst.className = "ubic__estado" + (mal ? " ubic__estado--mal" : ""); return; }
+        if (form.lat != null) { ubEst.textContent = t("ubicEncontrada"); ubEst.className = "ubic__estado ubic__estado--ok"; }
+        else { ubEst.textContent = ""; ubEst.className = "ubic__estado"; }
+      }
+      function fijar(lat, lng, origen) {
+        form.lat = Math.round(lat * 1e6) / 1e6; form.lng = Math.round(lng * 1e6) / 1e6;
+        form.ubicacion = "https://maps.google.com/?q=" + form.lat.toFixed(6) + "," + form.lng.toFixed(6);
+        form.ubicOrigen = origen; form.zona = "";
+        estadoUbic(); pintarResumen(); if (typeof err !== "undefined" && err) err.textContent = "";
+      }
+      var ubGps = null;
       if (navigator.geolocation) {
-        var ub = h("div", "ubic");
-        var ubEst = h("span", "hoja__ayuda", form.lat != null ? t("ubicLista") : t("ubicAyuda"));
-        var ubB = boton(form.lat != null ? "📍 " + t("ubicOtra") : "📍 " + t("ubicBtn"), "btn-ubic", function () {
-          ubB.disabled = true; ubEst.textContent = t("ubicBuscando");
+        ubGps = boton("📍 " + t("ubicBtn"), "btn-ubic btn-ubic--main", function () {
+          ubGps.disabled = true; estadoUbic(t("ubicBuscando"));
           navigator.geolocation.getCurrentPosition(function (pos) {   // solo con permiso del cliente
-            form.lat = Math.round(pos.coords.latitude * 1e6) / 1e6; form.lng = Math.round(pos.coords.longitude * 1e6) / 1e6;
-            form.ubicacion = "https://maps.google.com/?q=" + form.lat.toFixed(6) + "," + form.lng.toFixed(6);
-            form.zona = ""; sz.value = "";   // la ubicación manda hasta que el cliente elija otra zona
-            ubB.disabled = false; ubB.textContent = "📍 " + t("ubicOtra"); ubEst.textContent = t("ubicLista");
-            pintarResumen();
+            ubGps.disabled = false; fijar(pos.coords.latitude, pos.coords.longitude, "gps");
+            ubGps.textContent = "📍 " + t("ubicOtra");
           }, function () {
-            ubB.disabled = false; ubEst.textContent = t("ubicError");
+            ubGps.disabled = false; estadoUbic(t("ubicError"), true);
           }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
         });
-        ub.appendChild(ubB); ub.appendChild(ubEst);
-        zona.appendChild(ub);
+        if (form.lat != null) ubGps.textContent = "📍 " + t("ubicOtra");
+        ub.appendChild(ubGps);
       }
+      zona.appendChild(ub);
+      var wd = campo("direccion", t("direccion") + " *", "text", { max: 200, auto: "street-address" });
+      wd.querySelector("input").addEventListener("input", function () {
+        if (form.ubicOrigen === "osm") { form.lat = null; form.lng = null; form.ubicacion = ""; form.ubicOrigen = ""; estadoUbic(); pintarResumen(); }   // la dirección cambió: hay que volver a buscarla
+      });
+      zona.appendChild(wd);
+      var mp = h("div", "ubic ubic--mapa");
+      var bMapa = boton("🔎 " + t("buscarMapa"), "btn-ubic", function () {
+        var dir = String(form.direccion || "").trim();
+        if (dir.length < 5) { estadoUbic(t("mapaCorta"), true); return; }
+        bMapa.disabled = true; estadoUbic(t("buscandoMapa"));
+        /* Nominatim/OpenStreetMap: viewbox de Trujillo (Perú). Si el número exacto no está en el mapa, se reintenta solo con la calle. */
+        var sufijo = /trujillo/i.test(dir) ? "" : ", Trujillo, Perú", sinNum = dir.replace(/\b(n[°ºo.]*\s*)?\d+[a-zA-Z]?\b/gi, " ").replace(/\s{2,}/g, " ").trim();
+        var consultas = [dir + sufijo]; if (sinNum.length >= 4 && sinNum !== dir) consultas.push(sinNum + sufijo);
+        var buscar = function (i) {
+          var url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=pe&accept-language=es&viewbox=-79.20,-7.95,-78.90,-8.25&q=" + encodeURIComponent(consultas[i]);
+          return fetch(url).then(function (r) { if (!r.ok) throw new Error("http"); return r.json(); }).then(function (arr) {
+            var r0 = arr && arr[0], la = r0 ? parseFloat(r0.lat) : NaN, lo = r0 ? parseFloat(r0.lon) : NaN;
+            if (isFinite(la) && isFinite(lo)) return { la: la, lo: lo };
+            return i + 1 < consultas.length ? buscar(i + 1) : null;
+          });
+        };
+        buscar(0).then(function (r) {
+          bMapa.disabled = false;
+          if (!r) { form.lat = null; form.lng = null; form.ubicacion = ""; form.ubicOrigen = ""; estadoUbic(t("mapaNo"), true); pintarResumen(); return; }
+          fijar(r.la, r.lo, "osm");
+        }).catch(function () { bMapa.disabled = false; estadoUbic(t("mapaRed"), true); });
+      });
+      mp.appendChild(bMapa); mp.appendChild(h("span", "hoja__ayuda", t("mapaAviso")));
+      zona.appendChild(mp);
+      zona.appendChild(ubEst);
+      estadoUbic();
+      zona.appendChild(campo("referencia", t("referencia") + " *", "text", { max: 200, ph: t("referenciaPh") }));
       var td = I.lang === "en" && CFG.textoDelivery_en ? CFG.textoDelivery_en : CFG.textoDelivery;
       if (td) zona.appendChild(h("p", "hoja__ayuda", td));
     }
-    /* Resumen antes de enviar: productos + delivery = total */
+    /* Resumen fijo abajo: subtotal, delivery y total (el delivery se calcula solo con la ubicación) */
     function pintarResumen() {
       resumen.textContent = "";
       var cobro = typeof cajaCobro !== "undefined" && cajaCobro;
       if (cobro) pintarCobro(cajaCobro, form.pago, true);
       var e = entregaActual();
-      if (!e) { resumen.style.display = "none"; return; }
-      resumen.style.display = "";
       var fila = function (a, b, cls) { var d = h("div", cls); d.appendChild(h("span", null, a)); d.appendChild(h("span", null, b)); resumen.appendChild(d); };
-      fila(t("totalProd"), soles(total()));
+      if (!e) { fila(t("total"), soles(total()), "resumen__t"); return; }
+      fila(t("subtotal"), soles(total()));
       if (e.ok) {
-        fila(e.zona ? t("deliveryZona", { c: e.costo, z: e.zona }) : t("deliveryAprox", { c: e.costo }), "");
+        fila(t("entrega"), "S/ " + e.costo);
         fila(t("total"), soles(total() + e.costo), "resumen__t");
         resumen.appendChild(h("p", "resumen__aviso", t("deliveryNota")));
       } else if (e.fuera) {
+        fila(t("entrega"), "—"); fila(t("total"), soles(total()), "resumen__t");
         resumen.appendChild(h("p", "hoja__err", t("fueraZona")));
       } else {
+        fila(t("entrega"), "—"); fila(t("total"), soles(total()), "resumen__t");
         resumen.appendChild(h("p", "resumen__aviso", e.falta ? t("deliveryFalta") : e.error));
       }
     }
     refrescarResumen = pintarResumen;
-    f.appendChild(resumen);
+    pie.appendChild(resumen);
     pintarZona(); pintarResumen();
     var err = h("p", "hoja__err"); err.setAttribute("role", "alert");
-    f.appendChild(err);
+    pie.appendChild(err);
     f.addEventListener("input", function () { err.textContent = ""; });
     f.addEventListener("change", function () { err.textContent = ""; });
     var enviar = h("button", "btn-ped" + (MODO === "mesa" ? "" : " btn-ped--wa"), MODO === "mesa" ? t("enviarCocina") : t("enviarWaDirecto"));
-    enviar.type = "submit";
-    f.appendChild(enviar);
+    enviar.type = "submit"; enviar.setAttribute("form", "form-pedido");
+    pie.appendChild(enviar);
     // Mesa: antes de mandar a cocina se confirma, porque ya no se puede cambiar
     var confirmar = h("div", "confirma");
-    f.appendChild(confirmar);
+    pie.appendChild(confirmar);
     function mandarCocina() {
       confirmar.textContent = ""; enviar.style.display = "";
       enviar.disabled = true; enviar.textContent = t("enviando");
@@ -837,6 +961,7 @@
       }));
       confirmar.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
+    cont.appendChild(f); cont.appendChild(pie);
     return f;
   }
 
@@ -978,7 +1103,7 @@
       if (!form.referencia || form.referencia.trim().length < 3) return t("errRef");
       var en = entregaActual();
       if (en && en.fuera) return t("fueraZona");
-      if (en && !en.ok) return en.falta ? t("errZona") : en.error;
+      if (en && !en.ok) return en.falta ? t("errUbic") : en.error;
     }
     if (CFG.pagoObligatorio === true && CFG.metodosPago && CFG.metodosPago.length && !form.pago) return t("errPago");
     if (!abiertoAhora() && !form.programado) return t("errHora");
@@ -987,12 +1112,14 @@
     return validarComprobante();
   }
 
+  /* Zona de la lista en la que cae la ubicación (interna, no se muestra al cliente): viaja en el pedido con el mismo precio que calcula el servidor. */
+  function zonaInterna() { var e = entregaActual(); return e && e.ok && e.zona ? e.zona : ""; }
   function cuerpoPedido(trampa) {
     var cp = {
       canal: MODO === "mesa" ? "mesa" : form.canal, mesa: MESA, codigo: CODIGO, web: trampa || "", idioma: I.lang,
       nombre: form.nombre || "", telefono: form.telefono || "", direccion: form.canal === "delivery" ? (form.direccion || "") : "",
       referencia: form.canal === "delivery" ? (form.referencia || "") : "", pago: form.pago || "",
-      zona: form.canal === "delivery" ? (form.zona || "") : "", lat: form.canal === "delivery" && form.lat != null ? form.lat : null, lng: form.canal === "delivery" && form.lng != null ? form.lng : null,
+      zona: zonaInterna(), lat: form.canal === "delivery" && form.lat != null ? form.lat : null, lng: form.canal === "delivery" && form.lng != null ? form.lng : null,
       programado: form.programado || "", programadoFecha: form.programado ? (form.programadoFecha || "") : "", notas: form.notas || "", mayorEdad: !!form.mayorEdad, origen: origen(), ref: form.ref || "",
       comprobante: form.comprobante || "", doc: form.comprobante ? String(form.doc || "").replace(/\D/g, "") : "",
       razon: form.comprobante ? (form.razon || "") : "", correo: form.comprobante ? String(form.correo || "").trim() : "",
@@ -1068,7 +1195,7 @@
     recordarCliente();
     guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
     carrito = []; guardar(); pintarBarra();
-    form.ref = ""; form.ubicacion = ""; form.lat = null; form.lng = null; form.zona = "";
+    form.ref = ""; form.ubicacion = ""; form.lat = null; form.lng = null; form.zona = ""; form.ubicOrigen = "";
     pintarRepetir();
     abrirHoja(c, t("tuPedido"));
     if (!w) setTimeout(function () { location.href = url; }, 50);
@@ -1101,7 +1228,7 @@
         recordarCliente();
         guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
         carrito = []; guardar(); pintarBarra();
-        form.ref = ""; form.ubicacion = ""; form.lat = null; form.lng = null; form.zona = ""; form.captura = ""; form.capturaSubida = false;
+        form.ref = ""; form.ubicacion = ""; form.lat = null; form.lng = null; form.zona = ""; form.ubicOrigen = ""; form.captura = ""; form.capturaSubida = false;
         pintarRepetir();
         abrirHoja(c, t("tuPedido"));
         return {};
@@ -1345,8 +1472,9 @@
     activo: function () { return activo(); },
     aceptaAhora: function () { return aceptaAhora(); },
     mesaValida: mesaValida,
+    desdeProg: function () { var v = ventanaPedido(); return v ? fmtHora(v.desde) : ""; },
     puedePedir: puedePedir,
-    abrirDetalle: function (it, sec, tam) { abrirDetalle(it, sec, tam); },
+    abrirDetalle: function (it, sec, tam, opts) { abrirDetalle(it, sec, tam, opts); },
     boton: function (it, sec, tamFn) {
       var b = h("button", "agregar"); b.type = "button";
       b.appendChild(h("span", null, "+"));

@@ -673,3 +673,133 @@ body.buscando .buscador{margin-top:48px}
 .tienda-barra{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:0 6px 0 10px;background:var(--crema-3);border-bottom:1px solid rgba(169,128,63,.45);box-shadow:0 2px 8px rgba(74,21,25,.08)}
 .tienda-volver{display:inline-flex;align-items:center;min-height:44px;padding:0 6px;color:var(--vino);font:700 .86rem/1 var(--sans);letter-spacing:.02em;text-decoration:none}
 body.vista-tienda .estado{display:none}
+
+/* =================== v7: portada a pantalla completa, tienda integrada, carrito y ficha tipo app, entrega automática =================== */
+.estado{font-size:12px;letter-spacing:.02em}
+.sec{scroll-margin-top:92px}
+
+/* portada: ocupa TODA la pantalla (la mesa conserva la compacta) */
+.portada:not(.portada--compacta){min-height:100vh;min-height:100svh;min-height:100dvh;padding:76px 22px 70px}
+.portada:not(.portada--compacta) .marco{inset:46px 14px 14px}
+.portada:not(.portada--compacta) .saludo{display:block;font-size:1.9rem}
+.portada:not(.portada--compacta) .tricolor{display:flex;margin:14px 0 16px}
+.portada:not(.portada--compacta) .gallo{width:96px;margin:2px 0 -4px}
+.portada:not(.portada--compacta) .marca{width:min(74vw,350px)}
+.portada:not(.portada--compacta) .desde{margin:12px 0 2px;font-size:.78rem}
+.portada:not(.portada--compacta) .bienvenida{margin-top:0}
+.portada:not(.portada--compacta) .bienvenida h1{font-size:clamp(1.7rem,7vw,2.5rem)}
+.portada:not(.portada--compacta) .bienvenida p{font-size:1.12rem;margin-top:8px}
+.portada:not(.portada--compacta) .acciones{gap:10px;margin-top:20px}
+.portada:not(.portada--compacta) .btn{min-height:48px;font-size:.78rem}
+.portada:not(.portada--compacta) .idioma--portada{top:58px;right:26px}
+.portada .bajar{display:grid;place-items:center;bottom:20px;color:var(--oro-claro)}
+.portada .bajar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.portada--compacta .bajar{display:none}
+@media (max-height:700px){
+  .portada:not(.portada--compacta){padding:68px 20px 62px}
+  .portada:not(.portada--compacta) .saludo{display:none}
+  .portada:not(.portada--compacta) .gallo{width:76px}
+  .portada:not(.portada--compacta) .tricolor{margin:10px 0 12px}
+  .portada:not(.portada--compacta) .bienvenida p{font-size:1.02rem}
+  .portada:not(.portada--compacta) .acciones{margin-top:14px}
+}
+
+/* subtítulo en español bajo el nombre italiano */
+.it__sub{flex:0 0 100%;margin-top:-1px;font:italic 500 .95rem/1.25 var(--serif);color:var(--tinta-2)}
+
+/* botón "Copiar enlace" en la cabecera de cada sección */
+.sec__copiar{position:absolute;top:24px;right:24px;z-index:3;width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid var(--oro-claro);border-radius:50%;background:rgba(0,0,0,.14);color:var(--oro-claro);cursor:pointer}
+.sec__copiar::after{content:"";position:absolute;inset:-6px}
+.sec__copiar svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sec__copiar:hover{background:rgba(201,164,92,.25)}
+body.buscando .sec__copiar{display:none}
+
+/* promociones: solo las de hoy; las de otros días, plegadas */
+.promo-mas{display:block;margin:10px auto 0;padding:10px 6px;background:none;border:0;border-bottom:1px dashed var(--oro);color:var(--tinta-2);font:600 .82rem/1.2 var(--sans);letter-spacing:.02em}
+.promo-mas:hover{color:var(--vino)}
+.promo-otros{display:none;margin-top:6px}
+.promo-otros.abierto,body.buscando .promo-otros{display:block}
+body.buscando .promo-mas{display:none}
+.promo-otros__dia{margin:16px 4px 8px;font:700 .72rem/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--oro)}
+.promo-vacio{margin:6px 4px 0;font:italic 500 1.05rem var(--serif);color:var(--tinta-2);text-align:center}
+.datos__tienda{margin-top:4px;font-size:1rem;opacity:.92}
+
+/* hojas tipo app */
+.hoja{border-radius:22px 22px 0 0;overflow:auto}
+.hoja .btn-ped{border-radius:14px}
+.stepper{border-radius:999px;overflow:hidden}
+
+/* carrito: líneas con foto, ofertas y resumen fijo */
+.carrito .lineas{display:grid;gap:10px}
+.linea{display:grid;grid-template-columns:64px minmax(0,1fr);grid-template-areas:"fw info" "fw acc";gap:2px 12px;align-items:start;justify-content:stretch;padding:12px;border:1px solid rgba(169,128,63,.4);border-radius:16px;background:#fffaf0}
+.linea__fw{grid-area:fw;display:block;width:64px;height:64px;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,#f8eed6,#ecdcb0)}
+.linea__img{display:block;width:100%;height:100%;object-fit:cover}
+.linea__img--vacia{object-fit:contain;padding:11px;opacity:.9}
+.linea__info{grid-area:info}
+.linea__info strong{font:700 1rem/1.2 var(--sans);color:var(--vino)}
+.linea__acc{grid-area:acc;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.linea__acc .linea__p{font:700 1.15rem var(--serif);color:var(--tinta)}
+.linea .stepper button{width:34px;height:34px}
+.linea .stepper output{min-width:24px}
+.otros{display:grid;gap:10px;margin-top:12px}
+.otros:empty{display:none}
+.otro{display:grid;grid-template-columns:52px minmax(0,1fr);gap:4px 12px;align-items:center;padding:12px;border:1.5px dashed var(--oro);border-radius:16px;background:#fff3d6}
+.otro__fw{grid-row:1/span 2;display:block;width:52px;height:52px;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,#f8eed6,#ecdcb0)}
+.otro__img{display:block;width:100%;height:100%;object-fit:cover}
+.otro__img--vacia{object-fit:contain;padding:9px}
+.otro__t strong{display:block;font:700 .95rem/1.25 var(--sans);color:var(--vino)}
+.otro__t span{display:block;margin-top:2px;font:500 .78rem/1.3 var(--sans);color:var(--tinta-2)}
+.otro__b{justify-self:start;min-height:40px;padding:0 18px;border:0;border-radius:999px;background:var(--vino);color:var(--crema);font:700 .82rem/1 var(--sans);letter-spacing:.02em}
+.carrito .pie-fijo{position:sticky;bottom:0;z-index:3;margin:16px -18px -26px;padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:var(--crema-3);border-top:1px solid var(--oro);box-shadow:0 -6px 16px rgba(74,21,25,.12)}
+.pie-fijo .resumen{margin:0 0 8px;padding:0;border:0;background:none;font:500 .92rem/1.5 var(--sans)}
+.pie-fijo .resumen__t{margin-top:2px;padding-top:4px;border-top:1px dashed var(--oro);font:700 1.2rem/1.3 var(--serif);color:var(--vino)}
+.pie-fijo .resumen__t span:last-child{font-size:1.3rem}
+.pie-fijo .hoja__err{margin:4px 0 8px}
+.pie-fijo .btn-ped{margin-top:0}
+.pie-fijo .confirma .btn-ped{margin-top:8px}
+
+/* entrega automática: ubicación */
+.ubic{margin:0 0 6px}
+.btn-ubic{min-height:42px;padding:0 14px;border-radius:12px}
+.btn-ubic--main{width:100%;min-height:48px;background:var(--oro-claro);border:1px solid var(--oro);color:#2b0f10;font:700 .95rem/1 var(--sans)}
+.btn-ubic:disabled{opacity:.6}
+.ubic--mapa{margin:8px 0 0;gap:6px 12px}
+.ubic--mapa .hoja__ayuda{flex:1 1 180px}
+.ubic__estado{margin:8px 0 0;font:600 .9rem/1.4 var(--sans)}
+.ubic__estado:empty{display:none}
+.ubic__estado--ok{color:var(--verde)}
+.ubic__estado--mal{color:#a3241e}
+
+/* ficha del producto: foto grande, tarjetas de opciones, tamaño en segmentos y botón fijo */
+.detalle__fw{position:relative;margin:0 -18px 14px;background:#e9dcc2;border-radius:0 0 22px 22px;overflow:hidden}
+.detalle__fw .detalle__foto{display:block;width:100%;max-width:none;margin:0;height:clamp(210px,64vw,300px);max-height:none;object-fit:cover}
+.detalle__fw .detalle__foto--producto{object-fit:contain;background:#fff;padding:14px;height:280px}
+.detalle__fw .detalle__foto--botella{height:min(56vh,440px);padding:18px 0}
+.detalle__fw--vacia{background:linear-gradient(160deg,#f8eed6,#ecdcb0)}
+.detalle__fw .detalle__foto--vacia{object-fit:contain;background:none;padding:34px;height:190px}
+.detalle__sub{margin:0 0 4px;font:italic 500 1.1rem/1.3 var(--serif);color:var(--tinta-2)}
+.tarj{margin-top:12px;padding:14px;border:1px solid rgba(169,128,63,.38);border-radius:16px;background:#fffaf0}
+.tarj>.hoja__sub:first-child,.tarj>summary.hoja__sub{margin:0 0 10px}
+details.grupo-op--plegable.tarj{padding:14px;margin:12px 0 0;background:#fffaf0}
+.seg{display:flex;flex-wrap:wrap;gap:4px;padding:4px;background:#f1e6cf;border-radius:14px}
+.seg__o{position:relative;flex:1 1 72px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:9px 4px;border-radius:11px;text-align:center;cursor:pointer;transition:background .2s}
+.seg__o input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.seg__t{font:700 .92rem/1.1 var(--sans);color:var(--vino)}
+.seg__p{font:500 .78rem/1.1 var(--sans);color:var(--tinta-2)}
+.seg__o:has(input:checked){background:var(--vino);box-shadow:0 2px 6px rgba(74,21,25,.25)}
+.seg__o:has(input:checked) .seg__t{color:var(--crema)}
+.seg__o:has(input:checked) .seg__p{color:#e6d6b6}
+.seg__o:has(input:focus-visible){outline:2px solid var(--oro);outline-offset:1px}
+.hoja--detalle .opciones{display:flex;flex-wrap:wrap;gap:8px}
+.hoja--detalle .opcion{position:relative;flex:0 1 auto;min-height:42px;padding:8px 14px;gap:8px;border:1px solid rgba(169,128,63,.6);border-radius:999px;background:#fff;box-shadow:none}
+.hoja--detalle .opcion input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.hoja--detalle .opcion__t{flex:none;font:600 .95rem/1.2 var(--sans)}
+.hoja--detalle .opcion__p{font:500 .76rem var(--sans)}
+.hoja--detalle .opcion:has(input:checked){background:var(--oro-claro);border-color:var(--oro);color:#2b0f10;box-shadow:none}
+.hoja--detalle .opcion:has(input:focus-visible){outline:2px solid var(--vino);outline-offset:1px}
+.hoja--detalle .hoja__pie{z-index:3;margin:16px -18px -26px;padding:12px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--oro);box-shadow:0 -6px 16px rgba(74,21,25,.12)}
+.hoja--detalle .hoja__pie .btn-ped{border-radius:999px}
+@media (prefers-reduced-motion:reduce){.seg__o{transition:none}}
+body.sin-scroll .toast{bottom:auto;top:88px;transform:translate(-50%,-180px)}
+body.sin-scroll .toast.on{transform:translate(-50%,0)}
+.pie-fijo .resumen__aviso{margin:4px 0 0;font-size:.74rem;line-height:1.35}
