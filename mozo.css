@@ -130,7 +130,7 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
 .titulo{padding:14px 12px 0;font-size:14px;font-weight:800;color:var(--gris);text-transform:uppercase;letter-spacing:.06em;display:flex;gap:8px;align-items:center}
 
 /* ---------- carta ---------- */
-.carta{display:grid;grid-template-columns:190px 1fr 340px;height:calc(100vh - var(--top) - env(safe-area-inset-top) - var(--avisos,0px))}
+.carta{display:grid;grid-template-columns:190px 1fr 340px;height:calc(100vh - var(--top) - env(safe-area-inset-top) - var(--avisos,0px) - var(--mapa,0px))}
 .secs{overflow-y:auto;background:var(--papel);border-right:1px solid var(--linea);padding:6px}
 .secs button{display:block;width:100%;text-align:left;padding:13px 12px;border-radius:10px;font-weight:700;font-size:15px;color:var(--tinta)}
 .secs button.on{background:var(--vino);color:#fff}
@@ -282,3 +282,32 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
 .cargos>summary::-webkit-details-marker{display:none}
 .cargos[open]>summary{border-bottom:1px solid var(--oro-claro);margin-bottom:10px}
 .cargos .grid{margin-bottom:10px}
+
+/* ---------- app de tienda: tema propio (verde) ---------- */
+html.tienda{--vino:#24402f;--vino-2:#2f5240}
+
+/* ---------- mapa del salón desplegable ---------- */
+.mapa{background:#fff;border-bottom:1px solid var(--linea)}
+.mapa__cab{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;min-height:46px;font-weight:800;color:var(--vino);text-align:left;flex-wrap:wrap}
+.mapa__b{padding:2px 9px;border-radius:999px;font-size:13px;color:#fff;background:var(--gris)}
+.mapa__b.llama{background:var(--rojo)}.mapa__b.cuenta{background:var(--azul)}.mapa__b.suya{background:var(--oro)}
+.mapa__f{font-size:18px}
+.mapa__cuerpo{padding:0 12px 12px;max-height:60vh;overflow:auto}
+.mapa__cuerpo .plano{margin:0 0 8px}
+.mapa__mesas{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.mesa.mini{min-height:64px;padding:6px;align-items:center;justify-content:center;text-align:center;gap:0}
+.mesa.mini b{font-size:20px}.mesa.mini small{font-size:13px;font-weight:800}
+.mesa.suya{outline:3px solid var(--oro);outline-offset:1px}
+.mesa.suya.ajena{opacity:1}
+.mapa__leyenda{display:flex;flex-wrap:wrap;gap:6px;font-size:12px;font-weight:700;margin-top:8px}
+.mapa__leyenda .lg{padding:3px 9px;border-radius:999px;border:2px solid var(--linea);background:var(--papel)}
+.lg.cocina{border-color:var(--azul)}.lg.cuenta{border-color:var(--azul);background:#dbe8f5}.lg.llama{border-color:var(--rojo);background:#fbe7e7}.lg.suya{border-color:var(--oro);background:#fff7e6}
+.mapa-ext .mapa{position:relative}
+
+/* ---------- pantallas grandes (PC): más columnas ---------- */
+@media (min-width:1400px){
+  .carta{grid-template-columns:220px 1fr 440px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+  .mesas{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+  .salon__cuerpo{grid-template-columns:1fr 440px}
+}

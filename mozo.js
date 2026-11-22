@@ -10,7 +10,7 @@
   "use strict";
   var C = window.CARTA || {}, API = (C.pedidos || {}).api || "", GRUPOS = C.opciones || {};
   var app = document.getElementById("app");
-  var K = { t: "pg-mozo-t", mozo: "pg-mozo", carros: "pg-mozo-carros", fotos: "pg-mozo-fotos", ultimo: "pg-mozo-ultimo", alertas: "pg-mozo-alertas", vistaM: "pg-mozo-vistam", filtro: "pg-mozo-filtro" };
+  var K = { t: "pg-mozo-t", mozo: "pg-mozo", carros: "pg-mozo-carros", fotos: "pg-mozo-fotos", ultimo: "pg-mozo-ultimo", alertas: "pg-mozo-alertas", vistaM: "pg-mozo-vistam", filtro: "pg-mozo-filtro", mapa: "pg-mozo-mapa" };
   var YP = "Yape o Plin";
   function unirMetodos(l) { var r = []; (l || []).forEach(function (m) { m = /^(yape|plin)$/i.test(m) ? YP : m; if (/^transf/i.test(m)) return; if (r.indexOf(m) < 0) r.push(m); }); return r; }
   function cobroYP() { var c = (C.pedidos || {}).cobro || {}; return c[YP] || (c.Plin && (c.Plin.qr || c.Plin.numero) ? c.Plin : c.Yape) || null; }
@@ -37,10 +37,38 @@
     });
   }
 
+  /* ---------- marca de la app de tienda (rol cajero): nombre, tema, íconos y manifest propios ---------- */
+  var tiendaModo = false, instalarEv = null;
+  function aplicarMarcaTienda() {
+    if (tiendaModo) return;
+    tiendaModo = true;
+    document.documentElement.classList.add("tienda");
+    document.title = "Pasta Gallo · Tienda";
+    function ponerLink(rel, href) {
+      var l = document.querySelector('link[rel="' + rel + '"]');
+      if (!l) { l = document.createElement("link"); l.rel = rel; document.head.appendChild(l); }
+      l.href = href;
+    }
+    function ponerMeta(nombre, valor) {
+      var m = document.querySelector('meta[name="' + nombre + '"]');
+      if (!m) { m = document.createElement("meta"); m.name = nombre; document.head.appendChild(m); }
+      m.content = valor;
+    }
+    ponerLink("manifest", "/tienda.webmanifest"); ponerLink("apple-touch-icon", "/tienda-192.png");
+    ponerMeta("theme-color", "#24402f"); ponerMeta("apple-mobile-web-app-title", "PG Tienda");
+  }
+  window.addEventListener("beforeinstallprompt", function (e) {
+    if (!tiendaModo) return;            // el mozo conserva el aviso normal del navegador
+    e.preventDefault(); instalarEv = e;
+    document.dispatchEvent(new Event("pg-instalable"));
+  });
+  window.addEventListener("appinstalled", function () { instalarEv = null; document.dispatchEvent(new Event("pg-instalable")); });
+  if (/[?&]app=tienda\b/.test(location.search) || (leer("pg-mozo", null) || {}).rol === "cajero") aplicarMarcaTienda();
+
   /* ---------- estado ---------- */
   var S = { t: leer(K.t, ""), mozo: leer(K.mozo, null), mesas: [], avisos: [], metodos: [YP, "Efectivo", "Tarjeta"],
     horario: null, turno: null, v: "", desfase: 0, recibido: 0, vista: "mesas", mesa: null, cuenta: null, q: "", enviando: false,
-    vistaM: leer(K.vistaM, "grid"), filtro: leer(K.filtro, "todas") };
+    vistaM: leer(K.vistaM, "grid"), filtro: leer(K.filtro, "todas"), mapa: leer(K.mapa, false) === true };
   function yo() { return S.mozo ? S.mozo.id : ""; }
   function variosMozos() { return !!(S.turno && S.turno.mozos && S.turno.mozos.length > 1); }
   function mesaDe(n) { return S.mesas.filter(function (x) { return String(x.mesa) === String(n); })[0] || null; }
@@ -373,10 +401,12 @@
     var hz = S.horario;
     if (hz && !hz.panel) main.appendChild(vistaCerrado());
     else if (S.turno && !S.turno.trabaja) main.appendChild(vistaSinTurno());
-    else if (S.vista === "carta" && S.mesa) main.appendChild(vistaCarta());
-    else main.appendChild(vistaMesas());
-    // altura de los avisos para que no tapen el contenido
-    requestAnimationFrame(function () { document.documentElement.style.setProperty("--avisos", av.offsetHeight + "px"); });
+    else {
+      var mp = mapaSalon(); if (mp) main.appendChild(mp);   // mapa desplegable del salón: en todas las vistas
+      main.appendChild(S.vista === "carta" && S.mesa ? vistaCarta() : vistaMesas());
+    }
+    // altura de los avisos (y del mapa) para que no tapen el contenido
+    requestAnimationFrame(function () { document.documentElement.style.setProperty("--avisos", av.offsetHeight + "px"); medirMapa(); });
     var p = document.querySelector(".prods"); if (p && scrollProds) p.scrollTop = scrollProds;
     if (scrollWin) window.scrollTo(0, scrollWin);
   }
@@ -396,6 +426,8 @@
     if (hv && hn) hv.replaceWith(hn); else if (hn) { var yo = document.querySelector(".top .top__yo"); if (yo) yo.parentNode.insertBefore(hn, yo); }
     var av = document.querySelector(".avisos"), avn = barraAvisos();
     if (av) { av.replaceWith(avn); document.documentElement.style.setProperty("--avisos", avn.offsetHeight + "px"); }
+    var mpv = document.querySelector("main > .mapa"), mpn = mapaSalon();
+    if (mpv && mpn) { mpv.replaceWith(mpn); medirMapa(); }
     var m = S.mesas.filter(function (x) { return String(x.mesa) === String(S.mesa); })[0];
     var firma = firmaMesa(m);
     var escribiendo = document.activeElement && document.activeElement.closest && document.activeElement.closest(".orden");
@@ -551,7 +583,7 @@
   }
   function botonMesa(m, cls) {
     var e = estadoMesa(m), d = duenio(m), mia = esMia(m);
-    var b = btn("", "mesa " + e + (mia ? "" : " ajena") + (m.alerta ? " olvidada" : "") + (cls ? " " + cls : ""), function () { tocarMesa(m); });
+    var b = btn("", "mesa " + e + (mia ? "" : " ajena") + (d && d.id === yo() && m.estado !== "libre" ? " suya" : "") + (m.alerta ? " olvidada" : "") + (cls ? " " + cls : ""), function () { tocarMesa(m); });
     b.appendChild(h("b", null, (cls ? "" : "Mesa ") + m.mesa));
     if (cls) { if (m.forma) b.classList.add("f-" + m.forma); return b; }
     var lin = TXT_ESTADO[e] || "";
@@ -612,6 +644,66 @@
       p.appendChild(b);
     });
     return p;
+  }
+
+  /* ---------- mapa del salón desplegable (en todas las vistas del mozo y en la caja de tienda) ----------
+     Cerrado por defecto; recuerda si el mozo lo dejó abierto. Muestra cada mesa con su estado (libre / ocupada / llama /
+     cuenta solicitada…), resalta las del mozo conectado y al tocar una abre su pedido. Reutiliza botonMesa() y plano(). */
+  function miniMesa(m) {
+    var e = estadoMesa(m), d = duenio(m), suya = d && d.id === yo() && m.estado !== "libre";
+    var b = btn("", "mesa mini " + e + (esMia(m) ? "" : " ajena") + (suya ? " suya" : "") + (m.alerta ? " olvidada" : "") + (String(S.mesa) === String(m.mesa) && S.vista === "carta" ? " actual" : ""), function () { tocarMesa(m); });
+    b.setAttribute("aria-label", "Mesa " + m.mesa + ": " + (TXT_ESTADO[e] || e).replace(/[^\wÁ-ú ·]/g, "").trim() + (suya ? " (tuya)" : ""));
+    b.appendChild(h("b", null, m.mesa));
+    var ic = e === "llama" ? "🙋" : e === "cuenta" ? "🧾" : e === "listo" ? "🔔" : e === "libre" ? "" : m.porServir ? String(m.porServir) : "●";
+    if (ic) b.appendChild(h("small", null, ic));
+    return b;
+  }
+  function mapaSalon() {
+    var activas = S.mesas.filter(function (m) { return m.activa; });
+    if (!S.recibido || !activas.length) return null;
+    var w = h("section", "mapa" + (S.mapa ? " abierto" : ""));
+    var ocup = activas.filter(function (m) { return m.estado !== "libre"; }).length;
+    var llaman = activas.filter(function (m) { return estadoMesa(m) === "llama"; }).length, cuentas = activas.filter(function (m) { return estadoMesa(m) === "cuenta"; }).length;
+    var propias = activas.filter(function (m) { var d = duenio(m); return d && d.id === yo() && m.estado !== "libre"; }).length;
+    var cab = btn("", "mapa__cab", function () {
+      S.mapa = !S.mapa; guardar(K.mapa, S.mapa);
+      var nuevo = mapaSalon(); if (nuevo) { w.replaceWith(nuevo); medirMapa(); }
+    });
+    cab.setAttribute("aria-expanded", S.mapa ? "true" : "false");
+    cab.appendChild(h("span", "mapa__t", "🗺 Salón · " + ocup + " de " + activas.length + " ocupadas"));
+    if (llaman) cab.appendChild(h("span", "mapa__b llama", "🙋 " + llaman));
+    if (cuentas) cab.appendChild(h("span", "mapa__b cuenta", "🧾 " + cuentas));
+    if (propias) cab.appendChild(h("span", "mapa__b suya", "🤵 " + propias + (propias === 1 ? " mía" : " mías")));
+    cab.appendChild(h("span", "esp"));
+    cab.appendChild(h("span", "mapa__f", S.mapa ? "▴" : "▾"));
+    w.appendChild(cab);
+    if (!S.mapa) return w;
+    var cuerpo = h("div", "mapa__cuerpo");
+    var hayPlano = activas.some(function (m) { return m.x != null && m.y != null; });
+    if (hayPlano) cuerpo.appendChild(plano(activas));
+    else { var g = h("div", "mapa__mesas"); activas.forEach(function (m) { g.appendChild(miniMesa(m)); }); cuerpo.appendChild(g); }
+    var lg = h("div", "mapa__leyenda");
+    [["libre", "Libre"], ["cocina", "Ocupada"], ["cuenta", "Cuenta solicitada"], ["llama", "Llama"], ["suya", "Tuya"]].forEach(function (x) { lg.appendChild(h("span", "lg " + x[0], x[1])); });
+    cuerpo.appendChild(lg);
+    w.appendChild(cuerpo);
+    return w;
+  }
+  function medirMapa() { var m = document.querySelector("main > .mapa"); document.documentElement.style.setProperty("--mapa", (m ? m.offsetHeight : 0) + "px"); }
+  /* Para otras apps del equipo (caja de tienda): monta el mapa en `cont` y lo mantiene al día. opc.onMesa(mesa, estado) = qué hacer al tocar una mesa. */
+  function mapaExterno(cont, opc) {
+    S.alTocarMesa = (opc && opc.onMesa) || null;
+    var caja = h("div", "mapa-ext"); cont.appendChild(caja);
+    var parar = false;
+    function pedir() {
+      if (parar || !caja.isConnected) return;
+      api({ mz: "estado", t: S.t, v: "" }).then(function (r) {
+        if (!r.ok) return;
+        S.desfase = r.ahora - Date.now(); S.recibido = Date.now(); S.mozo = r.mozo || S.mozo; S.mesas = r.mesas || []; S.avisos = r.avisos || []; S.turno = r.turno || S.turno;
+        var mp = mapaSalon(); caja.textContent = ""; if (mp) caja.appendChild(mp);
+      }).catch(function () {}).then(function () { if (!parar) setTimeout(pedir, document.hidden ? 60000 : 20000); });
+    }
+    setTimeout(pedir, 0);   // el contenedor se agrega a la página justo después
+    return { actualizar: pedir, detener: function () { parar = true; } };
   }
 
   /* ---------- por servir: lo que falta llevar a la mesa (se marca plato por plato) ---------- */
@@ -708,6 +800,7 @@
 
   /* tocar una mesa: si la atiende otro mozo, se pregunta (no se bloquea) */
   function tocarMesa(m) {
+    if (S.alTocarMesa) { S.alTocarMesa(m, estadoMesa(m)); return; }   // app de tienda: solo mira la mesa
     if (salonAbierto) { salonAbierto = null; cerrarModal(); }
     var d = m.atiende;
     if (m.estado !== "libre" && d && d.id !== yo()) {
@@ -1321,10 +1414,12 @@
   var ROLES_EXT = ["cajero", "repartidor", "cocina"];
   function rolExt() { var r = S.mozo && String(S.mozo.rol || "").toLowerCase(); return ROLES_EXT.indexOf(r) >= 0 ? r : ""; }
   function cargarRolExt(rol) {
+    if (rol === "cajero") aplicarMarcaTienda();
     var sc = document.createElement("script"); sc.src = "/" + rol + ".js";
     sc.onload = function () {
       var a = window["PG_APP_" + rol.toUpperCase()];
-      if (a && a.iniciar) a.iniciar({ api: api, token: S.t, mozo: S.mozo, contenedor: app, h: h, toast: toast, salir: salir, cfg: C });
+      if (a && a.iniciar) a.iniciar({ api: api, token: S.t, mozo: S.mozo, contenedor: app, h: h, toast: toast, salir: salir, cfg: C, mapaSalon: mapaExterno,
+        instalar: { disponible: function () { return !!instalarEv; }, pedir: function () { var e = instalarEv; if (!e) return Promise.resolve(false); e.prompt(); return e.userChoice.then(function (c) { instalarEv = null; return c && c.outcome === "accepted"; }); }, ios: esIOS, instalada: instalada } });
       else app.appendChild(h("p", "vacio", "Este módulo todavía no está disponible. Avisa al administrador."));
     };
     sc.onerror = function () { app.appendChild(h("p", "vacio", "No se pudo cargar el módulo de " + rol + ". Revisa la conexión y vuelve a abrir el enlace.")); };
