@@ -19,10 +19,10 @@
   --ruido:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.16'/></svg>");
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;max-width:100%}
 body{font-family:var(--serif);font-size:19px;line-height:1.45;color:var(--tinta);background:var(--crema);
   background-image:var(--ruido);background-blend-mode:multiply;font-variant-numeric:lining-nums;
-  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  -webkit-font-smoothing:antialiased;overflow-x:clip;max-width:100%}
 img{max-width:100%;display:block}
 a{color:inherit}
 button{font:inherit;cursor:pointer}
@@ -132,7 +132,7 @@ button{font:inherit;cursor:pointer}
 .tam>div+div{border-left:1px solid rgba(169,128,63,.6)}
 .tam>div>span:first-child{display:block;font:500 .66rem/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--tinta-2);margin-bottom:6px}
 .tam .precio{font-size:1.38rem}
-.it.fcon{display:grid;grid-template-columns:1fr 96px;gap:4px 16px}
+.it.fcon{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:4px 16px}.it.fcon>*{min-width:0;overflow-wrap:anywhere}
 .it.fcon>*{grid-column:1}
 .foto{grid-column:2!important;grid-row:1/span 5;width:96px;height:96px;object-fit:cover;border:1px solid var(--oro);padding:3px;background:var(--crema-3);border-radius:50%}
 .alg{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
@@ -201,7 +201,7 @@ body.buscando .sec__cuerpo{padding-top:14px;padding-bottom:10px}
   .sec__cab{padding:96px 24px 76px}
   .sec__cuerpo{padding:50px 22px 84px}
   .it__n{font-size:1.55rem}
-  .it.fcon{grid-template-columns:1fr 124px}.foto{width:124px;height:124px}
+  .it.fcon{grid-template-columns:minmax(0,1fr) 124px}.foto{width:124px;height:124px}
   .chips{justify-content:center}
 }
 :focus-visible{outline:2px solid var(--oro-claro);outline-offset:2px}
