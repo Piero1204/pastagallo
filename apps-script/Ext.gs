@@ -1,6 +1,6 @@
 /* =========================== BASE DE MÓDULOS ===========================
-   Cada módulo nuevo (tienda, repartidores, inventario…) vive en sus propios archivos y se ENCIENDE desde Ajustes > Módulos
-   (clave Config modulo_<nombre> = SI). Apagado, no cambia nada de lo anterior.
+   Cada módulo nuevo (tienda, repartidores, inventario…) vive en sus propios archivos y está SIEMPRE activo
+   (ya no hay interruptores de módulos: moduloActivo_ devuelve true).
 
    Cómo se conecta un módulo (ejemplo: "inventario", archivo Inventario.gs):
      EXT_ACCIONES['inventario'] = function (body) { ... return { ok: true, ... }; };   // lo llama doPost con { ext: 'inventario', ... }
@@ -8,7 +8,7 @@
      EXT_GET['inventario']      = function (params) { ... };                           // lectura pública por GET ?ext=inventario (opcional)
    Personal con enlace (cajero, repartidor, cocina): body.t = llave del equipo; se valida con extPersonal_(body, ['cajero']).
    Pantallas del panel de administración: archivos HTML ExtInventarioNav / ExtInventarioViews / ExtInventarioJs (el nombre con
-   la inicial en mayúscula). Se incluyen solos mientras el módulo esté activo. Funciones que llama el panel: nombres globales
+   la inicial en mayúscula). Se incluyen solos (todos los módulos están siempre activos). Funciones que llama el panel: nombres globales
    SIN guion bajo final, con la sesión como primer argumento y exigirAdmin_(sesion) adentro.
    Errores que el usuario debe leer: throw extError_('mensaje'). Cualquier otro error se registra y devuelve un mensaje genérico. */
 var EXT_ACCIONES = EXT_ACCIONES || {};
@@ -19,7 +19,8 @@ var ROLES_PERSONAL = ['mozo', 'cajero', 'repartidor', 'cocina'];
 
 function extRegistrar_(nombre) { if (EXT_MODULOS.indexOf(nombre) < 0) EXT_MODULOS.push(nombre); }
 function extError_(msg) { var e = new Error(msg); e.userError = true; return e; }
-function moduloActivo_(cfg, nombre) { return esSi_((cfg || leerConfig_())['modulo_' + nombre]); }
+/** Todos los módulos están SIEMPRE activos (ya no hay interruptores modulo_* en Config; si quedan claves viejas, se ignoran). */
+function moduloActivo_(cfg, nombre) { return true; }
 function validarRol_(r) {
   r = String(r == null ? '' : r).trim().toLowerCase();
   if (ROLES_PERSONAL.indexOf(r) < 0) throw new Error('Rol no válido. Usa mozo, cajero, repartidor o cocina.');
@@ -40,7 +41,6 @@ function despacharExt_(body) {
   var nombre = String(body && body.ext || '').toLowerCase();
   var fn = EXT_ACCIONES[nombre];
   if (!fn) return { ok: false, error: 'Acción no válida.' };
-  if (!moduloActivo_(null, nombre)) return { ok: false, error: 'Este módulo no está activo.' };
   try { return fn(body) || { ok: false, error: 'Sin respuesta.' }; }
   catch (err) {
     var r = { ok: false, error: err && err.userError ? err.message : 'No se pudo completar. Intenta de nuevo.' };
@@ -52,7 +52,7 @@ function despacharExt_(body) {
 function despacharExtGet_(p) {
   var nombre = String(p && p.ext || '').toLowerCase();
   var fn = EXT_GET[nombre];
-  if (!fn || !moduloActivo_(null, nombre)) return { ok: false, error: 'No disponible.' };
+  if (!fn) return { ok: false, error: 'No disponible.' };
   try { return fn(p) || { ok: false }; } catch (err) { if (!(err && err.userError)) console.error(err); return { ok: false, error: err && err.userError ? err.message : 'No disponible.' }; }
 }
 /** Lo que cada módulo ACTIVO publica en la carta (CARTA.ext.<módulo>). */

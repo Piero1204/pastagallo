@@ -96,10 +96,8 @@
   function cargarFid(){
     run('clientesEstado').then(function(e){
       CLI.fid = e.fidelidad; $('#fidRegla').value = e.reglaFidelidad;
-      $('#fidOnOff').textContent = e.fidelidad ? 'Fidelidad ENCENDIDA (tocar para apagar)' : 'Fidelidad apagada (tocar para encender)';
     }).catch(error);
   }
-  $('#fidOnOff').addEventListener('click', function(){ run('fidelidadModulo', !CLI.fid).then(function(){ toast(CLI.fid ? 'Fidelidad apagada.' : 'Fidelidad encendida.'); cargarFid(); }).catch(error); });
   $('#fidGuardar').addEventListener('click', function(){ run('fidelidadGuardarRegla', $('#fidRegla').value).then(function(){ toast('Regla guardada.'); cargarFid(); }).catch(error); });
   EXT_VISTAS['clientes'] = function(){ pestana('lista'); };
 })();

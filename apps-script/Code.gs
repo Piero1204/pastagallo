@@ -23,7 +23,8 @@ var COLS = {
     'incluye', 'incluye_en', 'promo_dias', 'promo_desde', 'promo_hasta', 'promo_horas', 'promo_excluir', 'promo_extra'],
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
     'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
-    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura', 'mozo', 'entregado', 'aceptado', 'total_original', 'ajuste', 'ajuste_motivo'],
+    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura', 'mozo', 'entregado', 'aceptado', 'total_original', 'ajuste', 'ajuste_motivo',
+    'costo_delivery', 'lat', 'lng', 'zona_delivery'],
   mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde', 'codigo_anterior', 'atiende_id', 'ocupada_desde', 'x', 'y', 'forma', 'personas', 'cortesia'],
   opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo'],
   /* llamadas desde la mesa: "mozo" (llamar al mozo) o "cuenta" (pedir la cuenta) */
@@ -297,17 +298,125 @@ function horarioDe_(cfg, dia) {
 function minutos_(hhmm) { var p = hhmm.split(':'); return (+p[0]) * 60 + (+p[1]); }
 var DIAS_LARGOS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 /** Próxima franja de atención desde "momento": hoy si aún no cerró, si no el próximo día abierto.
- *  Devuelve { dias (0 = hoy), dia, a, c (minutos; c puede pasar de 1440), desde, hasta } o null. */
+ *  Devuelve { dias (0 = hoy), dia, a, c (minutos; c puede pasar de 1440), desde, hasta } o null.
+ *  Ojo: cerca del cierre (menos de 15 min) se salta HOY, igual que la web, para que la hora se evalúe contra el día correcto. */
 function proximaVentana_(cfg, momento) {
   for (var i = 0; i <= 7; i++) {
     var d = (momento.dia + i) % 7, r = horarioDe_(cfg, d);
     if (!r) continue;
     var a = minutos_(r[0]), c = minutos_(r[1]);
     if (c <= a) c += 1440;
-    if (i === 0 && momento.min >= c) continue;
+    if (i === 0 && momento.min >= c - 15) continue;
     return { dias: i, dia: d, a: a, c: c, desde: r[0], hasta: r[1] };
   }
   return null;
+}
+
+/* ---------- pedido programado ("¿Para qué hora lo quieres?") ----------
+ * Config (todas opcionales): programado_desde (18:30), programado_hasta (23:00), programado_paso_min (15),
+ * programado_prep_min (30 = tiempo de preparación: la primera hora de HOY es ahora + prep).
+ * La misma regla está en pedido.js (ventanaPedido): ambas deben dar la misma lista de horas. */
+function configProgramado_(cfg) {
+  var hm = function (v, def) { var m = String(v == null ? '' : v).trim().match(/^(\d{1,2}):(\d{2})$/); return m ? (+m[1]) * 60 + (+m[2]) : minutos_(def); };
+  var paso = parseInt(cfg.programado_paso_min, 10), prep = parseInt(cfg.programado_prep_min, 10);
+  var r = { desde: hm(cfg.programado_desde, '18:30'), hasta: hm(cfg.programado_hasta, '23:00'),
+    paso: (paso >= 5 && paso <= 60) ? paso : 15, prep: (prep >= 0 && prep <= 240) ? prep : 30 };
+  // módulo comercio activo: el intervalo y la anticipación los define él (la web usa los mismos: CARTA.ext.comercio.prog)
+  try {
+    if (typeof moduloActivo_ === 'function' && moduloActivo_(cfg, 'comercio') && typeof cxPrograma_ === 'function') {
+      var cx = cxPrograma_(cfg); if (cx.on) { r.paso = cx.paso; r.prep = cx.ant; }
+    }
+  } catch (e) { /* sin módulo */ }
+  return r;
+}
+function sumarDiasIso_(iso, n) {
+  var p = String(iso).split('-'), d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + n));
+  return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+}
+/** Franjas en las que se puede programar, desde "momento": [{ dias, dia, fecha, a, c, desde, hasta, paso }] (minutos; hasta puede ser < c). */
+function ventanasProgramadas_(cfg, momento) {
+  var pc = configProgramado_(cfg), r = [];
+  for (var i = 0; i <= 7; i++) {
+    var d = (momento.dia + i) % 7, h = horarioDe_(cfg, d);
+    if (!h) continue;
+    var a = minutos_(h[0]), c = minutos_(h[1]);
+    if (c <= a) c += 1440;
+    var desde = Math.ceil(Math.max(a, pc.desde) / pc.paso) * pc.paso, hasta = Math.floor(Math.min(c, pc.hasta) / pc.paso) * pc.paso;
+    if (i === 0) desde = Math.max(desde, Math.ceil((momento.min + pc.prep) / pc.paso) * pc.paso);
+    if (desde > hasta) continue;
+    r.push({ dias: i, dia: d, fecha: sumarDiasIso_(momento.fecha || '1970-01-01', i), a: a, c: c, desde: desde, hasta: hasta, paso: pc.paso });
+  }
+  return r;
+}
+function hhmm_(m) { m = ((m % 1440) + 1440) % 1440; return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
+
+/* ---------- costo de delivery (función pura) ----------
+ * MISMA fórmula en pedido.js (calcularDelivery). Si cambias una, cambia la otra (hay una prueba que las compara).
+ * tarifas = { local:{lat,lng}, factor_pista, base, por_km, minimo, maximo, max_km, zonas:[{nombre, precio, lat, lng, radio_km}] }
+ * entrada = { zona: 'La Merced' | '', lat, lng }
+ * Prioridad: zona elegida de la lista > coordenadas (dentro del radio de una zona = precio de la zona; si no, fórmula por distancia).
+ * Resultado: { ok, costo (entero, hacia arriba), zona, km, metodo: 'zona'|'ubicacion-zona'|'distancia' }
+ *   ó { ok:false, falta:true } (sin zona ni ubicación) ó { ok:false, fuera:true, km, error } ó { ok:false, error }. */
+var DELIVERY_TARIFAS_DEF_ = {
+  local: { lat: -8.1278775, lng: -79.040603 }, factor_pista: 1.3, base: 4.5, por_km: 1.55, minimo: 5, maximo: 30, max_km: 14.5,
+  zonas: [
+    { nombre: 'La Merced', precio: 5, lat: -8.126, lng: -79.0393, radio_km: 0.5 }, { nombre: 'California', precio: 6, lat: -8.1309, lng: -79.0377, radio_km: 0.6 },
+    { nombre: 'San Andrés', precio: 7, lat: -8.1124, lng: -79.034, radio_km: 0.8 }, { nombre: 'Golf', precio: 7, lat: -8.134, lng: -79.035, radio_km: 0.8 },
+    { nombre: 'Santa María', precio: 10, lat: -8.1199, lng: -79.0222, radio_km: 0.9 }, { nombre: 'Las Quintanas', precio: 10, lat: -8.0994, lng: -79.0273, radio_km: 0.9 },
+    { nombre: 'San Isidro', precio: 10, lat: -8.1019, lng: -79.0326, radio_km: 0.9 }, { nombre: 'El Bosque', precio: 10, lat: -8.1102, lng: -79.006, radio_km: 1.0 },
+    { nombre: 'La Esperanza', precio: 20, lat: -8.083, lng: -79.041, radio_km: 1.5 }, { nombre: 'La Rinconada', precio: 15, lat: -8.0924, lng: -79.0052, radio_km: 1.0 },
+    { nombre: 'El Milagro', precio: 20, lat: -8.0338, lng: -79.0632, radio_km: 1.5 }, { nombre: 'Covicorti', precio: 8, lat: -8.1129, lng: -79.0465, radio_km: 0.8 },
+    { nombre: 'La Perla', precio: 8, lat: -8.128, lng: -79.0274, radio_km: 0.8 }, { nombre: 'Buenos Aires', precio: 8, lat: -8.1435, lng: -79.0562, radio_km: 0.9 },
+    { nombre: 'Centro de Trujillo', precio: 8, lat: -8.1118, lng: -79.0287, radio_km: 0.8 }, { nombre: 'El Salvador', precio: 10, lat: -8.1027, lng: -79.0232, radio_km: 0.9 },
+    { nombre: 'Tacora', precio: 12, lat: -8.095, lng: -79.05, radio_km: 1.0 }, { nombre: 'Huanchaco', precio: 30, lat: -8.08, lng: -79.1205, radio_km: 1.5 },
+    { nombre: 'Ramón Castilla', precio: 20, lat: -8.0877, lng: -79.0109, radio_km: 1.0 }
+  ]
+};
+/** Config delivery_tarifas (texto JSON) → tarifas; si falta o es inválido, usa las de código. */
+function tarifasDelivery_(cfg) {
+  var t = null;
+  try { t = JSON.parse(String(cfg && cfg.delivery_tarifas || '')); } catch (e) { t = null; }
+  if (!t || typeof t !== 'object' || !Array.isArray(t.zonas) || !t.zonas.length) return DELIVERY_TARIFAS_DEF_;
+  var d = DELIVERY_TARIFAS_DEF_, r = {};
+  Object.keys(d).forEach(function (k) { r[k] = t[k] == null ? d[k] : t[k]; });
+  return r;
+}
+function distanciaKm_(a, b) {
+  var rad = Math.PI / 180, dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(x)));
+}
+function calcularDelivery_(tar, ent) {
+  ent = ent || {}; tar = tar || {};
+  var zonas = tar.zonas || [], nombre = String(ent.zona == null ? '' : ent.zona).trim();
+  var fin = function (n) { return Math.ceil(Math.round(Number(n) * 1e6) / 1e6); };
+  if (nombre) {
+    var z = zonas.filter(function (x) { return String(x.nombre) === nombre; })[0];
+    if (!z || !isFinite(Number(z.precio))) return { ok: false, error: 'Elige una zona de la lista.' };
+    return { ok: true, costo: fin(z.precio), zona: String(z.nombre), km: null, metodo: 'zona' };
+  }
+  var lat = ent.lat == null || ent.lat === '' ? NaN : Number(ent.lat), lng = ent.lng == null || ent.lng === '' ? NaN : Number(ent.lng);
+  if (!isFinite(lat) && !isFinite(lng)) return { ok: false, falta: true, error: 'Elige tu zona o usa tu ubicación.' };
+  if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return { ok: false, error: 'Ubicación no válida.' };
+  var p = { lat: lat, lng: lng }, mejor = null, md = 0;
+  zonas.forEach(function (x) {
+    var zl = x.lat == null || x.lat === '' ? NaN : Number(x.lat), zg = x.lng == null || x.lng === '' ? NaN : Number(x.lng), rk = x.radio_km == null || x.radio_km === '' ? NaN : Number(x.radio_km);
+    if (!isFinite(zl) || !isFinite(zg) || !isFinite(rk) || !isFinite(Number(x.precio))) return;
+    var dz = distanciaKm_({ lat: zl, lng: zg }, p);
+    if (dz <= rk && (!mejor || dz < md)) { mejor = x; md = dz; }
+  });
+  var loc = tar.local || {}, ll = Number(loc.lat), lg = Number(loc.lng);
+  var km = isFinite(ll) && isFinite(lg) && loc.lat != null && loc.lng != null ? distanciaKm_({ lat: ll, lng: lg }, p) : null;
+  if (mejor) return { ok: true, costo: fin(mejor.precio), zona: String(mejor.nombre), km: km, metodo: 'ubicacion-zona' };
+  if (km == null) return { ok: false, error: 'No se pudo calcular el delivery por ubicación. Elige tu zona.' };
+  var maxKm = Number(tar.max_km);
+  if (maxKm > 0 && km > maxKm) return { ok: false, fuera: true, km: km, error: 'Estás fuera de nuestra zona de reparto.' };
+  var num = function (v, def) { var n = Number(v); return v == null || v === '' || !isFinite(n) ? def : n; };
+  var c = fin(num(tar.base, 0) + num(tar.por_km, 0) * km * num(tar.factor_pista, 1));
+  var mn = num(tar.minimo, 0), mx = num(tar.maximo, 0);
+  if (c < mn) c = mn;
+  if (mx > 0 && c > mx) c = mx;
+  return { ok: true, costo: fin(c), zona: '', km: km, metodo: 'distancia' };
 }
 
 /* =========================== PROMOCIONES (lógica pura) ===========================
@@ -420,13 +529,16 @@ function enVentanaExtra_(cfg, momento) {
   return m >= c && m < c + x;
 }
 
+/** Config pago_obligatorio: vacío = NO (el pago es opcional; pagar por adelantado solo agiliza el pedido). Solo "SI" lo exige. */
+function pagoObligatorio_(cfg) { return esSi_(cfg && cfg.pago_obligatorio); }
+
 /**
  * Valida un pedido y calcula su total con los precios de la hoja.
  * Devuelve { ok:false, error } o { ok:true, canal, cliente, lineas, total, detalle, ... }
  */
 function calcularPedido_(body, cat, cfg, momento, porMozo, edicion) {
   if (!body || typeof body !== 'object') return { ok: false, error: 'Pedido vacío.' };
-  if (!porMozo && !esSi_(cfg.pedidos_activos)) return { ok: false, error: 'Por ahora no estamos recibiendo pedidos por la web. Escríbenos por WhatsApp.' };
+  if (!porMozo && !esSi_(cfg.pedidos_activos)) return { ok: false, error: 'Por ahora no estamos recibiendo pedidos por la web. Escríbenos.' };
 
   var canal = String(body.canal || '');
   if (['delivery', 'recojo', 'mesa'].indexOf(canal) < 0) return { ok: false, error: 'Elige delivery, recojo o mesa.' };
@@ -450,16 +562,22 @@ function calcularPedido_(body, cat, cfg, momento, porMozo, edicion) {
     if (!esSi_(cfg.pedidos_fuera_de_horario)) return { ok: false, error: 'En este momento estamos cerrados. Revisa nuestro horario.' };
     if (!programado) return { ok: false, error: 'Estamos cerrados: indica a qué hora quieres tu pedido.' };
   }
-  var paraOtroDia = '';
+  var paraOtroDia = '', progVentana = null;
   if (programado) {
-    // la hora elegida debe caer DENTRO del horario de atención (hoy, o el próximo día abierto si ya cerramos)
-    var v = proximaVentana_(cfg, momento);
-    if (!v) return { ok: false, error: 'No tenemos horario de atención configurado. Escríbenos por WhatsApp.' };
+    /* La hora debe caer en una franja programable (ver ventanasProgramadas_). La web envía también el día
+       (programadoFecha, AAAA-MM-DD) para que "mañana 19:00" no se evalúe contra hoy; sin ese dato (web antigua) se usa la primera franja. */
+    var vs = ventanasProgramadas_(cfg, momento);
+    if (!vs.length) return { ok: false, error: 'No tenemos horas disponibles para programar. Escríbenos.' };
+    var pf = String(body.programadoFecha || '').trim(), v = null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(pf)) v = vs.filter(function (x) { return x.fecha === pf; })[0] || null;
+    else v = vs[0];
     var pm = minutos_(programado);
-    if (pm < v.a && pm + 1440 <= v.c) pm += 1440;
-    if (pm < v.a || pm > v.c || (v.dias === 0 && pm < momento.min)) {
-      return { ok: false, error: 'Elige una hora dentro de nuestro horario: de ' + v.desde + ' a ' + v.hasta + (v.dias === 0 ? ' (hoy).' : ' (' + (v.dias === 1 ? 'mañana' : 'el ' + DIAS_LARGOS[v.dia]) + ').') };
+    if (v && v.c > 1440 && pm < v.a && pm + 1440 <= v.c) pm += 1440;   // pasada la medianoche
+    if (!v || pm < v.desde || pm > v.hasta) {
+      var v0 = v || vs[0];
+      return { ok: false, error: 'Esa hora ya no está disponible. Elige otra' + (v0 ? ' (de ' + hhmm_(v0.desde) + ' a ' + hhmm_(v0.hasta) + (v0.dias === 0 ? ', hoy' : v0.dias === 1 ? ', mañana' : ', el ' + DIAS_LARGOS[v0.dia]) + ').' : '.') };
     }
+    progVentana = v;
     if (v.dias > 0) paraOtroDia = 'PARA ' + (v.dias === 1 ? 'MAÑANA ' : '') + DIAS_LARGOS[v.dia].toUpperCase() + ' ' + programado + '. ';
   }
 
@@ -476,11 +594,27 @@ function calcularPedido_(body, cat, cfg, momento, porMozo, edicion) {
     if (cliente.telefono.replace(/\D/g, '').length < 9) return { ok: false, error: 'Escribe un número de celular válido.' };
     var pagos = metodosLista_(cfg.metodos_pago, false);
     if (/^(yape|plin)$/i.test(cliente.pago) && pagos.indexOf(YAPE_PLIN) >= 0) cliente.pago = YAPE_PLIN; // web antigua en caché
-    // Config pago_obligatorio (vacío = SI, como siempre). En NO el cliente puede no elegir método; si elige uno, debe ser uno válido.
-    var pagoObl = String(cfg.pago_obligatorio == null || cfg.pago_obligatorio === '' ? 'SI' : cfg.pago_obligatorio).toUpperCase() !== 'NO';
+    // Config pago_obligatorio (vacío = NO: el pago es opcional). Con SI hay que elegir método; si el cliente elige uno, debe ser válido.
+    var pagoObl = pagoObligatorio_(cfg);
     if (pagos.length && pagos.indexOf(cliente.pago) < 0 && (pagoObl || cliente.pago)) return { ok: false, error: 'Elige un método de pago.' };
   }
   if (canal === 'delivery' && cliente.direccion.length < 5) return { ok: false, error: 'Escribe la dirección de entrega.' };
+  // Delivery: dirección y referencia obligatorias; el costo se recalcula aquí (zona elegida o coordenadas), nunca se confía en el del cliente.
+  var entrega = { costo: null, zona: '', lat: '', lng: '' };
+  if (canal === 'delivery') {
+    if (cliente.referencia.length < 3) return { ok: false, error: 'Escribe una referencia para encontrarte (ej.: frente al parque).' };
+    var dl = body.lat == null || body.lat === '' ? NaN : Number(body.lat), dg = body.lng == null || body.lng === '' ? NaN : Number(body.lng);
+    var coordsOk = isFinite(dl) && isFinite(dg) && Math.abs(dl) <= 90 && Math.abs(dg) <= 180;
+    var cd = calcularDelivery_(tarifasDelivery_(cfg), { zona: texto_(body.zona, 60), lat: coordsOk ? dl : null, lng: coordsOk ? dg : null });
+    if (cd.ok && cd.metodo === 'zona' && coordsOk) {   // zona elegida + ubicación: si la ubicación está fuera del reparto, no vale la zona barata
+      var cc = calcularDelivery_(tarifasDelivery_(cfg), { lat: dl, lng: dg });
+      if (cc.fuera) return { ok: false, error: cc.error };
+    }
+    if (cd.ok) { entrega.costo = cd.costo; entrega.zona = cd.zona; }
+    else if (!cd.falta) return { ok: false, error: cd.error };   // fuera de zona, zona inexistente...
+    // sin zona ni ubicación (web antigua en caché): el pedido entra y el costo se confirma por WhatsApp
+    if (coordsOk) { entrega.lat = Math.round(dl * 1e6) / 1e6; entrega.lng = Math.round(dg * 1e6) / 1e6; }
+  }
 
   // Comprobante (boleta o factura): datos para emitirlo después
   var comp = { tipo: texto_(body.comprobante, 10), doc: String(body.doc || '').replace(/\D/g, '').slice(0, 11),
@@ -492,7 +626,7 @@ function calcularPedido_(body, cat, cfg, momento, porMozo, edicion) {
     if (er) return { ok: false, error: er };
     if (comp.razon.length < 3) return { ok: false, error: comp.tipo === 'Factura' ? 'Escribe la razón social.' : 'Escribe el nombre para la boleta.' };
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(comp.correo)) return { ok: false, error: 'Escribe un correo válido para enviarte el comprobante.' };
-    if (cliente.telefono.replace(/\D/g, '').length < 9) return { ok: false, error: 'Escribe tu WhatsApp para enviarte el comprobante.' };
+    if (cliente.telefono.replace(/\D/g, '').length < 9) return { ok: false, error: 'Escribe tu celular para enviarte el comprobante.' };
   } else comp = { tipo: '', doc: '', razon: '', correo: '' };
 
   var items = Array.isArray(body.items) ? body.items : [];
@@ -594,7 +728,8 @@ function calcularPedido_(body, cat, cfg, momento, porMozo, edicion) {
 
   var origen = String(body.origen || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30);
   return { ok: true, canal: canal, mesa: mesa, programado: programado, cliente: cliente, lineas: lineas,
-    total: total, detalle: detalle, abierto: abierto, origen: origen, comp: comp, ref: texto_(body.ref, 12) };
+    total: total, detalle: detalle, abierto: abierto, origen: origen, comp: comp, ref: texto_(body.ref, 12),
+    progVentana: progVentana, entrega: entrega, costoDelivery: entrega.costo == null ? 0 : entrega.costo, aCobrar: Math.round((total + (entrega.costo == null ? 0 : entrega.costo)) * 100) / 100 };
 }
 
 /** Texto del pedido (para la comanda, WhatsApp y el panel) a partir de sus líneas. */
@@ -691,7 +826,9 @@ function construirCarta_(cfg, secciones, productos, opciones) {
       extraLlevarMin: cocinaExtraMin_(cfg), api: cfg.api_url || '', activos: esSi_(cfg.pedidos_activos), fueraHorario: esSi_(cfg.pedidos_fuera_de_horario),
       mesaActivos: esSi_(cfg.pedidos_mesa_activos), recojo: esSi_(cfg.recojo_activo),
       metodosPago: metodosLista_(cfg.metodos_pago, false),
-      pagoObligatorio: String(cfg.pago_obligatorio == null || cfg.pago_obligatorio === '' ? 'SI' : cfg.pago_obligatorio).toUpperCase() !== 'NO',
+      pagoObligatorio: pagoObligatorio_(cfg),
+      deliveryTarifas: tarifasDelivery_(cfg),
+      programado: (function () { var pc = configProgramado_(cfg); return { desde: hhmm_(pc.desde), hasta: hhmm_(pc.hasta), paso: pc.paso, prep: pc.prep }; })(),
       metodosPagoMesa: metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true),
       cobro: datosCobro_(cfg),
       textoDelivery: cfg.texto_delivery || '', textoDelivery_en: cfg.texto_delivery_en || '',
@@ -801,7 +938,7 @@ function doPost(e) {
     res = body && body.mz ? respuestaMozo_(body) : body && body.ext ? despacharExt_(body) : body && body.aviso ? registrarAviso_(body) : body && body.verificarPago ? verificarPagoPublico_(body) : registrarPedido_(body);
   } catch (err) {
     console.error(err);
-    res = { ok: false, error: 'No pudimos registrar tu pedido. Intenta de nuevo o escríbenos por WhatsApp.' };
+    res = { ok: false, error: 'No pudimos registrar tu pedido. Intenta de nuevo o escríbenos.' };
   }
   return json_(res);
 }
@@ -859,7 +996,7 @@ function registrarPedido_(body, mozo) {
   if (r.canal !== 'mesa') {
     var kt = 'tel:' + r.cliente.telefono;
     var nt = Number(cache.get(kt) || 0);
-    if (nt >= 4) return { ok: false, error: 'Ya recibimos varios pedidos de este número. Escríbenos por WhatsApp.' };
+    if (nt >= 4) return { ok: false, error: 'Ya recibimos varios pedidos de este número. Escríbenos.' };
     cache.put(kt, String(nt + 1), 900);
   } else if (!mozo) {
     var km = 'mesa:' + r.mesa;
@@ -916,7 +1053,8 @@ function registrarPedido_(body, mozo) {
       comp_estado: r.comp.tipo ? 'Pendiente' : '', num_dia: numDia, pago_estado: pagoEstado,
       entregado: '',
       captura: captura ? guardarCaptura_(captura, numero) : '',
-      mozo: mozo ? mozo.nombre : ''
+      mozo: mozo ? mozo.nombre : '',
+      costo_delivery: r.entrega.costo == null ? '' : r.entrega.costo, lat: r.entrega.lat, lng: r.entrega.lng, zona_delivery: r.entrega.zona
     };
     var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
     var cab = asegurarColumnas_(h, COLS.pedidos);
@@ -928,7 +1066,7 @@ function registrarPedido_(body, mozo) {
     lock.releaseLock();
   }
   imprimirPedidoServidor_(numero); // comanda a cocina al instante (sin depender del panel abierto)
-return { ok: true, numero: numDia, id: numero, total: r.total, detalle: r.detalle, lineas: r.lineas, pagoEstado: pagoEstado, conCaptura: !!captura };
+return { ok: true, numero: numDia, id: numero, total: r.total, costoDelivery: r.entrega.costo, aCobrar: r.aCobrar, zonaDelivery: r.entrega.zona, detalle: r.detalle, lineas: r.lineas, pagoEstado: pagoEstado, conCaptura: !!captura };
 }
 
 function listaComprobantes_(cfg) {
@@ -1032,6 +1170,8 @@ function pedidoAObjeto_(p, zona) {
     act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0,
     pagoEstado: celdaTexto_(p.pago_estado), captura: celdaTexto_(p.captura), mozo: celdaTexto_(p.mozo),
     entregado: celdaTexto_(p.entregado), aceptado: celdaTexto_(p.aceptado), cocina: cocinaDe_(p.items_json),
+    costoDelivery: p.costo_delivery === '' || p.costo_delivery == null ? null : Number(p.costo_delivery), aCobrar: Math.round(((Number(p.total) || 0) + (Number(p.costo_delivery) || 0)) * 100) / 100,
+    lat: p.lat === '' || p.lat == null ? null : Number(p.lat), lng: p.lng === '' || p.lng == null ? null : Number(p.lng), zonaDelivery: celdaTexto_(p.zona_delivery),
     totalOriginal: Number(p.total_original) || 0, ajuste: p.ajuste === '' || p.ajuste == null ? 0 : (Number(p.ajuste) || 0), ajusteMotivo: celdaTexto_(p.ajuste_motivo)
   };
 }
@@ -1580,7 +1720,7 @@ function guardarAjustes(sesion, o) {
     if (k === 'minutos_alerta' && !(Number(v) >= 5 && Number(v) <= 240)) throw new Error('Los minutos de alerta deben estar entre 5 y 240.');
     if (k === 'banco_cuenta') { v = v.replace(/[\s-]/g, ''); if (v && !/^\d{8,20}$/.test(v)) throw new Error('El número de cuenta debe tener solo dígitos (entre 8 y 20).'); }
     if (k === 'banco_cci') { v = v.replace(/[\s-]/g, ''); if (v && !/^\d{20}$/.test(v)) throw new Error('El CCI debe tener exactamente 20 dígitos.'); }
-    if (k === 'pago_obligatorio') v = /^(no|n|0|false)$/i.test(v) ? 'NO' : 'SI';
+    if (k === 'pago_obligatorio') { v = /^(no|n|0|false)$/i.test(v) ? 'NO' : 'SI'; if (v === 'SI' && String(antes[k] == null ? '' : antes[k]).trim() === '') return; } // vacío = NO: un guardado del panel no debe volverlo obligatorio sin querer
     if (CLAVES_PAGO_.indexOf(k) >= 0) {
       var ant = antes[k] == null ? '' : String(antes[k]);
       if (ant !== v) auditar_(quien, 'Cambió ' + k, enmascarar_(k, ant) + ' → ' + enmascarar_(k, v));

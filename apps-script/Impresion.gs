@@ -127,7 +127,10 @@ function lineasTicketServidor_(tipo, p) {
     if (p.pago) a('n', 'Pago: ' + p.pago + (p.pagoEstado === 'Verificado' ? ' (verificado)' : p.pagoEstado === 'Confirmado' ? ' (confirmado)' : ''));
     if (p.mozo) a('g', 'Mozo: ' + p.mozo);
     if (p.comprobante) { L.push(['hr', '']); a('g', String(p.comprobante).toUpperCase() + ': ' + p.doc); a('n', p.razon); a('p', p.correo); }
-    a('tot', 'TOTAL ' + soles(p.total) + (p.canal === 'delivery' ? ' + deliv.' : ''));
+    if (p.canal === 'delivery' && p.costoDelivery != null) {
+      a('n', 'Productos ' + soles(p.total)); a('n', 'Delivery' + (p.zonaDelivery ? ' (' + p.zonaDelivery + ')' : '') + ' ' + soles(p.costoDelivery));
+      a('tot', 'TOTAL ' + soles(p.aCobrar != null ? p.aCobrar : (Number(p.total) || 0) + p.costoDelivery));
+    } else a('tot', 'TOTAL ' + soles(p.total) + (p.canal === 'delivery' ? ' + deliv.' : ''));
   }
   return L;
 }

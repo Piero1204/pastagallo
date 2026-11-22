@@ -20,7 +20,7 @@ var HOJA_OPINIONES = 'Opiniones', COLS_OPINIONES = ['pedido', 'fecha', 'num_dia'
 /** Exige administrador y que el módulo esté encendido. Devuelve el nombre corto del usuario. */
 function modExigir_(sesion, modulo) {
   var q = exigirAdmin_(sesion);
-  if (!moduloActivo_(null, modulo)) throw new Error('El módulo "' + modulo + '" no está activo. Enciéndelo en Ajustes → Módulos.');
+  if (!moduloActivo_(null, modulo)) throw new Error('El módulo "' + modulo + '" no está disponible.');
   return String(q || 'panel').split('@')[0];
 }
 
@@ -170,7 +170,7 @@ function clientesEstado(sesion) {
   modExigir_(sesion, 'clientes');
   var cfg = leerConfig_();
   var st = null; try { st = JSON.parse(PropertiesService.getScriptProperties().getProperty('CLIENTES_SYNC') || 'null'); } catch (e) { st = null; }
-  return { ok: true, sincronizado: !!st, ultimaSync: st ? st.ms : 0, fidelidad: esSi_(cfg.modulo_fidelidad),
+  return { ok: true, sincronizado: !!st, ultimaSync: st ? st.ms : 0, fidelidad: fidelidadRegla_(cfg) > 0,
     reglaFidelidad: String(cfg.fidelidad_soles_por_punto == null ? '' : cfg.fidelidad_soles_por_punto) };
 }
 function clientesActualizar(sesion, completo) {
@@ -202,7 +202,7 @@ function clientesFicha(sesion, telefono) {
   var ficha = { ok: true, cliente: clienteDeFila_(c, zona),
     pedidos: peds.slice(0, 30).map(function (p) { return { numero: p.numero, num_dia: p.num_dia, fecha: p.dia, canal: p.canal, estado: p.estado, total: p.total, detalle: p.detalle }; }),
     opiniones: opinionesDe_(tel, zona) };
-  if (esSi_(cfg.modulo_fidelidad)) ficha.fidelidad = fidelidadResumen_(tel, cfg, c, zona);
+  if (fidelidadRegla_(cfg) > 0) ficha.fidelidad = fidelidadResumen_(tel, cfg, c, zona);
   return ficha;
 }
 function clientesGuardarNota(sesion, telefono, notas, etiquetas) {

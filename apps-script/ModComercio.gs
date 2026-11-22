@@ -146,7 +146,7 @@ function comercioValidarPedido_(body, r, cfg) {
   // programado: horas con intervalo, anticipación y cupo (solo delivery/recojo)
   var pg = cxPrograma_(cfg);
   if (r.programado && r.canal !== 'mesa') {
-    v = proximaVentana_(cfg, momento);
+    v = r.progVentana || proximaVentana_(cfg, momento);   // la franja (día) que validó calcularPedido_: así "mañana 19:00" no se evalúa contra hoy
     if (v) {
       var pm = minutos_(r.programado);
       if (pm < v.a && pm + 1440 <= v.c) pm += 1440;
@@ -154,9 +154,7 @@ function comercioValidarPedido_(body, r, cfg) {
       hora = cxMinTxt_(pm);
       if (pg.on) {
         if (pm % pg.paso !== 0) return { ok: false, error: 'Elige una hora de la lista: las horas disponibles van cada ' + pg.paso + ' minutos.' };
-        if (pm > v.c - pg.paso) return { ok: false, error: 'La última hora para pedir es ' + cxMinTxt_(v.c - pg.paso) + '. Elige una anterior.' };
-        var ahoraS = momento.min; if (v.dias === 0 && v.c > 1440 && ahoraS < v.a) ahoraS += 1440;
-        if (v.dias === 0 && pm < ahoraS + pg.ant) return { ok: false, error: 'Elige una hora con al menos ' + pg.ant + ' minutos de anticipación.' };
+        // última hora y anticipación mínima: ya las valida calcularPedido_ (ventanasProgramadas_) con este mismo intervalo y anticipación
       }
     }
   }
