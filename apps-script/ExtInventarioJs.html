@@ -118,7 +118,7 @@ function pintarMovs(r){
   var t = el('table', { class: 'tabla' }, [el('thead', {}, [el('tr', {}, ['Fecha', 'Insumo', 'Tipo', 'Cantidad', 'Saldo', 'Motivo', 'Quién'].map(function(h){ return el('th', { text: h }); }))])]);
   var tb = el('tbody');
   m.forEach(function(x){
-    tb.appendChild(el('tr', {}, [x.fecha, x.insumo, x.tipo, (x.cantidad > 0 ? '+' : '') + n3(x.cantidad), n3(x.saldo), x.motivo, x.usuario].map(function(v, k){ return el('td', { text: String(v), style: k === 4 && x.saldo < 0 ? 'color:var(--mal);font-weight:700' : '' }); })));
+    tb.appendChild(el('tr', {}, [x.fecha, x.insumo, x.tipo, (x.cantidad > 0 ? '+' : '') + n3(x.cantidad), n3(x.saldo), x.motivo, x.usuario].map(function(v, k){ return el('td', { text: String(v), style: k === 4 && 0 > x.saldo ? 'color:var(--mal);font-weight:700' : '' }); })));
   });
   t.appendChild(tb);
   r.appendChild(el('div', { style: 'overflow-x:auto' }, [t]));

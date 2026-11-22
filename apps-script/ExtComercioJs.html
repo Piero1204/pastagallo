@@ -17,7 +17,7 @@
     var q = norm($('#cxBuscar').value), t = $('#cxTabla'); t.textContent = '';
     t.appendChild(el('tr', null, [el('th', { text: 'Qué' }), el('th', { text: 'Horas' }), el('th', { text: 'Días' })]));
     DATA.filas.forEach(function (f) {
-      if (q && norm(f.nombre + ' ' + (f.seccion || '')).indexOf(q) < 0) return;
+      if (q && norm(f.nombre + ' ' + (f.seccion || '')).indexOf(q) === -1) return;
       var h = el('input', { class: 'txt', placeholder: '12:00-16:00' }), d = el('input', { class: 'txt', placeholder: 'lun, mar' });
       h.value = f._h != null ? f._h : f.horas; d.value = f._d != null ? f._d : f.dias;
       h.addEventListener('input', function () { f._h = h.value; }); d.addEventListener('input', function () { f._d = d.value; });
