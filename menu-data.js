@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T09:16:48-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T13:15:13-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -378,11 +378,11 @@ window.CARTA = {
    },
    "Transferencia": {
     "transf": true,
-    "banco": "",
-    "moneda": "",
-    "numero": "",
-    "cci": "",
-    "titular": "",
+    "banco": "Interbank",
+    "moneda": "PEN",
+    "numero": "8983127736962",
+    "cci": "00389801312773696248",
+    "titular": "Edit Varela García",
     "texto": "",
     "qr": ""
    },
@@ -3886,5 +3886,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-22T09:16:48-05:00"
+ "publicado": "2026-11-22T13:15:13-05:00"
 };
