@@ -23,11 +23,11 @@ var COLS = {
     'incluye', 'incluye_en', 'promo_dias', 'promo_desde', 'promo_hasta', 'promo_horas', 'promo_excluir', 'promo_extra'],
   pedidos: ['numero', 'fecha', 'canal', 'mesa', 'nombre', 'telefono', 'direccion', 'referencia', 'pago', 'programado',
     'detalle', 'total', 'estado', 'notas', 'items_json', 'actualizado', 'historial', 'origen',
-    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura', 'mozo', 'entregado'],
+    'ref', 'comprobante', 'doc', 'razon', 'correo', 'comp_estado', 'comp_numero', 'num_dia', 'pago_estado', 'captura', 'mozo', 'entregado', 'aceptado', 'total_original', 'ajuste', 'ajuste_motivo'],
   mesas: ['mesa', 'codigo', 'activa', 'link', 'abierta_desde', 'codigo_anterior', 'atiende_id', 'ocupada_desde', 'x', 'y', 'forma', 'personas', 'cortesia'],
   opciones: ['grupo', 'nombre', 'nombre_en', 'tipo', 'obligatorio', 'opcion', 'opcion_en', 'precio', 'orden', 'activo'],
   /* llamadas desde la mesa: "mozo" (llamar al mozo) o "cuenta" (pedir la cuenta) */
-  avisos: ['id', 'fecha', 'mesa', 'motivo', 'detalle', 'estado', 'atendido', 'division'],
+  avisos: ['id', 'fecha', 'mesa', 'motivo', 'detalle', 'estado', 'atendido', 'division', 'silencioso'],
   /* registro de boletas y facturas emitidas (la emisión se hace en el sistema de SUNAT) */
   comprobantes: ['id', 'fecha', 'tipo', 'serie', 'numero', 'doc', 'razon', 'correo', 'whatsapp', 'total', 'pedido', 'detalle',
     'estado', 'enviado', 'notas', 'registrado_por', 'modo', 'gravada', 'igv', 'hash', 'sunat', 'items_json']
@@ -186,10 +186,31 @@ function guardarClave_(clave, valor) {
   var h = SpreadsheetApp.getActive().getSheetByName(HOJA.config);
   var n = h.getLastRow();
   var claves = n > 1 ? h.getRange(2, 1, n - 1, 1).getValues() : [];
+  var texto = CLAVES_TEXTO_.indexOf(clave) >= 0;   // Google Sheets convertiría "0038…" en número y perdería ceros y dígitos
   for (var i = 0; i < claves.length; i++) {
-    if (claves[i][0] === clave) { h.getRange(i + 2, 2).setValue(valor); return; }
+    if (claves[i][0] === clave) {
+      var celda = h.getRange(i + 2, 2);
+      if (texto) celda.setNumberFormat('@');
+      celda.setValue(valor);
+      return;
+    }
   }
   h.appendRow([clave, valor, '']);
+  if (texto) h.getRange(h.getLastRow(), 2).setNumberFormat('@').setValue(valor);
+}
+
+/** Pone ****1234 a los números de cuenta/CCI/celular para que el registro de auditoría no los repita completos. */
+function enmascarar_(clave, v) {
+  v = String(v == null ? '' : v);
+  return CLAVES_TEXTO_.indexOf(clave) >= 0 && v.length > 4 ? '****' + v.slice(-4) : (v === '' ? '(vacío)' : v);
+}
+
+/* ---------- auditoría de cambios importantes ---------- */
+var HOJA_AUDITORIA = 'Auditoría', COLS_AUDITORIA = ['fecha', 'usuario', 'accion', 'detalle'];
+function auditar_(usuario, accion, detalle) {
+  var h = obtenerHoja_(SpreadsheetApp.getActive(), HOJA_AUDITORIA, COLS_AUDITORIA), cab = asegurarColumnas_(h, COLS_AUDITORIA);
+  var f = { fecha: new Date(), usuario: String(usuario || ''), accion: String(accion || ''), detalle: String(detalle || '') };
+  h.appendRow(cab.map(function (c) { return protegerCelda_(f[c] == null ? '' : f[c]); }));
 }
 
 function leerTabla_(nombre) {
@@ -443,7 +464,9 @@ function calcularPedido_(body, cat, cfg, momento, porMozo, edicion) {
     if (cliente.telefono.replace(/\D/g, '').length < 9) return { ok: false, error: 'Escribe un número de celular válido.' };
     var pagos = metodosLista_(cfg.metodos_pago, false);
     if (/^(yape|plin)$/i.test(cliente.pago) && pagos.indexOf(YAPE_PLIN) >= 0) cliente.pago = YAPE_PLIN; // web antigua en caché
-    if (pagos.length && pagos.indexOf(cliente.pago) < 0) return { ok: false, error: 'Elige un método de pago.' };
+    // Config pago_obligatorio (vacío = SI, como siempre). En NO el cliente puede no elegir método; si elige uno, debe ser uno válido.
+    var pagoObl = String(cfg.pago_obligatorio == null || cfg.pago_obligatorio === '' ? 'SI' : cfg.pago_obligatorio).toUpperCase() !== 'NO';
+    if (pagos.length && pagos.indexOf(cliente.pago) < 0 && (pagoObl || cliente.pago)) return { ok: false, error: 'Elige un método de pago.' };
   }
   if (canal === 'delivery' && cliente.direccion.length < 5) return { ok: false, error: 'Escribe la dirección de entrega.' };
 
@@ -654,6 +677,7 @@ function construirCarta_(cfg, secciones, productos, opciones) {
       api: cfg.api_url || '', activos: esSi_(cfg.pedidos_activos), fueraHorario: esSi_(cfg.pedidos_fuera_de_horario),
       mesaActivos: esSi_(cfg.pedidos_mesa_activos), recojo: esSi_(cfg.recojo_activo),
       metodosPago: metodosLista_(cfg.metodos_pago, false),
+      pagoObligatorio: String(cfg.pago_obligatorio == null || cfg.pago_obligatorio === '' ? 'SI' : cfg.pago_obligatorio).toUpperCase() !== 'NO',
       metodosPagoMesa: metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true),
       cobro: datosCobro_(cfg),
       textoDelivery: cfg.texto_delivery || '', textoDelivery_en: cfg.texto_delivery_en || '',
@@ -796,10 +820,6 @@ function registrarPedido_(body, mozo) {
   if (JSON.stringify(body).length > 20000) return { ok: false, error: 'Pedido demasiado grande.' };
 
   var cache = CacheService.getScriptCache();
-  var minuto = 'min:' + Math.floor(Date.now() / 60000);
-  var cuenta = Number(cache.get(minuto) || 0);
-  if (cuenta >= 25) return { ok: false, error: 'Estamos recibiendo muchos pedidos. Intenta en un minuto.' };
-  cache.put(minuto, String(cuenta + 1), 120);
 
   var cfg = leerConfig_();
   var cat = leerCatalogo_();
@@ -825,6 +845,15 @@ function registrarPedido_(body, mozo) {
     var nm = Number(cache.get(km) || 0);
     if (nm >= 8) return { ok: false, error: 'Tu mesa envió varios pedidos seguidos. Llama a tu mozo.' };
     cache.put(km, String(nm + 1), 600);
+  }
+
+  // Cupo global por minuto (último recurso). Solo cuentan los pedidos del público que ya pasaron la validación:
+  // las peticiones basura no gastan el cupo y el personal (mozo) nunca queda bloqueado por él.
+  if (!mozo) {
+    var minuto = 'min:' + Math.floor(Date.now() / 60000);
+    var cuenta = Number(cache.get(minuto) || 0);
+    if (cuenta >= 25) return { ok: false, error: 'Estamos recibiendo muchos pedidos. Intenta en un minuto.' };
+    cache.put(minuto, String(cuenta + 1), 120);
   }
 
   var lock = LockService.getScriptLock();
@@ -980,7 +1009,8 @@ function pedidoAObjeto_(p, zona) {
     ts: p.fecha instanceof Date ? p.fecha.getTime() : 0,
     act: p.actualizado instanceof Date ? p.actualizado.getTime() : 0,
     pagoEstado: celdaTexto_(p.pago_estado), captura: celdaTexto_(p.captura), mozo: celdaTexto_(p.mozo),
-    entregado: celdaTexto_(p.entregado), cocina: cocinaDe_(p.items_json)
+    entregado: celdaTexto_(p.entregado), aceptado: celdaTexto_(p.aceptado), cocina: cocinaDe_(p.items_json),
+    totalOriginal: Number(p.total_original) || 0, ajuste: p.ajuste === '' || p.ajuste == null ? 0 : (Number(p.ajuste) || 0), ajusteMotivo: celdaTexto_(p.ajuste_motivo)
   };
 }
 
@@ -1047,27 +1077,164 @@ function versionPedidos(sesion) {
   return PropertiesService.getScriptProperties().getProperty('PEDIDOS_VERSION') || '';
 }
 
-function cambiarEstado(sesion, numero, estado) {
+/** esperado (opcional) = el estado que veía el panel al tocar el botón. Si otro equipo ya lo cambió, no se pisa su cambio. */
+function cambiarEstado(sesion, numero, estado, esperado) {
   var email = exigirAdmin_(sesion);
   if (ESTADOS.indexOf(estado) < 0) throw new Error('Estado no válido.');
-  var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
-  var n = h.getLastRow();
-  if (n < 2) throw new Error('No hay pedidos.');
-  var nums = h.getRange(2, 1, n - 1, 1).getValues();
-  for (var i = nums.length - 1; i >= 0; i--) {
-    if (String(nums[i][0]) === String(numero)) {
-      var fila = i + 2;
-      var cEst = COLS.pedidos.indexOf('estado') + 1, cAct = COLS.pedidos.indexOf('actualizado') + 1, cHis = COLS.pedidos.indexOf('historial') + 1;
-      var ahora = new Date();
-      h.getRange(fila, cEst).setValue(estado);
-      h.getRange(fila, cAct).setValue(ahora);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos);
+    var n = h.getLastRow();
+    if (n < 2) throw new Error('No hay pedidos.');
+    var nums = h.getRange(2, 1, n - 1, 1).getValues();
+    for (var i = nums.length - 1; i >= 0; i--) {
+      if (String(nums[i][0]) === String(numero)) {
+        var fila = i + 2;
+        var cEst = COLS.pedidos.indexOf('estado') + 1, cAct = COLS.pedidos.indexOf('actualizado') + 1, cHis = COLS.pedidos.indexOf('historial') + 1;
+        var actual = String(h.getRange(fila, cEst).getValue() || '');
+        if (esperado && actual !== String(esperado)) throw new Error('El pedido #' + numero + ' ya estaba en "' + actual + '" (otro equipo lo cambió). Se actualizó la lista.');
+        if (actual === estado) return true;   // ya estaba así: no se repite
+        var ahora = new Date();
+        h.getRange(fila, cEst).setValue(estado);
+        h.getRange(fila, cAct).setValue(ahora);
+        var his = String(h.getRange(fila, cHis).getValue() || '');
+        h.getRange(fila, cHis).setValue((his ? his + ' · ' : '') + estado + ' ' + fmt_(ahora, 'HH:mm') + ' (' + email.split('@')[0] + ')');
+        PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+        return true;
+      }
+    }
+    throw new Error('No se encontró el pedido #' + numero);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Aceptar un pedido NUEVO cuyo pago aún se está verificando: apaga la alarma de "pedido nuevo" en todos los equipos
+ *  sin cambiar su estado (sigue "Nuevo" hasta que se confirme el pago, y recién entonces pasa a cocina). */
+function aceptarPedido(sesion, numero) {
+  var email = exigirAdmin_(sesion);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), cab = asegurarColumnas_(h, COLS.pedidos);
+    var n = h.getLastRow();
+    if (n < 2) throw new Error('No hay pedidos.');
+    var nums = h.getRange(2, 1, n - 1, 1).getValues();
+    for (var i = nums.length - 1; i >= 0; i--) {
+      if (String(nums[i][0]) !== String(numero)) continue;
+      var fila = i + 2, cEst = cab.indexOf('estado') + 1, cAc = cab.indexOf('aceptado') + 1, cHis = cab.indexOf('historial') + 1;
+      if (String(h.getRange(fila, cEst).getValue() || '') !== 'Nuevo') return true;   // ya avanzó: no hay nada que aceptar
+      if (String(h.getRange(fila, cAc).getValue() || '')) return true;                // otro equipo ya lo aceptó
+      var ahora = new Date(), quien = email.split('@')[0];
+      h.getRange(fila, cAc).setValue(fmt_(ahora, 'HH:mm') + ' ' + quien);
       var his = String(h.getRange(fila, cHis).getValue() || '');
-      h.getRange(fila, cHis).setValue((his ? his + ' · ' : '') + estado + ' ' + fmt_(ahora, 'HH:mm') + ' (' + email.split('@')[0] + ')');
+      h.getRange(fila, cHis).setValue((his ? his + ' · ' : '') + 'Aceptado ' + fmt_(ahora, 'HH:mm') + ' (' + quien + ')');
       PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
       return true;
     }
+    throw new Error('No se encontró el pedido #' + numero);
+  } finally {
+    lock.releaseLock();
   }
-  throw new Error('No se encontró el pedido #' + numero);
+}
+
+/* ---------- registro de impresiones automáticas ----------
+   El panel reserva una "clave" (p. ej. nuevo:123, cuenta:ab12cd34) ANTES de imprimir: si otro equipo ya la reservó, no
+   imprime otra vez. "Enviada" = el panel mandó el ticket al navegador; el navegador NO confirma si la impresora lo
+   imprimió, por eso nunca se escribe "impreso". forzar = reimpresión a propósito (suma un intento). */
+var HOJA_IMPRESIONES = 'Impresiones', COLS_IMPRESIONES = ['clave', 'fecha', 'equipo', 'intentos', 'estado', 'ultimo'];
+function reservarImpresion(sesion, clave, forzar) {
+  var email = exigirAdmin_(sesion);
+  clave = String(clave || '').slice(0, 60);
+  if (!clave) throw new Error('Falta la clave de impresión.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var h = obtenerHoja_(SpreadsheetApp.getActive(), HOJA_IMPRESIONES, COLS_IMPRESIONES), cab = asegurarColumnas_(h, COLS_IMPRESIONES);
+    var ahora = new Date(), quien = email.split('@')[0];
+    var previa = leerTablaReciente_(HOJA_IMPRESIONES, 600).filter(function (x) { return String(x.clave) === clave; })[0];
+    if (!previa) {
+      var fila = { clave: clave, fecha: ahora, equipo: quien, intentos: 1, estado: 'Enviada', ultimo: ahora };
+      h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
+      return { ok: true, primera: true };
+    }
+    if (!forzar) return { ok: true, primera: false };
+    h.getRange(previa._fila, cab.indexOf('intentos') + 1).setValue((Number(previa.intentos) || 1) + 1);
+    h.getRange(previa._fila, cab.indexOf('equipo') + 1).setValue(quien);
+    h.getRange(previa._fila, cab.indexOf('ultimo') + 1).setValue(ahora);
+    return { ok: true, primera: true, reimpresion: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------- ajustes de precio de UN pedido (descuento, recargo, precio final) ----------
+   No toca los precios de la carta. Parte siempre del total ORIGINAL, así que un segundo ajuste reemplaza al primero
+   (nunca se acumulan dos descuentos). Cada cambio queda en la hoja "Ajustes" con quién, cuándo, cuánto y por qué. */
+var HOJA_AJUSTES = 'Ajustes', COLS_AJUSTES = ['id', 'fecha', 'pedido', 'tipo', 'valor', 'original', 'final', 'diferencia', 'pct', 'motivo', 'usuario', 'reemplaza'];
+function redondear2_(x) { return Math.round(x * 100) / 100; }
+/** Misma cuenta que usa el panel para la vista previa; el servidor es quien manda. Devuelve { final, dif, pct } o lanza un error. */
+function calcularAjuste_(orig, tipo, valor) {
+  orig = Number(orig) || 0;
+  if (tipo === 'quitar') return { final: orig, dif: 0, pct: 0 };
+  var v = Number(String(valor).replace(',', '.'));
+  var f;
+  if (tipo === 'precio_final') {
+    if (String(valor == null ? '' : valor).trim() === '' || !isFinite(v) || v < 0) throw new Error('Escribe el precio final.');
+    f = v;
+  } else {
+    if (!isFinite(v) || v <= 0) throw new Error('Escribe un valor mayor que cero.');
+    if (tipo === 'desc_monto') { if (v > orig) throw new Error('El descuento no puede pasar del total.'); f = orig - v; }
+    else if (tipo === 'desc_pct') { if (v > 100) throw new Error('El descuento no puede pasar de 100 %.'); f = orig * (1 - v / 100); }
+    else if (tipo === 'rec_monto') { f = orig + v; }
+    else if (tipo === 'rec_pct') { if (v > 300) throw new Error('El recargo no puede pasar de 300 %.'); f = orig * (1 + v / 100); }
+    else throw new Error('Tipo de ajuste no válido.');
+  }
+  f = redondear2_(f);
+  var dif = redondear2_(f - orig);
+  return { final: f, dif: dif, pct: orig > 0 ? redondear2_(dif / orig * 100) : 0 };
+}
+
+function ajustarPedido(sesion, numero, tipo, valor, motivo) {
+  var quien = String(exigirAdmin_(sesion) || 'panel').split('@')[0];
+  motivo = String(motivo || '').trim().slice(0, 120);
+  if (tipo !== 'quitar' && motivo.length < 3) throw new Error('Escribe el motivo del ajuste.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var h = SpreadsheetApp.getActive().getSheetByName(HOJA.pedidos), cab = asegurarColumnas_(h, COLS.pedidos);
+    var p = leerTablaReciente_(HOJA.pedidos, 1200).filter(function (x) { return String(x.numero) === String(numero); })[0];
+    if (!p) throw new Error('No se encontró el pedido #' + numero);
+    var cfg = leerConfig_(), zona = cfg.zona_horaria || 'America/Lima';
+    if (p.estado === 'Cancelado' || p.estado === 'Entregado') throw new Error('El pedido #' + numero + ' ya está ' + String(p.estado).toLowerCase() + ': su total no se cambia.');
+    if (String(p.pago_estado) === 'Confirmado') throw new Error('El pago de este pedido ya está confirmado: no se cambia el total. Usa una corrección o un reembolso.');
+    var cobros = 0; try { cobros = cobrosDelPedido_(p, zona).length; } catch (e) { cobros = 0; }
+    if (cobros) throw new Error('La mesa de este pedido ya fue cobrada: no se cambia el total. Usa una corrección o un reembolso.');
+    var original = Number(p.total_original) || Number(p.total) || 0;
+    var anterior = Number(p.ajuste) || 0;
+    if (tipo === 'quitar' && !anterior) return { ok: true, original: original, total: original, ajuste: 0, pct: 0 };
+    var r = calcularAjuste_(original, tipo, valor);
+    var ahora = new Date();
+    var poner = function (k, v) { h.getRange(p._fila, cab.indexOf(k) + 1).setValue(v); };
+    poner('total', r.final);
+    poner('total_original', tipo === 'quitar' ? '' : original);
+    poner('ajuste', tipo === 'quitar' ? '' : r.dif);
+    poner('ajuste_motivo', tipo === 'quitar' ? '' : motivo);
+    poner('actualizado', ahora);
+    var his = String(p.historial || '');
+    var txt = tipo === 'quitar' ? 'Ajuste quitado' : 'Ajuste ' + (r.dif < 0 ? '-' : '+') + 'S/' + Math.abs(r.dif).toFixed(2) + ' (' + r.pct + '%) · ' + motivo;
+    poner('historial', (his ? his + ' · ' : '') + txt + ' ' + fmt_(ahora, 'HH:mm') + ' (' + quien + ')');
+    var obj = { pedido: p.numero, tipo: tipo, valor: tipo === 'quitar' ? '' : Number(String(valor).replace(',', '.')), original: original, final: r.final,
+      diferencia: r.dif, pct: r.pct, motivo: motivo || 'Se quitó el ajuste', usuario: quien, reemplaza: anterior || '' };
+    var ha = obtenerHoja_(SpreadsheetApp.getActive(), HOJA_AJUSTES, COLS_AJUSTES), ca = asegurarColumnas_(ha, COLS_AJUSTES);
+    obj.id = Utilities.getUuid().slice(0, 8); obj.fecha = ahora;
+    ha.appendRow(ca.map(function (c) { return protegerCelda_(obj[c] == null ? '' : obj[c]); }));
+    PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
+    return { ok: true, original: original, total: r.final, ajuste: r.dif, pct: r.pct };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /* ---------- pago anticipado: capturas y confirmación ---------- */
@@ -1117,7 +1284,9 @@ function datosCobro_(cfg) {
   return {
     Yape: { numero: String(cfg.yape_numero || ''), titular: cfg.yape_titular || '', qr: cfg.yape_qr || '' },
     Plin: { numero: String(cfg.plin_numero || ''), titular: cfg.plin_titular || '', qr: cfg.plin_qr || '' },
-    Transferencia: { texto: cfg.banco_texto || '', qr: cfg.transferencia_qr || '' },
+    // Los números van siempre como TEXTO (el CCI empieza con ceros y tiene 20 dígitos: como número se corrompe)
+    Transferencia: { transf: true, banco: String(cfg.banco_nombre || ''), moneda: String(cfg.banco_moneda || ''), numero: String(cfg.banco_cuenta || ''),
+      cci: String(cfg.banco_cci || ''), titular: String(cfg.banco_titular || ''), texto: cfg.banco_texto || '', qr: cfg.transferencia_qr || '' },
     // "Yape o Plin" es UNA sola opción: se muestra el QR de Plin (se puede pagar desde Yape o desde Plin);
     // si todavía no se subió el de Plin, se usa el de Yape.
     'Yape o Plin': (cfg.plin_qr || cfg.plin_numero)
@@ -1354,7 +1523,12 @@ var CLAVES_EDITABLES = ['nombre', 'desde', 'direccion', 'telefono', 'whatsapp', 
   'pedidos_activos', 'pedidos_fuera_de_horario', 'pedidos_mesa_activos', 'metodos_pago', 'recojo_activo', 'texto_delivery',
   'api_url', 'sitio_url', 'github_repo', 'github_rama', 'admins', 'minutos_alerta',
   'historia_eyebrow_en', 'historia_titulo_en', 'historia_texto_en', 'texto_delivery_en', 'horario_texto_en', 'cerrado_texto_en',
-  'comprobantes', 'metodos_pago_mesa', 'yape_numero', 'yape_titular', 'plin_numero', 'plin_titular', 'banco_texto'];
+  'comprobantes', 'metodos_pago_mesa', 'yape_numero', 'yape_titular', 'plin_numero', 'plin_titular', 'banco_texto',
+  'pago_obligatorio', 'banco_nombre', 'banco_moneda', 'banco_cuenta', 'banco_cci', 'banco_titular'];
+/* claves de cobro: sus cambios quedan en la hoja "Auditoría" (los números se guardan enmascarados) y se escriben como TEXTO */
+var CLAVES_PAGO_ = ['metodos_pago', 'metodos_pago_mesa', 'pago_obligatorio', 'yape_numero', 'yape_titular', 'plin_numero', 'plin_titular',
+  'banco_texto', 'banco_nombre', 'banco_moneda', 'banco_cuenta', 'banco_cci', 'banco_titular'];
+var CLAVES_TEXTO_ = ['yape_numero', 'plin_numero', 'banco_cuenta', 'banco_cci'];
 
 function leerAjustes(sesion) {
   exigirAdmin_(sesion);
@@ -1365,7 +1539,8 @@ function leerAjustes(sesion) {
 }
 
 function guardarAjustes(sesion, o) {
-  exigirAdmin_(sesion);
+  var quien = String(exigirAdmin_(sesion) || 'panel').split('@')[0];
+  var antes = leerConfig_();
   Object.keys(o || {}).forEach(function (k) {
     if (CLAVES_EDITABLES.indexOf(k) < 0) return;
     var v = String(o[k] == null ? '' : o[k]).trim();
@@ -1373,6 +1548,13 @@ function guardarAjustes(sesion, o) {
       && !/^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/.test(v)) throw new Error('Horario no válido en ' + k + '. Usa 18:00-23:00 o cerrado.');
     if (k === 'whatsapp') v = v.replace(/\D/g, '');
     if (k === 'minutos_alerta' && !(Number(v) >= 5 && Number(v) <= 240)) throw new Error('Los minutos de alerta deben estar entre 5 y 240.');
+    if (k === 'banco_cuenta') { v = v.replace(/[\s-]/g, ''); if (v && !/^\d{8,20}$/.test(v)) throw new Error('El número de cuenta debe tener solo dígitos (entre 8 y 20).'); }
+    if (k === 'banco_cci') { v = v.replace(/[\s-]/g, ''); if (v && !/^\d{20}$/.test(v)) throw new Error('El CCI debe tener exactamente 20 dígitos.'); }
+    if (k === 'pago_obligatorio') v = /^(no|n|0|false)$/i.test(v) ? 'NO' : 'SI';
+    if (CLAVES_PAGO_.indexOf(k) >= 0) {
+      var ant = antes[k] == null ? '' : String(antes[k]);
+      if (ant !== v) auditar_(quien, 'Cambió ' + k, enmascarar_(k, ant) + ' → ' + enmascarar_(k, v));
+    }
     guardarClave_(k, v);
   });
   actualizarLinksMesas_();
@@ -1662,7 +1844,8 @@ function registrarAviso_(body) {
   return { ok: true, repetido: !!igual };
 }
 
-/** El mozo pide la cuenta de una mesa (se imprime sola en la PC del local). */
+/** El mozo pide la cuenta de una mesa (se imprime sola en la PC del local). El aviso es SILENCIOSO: sirve para imprimir
+ *  y para marcar la mesa como "Cuenta solicitada" (mozo + hora), pero no suena ni pide "Atendido". */
 function avisoCuentaMozo_(mesa, quien, otra) {
   var m = leerTabla_(HOJA.mesas).filter(function (x) { return String(x.mesa) === String(mesa); })[0];
   if (!m || !esSi_(m.activa)) return { ok: false, error: 'Mesa no encontrada.' };
@@ -1677,7 +1860,7 @@ function avisoCuentaMozo_(mesa, quien, otra) {
       igual = null;
     }
     if (!igual) {
-      var fila = { id: Utilities.getUuid().slice(0, 8), fecha: new Date(), mesa: mesa, motivo: 'cuenta', detalle: 'Pedida por ' + String(quien || 'el mozo').slice(0, 40), estado: 'Pendiente', atendido: '', division: '' };
+      var fila = { id: Utilities.getUuid().slice(0, 8), fecha: new Date(), mesa: mesa, motivo: 'cuenta', detalle: 'Pedida por ' + String(quien || 'el mozo').slice(0, 40), estado: 'Pendiente', atendido: '', division: '', silencioso: 'SI' };
       h.appendRow(cab.map(function (c) { return protegerCelda_(fila[c] == null ? '' : fila[c]); }));
     }
     PropertiesService.getScriptProperties().setProperty('PEDIDOS_VERSION', String(Date.now()));
@@ -1693,7 +1876,8 @@ function avisosPendientes_(zona) {
   }).map(function (a) {
     return { id: String(a.id), mesa: celdaTexto_(a.mesa), motivo: String(a.motivo), texto: MOTIVOS_AVISO[a.motivo] || String(a.motivo),
       detalle: celdaTexto_(a.detalle), hora: Utilities.formatDate(a.fecha, zona, 'HH:mm'), ts: a.fecha.getTime(),
-      division: String(a.division == null ? '' : a.division).split(';').map(Number).filter(function (x) { return x > 0; }) };
+      division: String(a.division == null ? '' : a.division).split(';').map(Number).filter(function (x) { return x > 0; }),
+      silencioso: esSi_(a.silencioso) };
   });
 }
 
