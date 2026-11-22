@@ -162,6 +162,7 @@ function estadoMozo_(mozo, version) {
   base.mesas = d.mesas; base.avisos = d.avisos;
   base.metodos = metodosLista_(cfg.metodos_pago_mesa || 'Yape o Plin, Efectivo, Tarjeta', true);
   base.comprobantes = listaComprobantes_(cfg);
+  try { base.cargos = cargosAdicionales_(); } catch (e) { base.cargos = []; } // Cargos Adicionales (caja, taper, bolsa, roturas…)
   return base;
 }
 

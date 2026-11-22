@@ -348,6 +348,7 @@ tr.oculto td{opacity:.5}
       <input class="txt" id="buscaPed" placeholder="Buscar # pedido, cliente, mesa…" style="width:220px">
       <span class="esp"></span>
       <button class="btn son" id="autoImp" title="Pedido nuevo → ticket de cocina (y comanda completa si es delivery/recojo). Mesa que pide la cuenta → cuenta completa.">🖨 Impresión automática</button>
+<button class="btn son" id="impVincular" type="button">🔗 Vincular impresora</button>
       <button class="btn son" id="sonido">🔔 Sonido</button>
       <button class="btn" id="sonCfg" title="Tipo de sonido, volumen y qué pedidos hacen sonar el parlante">🎚 Sonidos</button>
       <button class="btn" id="recargar">↻ Actualizar</button>
@@ -680,7 +681,13 @@ function pintarSonido(){
 function activarSonido(){ sonido = true; pintarSonido(); sonidoNuevo(); try { localStorage.setItem('pg-sonido','1'); } catch(e) {} }
 $('#sonido').addEventListener('click', function(){ if (sonido) { sonido = false; pintarSonido(); try { localStorage.removeItem('pg-sonido'); } catch(e) {} } else activarSonido(); });
 $('#sonidoOn').addEventListener('click', activarSonido);
-$('#autoImp').addEventListener('click', function(){ autoImp = !autoImp; try { localStorage.setItem('pg-autoimp', autoImp ? '1' : '0'); } catch(e) {} pintarAutoImp(); });
+/* Impresión automática: ajuste ÚNICO para todo el panel (se guarda en el servidor), así una ventana o equipo con el botón viejo no sigue imprimiendo. */
+$('#autoImp').addEventListener('click', function(){
+var nuevo = !autoImp; ponerAutoImpLocal(nuevo);
+run('ponerImpresionAuto', nuevo).then(function(r){ ponerAutoImpLocal(!!r); toast(r ? 'Impresión automática ACTIVADA' : 'Impresión automática APAGADA: solo se imprime al pulsar 🖨'); }).catch(function(e){ ponerAutoImpLocal(!nuevo); error(e); });
+});
+function ponerAutoImpLocal(v){ autoImp = !!v; try { localStorage.setItem('pg-autoimp', autoImp ? '1' : '0'); } catch(e) {} pintarAutoImp(); }
+window.addEventListener('storage', function(e){ if (e.key === 'pg-autoimp') { autoImp = e.newValue !== '0'; pintarAutoImp(); } });
 
 /* ---------- pedidos ---------- */
 $('#filtroPed').addEventListener('click', function(e){
@@ -716,7 +723,7 @@ function cargarPedidos(){
     if (!r || !r.pedidos) throw new Error('No se pudieron leer los pedidos. Recarga la página; si sigue, avisa a Piero.');
     var primera = !cargoUnaVez; cargoUnaVez = true;
     // pedidos recién llegados: "Nuevo", o de mesa que entran solos a cocina (mozo / QR confirmado automáticamente)
-    var nuevos = r.pedidos.filter(function(p){ return !VISTOS[p.numero] && (p.estado === 'Nuevo' || (p.canal === 'mesa' && (p.estado === 'Confirmado' || p.estado === 'En preparación'))); });
+    var nuevos = r.pedidos.filter(function(p){ return !VISTOS[p.numero] && (p.estado === 'Nuevo' || (p.canal === 'mesa' && (p.estado === 'Confirmado' || p.estado === 'En preparación')) || (p.canal !== 'mesa' && p.estado === 'Confirmado' && p.pagoEstado === 'Verificado')); });
     r.pedidos.forEach(function(p){ VISTOS[p.numero] = true; });
     PEDIDOS = r.pedidos; versionPed = r.version; if (r.salon) SALON = r.salon;
     var avNuevos = (r.avisos || []).filter(function(a){ return !AVISOS_VISTOS[a.id]; });
@@ -730,6 +737,9 @@ function cargarPedidos(){
     pintarPedidos(primera ? [] : nuevos.map(function(p){ return p.numero; }));
     // delivery/recojo con pago por verificar: la comanda sale recién cuando se confirma el pago
     if (!primera && autoImp) nuevos.forEach(function(p){ if (!IMPRESOS[p.numero] && p.pagoEstado !== 'Por verificar') imprimirUnaVez('nuevo:' + p.numero, function(){ imprimirNuevo(p); }); });
+// pago verificado automáticamente (Gmail) o confirmado en otro equipo: recién ahora sale la comanda
+if (!primera && autoImp) r.pedidos.forEach(function(p){ if (ESPERA_PAGO[p.numero] && p.pagoEstado && p.pagoEstado !== 'Por verificar' && p.estado !== 'Cancelado' && !IMPRESOS[p.numero]) imprimirUnaVez('nuevo:' + p.numero, function(){ imprimirNuevo(p); }); });
+ESPERA_PAGO = {}; r.pedidos.forEach(function(p){ if (p.pagoEstado === 'Por verificar') ESPERA_PAGO[p.numero] = true; });
     // la mesa (QR) o el mozo pidieron la cuenta → sale sola la cuenta completa de la mesa
     if (!primera && autoImp) avNuevos.forEach(function(a){ if (a.motivo === 'cuenta') imprimirUnaVez('cuenta:' + a.id, function(){ imprimirCuentaAviso(a); }); });
     if (!primera && nuevos.length) {
@@ -1319,14 +1329,16 @@ function bloqueComp(p){
 
 /* ---------- pago anticipado (delivery y recojo) ---------- */
 function bloquePago(p){
-  if (p.pagoEstado === 'Confirmado') return el('div', {class:'pago pago--ok', text:'💳 Pago confirmado · ' + p.pago});
+  if (p.pagoEstado === 'Verificado') return el('div', {class:'pago pago--ok', text:'✅ Pago verificado automáticamente (Gmail) · ' + p.pago + ' · ' + soles(p.total)});
+if (p.pagoEstado === 'Confirmado') return el('div', {class:'pago pago--ok', text:'💳 Pago confirmado por el local · ' + p.pago});
   return el('div', {class:'pago'}, [
-    el('div', null, [el('b', {text:'💳 PAGO POR VERIFICAR'}), ' · ' + p.pago + ' · ' + soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '')]),
+    el('div', null, [el('b', {text:'⏳ PAGO POR VERIFICAR — no se imprime hasta confirmar'}), ' · ' + p.pago + ' · ' + soles(p.total) + (p.canal === 'delivery' ? ' + delivery' : '')]),
     p.aceptado ? el('div', {class:'nota', text:'✓ Pedido aceptado (' + p.aceptado + '). Falta verificar el pago.'}) : null,
     el('div', {class:'nota', text: p.captura ? 'El cliente subió la captura. Revisa en la app del banco que el dinero llegó antes de confirmar.' : 'No subió captura en la web: la enviará por WhatsApp. Revisa en la app del banco que el dinero llegó.'}),
     el('div', {style:'display:flex;gap:6px;margin-top:4px;flex-wrap:wrap'}, [
       p.captura ? el('button', {class:'btn peq', text:'👁 Ver captura', onclick:function(){ verCaptura(p); }}) : null,
-      el('button', {class:'btn peq ok', text:'✓ Pago recibido', onclick:function(){ confirmarPagoP(p); }})
+      /transfer/i.test(p.pago || '') ? null : el('button', {class:'btn peq', text:'🔎 Verificar con Gmail', title:'Busca el aviso de Plin en Gmail (mismo monto, hora del pedido)', onclick:function(){ var b = this; b.disabled = true; b.textContent = 'Verificando…'; run('verificarPagoPanel', p.numero).then(function(ok){ if (ok) { toast('✅ Pago verificado · pedido #' + nro(p)); cargarPedidos(); } else { b.disabled = false; b.textContent = '🔎 Verificar con Gmail'; toast('Aún no llega el aviso de Plin con S/ ' + Number(p.total||0).toFixed(2) + '. Revisa la captura o vuelve a intentar.', true); } }).catch(function(e){ b.disabled = false; b.textContent = '🔎 Verificar con Gmail'; error(e); }); }}),
+el('button', {class:'btn peq ok', text:'✓ Pago recibido', onclick:function(){ confirmarPagoP(p); }})
     ])
   ]);
 }
@@ -1334,7 +1346,7 @@ function confirmarPagoP(p){
   if (!confirm('¿Confirmas que el pago del pedido #' + nro(p) + ' (' + p.pago + ', ' + soles(p.total) + ') YA llegó a la cuenta?\n\nAl confirmar se imprime la comanda y el pedido pasa a cocina.')) return;
   run('confirmarPago', p.numero).then(function(){
     toast('Pago confirmado · pedido #' + nro(p));
-    if (autoImp && !IMPRESOS[p.numero]) imprimirUnaVez('nuevo:' + p.numero, function(){ imprimirNuevo(p); });
+    if (autoImp && !IMPRESOS[p.numero]) imprimirUnaVez('nuevo:' + p.numero, function(){ imprimirNuevo(Object.assign({}, p, { pagoEstado: 'Confirmado' })); });
     delete AVISADOS[p.numero]; cargarPedidos();
   }).catch(error);
 }
@@ -1498,7 +1510,7 @@ function formEditarPedido(d){
     verPrecio();
   }
 
-  var imp = el('input', {type:'checkbox'}); imp.checked = true;
+  var imp = el('input', {type:'checkbox'}); imp.checked = autoImp;
   var guardar = el('button', {class:'btn prim', type:'button', text:'Guardar cambios', onclick:function(){
     var cambio = nuevos.length || cant.some(function(c, i){ return c !== d.lineas[i].cant; });
     if (!cambio) { cerrarModal(); return; }
@@ -1611,10 +1623,12 @@ function eliminar(p){
 var colaImpresion = [], imprimiendo = false;
 /* Pedido nuevo: primero el ticket de COCINA (solo productos, letra grande, en español).
    Mesa → la comanda completa sale al final, cuando piden la cuenta. Delivery/recojo → además la comanda completa (datos del cliente). */
+var ESPERA_PAGO = {}; // pedidos que esperan verificación de pago (no se imprimen hasta verificarse)
 function imprimirNuevo(p){
+  if (p.pagoEstado === 'Por verificar') return; // NUNCA imprimir un pago sin verificar
   marcarImpreso(p.numero);
-  colaImpresion.push({ tipo:'cocina', p:p });
-  if (p.canal !== 'mesa') colaImpresion.push({ tipo:'comanda', p:p });
+colaImpresion.push({ tipo:'cocina', p:p, k:'auto-cocina-' + p.numero });
+if (p.canal !== 'mesa') colaImpresion.push({ tipo:'comanda', p:p, k:'auto-comanda-' + p.numero });
   siguienteImpresion();
 }
 function imprimirCocina(p){ colaImpresion.push({ tipo:'cocina', p:p }); siguienteImpresion(); }
@@ -1631,7 +1645,7 @@ function imprimirCuentaAviso(a){
     return '#' + x.numero + ' · ' + x.hora + '\n' + (x.lineas && x.lineas.length ? x.lineas.map(function(l){ return l.t + '   ' + soles(l.s) + (l.d ? '\n   ' + l.d : ''); }).join('\n') : x.detalle);
   }).join('\n\n');
   var notas = [a.detalle, a.division && a.division.length > 1 ? 'Dividir en ' + a.division.length + ': ' + a.division.map(soles).join(' / ') : '', m.personas ? m.personas + ' persona(s)' : ''].filter(Boolean).join('\n');
-  colaImpresion.push({ tipo:'comanda', p:{ canal:'mesa', mesa:m.mesa, numero:'CUENTA', titulo:'CUENTA', fecha:new Date().toLocaleString('es-PE'), detalle:det, notas:notas, mozo: m.atiende ? m.atiende.nombre : '', total:m.total } });
+  colaImpresion.push({ tipo:'comanda', k:'cuenta-' + a.id, p:{ canal:'mesa', mesa:m.mesa, numero:'CUENTA', titulo:'CUENTA', fecha:new Date().toLocaleString('es-PE'), detalle:det, notas:notas, mozo: m.atiende ? m.atiende.nombre : '', total:m.total } });
   siguienteImpresion();
 }
 function ticketCocina(d, b, p){
@@ -1656,13 +1670,66 @@ function ticketCocina(d, b, p){
   if (p.notas) { b.appendChild(d.createElement('hr')); add('div', 'COMENTARIOS:', 'k-d'); add('div', p.notas, 'k-it'); }
 }
 function siguienteImpresion(){
-  if (imprimiendo || !colaImpresion.length) return;
-  imprimiendo = true;
-  var job = colaImpresion.shift(), p = job.p;
+if (imprimiendo || !colaImpresion.length) return;
+imprimiendo = true;
+var job = colaImpresion.shift(), p = job.p;
+var fin = function(){ imprimiendo = false; siguienteImpresion(); };
+/* 1º impresora directa (programa del local: largo justo + corte). Si no está activa → Chrome como antes. */
+job.auto = /^(auto|cuenta)-/.test(job.k || '');
+if (job.auto && !autoImp) { fin(); return; }
+run('encolarImpresion', { k: job.k || '', auto: job.auto, n: (job.tipo === 'cocina' ? 'Cocina ' : 'Comanda ') + (p.canal === 'mesa' ? 'Mesa ' + p.mesa : '#' + nro(p)), l: lineasTicket(job) })
+.then(function(r){
+if (r && r.omitido) { ponerAutoImpLocal(false); fin(); return; } // impresión automática apagada en el servidor
+IMP_VIVA = !!(r && r.viva); pintarImpEstado(); if (r && r.viva) fin(); else imprimirChrome(job, fin); })
+.catch(function(){ if (job.auto && !autoImp) fin(); else imprimirChrome(job, fin); });
+}
+/* Ticket en líneas [estilo, texto] para la impresora directa (ESC/POS, 48 columnas).
+estilos: mesa (x3), h1/sec/it/tot (x2), h2/g/gc/d (doble alto), c/n (normal), p/pc (fino), hr (línea) */
+function lineasTicket(job){
+var p = job.p, L = [], a = function(s, t){ if (t != null && String(t).trim() !== '') L.push([s, String(t)]); };
+if (job.tipo === 'cocina') {
+a('mesa', p.canal === 'mesa' ? 'MESA ' + p.mesa : (p.canal === 'recojo' ? 'RECOJO' : 'DELIVERY') + ' #' + nro(p));
+if (p.mozo) a('gc', 'Moza: ' + p.mozo);
+if (p.cambio) a('sec', '*** ' + p.cambio + ' ***');
+a('c', (p.hora || '') + (p.canal === 'mesa' ? ' #' + nro(p) : ''));
+if (p.programado) a('gc', '>> PARA LAS ' + p.programado + ' <<');
+var lista = p.cocina || [];
+if (!lista.length) { L.push(['hr', '']); a('g', p.detalle); }
+var orden = ['ENTRADAS','PIZZAS','PASTAS','PARRILLAS','PROMOCIONES','POSTRES','PRODUCTOS ITALIANOS','BEBIDAS','OTROS'];
+orden.concat(lista.map(function(x){ return x.s; }).filter(function(s, i, arr){ return orden.indexOf(s) < 0 && arr.indexOf(s) === i; })).forEach(function(sec){
+var items = lista.filter(function(x){ return x.s === sec; });
+if (!items.length) return;
+a('sec', sec);
+items.forEach(function(x){ a('it', x.c + ' ' + String(x.n).toUpperCase()); (x.d || []).forEach(function(t){ a('d', '· ' + t); }); });
+});
+if (p.notas) { L.push(['hr', '']); a('g', 'COMENTARIOS:'); a('it', p.notas); }
+} else {
+a('pc', 'PASTA GALLO');
+a('h1', p.canal === 'mesa' ? 'MESA ' + p.mesa : (p.canal === 'recojo' ? 'RECOJO' : 'DELIVERY'));
+a('h2', p.titulo ? p.titulo : 'Pedido #' + nro(p) + (p.ref ? ' · ' + p.ref : ''));
+a('c', p.fecha);
+if (p.programado) a('gc', '>> PARA LAS ' + p.programado + ' <<');
+L.push(['hr', '']);
+a('n', p.detalle);
+L.push(['hr', '']);
+if (p.notas) { a('g', 'COMENTARIOS:'); a('n', p.notas); L.push(['hr', '']); }
+if (p.nombre) a('n', 'Cliente: ' + p.nombre);
+if (p.telefono) a('n', 'Cel: ' + p.telefono);
+if (p.direccion) a('n', 'Dir: ' + p.direccion + (p.referencia ? ' (' + p.referencia + ')' : ''));
+if (p.pago) a('n', 'Pago: ' + p.pago);
+if (p.mozo) a('g', 'Mozo: ' + p.mozo);
+if (p.comprobante) { L.push(['hr', '']); a('g', p.comprobante.toUpperCase() + ': ' + p.doc); a('n', p.razon); a('p', p.correo); }
+a('tot', 'TOTAL ' + soles(p.total) + (p.canal === 'delivery' ? ' + deliv.' : ''));
+}
+return L;
+}
+/* Respaldo: impresión por Chrome (--kiosk-printing), igual que antes. */
+function imprimirChrome(job, fin){
+var p = job.p;
   var f = el('iframe', {style:'position:fixed;width:0;height:0;border:0'}); document.body.appendChild(f);
   var d = f.contentDocument;
   d.open(); d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:80mm 210mm;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0}' +
+    '@page{margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0}' +
     'body{width:72mm;margin:0 auto;padding:1mm 1mm;font:700 15px/1.3 "Courier New",Courier,monospace;color:#000}' +
     'h1{font-size:26px;margin:0 0 1mm;text-align:center;letter-spacing:1px}h2{font-size:20px;margin:1mm 0;text-align:center}' +
     '.c{text-align:center}.g{font-size:18px}pre{white-space:pre-wrap;word-break:break-word;font:700 16px/1.35 "Courier New",Courier,monospace;margin:0}' +
@@ -1696,12 +1763,30 @@ function siguienteImpresion(){
   add('div', 'TOTAL ' + soles(p.total) + (p.canal === 'delivery' ? ' + deliv.' : ''), 'tot');
   }
   setTimeout(function(){
-    try { f.contentWindow.focus(); f.contentWindow.print(); } catch(e) {}
-    setTimeout(function(){ f.remove(); imprimiendo = false; siguienteImpresion(); }, 1500);
+    try {
+// hoja del largo exacto del contenido (+6 mm), sin límite de 210/297 mm
+var alto = Math.ceil(Math.max(b.scrollHeight, d.documentElement.scrollHeight) * 25.4 / 96) + 6;
+var st = d.createElement('style'); st.textContent = '@page{size:80mm ' + alto + 'mm;margin:0}'; d.head.appendChild(st);
+f.contentWindow.focus(); f.contentWindow.print();
+} catch(e) {}
+    setTimeout(function(){ f.remove(); fin(); }, 1500);
   }, 120);
 }
-/* El largo del ticket lo recorta la impresora: SAT Q22UE con papel 80(72.1) x 210 mm y Cutter Select = Report[Cut]
-   (imprime solo hasta donde hay contenido y corta). No cambiar el tamaño de la hoja desde aquí. */
+/* Impresora directa: C:\PastaGallo\Impresora (programa ESC/POS). Imprime solo hasta donde hay contenido y corta.
+Si ese programa no está activo, se imprime por Chrome (respaldo). */
+var IMP_VIVA = false;
+function pintarImpEstado(){
+var b = $('#impVincular'); if (!b) return;
+b.classList.toggle('on', IMP_VIVA);
+b.textContent = IMP_VIVA ? '✂ Impresora directa' : '🔗 Vincular impresora';
+b.title = IMP_VIVA ? 'Conectada: las comandas salen directo a la SAT (largo justo y corte automático).' : 'Sin impresora directa (se imprime por Chrome). Pulsa para conectar el programa de la computadora del local.';
+}
+function revisarImpresora(){ if (!INFO.usuario) return; run('estadoImpresora').then(function(r){ IMP_VIVA = !!(r && r.viva); pintarImpEstado(); if (r && typeof r.auto === 'boolean' && r.auto !== autoImp) ponerAutoImpLocal(r.auto); }).catch(function(){}); }
+setInterval(revisarImpresora, 15000); setTimeout(revisarImpresora, 3000);
+$('#impVincular').addEventListener('click', function(){
+if (IMP_VIVA) { toast('Impresora directa conectada ✔'); return; }
+run('vincularImpresora').then(function(){ toast('Vinculando… en unos segundos queda conectada.'); setTimeout(revisarImpresora, 8000); setTimeout(revisarImpresora, 20000); }).catch(error);
+});
 var autoImp = true;
 /* pedidos ya impresos en este equipo (para no imprimir dos veces la misma comanda) */
 var IMPRESOS = {};
