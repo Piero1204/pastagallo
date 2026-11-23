@@ -34,17 +34,21 @@
   }
   if (mozo) {
     /* ¿app de tienda? El enlace de instalación lleva ?app=tienda; si no, se mira el rol guardado en este equipo (cajero). */
-    var tienda = /[?&]app=tienda\b/.test(location.search);
-    try { var yo = JSON.parse(localStorage.getItem("pg-mozo") || "null"); if (yo && String(yo.rol || "").toLowerCase() === "cajero") tienda = true; } catch (e) {}
-    document.title = tienda ? "Pasta Gallo · Tienda" : "Pasta Gallo · Equipo";
-    var m = document.createElement("link"); m.rel = "manifest"; m.href = tienda ? "/tienda.webmanifest" : "/mozo.webmanifest"; document.head.appendChild(m);
-    var a = document.createElement("link"); a.rel = "apple-touch-icon"; a.href = tienda ? "/tienda-192.png" : "/mozo-192.png"; document.head.appendChild(a);
+    /* ¿panel LOCAL (computadora del local)? El enlace lleva ?app=local; si no, se mira el rol guardado en este equipo (local). */
+    var tienda = /[?&]app=tienda\b/.test(location.search), local = /[?&]app=local\b/.test(location.search);
+    try { var yo = JSON.parse(localStorage.getItem("pg-mozo") || "null"), rol = yo ? String(yo.rol || "").toLowerCase() : ""; if (rol === "cajero") tienda = true; if (rol === "local") local = true; } catch (e) {}
+    if (tienda) local = false;
+    var marca = tienda ? ["Pasta Gallo · Tienda", "/tienda.webmanifest", "/tienda-192.png", "PG Tienda"] : local ? ["Pasta Gallo · Local", "/local.webmanifest", "/local-192.png", "PG Local"] : ["Pasta Gallo · Equipo", "/mozo.webmanifest", "/mozo-192.png", "PG Mozo"];
+    document.title = marca[0];
+    var m = document.createElement("link"); m.rel = "manifest"; m.href = marca[1]; document.head.appendChild(m);
+    var a = document.createElement("link"); a.rel = "apple-touch-icon"; a.href = marca[2]; document.head.appendChild(a);
     if (tienda) document.querySelector('meta[name=theme-color]').content = "#24402f";
-    [["apple-mobile-web-app-capable", "yes"], ["mobile-web-app-capable", "yes"], ["apple-mobile-web-app-title", tienda ? "PG Tienda" : "PG Mozo"], ["apple-mobile-web-app-status-bar-style", "black-translucent"]].forEach(function (x) {
+    if (local) { document.documentElement.className += " local"; var pl = document.createElement("link"); pl.rel = "preload"; pl.as = "script"; pl.href = "/local.js"; document.head.appendChild(pl); }
+    [["apple-mobile-web-app-capable", "yes"], ["mobile-web-app-capable", "yes"], ["apple-mobile-web-app-title", marca[3]], ["apple-mobile-web-app-status-bar-style", "black-translucent"]].forEach(function (x) {
       var me = document.createElement("meta"); me.name = x[0]; me.content = x[1]; document.head.appendChild(me);
     });
-    document.querySelector('meta[name=viewport]').content += ", user-scalable=no";
-    css("/mozo.css"); contenedor("div");
+    if (!local) document.querySelector('meta[name=viewport]').content += ", user-scalable=no";   // en la computadora se puede hacer zoom
+    css("/mozo.css"); if (local) css("/local.css"); contenedor("div");
     // se descargan en paralelo desde ya; se ejecutan en orden cuando la página está lista
     ["/menu-data.js", "/mozo.js"].forEach(function (u) { var l = document.createElement("link"); l.rel = "preload"; l.as = "script"; l.href = u; document.head.appendChild(l); });
     document.addEventListener("DOMContentLoaded", function () { cadena(["/menu-data.js", "/mozo.js"]); });

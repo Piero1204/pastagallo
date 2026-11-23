@@ -191,7 +191,10 @@
       clearTimeout(tT); tT = setTimeout(function () { x.className = "toast"; }, tipo === "mal" ? 6000 : 2400);
     }
     function pitar() { try { if (root.navigator.vibrate) root.navigator.vibrate(120); } catch (e) {} }
-    function llamar(o) { o.ext = "tienda"; o.t = TOKEN; return api(o); }
+    /* Modo RESTRINGIDO (panel de la computadora del local, rol local): solo "Vender"; sin totales de caja, cierre, anulaciones, efectivo
+       ni etiquetas; la venta pasa por ctx.llamarTienda (mz l_tienda, que el servidor limita a productos y venta). */
+    var RESTR = !!ctx.restringido;
+    function llamar(o) { o.ext = "tienda"; o.t = TOKEN; return ctx.llamarTienda ? ctx.llamarTienda(o) : api(o); }
 
     var S = { prods: [], metodos: ["Efectivo", "Yape", "Plin", "Tarjeta"], descMax: null, anularCajero: true, negocio: {}, q: "", vista: "vender",
       carro: leer(K, []), cliente: leer("pg-cajero-cliente", null), cat: "", etq: {}, clientes: null, pend: null, recoger: [], enCocina: 0, hist: null, cargado: false, error: "" };
@@ -298,14 +301,15 @@
     pintarInstalar(); doc.addEventListener("pg-instalable", pintarInstalar);
     top.appendChild(bInst);
     top.appendChild(btn("Salir", "", function () { if (S.carro.length && !root.confirm("Hay una venta sin cobrar. ¿Salir igual?")) return; ctx.salir(); }));
-    raiz.appendChild(top);
+    if (!RESTR) raiz.appendChild(top);
     var mapaHost = h("div"); raiz.appendChild(mapaHost);
-    if (ctx.mapaSalon) ctx.mapaSalon(mapaHost, { onMesa: verMesa });   // mapa del salón desplegable (solo mira; el cobro de mesas lo hace el mozo)
+    if (ctx.mapaSalon && !RESTR) ctx.mapaSalon(mapaHost, { onMesa: verMesa });   // mapa del salón desplegable (solo mira; el cobro de mesas lo hace el mozo)
     raiz.appendChild(tabs); raiz.appendChild(cuerpo); raiz.appendChild(carrito); app.appendChild(raiz);
 
     function pintarTabs() {
       tabs.innerHTML = "";
-      raiz.className = "cj" + (S.vista === "vender" ? " vende" : "");
+      raiz.className = "cj" + (S.vista === "vender" ? " vende" : "") + (RESTR ? " restr" : "");
+      if (RESTR) { S.vista = "vender"; tabs.style.display = "none"; return; }
       [["vender", "Vender"], ["recoger", "Por recoger"], ["hoy", "Hoy"], ["clientes", "Clientes"], ["etiquetas", "Etiquetas"]].forEach(function (t) {
         var b = btn(t[1], t[0] === S.vista ? "on" : "", function () { S.vista = t[0]; pintar(); if (t[0] === "hoy") cargarHist().then(pintar); if (t[0] === "recoger") cargarRecoger().then(pintar); if (t[0] === "clientes") cargarClientes().then(pintar); });
         if (t[0] === "recoger" && S.recoger.length) b.appendChild(h("span", "cj-n", String(S.recoger.length)));
@@ -706,7 +710,7 @@
       sc.onerror = function () { toast("No se pudo cargar la caja. Revisa la conexión.", "mal"); };
       doc.head.appendChild(sc);
     }
-    top.insertBefore(btn("Efectivo", "", abrirEfectivo), top.lastChild);
+    if (!RESTR) top.insertBefore(btn("Efectivo", "", abrirEfectivo), top.lastChild);
 
     /* ---------- cliente (mayoristas y otros locales que piden por WhatsApp): kilos salidos por producto y cliente ---------- */
     var K_PEND = "pg-cajero-salidas-pend";
@@ -829,6 +833,7 @@
 
     /* ---------- arranque ---------- */
     pintar(); enviarSalidas();
+    if (RESTR) { cargar().then(pintar); return { recargar: function () { return cargar().then(pintar); } }; }
     cargar().then(function () { pintar(); return cargarRecoger(); });
     setInterval(function () { if (doc.hidden || !doc.body.contains(raiz)) return; cargarRecoger(); }, 45000);
   }

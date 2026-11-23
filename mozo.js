@@ -41,33 +41,43 @@
     });
   }
 
-  /* ---------- marca de la app de tienda (rol cajero): nombre, tema, íconos y manifest propios ---------- */
-  var tiendaModo = false, instalarEv = null;
+  /* ---------- marca de la app de tienda (rol cajero) y del panel local (rol local): nombre, tema, íconos y manifest propios ---------- */
+  var tiendaModo = false, localModo = false, instalarEv = null;
+  function ponerLink(rel, href) {
+    var l = document.querySelector('link[rel="' + rel + '"]');
+    if (!l) { l = document.createElement("link"); l.rel = rel; document.head.appendChild(l); }
+    l.href = href;
+  }
+  function ponerMeta(nombre, valor) {
+    var m = document.querySelector('meta[name="' + nombre + '"]');
+    if (!m) { m = document.createElement("meta"); m.name = nombre; document.head.appendChild(m); }
+    m.content = valor;
+  }
   function aplicarMarcaTienda() {
     if (tiendaModo) return;
     tiendaModo = true;
     document.documentElement.classList.add("tienda");
     document.title = "Pasta Gallo · Tienda";
-    function ponerLink(rel, href) {
-      var l = document.querySelector('link[rel="' + rel + '"]');
-      if (!l) { l = document.createElement("link"); l.rel = rel; document.head.appendChild(l); }
-      l.href = href;
-    }
-    function ponerMeta(nombre, valor) {
-      var m = document.querySelector('meta[name="' + nombre + '"]');
-      if (!m) { m = document.createElement("meta"); m.name = nombre; document.head.appendChild(m); }
-      m.content = valor;
-    }
     ponerLink("manifest", "/tienda.webmanifest"); ponerLink("apple-touch-icon", "/tienda-192.png");
     ponerMeta("theme-color", "#24402f"); ponerMeta("apple-mobile-web-app-title", "PG Tienda");
   }
+  /* Panel LOCAL (computadora del local): misma app con layout de escritorio (local.js + local.css) y su propio "PG Local" instalable */
+  function aplicarMarcaLocal() {
+    if (localModo) return;
+    localModo = true;
+    document.documentElement.classList.add("local");
+    document.title = "Pasta Gallo · Local";
+    ponerLink("manifest", "/local.webmanifest"); ponerLink("apple-touch-icon", "/local-192.png");
+    ponerMeta("theme-color", "#4a1519"); ponerMeta("apple-mobile-web-app-title", "PG Local");
+  }
   window.addEventListener("beforeinstallprompt", function (e) {
-    if (!tiendaModo) return;            // el mozo conserva el aviso normal del navegador
+    if (!tiendaModo && !localModo) return;            // el mozo conserva el aviso normal del navegador
     e.preventDefault(); instalarEv = e;
     document.dispatchEvent(new Event("pg-instalable"));
   });
   window.addEventListener("appinstalled", function () { instalarEv = null; document.dispatchEvent(new Event("pg-instalable")); });
   if (/[?&]app=tienda\b/.test(location.search) || (leer("pg-mozo", null) || {}).rol === "cajero") aplicarMarcaTienda();
+  else if (/[?&]app=local\b/.test(location.search) || (leer("pg-mozo", null) || {}).rol === "local") aplicarMarcaLocal();
 
   /* ---------- estado ---------- */
   var S = { t: leer(K.t, ""), mozo: leer(K.mozo, null), mesas: [], avisos: [], metodos: [YP, "Efectivo", "Tarjeta"],
@@ -75,6 +85,9 @@
     vistaM: leer(K.vistaM, "grid"), filtro: leer(K.filtro, "todas"), mapa: leer(K.mapa, false) === true,
     pest: leer(K.pest, ""), pestElegida: false, externos: [], metodosExt: null, diaIso: "", filtroT: leer(K.filtroT, "todo"), mapaDel: leer(K.mapaDel, false) === true };
   function yo() { return S.mozo ? S.mozo.id : ""; }
+  /* computadora del local: ve y opera TODO (como supervisor); nunca "ajena", nunca se queda con una mesa */
+  var LOCAL = null;
+  function esLocalRol() { return !!(S.mozo && String(S.mozo.rol || "").toLowerCase() === "local"); }
   function variosMozos() { return !!(S.turno && S.turno.mozos && S.turno.mozos.length > 1); }
   function mesaDe(n) { return S.mesas.filter(function (x) { return String(x.mesa) === String(n); })[0] || null; }
   /* mesas del salón (sin las "para llevar", que van aparte) y rótulo de una mesa */
@@ -90,7 +103,7 @@
   function esPseudo(n) { return n === LL || n === DL; }
   function modoActual() { return S.mesa === LL ? "llevar" : S.mesa === DL ? "delivery" : "mesa"; }
   function duenio(m) { return m ? (m.atiende || (m.estado === "libre" ? m.zona : null)) : null; }
-  function esMia(m) { var d = duenio(m); return !d || d.id === yo(); }
+  function esMia(m) { if (esLocalRol()) return true; var d = duenio(m); return !d || d.id === yo(); }
   function cuentaDeMesa(m) { return { mesa: m.mesa, pedidos: m.pedidos || [], total: m.total, pagado: m.pagado || 0, saldo: m.saldo, pagos: m.pagos || [], pagadoItems: m.pagadoItems || [], unidas: m.unidas || [] }; }
   function minDesde(ts) { return ts ? Math.max(0, Math.floor((Date.now() + S.desfase - ts) / 60000)) : 0; }
   var carros = leer(K.carros, {});
@@ -356,6 +369,7 @@
       }
       if (r.agotados && aplicarAgotados(r.agotados) && document.querySelector(".prods") && !capa.classList.contains("on")) pintarProductos();
       revisarAlertas();
+      if (LOCAL && LOCAL.alSondear) { try { LOCAL.alSondear(r); } catch (e) { console.error(e); } }
       refrescar();
       if (salonAbierto) pintarSalonModal();
     }).catch(function (e) { if (S.t) toast("Sin conexión: reintentando…", "mal"); }).then(function () {
@@ -375,7 +389,7 @@
   function revisarAlertas() {
     // mesas que llaman: suena al llegar un aviso nuevo y repite cada 30 s mientras haya pendientes
     // solo suenan las de MIS mesas (o sin mozo); si nadie atiende en 2 minutos, suena para todos
-    var paraMi = S.avisos.filter(function (a) { return !a.silencioso && (!a.para || a.para === yo() || Date.now() + S.desfase - a.ts > 120000) && !(S.mozo && a.detalle === "Pedida por " + S.mozo.nombre); });
+    var paraMi = S.avisos.filter(function (a) { return !a.silencioso && (esLocalRol() || !a.para || a.para === yo() || Date.now() + S.desfase - a.ts > 120000) && !(S.mozo && a.detalle === "Pedida por " + S.mozo.nombre); });
     var nuevos = paraMi.filter(function (a) { return !avisosVistos[a.id]; });
     paraMi.forEach(function (a) { avisosVistos[a.id] = true; });
     if (nuevos.length || (paraMi.length && Date.now() - ultimoPitido > 30000)) { pitar(3, 988); ultimoPitido = Date.now(); }
@@ -471,7 +485,12 @@
     var av = barraAvisos(); app.appendChild(av);
     var main = h("main"); app.appendChild(main);
     var hz = S.horario;
-    if (hz && !hz.panel) main.appendChild(vistaCerrado());
+    if (LOCAL) {   // panel local: no depende del horario de cocina ni del turno (tienda, comprobantes y cobros a cualquier hora)
+      if (S.vista === "carta" && S.mesa) main.appendChild(vistaCarta());
+      else { if (!S.pestElegida) elegirPestInicial(); LOCAL.pintar(main); ultimaFirmaPest = LOCAL.firma(); }
+      LOCAL.despues(main);
+    }
+    else if (hz && !hz.panel) main.appendChild(vistaCerrado());
     else if (S.turno && !S.turno.trabaja) main.appendChild(vistaSinTurno());
     else {
       var mp = mapaSalon(); if (mp) main.appendChild(mp);   // mapa desplegable del salón: en todas las vistas
@@ -489,10 +508,15 @@
     (m.pedidos || []).map(function (p) { return p.id + p.estado + p.falta + (p.lineas || []).length; }).join(",")].join("|") : "-"; }
   function refrescar() {
     var carta = document.querySelector(".carta");
-    if (!(S.vista === "carta" && S.mesa && carta && S.horario && S.horario.panel && !(S.turno && !S.turno.trabaja))) {
+    if (!(S.vista === "carta" && S.mesa && carta && S.horario && (S.horario.panel || LOCAL) && !(S.turno && !S.turno.trabaja))) {
       // no redibujar mientras escribe en un campo o hay una ventana abierta (se redibuja al cerrarla)
       var ae = document.activeElement;
       if (capa.classList.contains("on") || (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName))) { S.redibujar = true; return; }
+      if (LOCAL && S.vista === "mesas") {   // panel local: solo se repinta si cambió lo que muestra la pestaña actual
+        var fl = LOCAL.firma();
+        if (fl === ultimaFirmaPest) { parcheCabecera(); return; }
+        pintar(); return;
+      }
       if (S.vista === "mesas" && S.pest !== "mesas" && document.querySelector("main > .pest")) {   // «Todos» y «Para llevar»: solo si cambió algo
         var f = firmaPest();
         if (f === ultimaFirmaPest) { parcheCabecera(); return; }
@@ -573,6 +597,7 @@
       else txt = "Cocina cerrada";
       t.appendChild(h("span", cls, txt));
     }
+    if (LOCAL && LOCAL.top) LOCAL.top(t);
     t.appendChild(btn(S.mozo ? S.mozo.nombre : "Menú", "top__yo", menuYo));
     return t;
   }
@@ -732,13 +757,13 @@
     var activas = mesasSalon();
     if (!S.recibido) { w.appendChild(h("p", "vacio", "Cargando mesas…")); return w; }
     if (!activas.length) { w.appendChild(h("p", "vacio", "No hay mesas activas. Agrégalas en el panel principal → Mesas y QR.")); return w; }
-    var solo = S.filtro === "mias" && variosMozos();
+    var solo = S.filtro === "mias" && variosMozos() && !esLocalRol();
     var ver = ordenarMesas(activas.filter(function (m) { return !solo || (duenio(m) && duenio(m).id === yo()) || (!duenio(m)); }));
     var ocup = activas.filter(function (m) { return m.estado !== "libre" && m.estado !== "unida"; }).length;
     var cab = h("div", "salon__cab");
     cab.appendChild(h("div", "titulo", ocup + " de " + activas.length + " ocupadas"));
     cab.appendChild(h("span", "esp"));
-    if (variosMozos()) cab.appendChild(segmento([["mias", "Solo mis mesas"], ["todas", "Todas"]], S.filtro === "mias" ? "mias" : "todas", function (v) { S.filtro = v; guardar(K.filtro, v); pintar(); }));
+    if (variosMozos() && !esLocalRol()) cab.appendChild(segmento([["mias", "Solo mis mesas"], ["todas", "Todas"]], S.filtro === "mias" ? "mias" : "todas", function (v) { S.filtro = v; guardar(K.filtro, v); pintar(); }));
     var hayPlano = activas.some(function (m) { return m.x != null && m.y != null; });
     if (hayPlano) cab.appendChild(segmento([["grid", "▦"], ["plano", "🗺 Plano"]], S.vistaM, function (v) { S.vistaM = v; guardar(K.vistaM, v); pintar(); }));
     w.appendChild(cab);
@@ -974,7 +999,7 @@
     if (salonAbierto) { salonAbierto = null; cerrarModal(); }
     if (m.unidaA) { var mp = mesaDe(m.unidaA); if (mp) { tocarMesa(mp); return; } }
     var d = m.atiende;
-    if (m.estado !== "libre" && d && d.id !== yo()) {
+    if (m.estado !== "libre" && d && d.id !== yo() && !esLocalRol()) {
       var c = h("div", "menu-yo");
       c.appendChild(h("p", null, "La mesa " + m.mesa + " la atiende " + d.nombre + "."));
       c.appendChild(btn("👀 Ver / agregar pedido (sigue siendo de " + d.nombre + ")", "", function () { cerrarModal(); abrirMesa(m.mesa); }));
@@ -1514,8 +1539,8 @@
     if (m && m.estado === "libre" && !m.llevar) acc.appendChild(btn("🪑 Sentar clientes", "btn peq", function () { sentar(S.mesa); }));
     if (m && m.estado !== "libre" && !m.llevar) acc.appendChild(btn("👥 " + (m.personas ? m.personas + " personas" : "¿Cuántos son?"), "btn peq", function () { var me = S.mesa; pedirPersonas(me, function (n) { guardarPersonas(me, n); }); }));
     if (m && m.alerta) acc.appendChild(h("div", "olvido-txt", "⏰ " + textoAlerta(m)));
-    if (m && m.estado !== "libre" && (!m.atiende || m.atiende.id !== yo())) acc.appendChild(btn("🔁 Pasar a mí", "btn peq", function () { ocupar(S.mesa, true); }));
-    if (m && m.estado !== "libre" && m.atiende && m.atiende.id === yo() && variosMozos()) acc.appendChild(btn("🔁 Pasar a otro mozo", "btn peq", pasarA));
+    if (m && m.estado !== "libre" && (!m.atiende || m.atiende.id !== yo()) && !esLocalRol()) acc.appendChild(btn("🔁 Pasar a mí", "btn peq", function () { ocupar(S.mesa, true); }));
+    if (m && m.estado !== "libre" && ((m.atiende && m.atiende.id === yo() && variosMozos()) || esLocalRol())) acc.appendChild(btn(esLocalRol() ? "🤵 Asignar mozo" : "🔁 Pasar a otro mozo", "btn peq", pasarA));
     if (m && m.estado === "sentada") acc.appendChild(btn(m.llevar ? "🆓 Cancelar pedido para llevar" : "🆓 Liberar mesa", "btn peq", liberar));
     if (m && !m.llevar && !(m.pagos && m.pagos.length) && (!m.unidas || !m.unidas.length)) acc.appendChild(btn("🔗 Juntar mesas", "btn peq", juntarMesasUI));
     if (acc.childNodes.length) w.appendChild(acc);
@@ -1943,6 +1968,7 @@
   function hayPedidosActivos() { return itemsTodos("todo").length > 0; }
   function elegirPestInicial() {
     S.pestElegida = true;
+    if (LOCAL) { if (!LOCAL.tabValida(S.pest)) S.pest = "todos"; return; }
     var g = S.pest;
     if (g === "todos" || !g) S.pest = hayPedidosActivos() ? "todos" : "mesas";
     else if (g === "llevar") S.pest = "llevar";
@@ -2262,6 +2288,13 @@
       tot.textContent = "Productos " + soles(sub) + (del ? " + delivery " + soles(cd) + " = " + soles(sub + cd) : "");
     }
     fNom.value = ""; recalc();
+    // datos del cliente ya conocidos (panel local → Clientes → "Nuevo delivery"): se rellenan y se recalcula el costo
+    var pre = S.preCli && S.preCli.tipo === tipo ? S.preCli : null; S.preCli = null;
+    if (pre) {
+      fNom.value = pre.nombre || ""; fCel.value = pre.tel || "";
+      if (del) { fDir.value = pre.dir || ""; fRef.value = pre.ref || ""; if (pre.lat != null && pre.lng != null) fUbi.value = pre.lat + ", " + pre.lng; recalc(); }
+    }
+    if (LOCAL && LOCAL.ayudaCliente) LOCAL.ayudaCliente({ nom: fNom, cel: fCel, dir: fDir, ref: fRef, ubi: fUbi, del: del, recalc: recalc });
     ok = btn(del ? "✓ Registrar delivery" : "✓ Registrar para llevar", "btn prim", function () {
       err.textContent = "";
       var nom = fNom.value.trim(), cel = fCel.value.replace(/\D/g, "").replace(/^51(?=9\d{8}$)/, "");
@@ -2366,5 +2399,28 @@
     sc.onerror = function () { app.appendChild(h("p", "vacio", "No se pudo cargar el módulo de " + rol + ". Revisa la conexión y vuelve a abrir el enlace.")); };
     document.head.appendChild(sc);
   }
-  if (S.t && S.mozo) { if (esAdmin()) pantallaAdmin(); else if (rolExt()) cargarRolExt(rolExt()); else iniciar(); } else pantallaLogin();
+  /* Panel LOCAL (rol local): se carga local.js (layout de escritorio y módulos extra) y recibe el núcleo de esta app; si no carga, queda el panel del mozo. */
+  function interno() {
+    return { S: S, C: C, API: API, api: api, h: h, btn: btn, soles: soles, norm: norm, leer: leer, guardar: guardar, r2: r2, uid: uid, toast: toast, abrirModal: abrirModal, cerrarModal: cerrarModal,
+      capa: capa, pintar: pintar, refrescar: refrescar, sondear: sondear, abrirMesa: abrirMesa, nuevoExterno: nuevoExterno, tocarMesa: tocarMesa, cobrarExt: cobrarExt,
+      entregarExtUI: entregarExtUI, detalleExt: detalleExt, tarjetaExt: tarjetaExt, cargarLeaflet: cargarLeaflet, escHtml: escHtml, mapsUrl: mapsUrl, mapaSalon: mapaSalon,
+      medirMapa: medirMapa, vistaMesas: vistaMesas, botonMesa: botonMesa, estadoMesa: estadoMesa, mesasSalon: mesasSalon, porServir: porServir, entregar: entregar,
+      PROD: PROD, SALSAS_TODAS: SALSAS_TODAS, nombreEs: nombreEs, tamEs: tamEs, cambiarAgotado: cambiarAgotado, ventanaAgotados: ventanaAgotados, segmento: segmento,
+      chips: chips, minDesde: minDesde, tsSalida: tsSalida, CLS_EST: CLS_EST, LL: LL, DL: DL, YP: YP, pitar: pitar, audio: audio, menuYo: menuYo, cobrar: cobrar,
+      imprimirComanda: imprimirComanda, esPseudo: esPseudo, mesaDe: mesaDe, legadoLlevar: legadoLlevar, K: K, instalar: { disponible: function () { return !!instalarEv; },
+        pedir: function () { var e = instalarEv; if (!e) return Promise.resolve(false); e.prompt(); return e.userChoice.then(function (c) { instalarEv = null; return c && c.outcome === "accepted"; }); }, instalada: instalada } };
+  }
+  function cargarLocal() {
+    aplicarMarcaLocal();
+    if (!document.querySelector('link[href="/local.css"]')) { var l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/local.css"; document.head.appendChild(l); }
+    var sc = document.createElement("script"); sc.src = "/local.js";
+    sc.onload = function () {
+      var LM = window.PG_LOCAL;
+      if (LM && LM.iniciar) { try { LOCAL = LM.iniciar(interno()); } catch (e) { console.error(e); LOCAL = null; } }
+      iniciar();
+    };
+    sc.onerror = function () { toast("No se pudo cargar el panel local: se abre el panel del salón.", "mal"); iniciar(); };
+    document.head.appendChild(sc);
+  }
+  if (S.t && S.mozo) { if (esAdmin()) pantallaAdmin(); else if (rolExt()) cargarRolExt(rolExt()); else if (esLocalRol()) cargarLocal(); else iniciar(); } else pantallaLogin();
 })();
