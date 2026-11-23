@@ -13,6 +13,30 @@
   }
   CFG.metodosPago = unirMetodos(CFG.metodosPago, false);
   CFG.metodosPagoMesa = unirMetodos(CFG.metodosPagoMesa, true);
+  /* Lo que el servidor acepta hoy como "pago" (Config metodos_pago). Yape y Plin sueltos los acepta como "Yape o Plin". */
+  var PAGOS_SERVIDOR = CFG.metodosPago.slice();
+  /* Al cliente se le muestran por separado: "Yape" (QR de Yape), "Plin" (QR de Plin) y "Transferencia" (banco, cuenta y CCI),
+     según los datos de cobro publicados (CARTA.pedidos.cobro). */
+  function separarMetodos(l, conTransf) {
+    var cb = CFG.cobro || {}, r = [];
+    (l || []).forEach(function (m) {
+      if (m === YP) { if (cb.Yape) r.push("Yape"); if (cb.Plin) r.push("Plin"); if (!cb.Yape && !cb.Plin) r.push(YP); }
+      else if (!/^transf/i.test(m) || conTransf) r.push(m);
+    });
+    var tr = cb.Transferencia;
+    if (conTransf && tr && (tr.numero || tr.cci) && !r.some(function (m) { return /^transf/i.test(m); })) r.push("Transferencia");
+    return r.filter(function (m, i) { return r.indexOf(m) === i; });
+  }
+  /* Pago que viaja al servidor: si el método no está en su lista (p. ej. Transferencia aún no activada en Ajustes > Cobros),
+     va vacío (el pago es opcional) y el método se anota en el pedido para que el local lo vea. */
+  function pagoServidor(m) {
+    if (!m) return "";
+    if (PAGOS_SERVIDOR.indexOf(m) >= 0) return m;
+    if (/^(yape|plin)$/i.test(m) && PAGOS_SERVIDOR.indexOf(YP) >= 0) return m;   // el servidor lo guarda como "Yape o Plin"
+    return "";
+  }
+  CFG.metodosPago = separarMetodos(CFG.metodosPago, true);
+  CFG.metodosPagoMesa = separarMetodos(CFG.metodosPagoMesa, false);
   var I = window.PG_I18N, t = I.t, tx = I.tx;
   var MODO = window.MODO === "mesa" ? "mesa" : "delivery";
   var params = new URLSearchParams(location.search);
@@ -26,12 +50,25 @@
   var P, h; // utilidades de app.js
 
   function origen() { try { return sessionStorage.getItem("pg-origen") || ""; } catch (e) { return ""; } }
-  function guardar() { try { localStorage.setItem(CLAVE, JSON.stringify({ t: Date.now(), c: carrito })); } catch (e) {} }
+  /* Día de negocio (America/Lima): cambia a las 5:00 am, ya cerrado el local. Lo que quedó sin enviar en una mesa se borra solo al
+     abrir la carta otro día de negocio, en cualquier celular (cada uno guarda su propio carrito y lo revisa al cargar). */
+  function diaNegocio() { return P.ahoraLugar(new Date(Date.now() - 5 * 3600 * 1000)).fecha; }
+  function guardar() { try { localStorage.setItem(CLAVE, JSON.stringify({ t: Date.now(), d: diaNegocio(), c: carrito })); } catch (e) {} }
   function cargar() {
     try {
       var o = JSON.parse(localStorage.getItem(CLAVE) || "null");
-      if (o && Date.now() - o.t < 6 * 3600 * 1000 && Array.isArray(o.c)) carrito = o.c;
+      var mismoDia = !o || MODO !== "mesa" || o.d === diaNegocio();
+      if (o && Date.now() - o.t < 6 * 3600 * 1000 && Array.isArray(o.c) && mismoDia) carrito = o.c;
+      else if (o) localStorage.removeItem(CLAVE);
     } catch (e) { carrito = []; }
+    if (MODO === "mesa") {   // también las colas de otras mesas que quedaron en este celular
+      try {
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+          var k = localStorage.key(i); if (!k || k.indexOf("pg-carrito-mesa") !== 0 || k === CLAVE) continue;
+          var x = JSON.parse(localStorage.getItem(k) || "null"); if (!x || x.d !== diaNegocio()) localStorage.removeItem(k);
+        }
+      } catch (e) {}
+    }
   }
 
   /* Datos del cliente y su último pedido: se guardan SOLO en su propio celular (localStorage),
@@ -162,7 +199,8 @@
     if (it.canal === "local" && MODO !== "mesa") return t("soloLocalTxt");
     if (it.canal === "delivery" && MODO === "mesa") return t("soloDeliveryTxt");
     if (it.p == null && !(it.t && it.t.length)) return t("consulta");
-    if (!activo() || (MODO === "mesa" ? !sec.mesa : !sec.delivery)) return t("noPedible");
+    /* Nostri Prodotti (tienda) se puede pedir en todos los canales, también desde la mesa (para llevar a casa) */
+    if (!activo() || (MODO === "mesa" ? !(sec.mesa || sec.id === "tienda") : !sec.delivery)) return t("noPedible");
     return "";
   }
   function puedePedir(it, sec) {
@@ -353,6 +391,7 @@
   /* ---------- ficha del producto (detalle + opciones): foto grande, tarjetas de opciones, botón fijo abajo ---------- */
   function abrirDetalle(it, sec, tamPre, opts) {
     opts = opts || {};
+    if (window.PG_ANALITICA) PG_ANALITICA.ev("abrir_producto", it.id, sec ? sec.id : "");
     var c = h("div", "hoja__cuerpo");
     var esProd = sec && (sec.id === "italia" || (sec.id === "vini" && /^fotos\//.test(it.foto || "")));
     var fotoW = h("div", "detalle__fw" + (it.foto ? "" : " detalle__fw--vacia"));
@@ -389,7 +428,7 @@
     if (motivo || sinAbrir || it.tipo === "salsa") {
       if (it.t) {
         var tb = h("div", "tam");
-        it.t.forEach(function (x) { var d = h("div"); d.appendChild(h("span", null, x[0])); d.appendChild(P.precioEl(x[1])); tb.appendChild(d); });
+        it.t.forEach(function (x) { var d = h("div"); d.appendChild(h("span", null, I.tam(x[0]))); d.appendChild(P.precioEl(x[1])); tb.appendChild(d); });
         c.appendChild(tb);
       } else if (it.p != null) {
         var pr = h("div", "detalle__precio"); pr.appendChild(P.precioEl(it.p)); c.appendChild(pr);
@@ -437,7 +476,7 @@
 
     if (it.t) {
       var tt = tarjeta(t("tamano"));
-      tt.appendChild(segmentos("tam", it.t.map(function (x) { return { valor: x[0], texto: x[0], extra: soles(x[1]), marcado: x[0] === sel.tam }; }),
+      tt.appendChild(segmentos("tam", it.t.map(function (x) { return { valor: x[0], texto: I.tam(x[0]), extra: soles(x[1]), marcado: x[0] === sel.tam }; }),
         function (v) { sel.tam = v[0]; pintarMitad(); pintar(); }));
       c.appendChild(tt);
     }
@@ -485,6 +524,10 @@
     }
     (it.op || []).forEach(function (gid) { if (GRUPOS[gid]) c.appendChild(bloqueGrupo(gid)); });
 
+    if (MODO === "mesa") {   // pedir algo para llevar desde la mesa (ej.: una lasagna para casa, lista al irse)
+      sel.llevar = !!(sec && sec.id === "tienda");
+      c.appendChild(toggleLlevar(sel.llevar, function (v) { sel.llevar = v; }));
+    }
     var tn = tarjeta(t("indicaciones"));
     var nota = h("input", "campo"); nota.type = "text"; nota.maxLength = 120; nota.placeholder = t("indicacionesPh");
     nota.addEventListener("input", function () { sel.nota = nota.value; });
@@ -507,6 +550,14 @@
     pintar();
     abrirHoja(c, tx(it, "n"), "hoja--detalle"); botonCompartir(it);
   }
+  function toggleLlevar(on, alCambiar) {
+    var l = h("label", "llevar-tg tarj");
+    var i = h("input"); i.type = "checkbox"; i.checked = !!on; i.setAttribute("role", "switch");
+    i.addEventListener("change", function () { alCambiar(i.checked); });
+    var tx_ = h("span", "llevar-tg__t"); tx_.appendChild(h("b", null, t("paraLlevar"))); tx_.appendChild(h("small", null, t("paraLlevarSub")));
+    l.appendChild(i); l.appendChild(h("span", "llevar-tg__ic", "🛍")); l.appendChild(tx_); l.appendChild(h("span", "llevar-tg__sw"));
+    return l;
+  }
   function quitarUnidad(key) {
     var i = -1; carrito.forEach(function (l, k) { if (l.key === key) i = k; });
     if (i < 0) return;
@@ -528,20 +579,21 @@
   }
 
   function agregar(it, sel, unit) {
+    if (MODO === "mesa" && sel.llevar == null && seccionDe[it.id] && seccionDe[it.id].id === "tienda") sel.llevar = true;
     var s = salsaPorId[sel.salsa];
     var ops = {};
     gruposDe(it, sel.salsa).forEach(function (g) { if ((sel.ops[g] || []).length) ops[g] = sel.ops[g].slice(); });
     var m2 = sel.mitad && productos[sel.mitad] ? productos[sel.mitad] : null;
     var opsTxt = textoOpciones(it, sel, true), opsEs = textoOpciones(it, sel, false);
-    if (m2) { opsTxt.unshift("Half & half: " + tx(it, "n") + " + " + tx(m2, "n")); opsEs.unshift("Mitad y mitad: " + it.n + " + " + m2.n); }
-    var key = [it.id, sel.tam, sel.salsa, JSON.stringify(ops), sel.nota, m2 ? m2.id : ""].join("|");
+    var key = [it.id, sel.tam, sel.salsa, JSON.stringify(ops), sel.nota, m2 ? m2.id : "", sel.llevar ? "L" : ""].join("|");
     var ex = carrito.filter(function (l) { return l.key === key; })[0];
     if (ex) ex.cant = Math.min(20, ex.cant + sel.cant);
-    else carrito.push({ key: key, id: it.id, n: tx(it, "n"), nEs: it.n, tam: sel.tam, salsa: sel.salsa,
+    else carrito.push({ key: key, id: it.id, n: tx(it, "n") + (m2 ? t("con") + tx(m2, "n") : ""), nEs: it.n + (m2 ? " con " + m2.n : ""), tam: sel.tam, salsa: sel.salsa, llevar: !!sel.llevar,
       salsaN: s ? (productos[s.id] ? tx(productos[s.id], "n") : s.n) : "", salsaEs: s ? s.n : "",
       ops: ops, mitad: m2 ? m2.id : "", opsTxt: opsTxt, opsEs: opsEs,
       unit: unit, cant: sel.cant, nota: (sel.nota || "").trim(), alcohol: !!(seccionDe[it.id] && seccionDe[it.id].alcohol) });
     guardar(); pintarBarra(true);
+    if (window.PG_ANALITICA) PG_ANALITICA.ev("agregar", it.id, seccionDe[it.id] ? seccionDe[it.id].id : "");
     var avH = window.PG_COMERCIO && PG_COMERCIO.aviso ? PG_COMERCIO.aviso(it, seccionDe[it.id]) : "";
     aviso(avH ? t("hrAgregado", { n: tx(it, "n"), a: avH }) : t("agregado", { n: tx(it, "n") }));
   }
@@ -574,7 +626,7 @@
   }
 
   /* ---------- carrito y formulario ---------- */
-  var form = {}, refrescarResumen = null;
+  var form = {}, refrescarResumen = null, pintarLlevarForm = null;
   function miniatura(it, cls) {
     var fw = h("span", cls + "__fw");
     var im = h("img", cls + "__img"); im.alt = ""; im.loading = "lazy";
@@ -590,7 +642,7 @@
     (items || []).forEach(function (l) {
       var li = h("li", "enviado__li");
       li.appendChild(miniatura(productos[l.id], "enviado"));
-      var tt = h("span", "enviado__t", l.cant + " × " + l.n + (l.tam ? " · " + l.tam : ""));
+      var tt = h("span", "enviado__t", l.cant + " × " + nombreLinea(l));
       li.appendChild(tt); ul.appendChild(li);
     });
     return ul;
@@ -654,10 +706,20 @@
         var li = h("li", "linea");
         li.appendChild(miniatura(productos[l.id], "linea"));
         var info = h("div", "linea__info");
-        info.appendChild(h("strong", null, l.n + (l.tam ? " · " + l.tam : "")));
+        info.appendChild(h("strong", null, nombreLinea(l)));
         if (l.salsaN) info.appendChild(h("span", null, t("salsa") + l.salsaN));
         (l.opsTxt || []).forEach(function (o) { info.appendChild(h("span", null, o)); });
         if (l.nota) info.appendChild(h("span", null, t("nota") + l.nota));
+        if (MODO === "mesa") {
+          var lc = boton("🛍 " + t("paraLlevar"), "llevar-chip" + (l.llevar ? " on" : ""), function () {
+            l.llevar = !l.llevar; l.key = l.key.replace(/\|L?$/, "|" + (l.llevar ? "L" : ""));
+            var otra = carrito.filter(function (x) { return x !== l && x.key === l.key; })[0];
+            if (otra) { otra.cant = Math.min(20, otra.cant + l.cant); carrito.splice(carrito.indexOf(l), 1); }
+            guardar(); pintarLista(); if (pintarLlevarForm) pintarLlevarForm();
+          });
+          lc.setAttribute("aria-pressed", l.llevar ? "true" : "false");
+          info.appendChild(lc);
+        }
         var avL = window.PG_COMERCIO && PG_COMERCIO.aviso && productos[l.id] ? PG_COMERCIO.aviso(productos[l.id], seccionDe[l.id]) : "";
         if (avL) info.appendChild(h("span", "hr-aviso hr-aviso--linea", avL));
         li.appendChild(info);
@@ -696,8 +758,15 @@
       sw.appendChild(fila);
       c.appendChild(sw);
     }
+    if (window.PG_ANALITICA) PG_ANALITICA.ev("checkout", "", MODO);
     formulario(c);   // agrega el formulario y, al final, el resumen (subtotal, delivery, total) con el botón fijo abajo
     abrirHoja(c, MODO === "mesa" ? t("pedidoMesa") + MESA : t("tuPedido"), "hoja--carrito");
+  }
+  /* "Americana con Hawaiana · Mediana" (tamaño con su nombre para el cliente) */
+  function nombreLinea(l) {
+    var n = l.n || "";
+    if (l.mitad && productos[l.mitad] && productos[l.id] && n.indexOf(t("con").trim()) < 0) n = tx(productos[l.id], "n") + t("con") + tx(productos[l.mitad], "n");
+    return n + (l.tam ? " · " + I.tam(l.tam) : "");
   }
   function dinero2(n) { n = Math.round(Number(n) * 100) / 100; return Number.isInteger(n) ? String(n) : n.toFixed(2); }
 
@@ -747,6 +816,22 @@
     var resumen = h("div", "resumen"); resumen.setAttribute("aria-live", "polite");
     refrescarResumen = null;
     if (MODO === "mesa") {
+      var zLlevar = h("div");
+      pintarLlevarForm = function () {
+        zLlevar.textContent = "";
+        if (!carrito.some(function (l) { return l.llevar; })) { form.llevarHora = ""; return; }
+        var w = h("label", "campo-w llevar-hora");
+        w.appendChild(h("span", "campo-l", "🛍 " + t("llevarCuando")));
+        var sl = h("select", "campo"); sl.name = "llevarHora";
+        var ops = [{ v: "", x: t("llevarAlIrnos") }];
+        var ah = P.ahoraLugar(new Date()), r = (C.horario.dias || {})[ah.dia];
+        if (r) { var fin = P.minutos(r[1]); if (fin <= P.minutos(r[0])) fin += 1440; for (var m = Math.ceil((ah.min + 30) / 15) * 15; m <= fin; m += 15) ops.push({ v: hhmm(m), x: t("llevarHora", { h: hhmm(m) }) }); }
+        if (!ops.some(function (o) { return o.v === form.llevarHora; })) form.llevarHora = "";
+        ops.forEach(function (o) { var op = h("option", null, o.x); op.value = o.v; if (o.v === form.llevarHora) op.selected = true; sl.appendChild(op); });
+        sl.addEventListener("change", function () { form.llevarHora = sl.value; });
+        w.appendChild(sl); zLlevar.appendChild(w);
+      };
+      f.appendChild(zLlevar); pintarLlevarForm();
       f.appendChild(campo("nombre", t("aNombre"), "text", { max: 60, auto: "given-name" }));
       f.appendChild(campo("notas", t("comentCocina"), "area", { max: 300 }));
       // En la mesa el pago y el comprobante se piden al final, con "Pedir la cuenta"
@@ -791,7 +876,6 @@
         var pagoObl = CFG.pagoObligatorio === true;   // por defecto el pago es opcional (Config pago_obligatorio)
         f.appendChild(h("h3", "hoja__sub", t("comoPagar")));
         if (CFG.metodosPago.indexOf(form.pago) < 0) form.pago = "";
-        if (!pagoObl) f.appendChild(h("p", "pago-ayuda", t("pagoAdelanto")));
         cajaCobro = h("div");
         var lisPago = CFG.metodosPago.map(function (m) { return { valor: m, texto: m, marcado: form.pago === m }; });
         var alPago = function (v) { form.pago = Array.isArray(v) ? v[0] : v; pintarCobro(cajaCobro, form.pago, true); };
@@ -801,29 +885,42 @@
       }
       var vent = ventanaPedido();
       if (vent) {
-        // Fuera de horario: el selector de hora es la forma de pedir (visible). Dentro de horario: plegado, "lo antes posible" por defecto.
+        /* Dentro de horario: dos opciones, "Lo antes posible" o "Programar para más tarde" (y solo entonces el selector de hora,
+           que NUNCA incluye "lo antes posible"). Fuera de horario: solo el selector de hora. */
         var abiertoYa = abiertoAhora();
-        var horas = [{ valor: "", texto: abiertoYa ? t("loAntes") : t("eligeHora") }];
+        var horas = [{ valor: "", texto: t("eligeHora") }];
         for (var mm = vent.desde; mm <= vent.hasta; mm += (vent.paso || 15)) horas.push({ valor: hhmm(mm), texto: vent.etiqueta + " · " + fmtHora(mm) });
         if (window.PG_COMERCIO) horas = PG_COMERCIO.filtrarHoras(horas, vent);   // comercio: quita las franjas sin cupo
         if (form.programado && !horas.some(function (x) { return x.valor === form.programado; })) form.programado = "";
         form.programadoFecha = form.programado ? (vent.fecha || "") : "";
         var wh = h("label", "campo-w");
-        if (!abiertoYa) wh.appendChild(h("span", "campo-l", t("paraHoraReq")));
-        var sh = h("select", "campo"); sh.name = "programado"; sh.setAttribute("aria-label", abiertoYa ? t("programarMasTarde") : t("paraHoraReq"));
-        horas.forEach(function (x) { var o = h("option", null, x.texto); o.value = x.valor; if (x.valor === (form.programado || "")) o.selected = true; sh.appendChild(o); });
+        wh.appendChild(h("span", "campo-l", t("paraHoraReq")));
+        var sh = h("select", "campo"); sh.name = "programado"; sh.setAttribute("aria-label", t("paraHoraReq"));
+        horas.forEach(function (x) { var o = h("option", null, x.texto); o.value = x.valor; if (!x.valor) { o.disabled = true; } if (x.valor === (form.programado || "")) o.selected = true; sh.appendChild(o); });
         sh.addEventListener("change", function () {
           form.programado = sh.value; form.programadoFecha = sh.value ? (vent.fecha || "") : "";
           form.programadoTxt = sh.value ? sh.options[sh.selectedIndex].text : "";
         });
         wh.appendChild(sh);
-                if (abiertoYa) {
-          var det = h("details", "prog"); if (form.programado) det.open = true;
-          det.appendChild(h("summary", null, t("programarMasTarde")));
-          var dcu = h("div", "prog__cuerpo"); dcu.appendChild(wh); det.appendChild(dcu);
-          det.addEventListener("toggle", function () { if (!det.open && sh.value) { sh.value = ""; form.programado = ""; form.programadoFecha = ""; form.programadoTxt = ""; } });
-          f.appendChild(det);
-        } else f.appendChild(wh);
+        if (abiertoYa) {
+          if (form.cuando !== "prog") form.cuando = "ya";
+          f.appendChild(h("h3", "hoja__sub", t("cuandoTit")));
+          var wProg = h("div", "prog__cuerpo");
+          var espTxt = function () { var c = window.PG_CARGA, m = c && c.espera ? Math.round(Number(c.espera[form.canal === "recojo" ? "recojo" : "delivery"])) : 0; return m > 0 ? " (~" + m + " min)" : ""; };
+          var opsCuando = opcionesUI("cuando", [
+            { valor: "ya", texto: t("loAntes") + espTxt(), marcado: form.cuando !== "prog" },
+            { valor: "prog", texto: t("programarTit"), marcado: form.cuando === "prog" }
+          ], false, function (v) {
+            form.cuando = v[0];
+            wProg.hidden = form.cuando !== "prog";
+            if (form.cuando !== "prog") { sh.value = ""; form.programado = ""; form.programadoFecha = ""; form.programadoTxt = ""; }
+            else if (!form.programado) { try { sh.focus({ preventScroll: true }); } catch (x) {} }
+          });
+          opsCuando.className += " cuando";
+          f.appendChild(opsCuando);
+          wProg.appendChild(wh); wProg.hidden = form.cuando !== "prog";
+          f.appendChild(wProg);
+        } else { form.cuando = "prog"; f.appendChild(wh); }
       }
       f.appendChild(campo("notas", t("comentarios"), "area", { max: 300 }));
       f.appendChild(bloqueComprobante());
@@ -920,13 +1017,11 @@
           fijar(r.la, r.lo, "osm");
         }).catch(function () { bMapa.disabled = false; estadoUbic(t("mapaRed"), true); });
       });
-      mp.appendChild(bMapa); mp.appendChild(h("span", "hoja__ayuda", t("mapaAviso")));
+      mp.appendChild(bMapa);
       zona.appendChild(mp);
       zona.appendChild(ubEst);
       estadoUbic();
       zona.appendChild(campo("referencia", t("referencia") + " *", "text", { max: 200, ph: t("referenciaPh") }));
-      var td = I.lang === "en" && CFG.textoDelivery_en ? CFG.textoDelivery_en : CFG.textoDelivery;
-      if (td) zona.appendChild(h("p", "hoja__ayuda", td));
     }
     /* Resumen fijo abajo: subtotal, delivery y total (el delivery se calcula solo con la ubicación) */
     function pintarResumen() {
@@ -940,7 +1035,6 @@
       if (e.ok) {
         fila(t("entrega"), "S/ " + e.costo);
         fila(t("total"), soles(total() + e.costo), "resumen__t");
-        resumen.appendChild(h("p", "resumen__aviso", t("deliveryNota")));
       } else if (e.fuera) {
         fila(t("entrega"), "—"); fila(t("total"), soles(total()), "resumen__t");
         resumen.appendChild(h("p", "hoja__err", t("fueraZona")));
@@ -978,7 +1072,7 @@
         if (avisoFuera && !esBarra()) {
           var bp = h("button", "btn-ped btn-ped--linea hr-prog", t("hrProgramar")); bp.type = "button";
           bp.addEventListener("click", function () {
-            var d0 = f.querySelector("details.prog"); if (d0) d0.open = true;
+            var rp = f.querySelector('input[name=cuando][value=prog]'); if (rp && !rp.checked) rp.click();
             var s0 = f.querySelector("select[name=programado]");
             if (s0) { if (s0.scrollIntoView) s0.scrollIntoView({ block: "center", behavior: "smooth" }); try { s0.focus({ preventScroll: true }); } catch (x) {} }
           });
@@ -1039,46 +1133,55 @@
     d.appendChild(b);
     return d;
   }
-  // conCaptura = true en delivery/recojo (se puede subir la captura); en mesa solo se muestran los datos
+  /* Cobro: solo lo esencial. Yape/Plin: QR + número (copiar). Transferencia: banco, titular, cuenta y CCI (copiar); en Perú no hay un QR
+     estándar de transferencia, así que no se muestra ninguno. Con captura: "Adjunta tu captura". conCaptura = false en la mesa. */
   function pintarCobro(w, metodo, conCaptura) {
     w.textContent = ""; w.className = "";
     var c = cobroDe(metodo);
     if (!c) { if (conCaptura) form.captura = ""; return; }
-    w.className = "cobro";
+    var transf = /^transf/i.test(metodo) || !!c.transf;
+    w.className = "cobro" + (transf ? " cobro--transf" : "");
     if (conCaptura) {   // en mesa el monto es el de la cuenta (se muestra arriba), no el del carrito
       var monto = h("p", "cobro__monto");
       monto.appendChild(h("span", null, t("montoPagar") + " "));
-      monto.appendChild(h("b", null, soles(sumaPagar())));   // productos + delivery (el servidor verifica este monto exacto)
+      monto.appendChild(h("b", null, soles(sumaPagar())));   // productos + delivery
       var ent = entregaActual();
-      if (ent && ent.ok) monto.appendChild(h("span", "cobro__nota", " (" + t("totalProd").toLowerCase() + " " + soles(total()) + " + delivery S/ " + ent.costo + ")"));
-      else if (ent) monto.appendChild(h("span", "cobro__nota", " " + t("deliveryAparte")));
+      if (ent && !ent.ok) monto.appendChild(h("span", "cobro__nota", " " + t("deliveryAparte")));
       w.appendChild(monto);
     }
-    if (c.qr) { var q = h("img", "cobro__qr"); q.src = c.qr; q.alt = "QR " + metodo; q.onerror = function () { q.remove(); }; w.appendChild(q); }
-    if (/yape o plin/i.test(metodo) && c.qr) w.appendChild(h("p", "hoja__ayuda", t("yapePlinQr")));
-    if (c.transf && (c.banco || c.moneda)) w.appendChild(h("p", "cobro__tit", [c.banco, c.moneda].filter(Boolean).join(" · ")));
-    if (c.numero) w.appendChild(filaCopiar(c.transf ? t("cuentaNum") : t("numeroA"), c.numero));
-    if (c.cci) w.appendChild(filaCopiar(t("cci"), c.cci));
-    if (c.transf && (c.numero || c.cci)) w.appendChild(h("p", "hoja__ayuda", t("instrTransf")));
-    if (c.titular) w.appendChild(h("p", "cobro__tit", t("titular") + " " + c.titular));
+    if (!transf && c.qr) { var q = h("img", "cobro__qr"); q.src = c.qr; q.alt = "QR " + metodo; q.onerror = function () { q.remove(); }; w.appendChild(q); }
+    if (transf) {
+      var mon = { PEN: "Soles", USD: "Dólares" }[String(c.moneda || "").toUpperCase()] || c.moneda;
+      if (c.banco) w.appendChild(filaDato(t("bancoT"), [c.banco, mon].filter(Boolean).join(" · ")));
+      if (c.titular) w.appendChild(filaDato(t("titularCorto"), c.titular));
+      if (c.numero) w.appendChild(filaCopiar(t("cuentaNum"), c.numero));
+      if (c.cci) w.appendChild(filaCopiar(t("cci"), c.cci));
+    } else {
+      if (c.numero) w.appendChild(filaCopiar(t("numeroA"), c.numero));
+      if (c.titular) w.appendChild(filaDato(t("titularCorto"), c.titular));
+    }
     if (c.texto) w.appendChild(h("p", "cobro__banco", c.texto));
-    if (!conCaptura) { w.appendChild(h("p", "hoja__ayuda", t("pagoMesaQr"))); return; }
-    w.appendChild(h("p", "hoja__ayuda", t(esBarra() ? "barraCaptura" : "pagoAnticipado")));
+    if (!conCaptura) return;
     var lb = h("label", "cobro__subir");
     var inp = h("input"); inp.type = "file"; inp.accept = "image/*";
-    var txt = h("span", null, form.captura ? "✓ " + t("capturaLista") + " · " + t("cambiarCaptura") : "📎 " + t("subirCaptura"));
+    var txt = h("span", null, form.captura ? "✓ " + t("capturaLista") + " · " + t("cambiarCaptura") : "📎 " + t("adjuntaCaptura"));
     var prev = h("img", "cobro__prev"); prev.alt = ""; if (form.captura) prev.src = form.captura; else prev.style.display = "none";
-    var est = h("span", "hoja__ayuda", esBarra() ? "" : t("capturaAyuda"));
+    var est = h("span", "hoja__ayuda", "");
     inp.addEventListener("change", function () {
       var file = inp.files && inp.files[0]; if (!file) return;
-      txt.textContent = t("enviando");
+      txt.textContent = t("enviando"); est.textContent = "";
       comprimirImagen(file).then(function (d) {
         form.captura = d; prev.src = d; prev.style.display = "";
         txt.textContent = "✓ " + t("capturaLista") + " · " + t("cambiarCaptura");
-      }).catch(function () { form.captura = ""; prev.style.display = "none"; txt.textContent = "📎 " + t("subirCaptura"); est.textContent = t("errCaptura"); });
+      }).catch(function () { form.captura = ""; prev.style.display = "none"; txt.textContent = "📎 " + t("adjuntaCaptura"); est.textContent = t("errCaptura"); });
     });
     lb.appendChild(inp); lb.appendChild(txt);
     w.appendChild(lb); w.appendChild(prev); w.appendChild(est);
+  }
+  function filaDato(etq, valor) {
+    var d = h("div", "cobro__fila cobro__fila--dato");
+    d.appendChild(h("span", null, etq)); d.appendChild(h("b", null, valor));
+    return d;
   }
   // reduce la captura a JPEG liviano (el servidor acepta hasta ~300 KB)
   function comprimirImagen(file) {
@@ -1089,14 +1192,14 @@
         var img = new Image();
         img.onerror = ko;
         img.onload = function () {
-          var lado = 1280, calidad = 0.72, d = "";
+          var lado = 1000, calidad = 0.6, d = "";
           for (var i = 0; i < 6; i++) {
             var esc = Math.min(1, lado / Math.max(img.width, img.height));
             var cv = document.createElement("canvas"); cv.width = Math.round(img.width * esc); cv.height = Math.round(img.height * esc);
             var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height);
             d = cv.toDataURL("image/jpeg", calidad);
-            if (d.length < 380000) return ok(d);
-            lado = Math.round(lado * 0.8); calidad = Math.max(0.5, calidad - 0.06);
+            if (d.length < 200000) return ok(d);   // ~150 KB de imagen
+            lado = Math.round(lado * 0.82); calidad = Math.max(0.45, calidad - 0.05);
           }
           ko(new Error("grande"));
         };
@@ -1171,6 +1274,7 @@
     }
     if (CFG.pagoObligatorio === true && CFG.metodosPago && CFG.metodosPago.length && !form.pago) return t("errPago");
     if (!abiertoAhora() && !form.programado) return t("errHora");
+    if (abiertoAhora() && form.cuando === "prog" && !form.programado) return t("errEligeHora");
     var mf = mensajeHorarioProductos(); if (mf) return mf;
     if (carrito.some(function (l) { return l.alcohol; }) && !form.mayorEdad) return t("errMayor");
     return validarComprobante();
@@ -1178,16 +1282,29 @@
 
   /* Zona de la lista en la que cae la ubicación (interna, no se muestra al cliente): viaja en el pedido con el mismo precio que calcula el servidor. */
   function zonaInterna() { var e = entregaActual(); return e && e.ok && e.zona ? e.zona : ""; }
+  function notaLinea(l) {
+    var n = (l.nota || "").trim();
+    if (MODO === "mesa" && l.llevar) n = (t("llevarNota") + (form.llevarHora ? " " + form.llevarHora : "") + (n ? " · " + n : "")).slice(0, 120);
+    return n;
+  }
+  function notasPedido() {
+    var pre = [];
+    if (MODO !== "mesa" && !esBarra() && form.pago && pagoServidor(form.pago) !== form.pago) pre.push("Pago: " + form.pago);
+    if (MODO !== "mesa" && !esBarra() && /^(yape|plin)$/i.test(form.pago || "")) pre.push("Pago: " + form.pago);
+    if (MODO === "mesa" && carrito.some(function (l) { return l.llevar; })) pre.push("PARA LLEVAR: " + (form.llevarHora ? "listo a las " + form.llevarHora : "listo al irse"));
+    return (pre.concat(form.notas ? [form.notas] : [])).join(" · ").slice(0, 300);
+  }
   function cuerpoPedido(trampa) {
     var cp = {
       canal: MODO === "mesa" ? "mesa" : form.canal, mesa: MESA, codigo: CODIGO, web: trampa || "", idioma: I.lang,
       nombre: form.nombre || "", telefono: form.telefono || "", direccion: form.canal === "delivery" ? (form.direccion || "") : "",
-      referencia: form.canal === "delivery" ? (form.referencia || "") : "", pago: form.pago || "",
+      referencia: form.canal === "delivery" ? (form.referencia || "") : "", pago: MODO === "mesa" ? "" : esBarra() ? (form.pago || "") : pagoServidor(form.pago),
       zona: zonaInterna(), lat: form.canal === "delivery" && form.lat != null ? form.lat : null, lng: form.canal === "delivery" && form.lng != null ? form.lng : null,
-      programado: form.programado || "", programadoFecha: form.programado ? (form.programadoFecha || "") : "", notas: form.notas || "", mayorEdad: !!form.mayorEdad, origen: origen(), ref: form.ref || "",
+      programado: form.programado || "", programadoFecha: form.programado ? (form.programadoFecha || "") : "", notas: notasPedido(), mayorEdad: !!form.mayorEdad, origen: origen(), ref: form.ref || "",
       comprobante: form.comprobante || "", doc: form.comprobante ? String(form.doc || "").replace(/\D/g, "") : "",
       razon: form.comprobante ? (form.razon || "") : "", correo: form.comprobante ? String(form.correo || "").trim() : "",
-      items: carrito.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {}, mitad: l.mitad || "" }; })
+      /* "Para llevar" desde la mesa: llevar:true (el servidor actual lo ignora) y la marca en la nota de la línea, que sí llega a cocina y comanda */
+      items: carrito.map(function (l) { var it = { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: notaLinea(l), ops: l.ops || {}, mitad: l.mitad || "" }; if (l.llevar) it.llevar = true; return it; })
     };
     return window.PG_COMERCIO ? PG_COMERCIO.cuerpo(cp) : cp;   // comercio: origen de barra y sesión de mesa
   }
@@ -1200,7 +1317,7 @@
     L.push("");
     if (detalle) L.push(detalle);
     else carrito.forEach(function (l) {
-      L.push(l.cant + " × " + (l.nEs || l.n) + (l.tam ? " (" + l.tam + ")" : "") + " — " + soles(l.unit * l.cant));
+      L.push(l.cant + " × " + (l.nEs || l.n) + (l.tam ? " (" + I.tam(l.tam) + ")" : "") + " — " + soles(l.unit * l.cant));
       if (l.salsaEs) L.push("    Salsa: " + l.salsaEs);
       (l.opsEs || []).forEach(function (o) { L.push("    " + o); });
       if (l.nota) L.push("    Nota: " + l.nota);
@@ -1209,7 +1326,7 @@
     var ent = entregaActual(), prod = totalServidor != null ? totalServidor : total();
     if (ent && ent.ok) {
       L.push("Productos: " + soles(prod));
-      L.push("Delivery: S/ " + ent.costo + " (aprox.)" + (ent.zona ? " · zona " + ent.zona : ""));
+      L.push("Delivery: S/ " + ent.costo + (ent.zona ? " · zona " + ent.zona : ""));
       L.push("*Total: " + soles(prod + ent.costo) + "*");
     } else L.push("*Total productos: " + soles(prod) + "*" + (form.canal === "delivery" ? " (+ delivery)" : ""));
     L.push("Nombre: " + (form.nombre || ""));
@@ -1259,7 +1376,7 @@
     c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
     recordarCliente();
     guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
-    carrito = []; guardar(); pintarBarra();
+    marcarPedido(); carrito = []; guardar(); pintarBarra();
     form.ref = ""; form.ubicacion = ""; form.lat = null; form.lng = null; form.zona = ""; form.ubicOrigen = "";
     pintarRepetir();
     abrirHoja(c, t("tuPedido"));
@@ -1278,13 +1395,20 @@
       .then(function (r) { return r.json(); })
       .then(function (r) {
         clearTimeout(tm);
-        if (!r || !r.ok) { form.ref = ""; return { error: (r && r.error) || t("errEnvio") }; }
-        form.capturaSubida = true;
+        if (r && !r.ok && esGrande(r.error)) {   // el servidor no aceptó la imagen: el pedido se manda sin ella y la captura va por WhatsApp
+          return fetch(CFG.api, { method: "POST", body: JSON.stringify(cuerpoPedido(trampa)) }).then(function (x) { return x.json(); })
+            .then(function (r2) { if (r2 && r2.ok) r2.sinCaptura = true; return r2; }, function () { return { ok: false }; });
+        }
+        return r;
+      })
+      .then(function (r) {
+        if (!r || !r.ok) { form.ref = ""; return { error: (r && r.error && !esGrande(r.error) ? r.error : "") || t("errEnvio") }; }
+        form.capturaSubida = !r.sinCaptura;
         var url = mensajeWhatsapp(r.numero, r.total, null);
         var c = h("div", "hoja__cuerpo exito");
         c.appendChild(h("div", "exito__ic", "✓"));
         c.appendChild(h("h3", null, t("recibidoPago", { n: r.numero })));
-        c.appendChild(h("p", null, t("recibidoPagoTxt")));
+        c.appendChild(h("p", null, r.sinCaptura ? t("capturaWa") : t("recibidoPagoTxt")));
         c.appendChild(listaEnviada(carrito));
         c.appendChild(h("p", "hoja__ayuda", t("codigoPedido") + form.ref));
         var a = h("a", "btn-ped btn-ped--wa", t("abrirWa")); a.href = url; a.target = "_blank"; a.rel = "noopener";
@@ -1293,7 +1417,7 @@
         c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
         recordarCliente();
         guardarJson(CLAVE_ULTIMO, { t: Date.now(), c: carrito });
-        carrito = []; guardar(); pintarBarra();
+        marcarPedido(); carrito = []; guardar(); pintarBarra();
         form.ref = ""; form.ubicacion = ""; form.lat = null; form.lng = null; form.zona = ""; form.ubicOrigen = ""; form.captura = ""; form.capturaSubida = false;
         pintarRepetir();
         abrirHoja(c, t("tuPedido"));
@@ -1308,6 +1432,13 @@
       });
   }
 
+  /* analítica: un evento "pedido" por producto enviado */
+  function marcarPedido() {
+    if (!window.PG_ANALITICA) return;
+    carrito.forEach(function (l) { PG_ANALITICA.ev("pedido", l.id, seccionDe[l.id] ? seccionDe[l.id].id : ""); });
+    PG_ANALITICA.enviar(false);
+  }
+  function esGrande(e) { return /demasiado grande|muy grande|too large/i.test(String(e || "")); }
   /* Barra: el pedido va directo al sistema (se imprime solo en el local). Sin WhatsApp, sin seguimiento, sin hora. */
   function enviarBarra(trampa) {
     if (!CFG.api) return Promise.resolve({ error: t("barraSinConexion") });
@@ -1321,8 +1452,15 @@
     return fetch(CFG.api, { method: "POST", body: JSON.stringify(cuerpo), signal: ctrl ? ctrl.signal : undefined })
       .then(function (r) { return r.json(); })
       .then(function (r) {
+        if (r && !r.ok && esGrande(r.error) && cuerpo.captura) {
+          delete cuerpo.captura;
+          return fetch(CFG.api, { method: "POST", body: JSON.stringify(cuerpo) }).then(function (x) { return x.json(); }).then(function (r2) { if (r2 && r2.ok) r2.sinCaptura = true; return r2; });
+        }
+        return r;
+      })
+      .then(function (r) {
         clearTimeout(tm);
-        if (!r || !r.ok) { form.ref = ""; return { error: (r && r.error) || t("barraSinConexion") }; }
+        if (!r || !r.ok) { form.ref = ""; return { error: (r && r.error && !esGrande(r.error) ? r.error : "") || t("barraSinConexion") }; }
         recordarCliente();
         exitoBarra(r);
         return {};
@@ -1337,9 +1475,10 @@
     c.appendChild(h("h3", null, t("barraListo", { n: nombre })));
     c.appendChild(h("p", null, t("barraPrep", { num: r && r.numero != null ? r.numero : "" })));
     c.appendChild(h("p", null, t(digital ? "barraCajaDig" : "barraCaja")));
+    if (r && r.sinCaptura) c.appendChild(h("p", "hoja__ayuda", t("capturaWa")));
     if (window.PG_COMERCIO) PG_COMERCIO.resena(c, h);
     c.appendChild(boton(t("volver"), "btn-ped btn-ped--linea", cerrarHoja));
-    carrito = []; guardar(); pintarBarra();
+    marcarPedido(); carrito = []; guardar(); pintarBarra();
     form.ref = ""; form.pago = ""; form.captura = ""; form.capturaSubida = false; form.mayorEdad = false;
     abrirHoja(c, t("tuPedido"));
   }
@@ -1386,7 +1525,7 @@
       c.appendChild(h("p", "hoja__ayuda", t("respondemos", { d: form.canal === "delivery" ? t("conDelivery") : "" })));
       if (window.PG_COMERCIO) PG_COMERCIO.resena(c, h);   // comercio: botón de reseña (solo si hay enlace)
     }
-    carrito = []; guardar(); pintarBarra();
+    marcarPedido(); carrito = []; guardar(); pintarBarra();
     abrirHoja(c, MODO === "mesa" ? t("mesa") + MESA : t("tuPedido"));
   }
 
@@ -1432,14 +1571,14 @@
       .catch(function () { return { ok: false, error: t("errCocina") }; });
   }
   var mozoT = 0;
-  function llamarMozo(btn) {
+  function llamarMozo(btn, sp) {
     if (Date.now() - mozoT < 45000) { aviso(t("mozoYaAvisado")); return; }
-    var txt = btn.textContent; btn.disabled = true; btn.textContent = t("enviando");
+    var el = sp || btn, txt = el.textContent; btn.disabled = true; el.textContent = t("enviando");
     enviarAviso("mozo").then(function (r) {
       btn.disabled = false;
-      if (!r || !r.ok) { btn.textContent = txt; aviso((r && r.error) || t("errCocina")); return; }
-      mozoT = Date.now(); btn.textContent = "✓ " + t("mozoEnCamino"); aviso(t("mozoAvisado"));
-      setTimeout(function () { btn.textContent = txt; }, 45000);
+      if (!r || !r.ok) { el.textContent = txt; aviso((r && r.error) || t("errCocina")); return; }
+      mozoT = Date.now(); el.textContent = "✓ " + t("mozoEnCamino"); btn.classList.add("ok"); aviso(t("mozoAvisado"));
+      setTimeout(function () { el.textContent = txt; btn.classList.remove("ok"); }, 45000);
     });
   }
   function abrirPedirCuenta() {
@@ -1451,7 +1590,7 @@
     if (metodosMesa.length) {
       c.appendChild(h("h3", "hoja__sub", t("comoPagar")));
       var cobroMesa = h("div");
-      c.appendChild(opcionesUI("pagoCuenta", metodosMesa.map(function (m) { return { valor: m, texto: m, extra: m === YP ? "⚡ " + t("masRapido") : "" }; }), false, function (v) { sel.pago = v[0]; pintarCobro(cobroMesa, sel.pago, false); }));
+      c.appendChild(opcionesUI("pagoCuenta", metodosMesa.map(function (m) { return { valor: m, texto: m }; }), false, function (v) { sel.pago = v[0]; pintarCobro(cobroMesa, sel.pago, false); }));
       c.appendChild(cobroMesa);
     }
     var tipos = (CFG.comprobantes || []).filter(function (x) { return x === "Boleta" || x === "Factura"; });
@@ -1611,10 +1750,23 @@
       barra.addEventListener("click", abrirCarrito);
       document.body.appendChild(barra);
       if (MODO === "mesa" && mesaValida()) {
-        var acc = h("div", "mesa-acc");
-        acc.appendChild(boton("🙋 " + t("llamarMozo"), "", function () { llamarMozo(this); }));
-        acc.appendChild(boton("🧾 " + t("pedirCuenta"), "", abrirPedirCuenta));
-        acc.appendChild(boton("📋 " + t("loPedido"), "", abrirCuenta));
+        /* Barra inferior del cliente en la mesa: tres botones iguales, con ícono y texto */
+        var acc = h("nav", "mesa-acc"); acc.setAttribute("aria-label", t("mesa") + MESA);
+        var ICS = {
+          mozo: "M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM4.5 21a7.5 7.5 0 0 1 15 0M18.5 4.5l1.8-1.3M19.8 8h2",
+          cuenta: "M6 2.8h12v18.4l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4zM9 7.5h6M9 11h6M9 14.5h4",
+          lista: "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"
+        };
+        var bMesa = function (ic, txt, cls, fn) {
+          var b = h("button", "mesa-acc__b" + (cls ? " " + cls : "")); b.type = "button";
+          b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + ICS[ic] + '"/></svg>';
+          var sp = h("span", null, txt); b.appendChild(sp);
+          b.addEventListener("click", function () { fn(b, sp); });
+          return b;
+        };
+        acc.appendChild(bMesa("mozo", t("llamarMozo"), "", function (b, sp) { llamarMozo(b, sp); }));
+        acc.appendChild(bMesa("cuenta", t("pedirCuenta"), "mesa-acc__b--pri", function () { abrirPedirCuenta(); }));
+        acc.appendChild(bMesa("lista", t("loPedido"), "", function () { abrirCuenta(); }));
         document.body.appendChild(acc);
       }
       if (MODO === "delivery") {

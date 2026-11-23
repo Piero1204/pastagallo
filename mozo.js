@@ -12,7 +12,8 @@
   "use strict";
   var C = window.CARTA || {}, API = (C.pedidos || {}).api || "", GRUPOS = C.opciones || {};
   var app = document.getElementById("app");
-  var K = { t: "pg-mozo-t", mozo: "pg-mozo", carros: "pg-mozo-carros", fotos: "pg-mozo-fotos", ultimo: "pg-mozo-ultimo", alertas: "pg-mozo-alertas", vistaM: "pg-mozo-vistam", filtro: "pg-mozo-filtro", mapa: "pg-mozo-mapa", div: "pg-mozo-div" };
+  var K = { t: "pg-mozo-t", mozo: "pg-mozo", carros: "pg-mozo-carros", fotos: "pg-mozo-fotos", ultimo: "pg-mozo-ultimo", alertas: "pg-mozo-alertas", vistaM: "pg-mozo-vistam", filtro: "pg-mozo-filtro", mapa: "pg-mozo-mapa", div: "pg-mozo-div",
+    pest: "pg-mozo-pest", mapaDel: "pg-mozo-mapadel", carrosDia: "pg-mozo-carros-dia", filtroT: "pg-mozo-filtrot" };
   var YP = "Yape o Plin";
   function unirMetodos(l) { var r = []; (l || []).forEach(function (m) { m = /^(yape|plin)$/i.test(m) ? YP : m; if (/^transf/i.test(m)) return; if (r.indexOf(m) < 0) r.push(m); }); return r; }
   function cobroYP() { var c = (C.pedidos || {}).cobro || {}; return c[YP] || (c.Plin && (c.Plin.qr || c.Plin.numero) ? c.Plin : c.Yape) || null; }
@@ -71,13 +72,23 @@
   /* ---------- estado ---------- */
   var S = { t: leer(K.t, ""), mozo: leer(K.mozo, null), mesas: [], avisos: [], metodos: [YP, "Efectivo", "Tarjeta"],
     horario: null, turno: null, v: "", desfase: 0, recibido: 0, vista: "mesas", mesa: null, cuenta: null, q: "", enviando: false,
-    vistaM: leer(K.vistaM, "grid"), filtro: leer(K.filtro, "todas"), mapa: leer(K.mapa, false) === true };
+    vistaM: leer(K.vistaM, "grid"), filtro: leer(K.filtro, "todas"), mapa: leer(K.mapa, false) === true,
+    pest: leer(K.pest, ""), pestElegida: false, externos: [], metodosExt: null, diaIso: "", filtroT: leer(K.filtroT, "todo"), mapaDel: leer(K.mapaDel, false) === true };
   function yo() { return S.mozo ? S.mozo.id : ""; }
   function variosMozos() { return !!(S.turno && S.turno.mozos && S.turno.mozos.length > 1); }
   function mesaDe(n) { return S.mesas.filter(function (x) { return String(x.mesa) === String(n); })[0] || null; }
   /* mesas del salón (sin las "para llevar", que van aparte) y rótulo de una mesa */
   function mesasSalon() { return S.mesas.filter(function (m) { return m.activa && !m.llevar; }); }
-  function etiquetaMesa(n) { var m = mesaDe(n); return m && m.llevar ? "🥡 Llevar" + (m.etiqueta ? " · " + m.etiqueta : "") : "Mesa " + n; }
+  function etiquetaMesa(n) {
+    if (n === LL) return "🥡 Nuevo para llevar";
+    if (n === DL) return "🛵 Nuevo delivery";
+    var m = mesaDe(n); return m && m.llevar ? "🥡 Llevar" + (m.etiqueta ? " · " + m.etiqueta : "") : "Mesa " + n;
+  }
+  /* Pedidos SIN mesa: "para llevar" y "delivery" se arman con la misma carta en un carrito propio (LL / DL) y al final se piden los datos del cliente.
+     Se registran como pedidos normales (canal recojo / delivery): nunca ocupan una mesa ni salen en el salón. */
+  var LL = "_LL", DL = "_DL";
+  function esPseudo(n) { return n === LL || n === DL; }
+  function modoActual() { return S.mesa === LL ? "llevar" : S.mesa === DL ? "delivery" : "mesa"; }
   function duenio(m) { return m ? (m.atiende || (m.estado === "libre" ? m.zona : null)) : null; }
   function esMia(m) { var d = duenio(m); return !d || d.id === yo(); }
   function cuentaDeMesa(m) { return { mesa: m.mesa, pedidos: m.pedidos || [], total: m.total, pagado: m.pagado || 0, saldo: m.saldo, pagos: m.pagos || [], pagadoItems: m.pagadoItems || [], unidas: m.unidas || [] }; }
@@ -85,7 +96,22 @@
   var carros = leer(K.carros, {});
   var fotos = leer(K.fotos, true);
   function carro() { return S.mesa ? (carros[S.mesa] = carros[S.mesa] || []) : []; }
-  function guardarCarros() { Object.keys(carros).forEach(function (m) { if (!carros[m].length) delete carros[m]; }); guardar(K.carros, carros); }
+  function guardarCarros() { Object.keys(carros).forEach(function (m) { if (!carros[m].length) delete carros[m]; }); guardar(K.carros, carros); if (!leer(K.carrosDia, "")) guardar(K.carrosDia, diaActual()); }
+  /* Platos sin enviar (carrito de cada mesa en este equipo): valen solo durante el DÍA DE NEGOCIO (hora de Lima; pasada la medianoche con el
+     local abierto sigue siendo el mismo día). Al cambiar de día se descartan solos en todos los equipos (cada uno al abrir o al sondear). */
+  function diaActual() {
+    if (S && S.diaIso) return S.diaIso;
+    return new Date(Date.now() + ((S && S.desfase) || 0) - 5 * 3600000 - 6 * 3600000).toISOString().slice(0, 10);   // sin servidor: Lima, y el día cambia a las 06:00
+  }
+  function revisarDiaCarros(dia) {
+    var antes = leer(K.carrosDia, "");
+    if (antes && antes !== dia) {
+      var habia = Object.keys(carros).some(function (k) { return Array.isArray(carros[k]) && carros[k].length; });
+      carros = {}; guardar(K.carros, carros);
+      if (habia) toast("Se limpiaron los platos sin enviar del día anterior.", "ok");
+    }
+    if (antes !== dia) guardar(K.carrosDia, dia);
+  }
 
   /* ---------- catálogo (solo lo que se puede pedir en mesa) ---------- */
   var SECS = [], PROD = {}, SALSAS_TODAS = (C.salsas || []).slice(), SALSAS = SALSAS_TODAS.filter(function (s) { return !s.agotado; }), SALSA = {};
@@ -101,16 +127,37 @@
     SALSAS = SALSAS_TODAS.filter(function (x) { return !x.agotado; });
     return true;
   }
+  /* Todo lo del personal va en ESPAÑOL: títulos de sección, nombre del plato (el de la carta en español) y tamaños Personal / Mediana / Familiar.
+     Se incluyen las secciones de mesa, las de delivery/llevar y la TIENDA (productos que no pasan por cocina: también se venden en mesa).
+     Qué se puede pedir depende de dónde: mesa, para llevar o delivery (permitido()). */
+  var SEC_ES = { promociones: "Promociones", antipasti: "Entradas", italia: "Productos de Italia", pizze: "Pizzas", pasta: "Pastas", lasagne: "Lasañas",
+    parrillas: "Parrillas", dolci: "Postres", caffetteria: "Cafetería", caffe: "Bebidas", aperitivi: "Aperitivos", vini: "Vinos", tienda: "Tienda · para llevar a casa" };
+  var TAM_ES = { personale: "Personal", media: "Mediana", famiglia: "Familiar" };
+  function tamEs(t) { return TAM_ES[String(t || "").toLowerCase()] || t || ""; }
+  function nombreEs(it) {
+    if (!it) return "";
+    var g = String(it.g || "").trim(), sid = it._sec && it._sec.id;
+    if (g && ["antipasti", "pasta", "lasagne", "dolci", "caffetteria", "caffe"].indexOf(sid) >= 0 && !/^\d|^(con|para|al estilo)\b| en un plato/i.test(g)) return g.charAt(0).toUpperCase() + g.slice(1);
+    return it.n;
+  }
   (C.secciones || []).forEach(function (s) {
-    if (!s.mesa) return;
+    if (!s.mesa && !s.delivery && s.id !== "tienda") return;
     var grupos = [];
     (s.grupos || []).forEach(function (g) {
-      var items = (g.items || []).filter(function (it) { return it.tipo !== "salsa" && it.canal !== "delivery"; });
+      var items = (g.items || []).filter(function (it) { return it.tipo !== "salsa"; });
       items.forEach(function (it) { PROD[it.id] = it; it._sec = s; });
       if (items.length) grupos.push({ titulo: g.titulo || "", items: items });
     });
-    if (grupos.length) SECS.push({ id: s.id, titulo: s.titulo, grupos: grupos });
+    if (grupos.length) SECS.push({ id: s.id, titulo: SEC_ES[s.id] || s.titulo, grupos: grupos, sec: s });
   });
+  // orden para el personal: Productos de Italia y Tienda al final del bloque del restaurante, promociones arriba (solo se ven en llevar/delivery)
+  function permitido(it) {
+    if (!it) return false;
+    if (it._cargo) return modoActual() === "mesa";
+    var s = it._sec || {}, canal = String(it.canal || "todos").toLowerCase();
+    if (modoActual() === "mesa") return (!!s.mesa || s.id === "tienda") && canal !== "delivery";
+    return !!s.delivery && canal !== "local" && canal !== "interno";
+  }
   /* Cargos adicionales (caja, taper, corcho, roturas…): solo para el mozo, vienen del servidor en "estado".
      No están en menu-data.js, así que nunca salen en la carta pública. Se guarda el último recibido. */
   var K_CARGOS = "pg-mozo-cargos", CARGOS = [], CARGO = {};
@@ -272,7 +319,8 @@
     cerrarModal(); pantallaLogin("Este equipo fue desvinculado por el administrador. Pide un enlace nuevo.");
   }
 
-  /* =========================== SONDEO (cada 12 s) =========================== */
+  /* =========================== SONDEO (cada 5 s con la app a la vista; en segundo plano se pausa) ===========================
+     Barato: se manda la versión de los pedidos (v); si nada cambió el servidor responde "igual" sin leer las hojas. */
   var timer = null, avisosVistos = {}, ultimoPitido = 0, listosVistos = null, olvVistas = {}, ultimoOlv = 0, igualesSeguidos = 0;
   function textoAlerta(m) {
     var a = m.alerta; if (!a) return "";
@@ -286,10 +334,13 @@
       if (!r.ok) throw new Error(r.error);
       S.desfase = r.ahora - Date.now(); S.recibido = Date.now();
       S.horario = r.horario; S.mozo = r.mozo || S.mozo; S.turno = r.turno || S.turno;
+      if (r.diaIso) { S.diaIso = r.diaIso; revisarDiaCarros(r.diaIso); }
       if (r.igual) igualesSeguidos++;
       else {
         igualesSeguidos = 0;
         S.v = r.v; S.mesas = r.mesas || []; S.avisos = r.avisos || [];
+        S.externos = r.externos || []; if (r.metodosExt && r.metodosExt.length) S.metodosExt = r.metodosExt;
+        if (!S.pestElegida) elegirPestInicial();
         aplicarPendientesSalon();
         if (r.metodos && r.metodos.length) S.metodos = unirMetodos(r.metodos);
         if (r.comprobantes) S.comprobantes = r.comprobantes;
@@ -301,18 +352,23 @@
         if (S.mesa) { var mm = mesaDe(S.mesa); S.cuenta = mm ? cuentaDeMesa(mm) : S.cuenta; }
         // copia local: al volver a abrir la app se ve el salón al instante (luego se actualiza)
         guardar(K_CACHE, { mozo: yo(), ts: Date.now(), desfase: S.desfase, mesas: S.mesas, avisos: S.avisos, metodos: S.metodos,
-          comprobantes: S.comprobantes || null, horario: S.horario, turno: S.turno });
+          comprobantes: S.comprobantes || null, horario: S.horario, turno: S.turno, externos: S.externos, metodosExt: S.metodosExt, diaIso: S.diaIso });
       }
       if (r.agotados && aplicarAgotados(r.agotados) && document.querySelector(".prods") && !capa.classList.contains("on")) pintarProductos();
       revisarAlertas();
       refrescar();
       if (salonAbierto) pintarSalonModal();
     }).catch(function (e) { if (S.t) toast("Sin conexión: reintentando…", "mal"); }).then(function () {
-      // menos llamadas: si el salón lleva rato sin cambios, se pregunta menos seguido (al tocar algo o volver a la app vuelve a 12 s)
-      if (S.t) timer = setTimeout(sondear, document.hidden ? 30000 : igualesSeguidos >= 6 && !capa.classList.contains("on") ? 18000 : 12000);
+      // cambios visibles en 5 s; si el salón lleva rato sin cambios, cada 8 s (al tocar algo vuelve a 5 s). En segundo plano no se consulta:
+      // al volver a la app (visibilitychange) se consulta al instante.
+      if (S.t && !document.hidden) timer = setTimeout(sondear, igualesSeguidos >= 6 && !capa.classList.contains("on") ? 8000 : 5000);
     });
   }
-  document.addEventListener("visibilitychange", function () { if (!document.hidden && S.t) { igualesSeguidos = 0; sondear(); mantenerPantalla(); } });
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { detenerSondeo(); return; }
+    if (S.t) { igualesSeguidos = 0; sondear(); mantenerPantalla(); }
+    if (swReg) try { swReg.update(); } catch (e) {}
+  });
   document.addEventListener("pointerdown", function () { igualesSeguidos = 0; }, { passive: true });
 
   function minutosACierre() { return S.horario ? S.horario.cierraEn - (Date.now() - S.recibido) / 60000 : 0; }
@@ -393,9 +449,13 @@
     if (c.metodos && c.metodos.length) S.metodos = c.metodos;
     if (c.comprobantes) S.comprobantes = c.comprobantes;
     S.horario = c.horario || null; S.turno = c.turno || S.turno;
+    S.externos = c.externos || []; S.metodosExt = c.metodosExt || null; S.diaIso = c.diaIso || "";
   }
   function iniciar() {
     usarCopiaLocal();
+    if (S.diaIso) revisarDiaCarros(S.diaIso);   // con la copia local del último día visto; el sondeo confirma el día real del servidor
+    else if (leer(K.carrosDia, "") && Date.now() - ((leer(K_CACHE, null) || {}).ts || 0) > 20 * 3600000) revisarDiaCarros(diaActual());
+    if (S.recibido) elegirPestInicial();
     app.textContent = "";
     if (fotos === false) document.body.classList.add("sinfotos");
     mantenerPantalla();
@@ -415,7 +475,7 @@
     else if (S.turno && !S.turno.trabaja) main.appendChild(vistaSinTurno());
     else {
       var mp = mapaSalon(); if (mp) main.appendChild(mp);   // mapa desplegable del salón: en todas las vistas
-      main.appendChild(S.vista === "carta" && S.mesa ? vistaCarta() : vistaMesas());
+      main.appendChild(S.vista === "carta" && S.mesa ? vistaCarta() : vistaPrincipal());
     }
     // altura de los avisos (y del mapa) para que no tapen el contenido
     requestAnimationFrame(function () { document.documentElement.style.setProperty("--avisos", av.offsetHeight + "px"); medirMapa(); });
@@ -432,7 +492,12 @@
     if (!(S.vista === "carta" && S.mesa && carta && S.horario && S.horario.panel && !(S.turno && !S.turno.trabaja))) {
       // no redibujar mientras escribe en un campo o hay una ventana abierta (se redibuja al cerrarla)
       var ae = document.activeElement;
-      if (capa.classList.contains("on") || (ae && /INPUT|TEXTAREA/.test(ae.tagName))) { S.redibujar = true; return; }
+      if (capa.classList.contains("on") || (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName))) { S.redibujar = true; return; }
+      if (S.vista === "mesas" && S.pest !== "mesas" && document.querySelector("main > .pest")) {   // «Todos» y «Para llevar»: solo si cambió algo
+        var f = firmaPest();
+        if (f === ultimaFirmaPest) { parcheCabecera(); return; }
+        ultimaFirmaPest = f; pintar(); return;
+      }
       if (parchearSalon()) return;   // solo se repinta lo que cambió (mesas, por servir, avisos, mapa)
       ultimaCocina = null; pintar(); return;
     }
@@ -450,10 +515,20 @@
     ultimaMesaN = firma; ultimaCocina = S.horario.cocina;
   }
 
+  var ultimaFirmaPest = "";
+  function firmaPest() { return [S.pest, S.v, S.filtroT, S.mapaDel, S.horario && S.horario.cocina, S.avisos.length].join("|"); }
+  function parcheCabecera() {
+    var nb = barraSuperior(), hv = document.querySelector(".top .top__hora"), hn = nb.querySelector(".top__hora");
+    if (hv && hn && hv.outerHTML !== hn.outerHTML) hv.replaceWith(hn);
+    var av = document.querySelector(".avisos"), avn = barraAvisos();
+    if (av && av.outerHTML !== avn.outerHTML) { av.replaceWith(avn); document.documentElement.style.setProperty("--avisos", avn.offsetHeight + "px"); }
+    var mpv = document.querySelector("main > .mapa"), mpn = mapaSalon();
+    if (mpv && mpn && mpv.outerHTML !== mpn.outerHTML) { mpv.replaceWith(mpn); medirMapa(); }
+  }
   /* Repintado parcial de la vista de mesas: se arma la vista nueva en memoria y solo se reemplazan las piezas cuyo HTML cambió.
      Si cambió la estructura (otras mesas visibles, otro orden, aparece/desaparece una sección) devuelve false y se repinta todo. */
   function parchearSalon() {
-    if (S.vista !== "mesas" || !S.recibido) return false;
+    if (S.vista !== "mesas" || !S.recibido || S.pest !== "mesas") return false;
     var main = document.querySelector("main"), salon = main && main.querySelector(":scope > .salon");
     var hz = S.horario;
     if (!salon || (hz && !hz.panel) || (S.turno && !S.turno.trabaja)) return false;
@@ -480,16 +555,16 @@
   function barraSuperior() {
     var t = h("header", "top"), hz = S.horario;
     if (S.vista === "carta" && S.mesa) {
-      t.appendChild(btn("‹", "top__volver", function () { S.vista = "mesas"; S.q = ""; pintar(); window.scrollTo(0, 0); }));
-      var m = btn("", "top__mesa", function () { elegirMesa(); });
-      m.appendChild(document.createTextNode(etiquetaMesa(S.mesa))); m.appendChild(h("small", null, "▾"));
+      t.appendChild(btn("‹", "top__volver", function () { if (esPseudo(S.mesa)) { S.pest = "llevar"; } S.vista = "mesas"; S.q = ""; pintar(); window.scrollTo(0, 0); }));
+      var m = btn("", "top__mesa", function () { if (!esPseudo(S.mesa)) elegirMesa(); });
+      m.appendChild(document.createTextNode(etiquetaMesa(S.mesa))); if (!esPseudo(S.mesa)) m.appendChild(h("small", null, "▾"));
       t.appendChild(m);
       t.appendChild(btn("☰", "top__cats", menuCategorias));
       var bus = h("input", "top__bus"); bus.type = "search"; bus.placeholder = "Buscar plato…"; bus.value = S.q;
       bus.addEventListener("input", function () { S.q = bus.value; pintarProductos(); });
       t.appendChild(bus);
     } else {
-      t.appendChild(h("b", null, "🍝 Salón")); t.appendChild(h("span", "esp"));
+      t.appendChild(h("b", "top__marca", "🍝 Pasta Gallo")); t.appendChild(h("span", "esp"));
     }
     if (hz && hz.panel) {
       var min = minutosACierre(), txt, cls = "top__hora";
@@ -656,15 +731,14 @@
     var w = h("div", "salon");
     var activas = mesasSalon();
     if (!S.recibido) { w.appendChild(h("p", "vacio", "Cargando mesas…")); return w; }
-    var llevarAbiertos = S.mesas.filter(function (m) { return m.activa && m.llevar && m.estado !== "libre"; });
-    if (!activas.length && !llevarAbiertos.length) { w.appendChild(h("p", "vacio", "No hay mesas activas. Agrégalas en el panel principal → Mesas y QR.")); return w; }
+    if (!activas.length) { w.appendChild(h("p", "vacio", "No hay mesas activas. Agrégalas en el panel principal → Mesas y QR.")); return w; }
     var solo = S.filtro === "mias" && variosMozos();
     var ver = ordenarMesas(activas.filter(function (m) { return !solo || (duenio(m) && duenio(m).id === yo()) || (!duenio(m)); }));
     var ocup = activas.filter(function (m) { return m.estado !== "libre" && m.estado !== "unida"; }).length;
     var cab = h("div", "salon__cab");
     cab.appendChild(h("div", "titulo", ocup + " de " + activas.length + " ocupadas"));
     cab.appendChild(h("span", "esp"));
-    if (variosMozos()) cab.appendChild(segmento([["mias", "Solo mis pedidos"], ["todas", "Todos"]], S.filtro === "mias" ? "mias" : "todas", function (v) { S.filtro = v; guardar(K.filtro, v); pintar(); }));
+    if (variosMozos()) cab.appendChild(segmento([["mias", "Solo mis mesas"], ["todas", "Todas"]], S.filtro === "mias" ? "mias" : "todas", function (v) { S.filtro = v; guardar(K.filtro, v); pintar(); }));
     var hayPlano = activas.some(function (m) { return m.x != null && m.y != null; });
     if (hayPlano) cab.appendChild(segmento([["grid", "▦"], ["plano", "🗺 Plano"]], S.vistaM, function (v) { S.vistaM = v; guardar(K.vistaM, v); pintar(); }));
     w.appendChild(cab);
@@ -675,8 +749,7 @@
       ver.forEach(function (m) { g.appendChild(botonMesa(m)); });
       cuerpo.appendChild(g);
     }
-    var ll = seccionLlevar(solo);
-    if (ll) cuerpo.appendChild(ll);
+    var ll = null;   // lo "para llevar" ya no está en el salón: tiene su propia pestaña
     var ps = porServir();
     if (ps) cuerpo.appendChild(ps);
     w.appendChild(cuerpo);
@@ -825,7 +898,7 @@
       var hecho = (p.entregado || []).indexOf(i) >= 0;
       var b = btn("", "srv__l" + (hecho ? " ok" : ""), function () { entregar(p, [i], !hecho); });
       b.appendChild(h("i", null, hecho ? "✓" : ""));
-      var tx = h("span"); tx.appendChild(document.createTextNode(l.t)); if (l.d) tx.appendChild(h("small", null, l.d));
+      var tx = h("span"); tx.appendChild(document.createTextNode(l.e || l.t)); if (l.d) tx.appendChild(h("small", null, l.d));
       b.appendChild(tx);
       d.appendChild(b);
     });
@@ -1036,7 +1109,7 @@
         if (r.conPagos) cuerpo.push(h("p", "aviso-ef", "La cuenta ya tiene pagos parciales: el total no puede quedar por debajo de lo ya pagado."));
         E.forEach(function (e) {
           var it = prodDe(e.id), d = h("div", "linea edl" + (e.cant === 0 ? " fuera" : cambio(e) ? " cambio" : "")), tx = h("div", "d");
-          tx.appendChild(document.createTextNode(e.n + (e.tam ? " (" + e.tam + ")" : "")));
+          tx.appendChild(document.createTextNode((nombreEs(prodDe(e.id)) || e.n) + (e.tam ? " " + tamEs(e.tam) : "")));
           var det = [];
           if (e.mitad && PROD[e.mitad]) det.push("½ " + e.n + " + ½ " + PROD[e.mitad].n);
           if (e.salsa && SALSA[e.salsa]) det.push("Salsa " + SALSA[e.salsa].n);
@@ -1124,6 +1197,7 @@
   }
   function abrirMesa(mesa, luego) {
     ultimaCocina = null;
+    if (esPseudo(mesa)) { S.mesa = mesa; S.vista = "carta"; S.q = ""; S.cuenta = { pedidos: [], total: 0 }; ultimaMesaN = "-"; pintar(); window.scrollTo(0, 0); return Promise.resolve(); }
     var mu = mesaDe(mesa);
     if (mu && mu.unidaA) { toast("La mesa " + mesa + " está unida a la mesa " + mu.unidaA + ": se abre la cuenta de la mesa " + mu.unidaA + ".", "ok"); mesa = mu.unidaA; }
     S.mesa = String(mesa); S.vista = "carta"; S.q = "";
@@ -1134,6 +1208,7 @@
   }
   function cargarCuenta() {
     var mesa = S.mesa;
+    if (esPseudo(mesa)) return Promise.resolve();
     return api({ mz: "cuenta", t: S.t, mesa: mesa }).then(function (r) {
       if (mesa !== S.mesa) return;
       S.cuenta = r.ok ? r : { pedidos: [], total: 0 };
@@ -1145,8 +1220,8 @@
   /* ☰ categorías: saltar directo a una sección sin deslizar */
   function menuCategorias() {
     var g = h("div", "cats");
-    SECS.forEach(function (s) {
-      var n = s.grupos.reduce(function (a, gr) { return a + gr.items.length; }, 0);
+    secsVisibles().forEach(function (s) {
+      var n = s.grupos.reduce(function (a, gr) { return a + gr.items.filter(permitido).length; }, 0);
       var b = btn("", "", function () { cerrarModal(); irSeccion(s.id); });
       b.appendChild(document.createTextNode(s.titulo)); b.appendChild(h("small", null, n + (n === 1 ? " plato" : " platos")));
       g.appendChild(b);
@@ -1177,7 +1252,7 @@
       try { motorBus = B.crear(C, { modo: "mesa", dia: dia }); } catch (e) { motorBus = null; }
       try {
         B.iniciar({ carta: C, modo: "mesa", dia: dia, acepta: function () { return !!(S.horario && S.horario.cocina); },
-          puedePedir: function (id) { return !!PROD[id] && !motivoNo(PROD[id]); }, agregar: agregarDeBusqueda });
+          puedePedir: function (id) { return !!PROD[id] && permitido(PROD[id]) && !motivoNo(PROD[id]); }, agregar: agregarDeBusqueda });
       } catch (e) { /* sin pedido rápido: queda la búsqueda */ }
       if (document.querySelector(".prods") && S.q) pintarProductos();
     };
@@ -1186,7 +1261,7 @@
   }
   function agregarDeBusqueda(l) {
     var it = PROD[l.id];
-    if (!it || motivoNo(it) || !S.mesa) return false;
+    if (!it || motivoNo(it) || !S.mesa || !permitido(it)) return false;
     var tam = l.tam || (it.t ? it.t[0][0] : "");
     if (it.t && !it.t.some(function (x) { return x[0] === tam; })) return false;
     agregar(it, { tam: tam, salsa: l.salsa || "", ops: l.ops || {}, nota: l.nota || "", cant: l.cant || 1, mitad: l.mitad || "" });
@@ -1194,9 +1269,9 @@
   }
   function buscarPlatos(q) {
     var res = null;
-    if (motorBus) { try { res = motorBus.buscar(S.q, 40).map(function (r) { return PROD[r.id]; }).filter(Boolean); } catch (e) { res = null; } }
+    if (motorBus) { try { res = motorBus.buscar(S.q, 40).map(function (r) { return PROD[r.id]; }).filter(permitido); } catch (e) { res = null; } }
     if (res && res.length) return res;
-    return Object.keys(PROD).map(function (k) { return PROD[k]; }).filter(function (it) { return norm(it.n + " " + (it.g || "") + " " + it._sec.titulo).indexOf(q) >= 0; });
+    return Object.keys(PROD).map(function (k) { return PROD[k]; }).filter(function (it) { return permitido(it) && norm(it.n + " " + (it.g || "") + " " + it._sec.titulo + " " + (SEC_ES[it._sec.id] || "")).indexOf(q) >= 0; });
   }
 
   /* ---------- carta ---------- */
@@ -1204,7 +1279,7 @@
   function vistaCarta() {
     cargarBusqueda();
     var w = h("div", "carta"), secs = h("nav", "secs"), prods = h("section", "prods"), orden = h("aside", "orden");
-    SECS.forEach(function (s) {
+    secsVisibles().forEach(function (s) {
       secs.appendChild(btn(s.titulo, "", function () { irSeccion(s.id); }));
       secs.lastChild.dataset.s = s.id;
     });
@@ -1213,6 +1288,7 @@
     var barra = h("div", "barra-ped"); barra.id = "barraPed"; w.appendChild(barra);
     return w;
   }
+  function secsVisibles() { return SECS.filter(function (s) { return s.grupos.some(function (gr) { return gr.items.some(permitido); }); }); }
   function marcarSec(id) {
     document.querySelectorAll(".secs button").forEach(function (b) {
       var on = b.dataset.s === id; b.classList.toggle("on", on);
@@ -1226,8 +1302,10 @@
     });
     if (it.foto) { var f = h("div", "ft"), u = String(it.foto); if (!/^(https?:|data:|\/)/.test(u)) u = "/" + u; f.style.backgroundImage = "url('" + u.replace(/'/g, "%27") + "')"; b.appendChild(f); }
     var tx = h("div", "tx");
-    tx.appendChild(h("span", "n", it.n));
-    if (it.g) tx.appendChild(h("span", "g", it.g));
+    var nes = nombreEs(it);
+    tx.appendChild(h("span", "n", nes));
+    if (nes !== it.n) tx.appendChild(h("span", "g", it.n)); else if (it.g) tx.appendChild(h("span", "g", it.g));
+    if (it._sec && it._sec.id === "tienda") tx.appendChild(h("span", "tag-t", "Tienda · no va a cocina"));
     if (conOpciones(it) && !no) tx.appendChild(h("span", "op", it.t ? "elige tamaño" : it.salsa ? "elige salsa" : "opciones"));
     tx.appendChild(h("span", "p", no || precioTxt(it)));
     b.appendChild(tx);
@@ -1250,17 +1328,18 @@
     obs = "IntersectionObserver" in window ? new IntersectionObserver(function (es) {
       es.forEach(function (e) { if (e.isIntersecting) marcarSec(e.target.dataset.s); });
     }, { root: getComputedStyle(prods).overflowY === "auto" ? prods : null, rootMargin: "0px 0px -75% 0px" }) : null;
-    SECS.forEach(function (s) {
+    secsVisibles().forEach(function (s) {
       var sec = h("div"); sec.id = "s-" + s.id; sec.dataset.s = s.id;
       sec.appendChild(h("div", "sec-h", s.titulo));
-      s.grupos.forEach(function (gr) {
-        if (gr.titulo && s.grupos.length > 1) sec.appendChild(h("div", "sub-h", gr.titulo));
+      var grs = s.grupos.map(function (gr) { return { titulo: gr.titulo, items: gr.items.filter(permitido) }; }).filter(function (gr) { return gr.items.length; });
+      grs.forEach(function (gr) {
+        if (gr.titulo && grs.length > 1) sec.appendChild(h("div", "sub-h", gr.titulo));
         var g = h("div", "grid"); gr.items.forEach(function (it) { g.appendChild(tarjeta(it)); }); sec.appendChild(g);
       });
       prods.appendChild(sec);
       if (obs) obs.observe(sec);
     });
-    if (CARGOS.length) {
+    if (CARGOS.length && modoActual() === "mesa") {
       var dc = h("details", "cargos"), sm = h("summary", null, "➕ Cargos Adicionales");
       dc.appendChild(sm);
       var gc = h("div", "grid"); CARGOS.forEach(function (it) { gc.appendChild(tarjeta(it)); }); dc.appendChild(gc);
@@ -1277,7 +1356,7 @@
 
   /* ---------- agregar al pedido ---------- */
   function tocarProducto(it, b) {
-    if (S.horario && !S.horario.cocina) { toast(S.horario.cocinaEn ? "La cocina todavía no abre (" + S.horario.abre + ")." : "La cocina ya cerró.", "mal"); return; }
+    if (S.horario && !S.horario.cocina && modoActual() === "mesa" && !(it._sec && it._sec.id === "tienda")) { toast(S.horario.cocinaEn ? "La cocina todavía no abre (" + S.horario.abre + ")." : "La cocina ya cerró.", "mal"); return; }
     if (!conOpciones(it)) { agregar(it, { tam: "", salsa: "", ops: {}, nota: "", cant: 1 }); return; }
     fichaOpciones(it);
   }
@@ -1287,7 +1366,7 @@
     var c = carro(), igual = c.filter(function (x) { return igualLinea(x, l); })[0];
     if (igual) igual.cant = Math.min(30, igual.cant + l.cant); else c.push(l);
     guardarCarros(); refrescarTarjeta(it.id); pintarOrden();
-    if (window.innerWidth <= 860) toast("+" + l.cant + " " + it.n, "ok");
+    if (window.innerWidth <= 860) toast("+" + l.cant + " " + nombreEs(it), "ok");
   }
   function chips(opciones, multiple, elegidas, alCambiar) {
     var w = h("div", "chips");
@@ -1320,7 +1399,7 @@
     if (it.t) {
       cuerpo.push(h("div", "lbl", "Tamaño"));
       var et = [sel.tam];
-      cuerpo.push(chips(it.t.map(function (x) { return { v: x[0], t: x[0], s: soles(x[1]) }; }), false, et, function (v) { sel.tam = v[0]; pintarMitad(); pintarBoton(); }));
+      cuerpo.push(chips(it.t.map(function (x) { return { v: x[0], t: tamEs(x[0]), s: soles(x[1]) }; }), false, et, function (v) { sel.tam = v[0]; pintarMitad(); pintarBoton(); }));
     }
     /* Mitad y mitad: en Media y Famiglia se puede elegir un 2.º sabor; se cobra el precio de la más cara */
     var zonaMitad = h("div");
@@ -1420,6 +1499,7 @@
 
   /* ---------- columna del pedido ---------- */
   function contenidoOrden() {
+    if (esPseudo(S.mesa)) return ordenExterna();
     var w = h("div", "orden"), cab = h("div", "orden__cab"), m = mesaDe(S.mesa);
     cab.appendChild(h("h2", null, etiquetaMesa(S.mesa)));
     if (m) cab.appendChild(h("span", "orden__est e-" + estadoMesa(m), TXT_ESTADO[estadoMesa(m)] + (m.atiende ? " · 🤵 " + (m.atiende.id === yo() ? "tú" : m.atiende.nombre) : "")));
@@ -1444,9 +1524,8 @@
     else lista.appendChild(h("div", "lbl", "Por enviar a cocina"));
     c.forEach(function (l) {
       var it = prodDe(l.id), d = h("div", "linea"), tx = h("div", "d");
-      tx.appendChild(document.createTextNode(l.n + (l.tam ? " (" + l.tam + ")" : "")));
+      tx.appendChild(document.createTextNode((l.mitad && PROD[l.mitad] ? (nombreEs(it) || l.n) + " con " + nombreEs(PROD[l.mitad]) : (nombreEs(it) || l.n)) + (l.tam ? " " + tamEs(l.tam) : "")));
       var det = [];
-      if (l.mitad && PROD[l.mitad]) det.push("½ " + l.n + " + ½ " + PROD[l.mitad].n);
       if (l.salsa && SALSA[l.salsa]) det.push("Salsa " + SALSA[l.salsa].n);
       Object.keys(l.ops || {}).forEach(function (g) { if ((l.ops[g] || []).length) det.push(l.ops[g].join(", ")); });
       if (det.length) tx.appendChild(h("small", null, det.join(" · ")));
@@ -1515,6 +1594,9 @@
       b.textContent = "";
       var n = unidades();
       if (n) b.appendChild(btn("Ver pedido (" + n + ") · " + soles(totalCarro()), "btn cta", abrirPedidoCelular));
+      if (n && esPseudo(S.mesa)) b.appendChild(btn("Continuar ›", "btn azul", function () { formExterno(S.mesa === DL ? "delivery" : "recojo"); }));
+      else if (n) { /* nada más */ }
+      else if (esPseudo(S.mesa)) b.appendChild(btn(etiquetaMesa(S.mesa) + " · toca los productos", "btn cta", abrirPedidoCelular));
       else if (S.cuenta && S.cuenta.pedidos.length) {
         b.appendChild(btn("Cuenta · " + soles(S.cuenta.total), "btn cta", abrirPedidoCelular));
         if (comandaImpresa(S.mesa)) b.appendChild(btn("💳 Cobrar", "btn azul", function () { cobrar(); }));
@@ -1532,6 +1614,7 @@
   var omitidas = {}, personasPend = {};
   function enviar() {
     var c = carro(); if (!c.length || S.enviando) return;
+    if (esPseudo(S.mesa)) { formExterno(S.mesa === DL ? "delivery" : "recojo"); return; }
     var mesa = S.mesa, mm0 = mesaDe(mesa);
     // primer pedido de la mesa: preguntar cuántas personas son (se puede omitir)
     if (mm0 && !mm0.llevar && !mm0.personas && !mm0.n && !omitidas[mesa]) {
@@ -1853,9 +1936,418 @@
     abrirModal("✂ Dividir cuenta · " + etiquetaMesa(mesa), [cont], [btn("Cerrar", "btn", cerrarModal), btn("💳 Cobrar todo el saldo", "btn azul", function () { cerrarModal(); cobrar(null, true); })]);
   }
 
+  /* =========================== PESTAÑAS: «Todos» · «Mesas» · «Para llevar y delivery» ===========================
+     · «Todos»: tablero con los pedidos en orden de salida (mesa, para llevar, delivery), filtros rápidos y el mapa de reparto desplegable.
+       Es la pestaña inicial SOLO si tiene algo; si no, se abre «Mesas» (nunca una vista vacía).
+     · El mapa del salón desplegable está arriba en todas las pestañas (cerrado por defecto; recuerda si se dejó abierto). */
+  function hayPedidosActivos() { return itemsTodos("todo").length > 0; }
+  function elegirPestInicial() {
+    S.pestElegida = true;
+    var g = S.pest;
+    if (g === "todos" || !g) S.pest = hayPedidosActivos() ? "todos" : "mesas";
+    else if (g === "llevar") S.pest = "llevar";
+    else S.pest = "mesas";
+  }
+  function irPest(p) { S.pest = p; guardar(K.pest, p); S.vista = "mesas"; pintar(); window.scrollTo(0, 0); }
+  function barraPest() {
+    var w = h("div", "pest");
+    var tabs = h("div", "pest__tabs"), nT = itemsTodos("todo").length, nL = S.externos.length + legadoLlevar().length;
+    [["todos", "Todos", nT], ["mesas", "Mesas", 0], ["llevar", window.innerWidth >= 480 ? "Llevar y delivery" : "Llevar/Delivery", nL]].forEach(function (x) {
+      var b = btn("", "pest__tab" + (S.pest === x[0] ? " on" : ""), function () { irPest(x[0]); });
+      b.appendChild(document.createTextNode(x[1])); if (x[2]) b.appendChild(h("span", "pest__n", String(x[2])));
+      b.setAttribute("aria-pressed", S.pest === x[0] ? "true" : "false");
+      tabs.appendChild(b);
+    });
+    w.appendChild(tabs);
+    var acc = h("div", "pest__acc");
+    acc.appendChild(btn("＋ Para llevar", "btn grande llevar", function () { nuevoExterno(LL); }));
+    acc.appendChild(btn("＋ Delivery", "btn grande deliv", function () { nuevoExterno(DL); }));
+    w.appendChild(acc);
+    return w;
+  }
+  function vistaPrincipal() {
+    var w = h("div", "principal");
+    if (!S.recibido) { w.appendChild(h("p", "vacio", "Cargando…")); return w; }
+    if (!S.pestElegida) elegirPestInicial();
+    var cont = document.createDocumentFragment();
+    cont.appendChild(barraPest());
+    if (S.pest === "todos") cont.appendChild(vistaTodos());
+    else if (S.pest === "llevar") cont.appendChild(vistaLlevar());
+    else cont.appendChild(vistaMesas());
+    w.appendChild(cont);
+    ultimaFirmaPest = firmaPest();
+    return w.childNodes.length === 1 ? w.firstChild : w;
+  }
+  /* nuevo pedido sin mesa: abre la carta con su propio carrito */
+  function nuevoExterno(cual) { S.pest = "llevar"; abrirMesa(cual); }
+
+  /* ---------- «Todos»: pedidos en orden de salida ---------- */
+  function horaMin(hhmm) { var m = String(hhmm || "").match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+  function tsSalida(x) {   // pedido programado: su hora; si no, la hora en que se pidió
+    if (x.prog) { var hm = horaMin(x.prog); if (hm != null) { var d = new Date(Date.now() + S.desfase - 5 * 3600000); d.setUTCHours(0, 0, 0, 0); var t = d.getTime() + 5 * 3600000 + hm * 60000; if (x.ts && x.ts > t + 3600000) t += 86400000; return t;   /* hora anterior a cuando se pidió = es para el día siguiente */ } }
+    return x.ts || 0;
+  }
+  function legadoLlevar() { return S.mesas.filter(function (m) { return m.activa && m.llevar && m.n; }); }   // viejos "Llev" con pedidos (hasta cobrarlos)
+  function itemsTodos(filtro) {
+    var r = [];
+    if (filtro !== "llevar" && filtro !== "delivery") S.mesas.forEach(function (m) {
+      if (!m.activa || m.unidaA) return;
+      (m.pedidos || []).forEach(function (p) {
+        if (!p.falta) return;
+        var resp = m.atiende ? m.atiende.nombre : (p.mozo || "");
+        r.push({ tipo: m.llevar ? "llevar" : "mesa", ts: p.ts, hora: p.hora, prog: "", et: m.llevar ? "🥡 " + (m.etiqueta || "Para llevar") : "Mesa " + m.mesa,
+          estado: p.estado, resp: resp, mio: esMia(m), total: p.total, n: p.numero, abrir: function () { tocarMesa(m); }, lineas: p.lineas });
+      });
+    });
+    S.externos.forEach(function (x) {
+      var tipo = x.canal === "delivery" ? "delivery" : "llevar";
+      if (filtro === "mesa" || (filtro === "llevar" && tipo !== "llevar") || (filtro === "delivery" && tipo !== "delivery")) return;
+      if (x.estado === "Entregado" && x.pagado) return;
+      r.push({ tipo: tipo, ts: x.ts, hora: x.hora, prog: x.prog, et: (tipo === "delivery" ? "🛵 " : "🥡 ") + x.nombre, tipoTxt: tipo === "delivery" ? "Delivery" : "Para llevar",
+        estado: x.estado, resp: x.mozo || (x.origen === "web" || !x.origen ? "Web" : ""), mio: !x.mozo || (S.mozo && x.mozo === S.mozo.nombre), total: x.aCobrar,
+        n: x.n, abrir: function () { detalleExt(x); }, ext: x });
+    });
+    if (filtro === "mios") r = r.filter(function (x) { return x.mio; });
+    r.forEach(function (x) { x.sal = tsSalida(x); });
+    return r.sort(function (a, b) { return a.sal - b.sal; });
+  }
+  var CLS_EST = { "Nuevo": "nuevo", "Confirmado": "conf", "En preparación": "prep", "Listo": "listo", "En camino": "camino", "Entregado": "ent" };
+  function filaPedido(x) {
+    var f = btn("", "fp t-" + x.tipo + " e-" + (CLS_EST[x.estado] || "otro") + (x.mio ? "" : " ajena"), x.abrir);
+    var hr = h("div", "fp__h"); hr.appendChild(h("b", null, x.prog || x.hora)); hr.appendChild(h("small", null, x.prog ? "programado" : "pedido"));
+    f.appendChild(hr);
+    var tx = h("div", "fp__tx"); tx.appendChild(h("b", null, x.et));
+    var sub = (x.tipoTxt ? x.tipoTxt + " · " : "") + "#" + x.n + (x.resp ? " · 🤵 " + x.resp : "");
+    if (x.lineas && x.lineas.length) sub += " · " + x.lineas.map(function (l) { return (l.e || l.t).replace(/^1 × /, ""); }).slice(0, 2).join(", ") + (x.lineas.length > 2 ? "…" : "");
+    tx.appendChild(h("small", null, sub)); f.appendChild(tx);
+    var d = h("div", "fp__d"); d.appendChild(h("span", "chip e-" + (CLS_EST[x.estado] || "otro"), x.estado === "Listo" ? "🔔 Listo" : x.estado));
+    d.appendChild(h("small", null, soles(x.total) + (x.ext ? (x.ext.pagado ? " · pagado" : " · por cobrar") : ""))); f.appendChild(d);
+    return f;
+  }
+  function vistaTodos() {
+    var w = h("div", "todos");
+    var fil = [["todo", "Todo"], ["mesa", "Mesas"], ["llevar", "Llevar"], ["delivery", "Delivery"], ["mios", "Míos"]];
+    var cab = h("div", "todos__cab"); cab.appendChild(segmento(fil, S.filtroT, function (v) { S.filtroT = v; guardar(K.filtroT, v); pintar(); }));
+    w.appendChild(cab);
+    var items = itemsTodos(S.filtroT);
+    var lista = h("div", "fps");
+    if (!items.length) lista.appendChild(h("p", "vacio", S.filtroT === "todo" ? "No hay pedidos en curso. Abre una mesa o usa ＋ Para llevar / ＋ Delivery." : "Nada en este filtro."));
+    items.forEach(function (x) { lista.appendChild(filaPedido(x)); });
+    w.appendChild(lista);
+    var dels = S.externos.filter(function (x) { return x.canal === "delivery"; });
+    if (dels.length) w.appendChild(mapaDelivery(dels));
+    return w;
+  }
+
+  /* ---------- «Para llevar y delivery» ---------- */
+  function vistaLlevar() {
+    var w = h("div", "llevar-v");
+    var ext = S.externos.slice().sort(function (a, b) { return tsSalida(a) - tsSalida(b); });
+    var lle = ext.filter(function (x) { return x.canal !== "delivery"; }), del = ext.filter(function (x) { return x.canal === "delivery"; });
+    var viejos = legadoLlevar();
+    function bloque(tit, lista, vacio) {
+      var s = h("section", "ext-sec"); s.appendChild(h("h3", null, tit + (lista.length ? " · " + lista.length : "")));
+      if (!lista.length) s.appendChild(h("p", "vacio", vacio));
+      lista.forEach(function (x) { s.appendChild(tarjetaExt(x)); });
+      return s;
+    }
+    w.appendChild(bloque("🥡 Para llevar", lle, "Sin pedidos para llevar. Usa ＋ Para llevar: primero eliges los productos y al final el nombre del cliente."));
+    if (viejos.length) { var g = h("div", "mesas llevar"); viejos.forEach(function (m) { g.appendChild(botonMesa(m)); }); var sv = h("section", "ext-sec"); sv.appendChild(h("h3", null, "🥡 Para llevar (sistema anterior)")); sv.appendChild(g); w.appendChild(sv); }
+    if (del.length) w.appendChild(mapaDelivery(del));
+    w.appendChild(bloque("🛵 Delivery", del, "Sin deliveries en curso. Usa ＋ Delivery para un cliente que llama o escribe."));
+    return w;
+  }
+  function mapsUrl(x) { return x.lat != null && x.lng != null ? "https://www.google.com/maps/dir/?api=1&destination=" + x.lat + "," + x.lng : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((x.dir || "") + " Trujillo"); }
+  function tarjetaExt(x) {
+    var d = h("article", "ext t-" + (x.canal === "delivery" ? "delivery" : "llevar") + " e-" + (CLS_EST[x.estado] || "otro"));
+    var cab = h("div", "ext__cab");
+    cab.appendChild(h("b", null, (x.canal === "delivery" ? "🛵 Delivery · " : "🥡 Para llevar · ") + x.nombre));
+    cab.appendChild(h("span", "chip e-" + (CLS_EST[x.estado] || "otro"), x.estado));
+    d.appendChild(cab);
+    d.appendChild(h("small", "ext__meta", "#" + x.n + " · " + x.hora + (x.prog ? " · ⏰ para las " + x.prog : "") + (x.mozo ? " · 🤵 " + x.mozo : " · web") + (x.tel ? " · 📞 " + x.tel : "")));
+    if (x.canal === "delivery") d.appendChild(h("small", "ext__dir", "📍 " + (x.dir || "sin dirección") + (x.ref ? " · " + x.ref : "") + (x.zona ? " · " + x.zona : "")));
+    var ul = h("ul", "ext__l"); (x.lineas || []).forEach(function (l) { ul.appendChild(h("li", null, (l.e || l.t) + (l.d ? " · " + l.d : ""))); }); d.appendChild(ul);
+    var pie = h("div", "ext__pie");
+    pie.appendChild(h("b", null, soles(x.aCobrar) + (x.costo ? " (incl. delivery " + soles(x.costo) + ")" : "")));
+    pie.appendChild(h("span", "chip " + (x.pagado ? "pag" : "porc"), x.pagado ? "✓ Pagado" : "Por cobrar" + (x.pago ? " · " + x.pago : "")));
+    d.appendChild(pie);
+    var acc = h("div", "ext__acc");
+    if (!x.pagado) acc.appendChild(btn("💳 Cobrar " + soles(x.aCobrar), "btn azul peq", function () { cobrarExt(x); }));
+    if (x.canal !== "delivery" && x.estado !== "Entregado") acc.appendChild(btn("✓ Se lo llevó", "btn peq", function () { entregarExtUI(x); }));
+    if (x.canal === "delivery") { var a = h("a", "btn peq", "🗺 Ruta"); a.href = mapsUrl(x); a.target = "_blank"; a.rel = "noopener"; acc.appendChild(a); }
+    if (x.tel) { var t = h("a", "btn peq", "📞 Llamar"); t.href = "tel:" + x.tel; acc.appendChild(t); }
+    d.appendChild(acc);
+    return d;
+  }
+  function detalleExt(x) { var c = tarjetaExt(x); abrirModal((x.canal === "delivery" ? "🛵 Delivery #" : "🥡 Para llevar #") + x.n, [c]); }
+  function entregarExtUI(x) {
+    if (!x.pagado && !confirm("Este pedido todavía no está cobrado. ¿Marcarlo como entregado igual?")) return;
+    api({ mz: "entregarext", t: S.t, id: x.id }).then(function (r) {
+      if (!r.ok) { toast(r.error || "No se pudo marcar.", "mal"); return; }
+      x.estado = "Entregado"; toast("✓ Pedido #" + x.n + " entregado", "ok"); cerrarModal(); S.v = ""; sondear();
+    }).catch(function () { toast("Sin conexión.", "mal"); });
+  }
+  /* cobro de un pedido sin mesa: uno o varios métodos (pago mixto) y propina por método */
+  function cobrarExt(x) {
+    var metodos = S.metodosExt || [YP, "Efectivo", "Transferencia", "Tarjeta"], cid = uid(), pagos = [{ metodo: /efectivo|tarjeta|transf|yape|plin/i.test(x.pago || "") ? (metodos.filter(function (m) { return norm(x.pago).indexOf(norm(m).split(" ")[0]) >= 0; })[0] || "") : "", monto: x.aCobrar, propina: 0 }];
+    var zona = h("div", "metodos-c"), res = h("div", "tot"), err = h("p", "err"), ok;
+    function suma() { return r2(pagos.reduce(function (a, p) { return a + (Number(p.monto) || 0); }, 0)); }
+    function pintarP() {
+      zona.textContent = "";
+      pagos.forEach(function (p, i) {
+        var w = h("div", "pago");
+        if (pagos.length > 1) { var tt = h("div", "fila"); tt.appendChild(h("b", null, "Pago " + (i + 1))); tt.appendChild(h("span", "esp")); tt.appendChild(btn("Quitar", "btn peq", function () { pagos.splice(i, 1); pagos[0].monto = r2(x.aCobrar - suma() + (Number(pagos[0].monto) || 0)); pintarP(); })); w.appendChild(tt); }
+        var em = [p.metodo];
+        w.appendChild(chips(metodos.map(function (m) { return { v: m, t: m }; }), false, em, function (v) { p.metodo = v[0]; err.textContent = ""; }));
+        var f = h("div", "fila"); f.appendChild(h("label", null, "Monto"));
+        var mo = h("input", "campo"); mo.type = "number"; mo.inputMode = "decimal"; mo.step = "0.10"; mo.value = p.monto;
+        mo.addEventListener("input", function () { p.monto = Number(mo.value) || 0; resumen(); }); f.appendChild(mo); w.appendChild(f);
+        var f2 = h("div", "fila"); f2.appendChild(h("label", null, "Propina"));
+        var pr = h("input", "campo"); pr.type = "number"; pr.inputMode = "decimal"; pr.step = "0.10"; pr.placeholder = "0"; pr.value = p.propina || "";
+        pr.addEventListener("input", function () { p.propina = Number(pr.value) || 0; }); f2.appendChild(pr); w.appendChild(f2);
+        zona.appendChild(w);
+      });
+      zona.appendChild(btn("➕ Pago mixto: agregar otro método", "btn peq", function () { var falta = r2(x.aCobrar - suma()); pagos.push({ metodo: "", monto: falta > 0 ? falta : 0, propina: 0 }); pintarP(); }));
+      resumen();
+    }
+    function resumen() { var f = r2(x.aCobrar - suma()); res.textContent = Math.abs(f) > 0.009 ? (f > 0 ? "Falta " + soles(f) : "Sobra " + soles(-f)) : "✓ Cuadra: " + soles(x.aCobrar); res.className = "tot" + (Math.abs(f) > 0.009 ? " mal" : ""); }
+    ok = btn("✓ Registrar cobro", "btn azul", function () {
+      if (pagos.some(function (p) { return !p.metodo && (Number(p.monto) || 0) > 0; })) { err.textContent = "Elige el método de cada pago."; return; }
+      if (Math.abs(suma() - x.aCobrar) > 0.009) { err.textContent = "Los pagos deben sumar " + soles(x.aCobrar) + "."; return; }
+      ok.disabled = true; ok.textContent = "Registrando…";
+      api({ mz: "cobrarext", t: S.t, id: x.id, cid: cid, pagos: pagos.filter(function (p) { return (Number(p.monto) || 0) > 0 || (Number(p.propina) || 0) > 0; }) }).then(function (r) {
+        if (!r.ok) { ok.disabled = false; ok.textContent = "✓ Registrar cobro"; err.textContent = r.error || "No se pudo cobrar."; return; }
+        x.pagado = true; cerrarModal(); toast("✓ Cobrado " + soles(x.aCobrar) + " · pedido #" + x.n, "ok"); S.v = ""; sondear(); if (S.vista === "mesas") pintar();
+      }).catch(function () { ok.disabled = false; ok.textContent = "✓ Registrar cobro"; err.textContent = "Sin conexión. Intenta de nuevo (no se cobrará dos veces)."; });
+    });
+    pintarP();
+    abrirModal("💳 Cobrar · " + (x.canal === "delivery" ? "Delivery " : "Para llevar ") + x.nombre + " · " + soles(x.aCobrar), [zona, res, err], [btn("Cancelar", "btn", cerrarModal), ok]);
+  }
+
+  /* ---------- mapa de reparto (Leaflet + OpenStreetMap), desplegable y recordado ---------- */
+  var LF = { cargando: false, listo: false, falla: false, mapa: null, capa: null, div: null, cola: [] };
+  function cargarLeaflet(fn) {
+    if (LF.listo) { fn(); return; } LF.cola.push(fn);
+    if (LF.cargando) return; LF.cargando = true;
+    var l = document.createElement("link"); l.rel = "stylesheet"; l.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"; document.head.appendChild(l);
+    var sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+    sc.onload = function () { LF.listo = !!window.L; LF.falla = !LF.listo; var c = LF.cola; LF.cola = []; c.forEach(function (f) { f(); }); };
+    sc.onerror = function () { LF.falla = true; LF.cargando = false; var c = LF.cola; LF.cola = []; c.forEach(function (f) { f(); }); };
+    document.head.appendChild(sc);
+  }
+  function mapaDelivery(lista) {
+    var conC = lista.filter(function (x) { return x.lat != null && x.lng != null; }), sinC = lista.filter(function (x) { return x.lat == null || x.lng == null; });
+    var w = h("section", "mapa mapa-del" + (S.mapaDel ? " abierto" : ""));
+    var cab = btn("", "mapa__cab", function () { S.mapaDel = !S.mapaDel; guardar(K.mapaDel, S.mapaDel); var n = mapaDelivery(lista); w.replaceWith(n); ultimaFirmaPest = firmaPest(); });
+    cab.setAttribute("aria-expanded", S.mapaDel ? "true" : "false");
+    cab.appendChild(h("span", "mapa__t", "🛵 Mapa de reparto · " + lista.length + (lista.length === 1 ? " delivery" : " deliveries")));
+    if (sinC.length) cab.appendChild(h("span", "mapa__b", sinC.length + " sin ubicación"));
+    cab.appendChild(h("span", "esp")); cab.appendChild(h("span", "mapa__f", S.mapaDel ? "▴" : "▾"));
+    w.appendChild(cab);
+    if (!S.mapaDel) return w;
+    var cuerpo = h("div", "mapa__cuerpo");
+    if (!LF.div) { LF.div = h("div", "mapa-lf"); }
+    if (conC.length && !LF.falla) cuerpo.appendChild(LF.div);
+    var ls = h("ol", "mapa-del__l");
+    lista.forEach(function (x) {
+      var li = h("li"); var b = btn("", "", function () { detalleExt(x); });
+      b.appendChild(h("b", null, "#" + x.n + " " + x.nombre)); b.appendChild(h("small", null, (x.dir || "") + (x.lat == null ? " · sin ubicación" : "") + " · " + x.estado));
+      li.appendChild(b); ls.appendChild(li);
+    });
+    cuerpo.appendChild(ls);
+    w.appendChild(cuerpo);
+    if (conC.length) cargarLeaflet(function () {
+      if (LF.falla) { if (LF.div.parentNode) LF.div.remove(); return; }
+      setTimeout(function () { pintarPuntos(conC); }, 0);
+    });
+    return w;
+  }
+  function pintarPuntos(conC) {
+    var L = window.L; if (!L || !LF.div.isConnected) return;
+    var loc = ((C.pedidos || {}).deliveryTarifas || {}).local || { lat: -8.1278775, lng: -79.040603 };
+    if (!LF.mapa) {
+      LF.mapa = L.map(LF.div, { zoomControl: true, attributionControl: true, scrollWheelZoom: false });
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(LF.mapa);
+      LF.capa = L.layerGroup().addTo(LF.mapa);
+    }
+    LF.capa.clearLayers();
+    var pts = [[loc.lat, loc.lng]];
+    L.circleMarker([loc.lat, loc.lng], { radius: 9, color: "#4a1519", fillColor: "#a9803f", fillOpacity: 1, weight: 3 }).bindTooltip("Pasta Gallo", { permanent: false }).addTo(LF.capa);
+    conC.forEach(function (x) {
+      pts.push([x.lat, x.lng]);
+      var col = x.estado === "En camino" ? "#2d5f8a" : x.estado === "Listo" ? "#2f7a3a" : "#b6232a";
+      L.circleMarker([x.lat, x.lng], { radius: 11, color: "#fff", weight: 2, fillColor: col, fillOpacity: 0.95 })
+        .bindTooltip("#" + x.n, { permanent: true, direction: "top", className: "lf-num" })
+        .bindPopup("<b>#" + x.n + " " + escHtml(x.nombre) + "</b><br>" + escHtml(x.dir || "") + "<br>" + escHtml(x.estado) + " · " + soles(x.aCobrar)).addTo(LF.capa);
+    });
+    LF.mapa.invalidateSize();
+    LF.mapa.fitBounds(pts, { padding: [28, 28], maxZoom: 15 });
+  }
+  function escHtml(t) { return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+
+  /* ---------- datos del cliente al confirmar un pedido para llevar / delivery ---------- */
+  function coordsDeTexto(t) {
+    t = String(t || "");
+    var m = t.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ||
+      t.match(/[?&](?:q|query|ll|destination|center)=(-?\d+\.\d+)(?:,|%2C)\s*(-?\d+\.\d+)/) || t.match(/(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/);
+    if (!m) return null;
+    var la = Number(m[1]), lo = Number(m[2]);
+    return isFinite(la) && isFinite(lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? { lat: la, lng: lo } : null;
+  }
+  function distKm(a, b) {
+    var rad = Math.PI / 180, dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(x)));
+  }
+  /** Misma fórmula que calcularDelivery_ (Code.gs) con las tarifas publicadas en la carta; el servidor recalcula al registrar. */
+  function costoDelivery(zonaNom, c) {
+    var tar = (C.pedidos || {}).deliveryTarifas || {}, zonas = tar.zonas || [], fin = function (n) { return Math.ceil(Math.round(Number(n) * 1e6) / 1e6); };
+    if (zonaNom) { var z = zonas.filter(function (x) { return String(x.nombre) === zonaNom; })[0]; return z ? { ok: true, costo: fin(z.precio), zona: z.nombre } : { ok: false, error: "Zona no válida" }; }
+    if (!c) return { ok: false, falta: true };
+    var mejor = null, md = 0;
+    zonas.forEach(function (x) { var d = distKm({ lat: Number(x.lat), lng: Number(x.lng) }, c); if (d <= Number(x.radio_km) && (!mejor || d < md)) { mejor = x; md = d; } });
+    var loc = tar.local || {}, km = loc.lat != null ? distKm({ lat: Number(loc.lat), lng: Number(loc.lng) }, c) : null;
+    if (mejor) return { ok: true, costo: fin(mejor.precio), zona: mejor.nombre, km: km };
+    if (km == null) return { ok: false, error: "Sin tarifas" };
+    if (Number(tar.max_km) > 0 && km > Number(tar.max_km)) return { ok: false, fuera: true, km: km, error: "Fuera de la zona de reparto (" + km.toFixed(1) + " km)" };
+    var cc = fin(Number(tar.base || 0) + Number(tar.por_km || 0) * km * Number(tar.factor_pista || 1));
+    if (cc < Number(tar.minimo || 0)) cc = Number(tar.minimo); if (Number(tar.maximo) > 0 && cc > Number(tar.maximo)) cc = Number(tar.maximo);
+    return { ok: true, costo: fin(cc), zona: "", km: km };
+  }
+  var K_CLI = "pg-mozo-cliext";
+  function formExterno(tipo) {
+    var c = carro(); if (!c.length) { toast("Agrega al menos un producto.", "mal"); return; }
+    var del = tipo === "delivery", cid = uid(), sub = totalCarro(), borr = leer(K_CLI, {})[tipo] || {};
+    var cuerpo = [], err = h("p", "err"), ok, st = { c: null, r: null, prog: !!borr.prog };
+    function campo(rot, el, nota) { var w = h("label", "campo-l"); w.appendChild(h("span", null, rot)); w.appendChild(el); if (nota) w.appendChild(h("small", null, nota)); return w; }
+    function inp(ph, tipoI, max) { var i = h("input", "campo"); i.placeholder = ph || ""; if (tipoI) i.type = tipoI; if (max) i.maxLength = max; return i; }
+    var fNom = inp("Nombre del cliente", "text", 60), fCel = inp(del ? "9 dígitos (obligatorio)" : "Opcional", "tel", 11);
+    fCel.inputMode = "numeric";
+    cuerpo.push(campo("Nombre *", fNom)); cuerpo.push(campo("Celular" + (del ? " *" : ""), fCel));
+    // hora: ahora o programado
+    var fHora = inp("", "time"); fHora.step = 900;
+    var zh = h("div", "hora-z");
+    var segH = segmento([["ahora", "Lo antes posible"], ["prog", "Programar hora"]], st.prog ? "prog" : "ahora", function (v) { st.prog = v === "prog"; segH.querySelectorAll("button").forEach(function (b, i) { b.classList.toggle("on", (i === 1) === st.prog); }); fHora.style.display = st.prog ? "" : "none"; });
+    fHora.style.display = st.prog ? "" : "none";
+    zh.appendChild(segH); zh.appendChild(fHora); cuerpo.push(campo("Hora", zh));
+    var fDir, fRef, fUbi, fZona, fCosto, info = h("p", "del-info"), tot = h("div", "tot");
+    if (del) {
+      fDir = inp("Calle, número, urbanización", "text", 200); fRef = inp("Frente a…, color de la casa…", "text", 200);
+      fUbi = inp("Pega el enlace de Google Maps o -8.11, -79.02", "text", 400);
+      fZona = h("select", "campo"); [["", "— por ubicación —"]].concat((((C.pedidos || {}).deliveryTarifas || {}).zonas || []).map(function (z) { return [z.nombre, z.nombre + " · " + soles(z.precio)]; }))
+        .forEach(function (o) { var op = h("option", null, o[1]); op.value = o[0]; fZona.appendChild(op); });
+      fCosto = inp("Solo si no hay ubicación o quieres otro costo", "number"); fCosto.inputMode = "decimal"; fCosto.step = "0.5"; fCosto.min = "0"; fCosto.max = "200";
+      cuerpo.push(campo("Dirección *", fDir)); cuerpo.push(campo("Referencia", fRef));
+      cuerpo.push(campo("Ubicación", fUbi, "Con ubicación el costo sale solo (misma tarifa que la web)."));
+      cuerpo.push(campo("Zona (opcional)", fZona)); cuerpo.push(campo("Costo de delivery manual (S/)", fCosto));
+      cuerpo.push(info);
+      [fUbi, fZona, fCosto].forEach(function (x) { x.addEventListener("input", recalc); x.addEventListener("change", recalc); });
+    }
+    var metodos = S.metodosExt || [YP, "Efectivo", "Transferencia", "Tarjeta"], pago = [""];
+    cuerpo.push(h("div", "lbl", "Método de pago (opcional)"));
+    cuerpo.push(chips([{ v: "", t: "Por definir" }].concat(metodos.map(function (m) { return { v: m, t: m }; })), false, pago, function () {}));
+    var fNota = inp("Comentario (opcional)", "text", 200); cuerpo.push(campo("Comentario para cocina", fNota));
+    cuerpo.push(tot); cuerpo.push(err);
+    function costo() { if (!del) return 0; if (fCosto.value.trim() !== "") return Number(fCosto.value) || 0; return st.r && st.r.ok ? st.r.costo : 0; }
+    function recalc() {
+      if (del) {
+        st.c = coordsDeTexto(fUbi.value); st.r = costoDelivery(fZona.value, st.c);
+        var man = fCosto.value.trim() !== "";
+        info.textContent = (st.c ? "📍 " + st.c.lat.toFixed(5) + ", " + st.c.lng.toFixed(5) + " · " : fUbi.value.trim() ? "⚠ No encontré coordenadas en ese texto (los enlaces cortos maps.app.goo.gl no las traen: ábrelo y copia las coordenadas). " : "") +
+          (st.r.ok ? "Delivery " + soles(st.r.costo) + (st.r.zona ? " (" + st.r.zona + ")" : "") + (st.r.km != null ? " · " + st.r.km.toFixed(1) + " km" : "") + (man ? " · se usará el costo manual" : "")
+            : st.r.falta ? (man ? "Costo manual " + soles(fCosto.value) : "Sin ubicación ni zona: no hay costo automático. Escribe el costo manual o déjalo para confirmar después.") : (st.r.error || "") + (man ? " · costo manual " + soles(fCosto.value) : ""));
+        info.className = "del-info" + (st.r.fuera ? " mal" : "");
+      }
+      var cd = costo();
+      tot.textContent = "Productos " + soles(sub) + (del ? " + delivery " + soles(cd) + " = " + soles(sub + cd) : "");
+    }
+    fNom.value = ""; recalc();
+    ok = btn(del ? "✓ Registrar delivery" : "✓ Registrar para llevar", "btn prim", function () {
+      err.textContent = "";
+      var nom = fNom.value.trim(), cel = fCel.value.replace(/\D/g, "").replace(/^51(?=9\d{8}$)/, "");
+      if (nom.length < 2) { err.textContent = "Escribe el nombre del cliente."; fNom.focus(); return; }
+      if ((del || cel) && !/^9\d{8}$/.test(cel)) { err.textContent = "El celular debe tener 9 dígitos y empezar con 9."; fCel.focus(); return; }
+      if (st.prog && !/^\d{2}:\d{2}$/.test(fHora.value)) { err.textContent = "Elige la hora programada."; return; }
+      if (del && fDir.value.trim().length < 5) { err.textContent = "Escribe la dirección de entrega."; fDir.focus(); return; }
+      if (del && st.r && st.r.fuera && fCosto.value.trim() === "") { err.textContent = st.r.error + ": escribe un costo manual si igual lo llevan."; return; }
+      var body = { mz: "externo", t: S.t, tipo: tipo, cid: cid, nombre: nom, telefono: cel, pago: pago[0] || "", programado: st.prog ? fHora.value : "", notas: fNota.value.trim(),
+        items: c.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {}, mitad: l.mitad || "" }; }) };
+      if (del) {
+        body.direccion = fDir.value.trim(); body.referencia = fRef.value.trim(); body.zona = fZona.value;
+        if (st.c) { body.lat = st.c.lat; body.lng = st.c.lng; }
+        if (fCosto.value.trim() !== "") { body.costoManual = Number(fCosto.value); body.costoForzado = true; }
+      }
+      ok.disabled = true; ok.textContent = "Registrando…";
+      api(body).then(function (r) {
+        if (!r.ok) { ok.disabled = false; ok.textContent = del ? "✓ Registrar delivery" : "✓ Registrar para llevar"; err.textContent = r.error || "No se pudo registrar."; return; }
+        var clave = S.mesa; carros[clave] = []; delete carros["_n" + clave]; guardarCarros();
+        var g = leer(K_CLI, {}); g[tipo] = { prog: st.prog }; guardar(K_CLI, g);
+        modalPedido = false; cerrarModal();
+        toast("✓ " + (del ? "Delivery" : "Para llevar") + " #" + r.numero + " registrado · " + soles(r.aCobrar != null ? r.aCobrar : r.total) + " (se imprime en el local)", "ok");
+        S.externos.push({ id: r.id, n: r.numero, hora: "ahora", ts: Date.now() + S.desfase, canal: del ? "delivery" : "recojo", nombre: nom, tel: cel, estado: "Confirmado", prog: body.programado,
+          lat: body.lat == null ? null : body.lat, lng: body.lng == null ? null : body.lng, dir: body.direccion || "", ref: body.referencia || "", total: r.total, costo: r.costoDelivery, aCobrar: r.aCobrar != null ? r.aCobrar : r.total,
+          mozo: S.mozo ? S.mozo.nombre : "", origen: "mozo", pago: body.pago, pagado: false, zona: "", lineas: c.map(function (l) { return { e: l.cant + " × " + nombreEs(prodDe(l.id)) + (l.tam ? " " + tamEs(l.tam) : "") }; }) });
+        S.pest = "llevar"; guardar(K.pest, "llevar"); S.vista = "mesas"; S.mesa = null; S.v = ""; pintar(); window.scrollTo(0, 0); sondear();
+      }).catch(function () { ok.disabled = false; ok.textContent = del ? "✓ Registrar delivery" : "✓ Registrar para llevar"; err.textContent = "Sin conexión. Vuelve a intentar (no se duplicará)."; });
+    });
+    abrirModal(del ? "🛵 Datos del delivery" : "🥡 ¿A nombre de quién?", cuerpo, [btn("‹ Volver", "btn", cerrarModal), ok]);
+    setTimeout(function () { fNom.focus(); }, 60);
+  }
+  /* pedido armado para llevar / delivery: columna derecha (o ventana en el celular) */
+  function ordenExterna() {
+    var w = h("div", "orden"), cab = h("div", "orden__cab"), del = S.mesa === DL;
+    cab.appendChild(h("h2", null, etiquetaMesa(S.mesa))); w.appendChild(cab);
+    var lista = h("div", "orden__lista"), c = carro();
+    lista.appendChild(h("p", "vacio", del ? "1) Toca los productos · 2) Continuar: datos del cliente, dirección y ubicación (el costo del delivery sale solo)." : "1) Toca los productos · 2) Continuar: nombre del cliente (y hora si es para más tarde). No ocupa mesa."));
+    c.forEach(function (l) {
+      var it = prodDe(l.id), d = h("div", "linea"), tx = h("div", "d");
+      tx.appendChild(document.createTextNode((l.mitad && PROD[l.mitad] ? nombreEs(it) + " con " + nombreEs(PROD[l.mitad]) : nombreEs(it) || l.n) + (l.tam ? " " + tamEs(l.tam) : "")));
+      if (l.nota) tx.appendChild(h("em", null, "→ " + l.nota));
+      d.appendChild(tx); d.appendChild(h("span", "pr", soles(l.unit * l.cant)));
+      var st = h("div", "st");
+      st.appendChild(btn("−", "", function () { if (l.cant > 1) l.cant--; else c.splice(c.indexOf(l), 1); guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
+      st.appendChild(h("output", null, String(l.cant)));
+      st.appendChild(btn("+", "", function () { if (l.cant < 30) l.cant++; guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
+      st.appendChild(btn("🗑", "x", function () { c.splice(c.indexOf(l), 1); guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
+      d.appendChild(st); lista.appendChild(d);
+    });
+    w.appendChild(lista);
+    var pie = h("div", "orden__pie");
+    if (c.length) pie.appendChild(btn("Continuar · " + soles(totalCarro()) + " ›", "btn prim", function () { formExterno(del ? "delivery" : "recojo"); }));
+    w.appendChild(pie);
+    return w;
+  }
+
+  /* ---------- enlace de ADMINISTRACIÓN: no es un panel de mozo (no tiene turno): lleva al panel de administración ---------- */
+  function esAdmin() { var r = norm(S.mozo && S.mozo.rol || ""); return /^admin/.test(r); }
+  function pantallaAdmin() {
+    app.textContent = "";
+    var w = h("div", "login");
+    w.appendChild(h("h1", null, "Hola, " + (S.mozo ? S.mozo.nombre : "") + " 👋"));
+    w.appendChild(h("p", null, "Este enlace es de ADMINISTRACIÓN: tu trabajo está en el panel de administración (pedidos, salón, carta, personal, reportes)."));
+    var a = h("a", "btn prim", "Abrir el panel de administración"); a.href = API; a.style.maxWidth = "360px"; a.style.width = "100%"; w.appendChild(a);
+    w.appendChild(h("p", null, "Si también atiendes mesas, pide que te creen además un enlace con rol Mozo."));
+    app.appendChild(w);
+  }
+
   /* =========================== ARRANQUE =========================== */
-  if ("serviceWorker" in navigator && location.protocol === "https:") {
-    navigator.serviceWorker.register("/mozo-sw.js", { scope: "/" }).catch(function () {});
+  /* Service worker: la app y la carta se piden SIEMPRE primero a la red (la copia guardada solo sin conexión). Cuando se publica una versión
+     nueva, el service worker nuevo toma el control y la app se recarga UNA vez sola (si hay una ventana abierta, espera a que se cierre). */
+  var swReg = null, swRecargar = false;
+  function recargarSiLibre() {
+    if (!swRecargar) return;
+    var ae = document.activeElement;
+    if (capa.classList.contains("on") || S.enviando || (ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName))) { setTimeout(recargarSiLibre, 3000); return; }
+    swRecargar = false; location.reload();
+  }
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
+    var habiaControl = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register("/mozo-sw.js", { scope: "/" }).then(function (r) { swReg = r; try { r.update(); } catch (e) {} }).catch(function () {});
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (!habiaControl) { habiaControl = true; return; }   // primera instalación: lo que se cargó ya vino de la red
+      if (window.__pgRecargado) return; window.__pgRecargado = true;
+      swRecargar = true; recargarSiLibre();
+    });
   }
   if (!SECS.length) { app.appendChild(h("p", "vacio", "No se pudo cargar la carta. Revisa la conexión y vuelve a abrir.")); return; }
   /* Roles distintos de mozo (cajero, repartidor, cocina): su app vive en /<rol>.js y recibe el control.
@@ -1874,5 +2366,5 @@
     sc.onerror = function () { app.appendChild(h("p", "vacio", "No se pudo cargar el módulo de " + rol + ". Revisa la conexión y vuelve a abrir el enlace.")); };
     document.head.appendChild(sc);
   }
-  if (S.t && S.mozo) { if (rolExt()) cargarRolExt(rolExt()); else iniciar(); } else pantallaLogin();
+  if (S.t && S.mozo) { if (esAdmin()) pantallaAdmin(); else if (rolExt()) cargarRolExt(rolExt()); else iniciar(); } else pantallaLogin();
 })();

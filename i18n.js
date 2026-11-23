@@ -74,10 +74,10 @@
       volver: "Volver a la carta", ultimoPaso: "Último paso", recibido: "¡Pedido #{n} recibido!",
       envianosWa: "Envíanos tu pedido para confirmarlo.",
       confirmaWa: "Para confirmarlo, envíanos el detalle. Ya está listo, solo pulsa enviar.",
-      enviarWa: "Enviar pedido", respondemos: "Te responderemos para confirmar el total{d} y el tiempo de entrega.", conDelivery: " con el delivery",
+      enviarWa: "Enviar pedido", respondemos: "Te responderemos para confirmar tu pedido y el tiempo de entrega.", conDelivery: " con el delivery",
       quitarUno: "Quitar uno", agregarUno: "Agregar uno",
       enviarWaDirecto: "Enviar pedido", abriendoWa: "¡Listo! Tu pedido está listo para enviar",
-      soloEnviar: "Solo pulsa enviar en el mensaje que se abrió para confirmarlo. Te responderemos con el total{d} y el tiempo de entrega.",
+      soloEnviar: "Solo pulsa enviar en el mensaje que se abrió para confirmarlo. Te responderemos con el tiempo de entrega.",
       noAbrio: "¿No se abrió el mensaje? Toca aquí", codigoPedido: "Código de tu pedido: ",
       comprobante: "Comprobante", sinComp: "No, gracias", boleta: "Boleta", factura: "Factura",
       docBoleta: "DNI o RUC", docFactura: "RUC", razonBoleta: "Nombre completo", razonFactura: "Razón social",
@@ -91,7 +91,7 @@
       llamarMozo: "Llamar al mozo", pedirCuenta: "Pedir la cuenta", loPedido: "Lo pedido",
       mozoAvisado: "Listo: tu mozo ya fue avisado.", mozoEnCamino: "Mozo avisado", mozoYaAvisado: "Ya avisamos a tu mozo, en un momento te atiende.",
       cuentaPedida: "¡Listo! Tu mozo te trae la cuenta.", cuentaPedidaTxt: "En un momento se acerca a tu mesa.",
-      montoPagar: "Monto a pagar:", deliveryAparte: "· el delivery se paga aparte (te confirmamos el costo)", numeroA: "Número", cuentaNum: "N.° de cuenta", cci: "CCI", instrTransf: "Haz la transferencia desde la app de tu banco, sube la captura y verificaremos tu pago.", titular: "A nombre de:",
+      montoPagar: "Monto a pagar:", deliveryAparte: "+ delivery (indica tu ubicación)", numeroA: "Número", cuentaNum: "N.° de cuenta", cci: "CCI", instrTransf: "Haz la transferencia desde la app de tu banco, sube la captura y verificaremos tu pago.", titular: "A nombre de:",
       copiar: "Copiar", copiado: "Copiado ✓", subirCaptura: "Subir captura del pago", capturaLista: "Captura lista", cambiarCaptura: "cambiar",
       pagoAnticipado: "El pago es anticipado. Paga y sube aquí la captura: así confirmamos tu pedido más rápido.",
       capturaAyuda: "Si prefieres, envía la captura junto con tu pedido.", errCaptura: "No se pudo leer esa imagen. Prueba con otra o envíala junto con tu pedido.",
@@ -119,7 +119,7 @@
       ubicBtn: "Usar mi ubicación", ubicOtra: "Actualizar ubicación", ubicAyuda: "Con tu ubicación calculamos el delivery y ayudas al repartidor a encontrarte.",
       ubicLista: "Ubicación agregada ✓", ubicBuscando: "Buscando tu ubicación…",
       ubicError: "No pudimos obtener tu ubicación. Escribe bien la dirección y una referencia.",
-      pedidosDesde: " · pedidos desde las {h}", copiarEnlace: "Copiar enlace", enlaceCopiadoSec: "Enlace copiado",
+      pedidosDesde: " · pedidos desde {h}", copiarEnlace: "Copiar enlace", enlaceCopiadoSec: "Enlace copiado",
       masPromos: "Ver promociones de otros días", menosPromos: "Ocultar promociones de otros días", sinPromosHoy: "Hoy no tenemos promociones. Mira las de otros días.", manana2: "Mañana",
       tiendaTit: "Nostri Prodotti", tiendaSub: "Pasta fresca y salsas, listas para cocinar en casa",
       dias3: ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"], todosDias2: "todos los días",
@@ -127,7 +127,17 @@
       lineaMas: "Resumen del pedido", editarOpc: "Personaliza", agregarPrecio: "Agregar · ", tamanoSel: "Tamaño", entregaTit: "¿Dónde lo entregamos?",
       tusDatos: "Tus datos", pagoTit: "Pago",
       repetir: "Repetir mi último pedido", repetirQuitar: "Ocultar", repetirNada: "Los productos de tu último pedido no están disponibles ahora.",
-      repetirParcial: "{n} producto(s) de tu último pedido no están disponibles hoy."
+      repetirParcial: "{n} producto(s) de tu último pedido no están disponibles hoy.",
+      hoyCorto: "hoy ", tiendaAbiertaEst: "Tienda abierta", restDesde: " · restaurante desde {h}", restDia: " · restaurante: {c}",
+      tiendaAbiertaTxt: "Nuestra tienda está abierta: pasta fresca, salsas y productos de Italia. El restaurante abre {c}. ",
+      horRest: "Restaurante", horTienda: "Tienda · Nostri Prodotti", califica: "Califícanos en Google",
+      esperaNormal: "Tu pedido estará en ~{m} min", esperaAlta: "Hay muchos pedidos: tu pedido puede tardar ~{m} min",
+      mesaInicio: "Elige tus platos y envíalos a cocina desde aquí.",
+      paraLlevar: "Para llevar", paraLlevarSub: "Te lo empacamos para llevar a casa", llevarTit: "Para llevar",
+      llevarCuando: "¿Cuándo lo quieres listo?", llevarAlIrnos: "Cuando nos vayamos", llevarNota: "PARA LLEVAR",
+      llevarHora: "Listo a las {h}", cuandoTit: "¿Para cuándo?", programarTit: "Programar para más tarde", errEligeHora: "Elige la hora para tu pedido.",
+      adjuntaCaptura: "Adjunta tu captura", capturaWa: "Tu pedido llegó. Envía la captura del pago por WhatsApp.", titularCorto: "Titular",
+      bancoT: "Banco", con: " con "
     },
     en: {
       abierto: "Open now · until ", cerrado: "We open ", mesa: "Table ",
@@ -192,10 +202,10 @@
       volver: "Back to the menu", ultimoPaso: "Last step", recibido: "Order #{n} received!",
       envianosWa: "Send us your order to confirm it.",
       confirmaWa: "To confirm it, send us the details. It's ready, just press send.",
-      enviarWa: "Send order", respondemos: "We will reply to confirm the total{d} and the delivery time.", conDelivery: " including delivery",
+      enviarWa: "Send order", respondemos: "We will reply to confirm your order and the delivery time.", conDelivery: " including delivery",
       quitarUno: "Remove one", agregarUno: "Add one",
       enviarWaDirecto: "Send order", abriendoWa: "Done! Your order is ready to send",
-      soloEnviar: "Just press send in the message that opened to confirm it. We will reply with the total{d} and the delivery time.",
+      soloEnviar: "Just press send in the message that opened to confirm it. We will reply with the delivery time.",
       noAbrio: "Message didn't open? Tap here", codigoPedido: "Your order code: ",
       comprobante: "Receipt or invoice", sinComp: "No, thanks", boleta: "Receipt (boleta)", factura: "Invoice (factura)",
       docBoleta: "DNI or RUC", docFactura: "RUC", razonBoleta: "Full name", razonFactura: "Company name",
@@ -209,7 +219,7 @@
       llamarMozo: "Call waiter", pedirCuenta: "Ask for the bill", loPedido: "Our order",
       mozoAvisado: "Done: your waiter has been notified.", mozoEnCamino: "Waiter notified", mozoYaAvisado: "We already notified your waiter, they'll be right with you.",
       cuentaPedida: "Done! Your waiter is bringing the bill.", cuentaPedidaTxt: "They'll be at your table in a moment.",
-      montoPagar: "Amount to pay:", deliveryAparte: "· delivery is paid separately (we confirm the fee)", numeroA: "Number", cuentaNum: "Account no.", cci: "CCI", instrTransf: "Make the transfer from your bank app, upload the screenshot and we will verify your payment.", titular: "Account name:",
+      montoPagar: "Amount to pay:", deliveryAparte: "+ delivery (share your location)", numeroA: "Number", cuentaNum: "Account no.", cci: "CCI", instrTransf: "Make the transfer from your bank app, upload the screenshot and we will verify your payment.", titular: "Account name:",
       copiar: "Copy", copiado: "Copied ✓", subirCaptura: "Upload payment screenshot", capturaLista: "Screenshot ready", cambiarCaptura: "change",
       pagoAnticipado: "Payment is in advance. Pay and upload the screenshot here so we can confirm your order faster.",
       capturaAyuda: "You can also send the screenshot with your order.", errCaptura: "We couldn't read that image. Try another one or send it with your order.",
@@ -245,9 +255,21 @@
       lineaMas: "Order summary", editarOpc: "Customize", agregarPrecio: "Add · ", tamanoSel: "Size", entregaTit: "Where do we deliver?",
       tusDatos: "Your details", pagoTit: "Payment",
       repetir: "Repeat my last order", repetirQuitar: "Hide", repetirNada: "The items from your last order aren't available right now.",
-      repetirParcial: "{n} item(s) from your last order aren't available today."
+      repetirParcial: "{n} item(s) from your last order aren't available today.",
+      hoyCorto: "today ", tiendaAbiertaEst: "Shop open", restDesde: " · restaurant from {h}", restDia: " · restaurant: {c}",
+      tiendaAbiertaTxt: "Our shop is open: fresh pasta, sauces and Italian products. The restaurant opens {c}. ",
+      horRest: "Restaurant", horTienda: "Shop · Nostri Prodotti", califica: "Rate us on Google",
+      esperaNormal: "Your order will be ready in ~{m} min", esperaAlta: "We are very busy: your order may take ~{m} min",
+      mesaInicio: "Choose your dishes and send them to the kitchen from here.",
+      paraLlevar: "To take away", paraLlevarSub: "We pack it for you to take home", llevarTit: "To take away",
+      llevarCuando: "When should it be ready?", llevarAlIrnos: "When we leave", llevarNota: "PARA LLEVAR",
+      llevarHora: "Ready at {h}", cuandoTit: "When?", programarTit: "Schedule for later", errEligeHora: "Choose a time for your order.",
+      adjuntaCaptura: "Attach your screenshot", capturaWa: "Your order arrived. Send the payment screenshot by WhatsApp.", titularCorto: "Name",
+      bancoT: "Bank", con: " with "
     }
   };
+  var TAMANOS = { es: { Personale: "Personal", Media: "Mediana", Famiglia: "Familiar" }, en: { Personale: "Personal", Media: "Medium", Famiglia: "Family" } };
+  var NOMBRES = { es: { Ghiaccio: "Hielo" }, en: {} };
   var AL_EN = { gluten: "Gluten", lacteos: "Dairy", huevo: "Egg", pescado: "Fish", mariscos: "Shellfish", frutosSecos: "Tree nuts", mani: "Peanuts", soya: "Soy", sulfitos: "Sulphites" };
 
   window.PG_I18N = {
@@ -261,9 +283,12 @@
     /** Devuelve el campo traducido (campo_en) si estamos en inglés y existe. */
     tx: function (o, campo) {
       if (!o) return "";
-      if (lang === "en" && o[campo + "_en"]) return o[campo + "_en"];
-      return o[campo] || "";
+      var v = (lang === "en" && o[campo + "_en"]) ? o[campo + "_en"] : (o[campo] || "");
+      if (campo === "n" && NOMBRES[lang] && NOMBRES[lang][v]) v = NOMBRES[lang][v];   // nombres que en italiano no aportan
+      return v;
     },
+    /** Tamaño para mostrar al cliente (el dato original se sigue enviando al servidor tal cual). */
+    tam: function (x) { var m = TAMANOS[lang] || TAMANOS.es; return m[x] || x; },
     alergeno: function (k, C) { return lang === "en" ? (AL_EN[k] || k) : ((C && C.alergenos && C.alergenos[k]) || k); },
     cambiar: function () {
       var nuevo = lang === "en" ? "es" : "en";

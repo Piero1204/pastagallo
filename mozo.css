@@ -90,10 +90,11 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
 .seg button{padding:9px 13px;border-radius:9px;font-weight:800;font-size:14px;color:var(--gris)}
 .seg button.on{background:var(--vino);color:#fff}
 /* plano del salón */
-.plano{position:relative;margin:12px;max-height:72vh;background:var(--papel) radial-gradient(circle,#e3d6bb 1px,transparent 1.5px) 0 0/22px 22px;border:1px solid var(--linea);border-radius:var(--r);aspect-ratio:2/1;min-height:300px;overflow:hidden}
+/* OJO: sin min-height junto a aspect-ratio (el alto mínimo se traslada al ANCHO: 300 px de alto → 600 px de ancho y la página se corría a la derecha en el celular) */
+.plano{position:relative;margin:12px;background:var(--papel) radial-gradient(circle,#e3d6bb 1px,transparent 1.5px) 0 0/22px 22px;border:1px solid var(--linea);border-radius:var(--r);aspect-ratio:2/1;width:auto;min-width:0;max-width:100%;overflow:hidden}
 .mesa.pm{position:absolute;transform:translate(-50%,-50%);min-height:0;width:9%;min-width:62px;aspect-ratio:1;padding:4px;align-items:center;justify-content:center;text-align:center;gap:0}
 .mesa.pm b{font-size:20px}.mesa.pm small{font-size:11px;font-weight:700;color:var(--gris);white-space:nowrap;overflow:hidden;max-width:100%}
-.mesa.pm.f-redonda{border-radius:50%}.mesa.pm.f-larga{width:16%;aspect-ratio:2}.mesa.pm.f-barra{width:24%;aspect-ratio:4;border-radius:6px}
+.mesa.pm.f-redonda{border-radius:50%}.mesa.pm.f-larga{width:16%;aspect-ratio:2}.mesa.pm.f-barra{width:24%;aspect-ratio:4;border-radius:6px}.mesa.pm.f-vertical{width:8%;min-width:40px;aspect-ratio:1/2}
 /* por servir */
 .servir{margin:12px;background:#fff;border:1px solid var(--linea);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:10px}
 .servir h3{font-size:15px;color:var(--vino);text-transform:uppercase;letter-spacing:.04em}
@@ -353,3 +354,84 @@ html.tienda{--vino:#24402f;--vino-2:#2f5240}
 .bq-fab{display:none!important}
 body.en-carta .bq-fab{display:flex!important;bottom:calc(86px + env(safe-area-inset-bottom))!important;z-index:40!important}
 @media (min-width:861px){body.en-carta .bq-fab{bottom:20px!important;right:360px!important}}
+
+/* =====================================================================================
+   v12 · celular sin desplazamiento lateral, pestañas Todos / Mesas / Llevar y delivery,
+   pedidos sin mesa, mapa de reparto y un aspecto más actual (tarjetas suaves, sombras ligeras)
+   ===================================================================================== */
+html{overflow-x:hidden}   /* solo en html (pasa a la ventana); en body haría de body un contenedor de scroll */
+body{max-width:100%;overflow-x:clip}
+#app,main{max-width:100vw;overflow-x:clip}   /* clip (no hidden): no crea contenedor de scroll, así las barras "sticky" siguen funcionando */
+main{padding-bottom:24px}
+.top{box-shadow:0 2px 12px rgba(40,10,10,.25)}
+.top__marca{font-size:17px;letter-spacing:.02em}
+.mesa{border-radius:14px;box-shadow:0 1px 2px rgba(60,30,20,.06)}
+.mesas{gap:10px}
+/* plano en el celular: mesas más chicas para que entren en el ancho */
+@media (max-width:600px){
+  .plano{aspect-ratio:4/3;margin:10px}
+  .mesa.pm{min-width:44px;padding:2px;border-width:2px}
+  .mesa.pm b{font-size:15px}.mesa.pm small{font-size:9.5px}
+  .mesa.pm.f-larga{width:17%}.mesa.pm.f-barra{width:26%}.mesa.pm.f-vertical{min-width:30px}
+}
+.mapa{border-bottom:1px solid var(--linea)}
+.mapa__cab{min-width:0}
+.mapa__t{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* pestañas */
+.pest{background:var(--crema);padding:10px 12px 8px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--linea)}
+.pest__tabs{display:flex;background:#fff;border:1px solid var(--linea);border-radius:14px;padding:4px;gap:4px}
+.pest__tab{flex:1 1 auto;min-width:0;padding:10px 6px;border-radius:10px;font-weight:800;font-size:14.5px;color:var(--gris);display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.pest__tab.on{background:var(--vino);color:#fff;box-shadow:0 2px 8px rgba(74,21,25,.3)}
+.pest__n{min-width:22px;height:22px;border-radius:999px;background:var(--oro);color:#fff;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
+.pest__acc{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn.grande{height:52px;font-size:17px;font-weight:800;border-radius:14px;color:#fff;border:0}
+.btn.grande.llevar{background:linear-gradient(135deg,#a9803f,#8a6630)}
+.btn.grande.deliv{background:linear-gradient(135deg,#2d5f8a,#234b6e)}
+@media (max-width:380px){.pest__tab{font-size:13px;padding:10px 4px}.btn.grande{font-size:15.5px}}
+/* Todos: pedidos en orden de salida */
+.todos__cab{padding:10px 12px 0;overflow-x:auto;scrollbar-width:none}
+.todos__cab::-webkit-scrollbar{display:none}
+.todos__cab .seg{white-space:nowrap}
+.fps{display:flex;flex-direction:column;gap:8px;padding:10px 12px}
+.fp{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;background:#fff;border:1px solid var(--linea);border-left:6px solid var(--azul);border-radius:14px;padding:10px 12px;text-align:left;min-width:0;box-shadow:0 1px 3px rgba(60,30,20,.06)}
+.fp.t-llevar{border-left-color:var(--oro)}.fp.t-delivery{border-left-color:#2d5f8a}.fp.t-mesa{border-left-color:var(--vino)}
+.fp.ajena{opacity:.6}
+.fp__h{display:flex;flex-direction:column;align-items:center}.fp__h b{font-size:18px;color:var(--vino)}.fp__h small{font-size:10.5px;color:var(--gris);font-weight:700;text-transform:uppercase}
+.fp__tx{min-width:0;display:flex;flex-direction:column;gap:2px}.fp__tx b{font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fp__tx small{font-size:12.5px;color:var(--gris);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fp__d{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.fp__d small{font-size:12px;font-weight:700;color:var(--gris);white-space:nowrap}
+.chip{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800;background:var(--papel);border:1px solid var(--linea);white-space:nowrap}
+.chip.e-nuevo{background:#fdecec;border-color:var(--rojo);color:var(--rojo)}.chip.e-conf{background:#fff5e0;border-color:#d9a326;color:#8a6410}
+.chip.e-prep{background:#eaf2fa;border-color:var(--azul);color:var(--azul)}.chip.e-listo{background:#e8f6ea;border-color:var(--verde);color:var(--verde)}
+.chip.e-camino{background:#efe9f8;border-color:#7a5aa8;color:#5d3f8a}.chip.e-ent{background:#f2f2f2;color:var(--gris)}
+.chip.pag{background:#e8f6ea;border-color:var(--verde);color:var(--verde)}.chip.porc{background:#fff5e0;border-color:#d9a326;color:#8a6410}
+/* Para llevar y delivery */
+.llevar-v{padding:0 0 12px}
+.ext-sec{margin:12px;display:flex;flex-direction:column;gap:8px}
+.ext-sec h3{font-size:14px;color:var(--vino);text-transform:uppercase;letter-spacing:.05em}
+.ext{background:#fff;border:1px solid var(--linea);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:6px;box-shadow:0 1px 3px rgba(60,30,20,.07);min-width:0}
+.ext.t-llevar{border-top:4px solid var(--oro)}.ext.t-delivery{border-top:4px solid #2d5f8a}
+.ext__cab{display:flex;align-items:center;gap:8px;justify-content:space-between}.ext__cab b{font-size:16.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ext__meta,.ext__dir{color:var(--gris);font-size:13px;overflow-wrap:anywhere}
+.ext__l{list-style:none;display:flex;flex-direction:column;gap:2px;font-size:14.5px;padding:4px 0;border-top:1px dashed var(--linea);border-bottom:1px dashed var(--linea)}
+.ext__pie{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ext__acc{display:flex;gap:8px;flex-wrap:wrap}.ext__acc .btn{flex:1 1 auto;text-decoration:none;color:var(--tinta);display:inline-flex;align-items:center;justify-content:center;height:46px;font-size:15.5px}.ext__acc .btn.azul{color:#fff}
+/* mapa de reparto */
+.mapa-del{margin:12px;border:1px solid var(--linea);border-radius:14px;overflow:hidden;background:#fff}
+.mapa-lf{height:300px;width:100%;border-radius:12px;margin-bottom:8px;z-index:0}
+@media (min-width:700px){.mapa-lf{height:380px}}
+.mapa-del__l{padding-left:22px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.mapa-del__l button{text-align:left;display:flex;flex-direction:column}.mapa-del__l small{color:var(--gris)}
+.lf-num{font-weight:800;background:#fff;border:0;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+/* carta: etiqueta de tienda y formulario del cliente */
+.prod .tag-t{font-size:11px;font-weight:800;color:var(--verde)}
+.campo-l{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:14px;color:var(--tinta)}
+.campo-l small{font-weight:500;color:var(--gris);font-size:12px}
+select.campo{background:#fff}
+.hora-z{display:flex;flex-direction:column;gap:8px}
+.del-info{font-size:13.5px;font-weight:700;color:var(--azul);background:#eef4fa;border-radius:10px;padding:8px 10px}
+.del-info.mal{color:var(--rojo);background:#fbe7e7}
+.tot.mal{color:var(--rojo)}
+.modal{max-width:min(640px,100vw)}
+.modal__cuerpo{overflow-x:hidden}
+.chips{flex-wrap:wrap}

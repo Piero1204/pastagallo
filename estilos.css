@@ -814,3 +814,90 @@ body.sin-scroll .toast.on{transform:translate(-50%,0)}
 .enviado__t{font:600 .95rem/1.3 var(--sans);color:var(--tinta)}
 .repetir__fw{width:36px;height:36px;margin-left:6px;align-self:center}
 .repetir__fw + .repetir__b{padding-left:8px}
+
+/* =================== v8 (22-nov noche): barra superior sin desbordes, horario en tarjetas, mesa directa a pedir, pagos =================== */
+/* barra superior: nunca se corta; si no entra, 2 líneas centradas (la barra de secciones se acomoda a su alto real) */
+.estado{height:auto;min-height:34px;padding:6px 14px;white-space:normal;line-height:1.3;text-wrap:balance}
+.estado>span{min-width:0}
+.estado__mesa{flex:none;border-radius:999px;padding:3px 9px;font-size:11px;letter-spacing:.04em}
+.nav{top:var(--estado-h,34px)}
+
+/* horario: dos tarjetas con etiqueta pequeña y separación fina dorada */
+.horario__cards{display:grid;gap:0;margin:10px auto 0;max-width:330px;border:1px solid rgba(201,164,92,.45);border-radius:14px;background:rgba(0,0,0,.14);overflow:hidden}
+.horario__c{padding:14px 16px}
+.horario__c+.horario__c{border-top:1px solid rgba(201,164,92,.55)}
+.horario__etq{display:block;margin-bottom:6px;font:700 .64rem/1.2 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--oro-claro)}
+.gracias .horario__l{margin:0 auto;font:500 1.12rem/1.4 var(--serif);font-style:normal;color:var(--crema);max-width:none;font-variant-numeric:lining-nums}
+@media (min-width:640px){.horario__cards{grid-template-columns:1fr 1fr;max-width:560px}.horario__c+.horario__c{border-top:0;border-left:1px solid rgba(201,164,92,.55)}}
+
+/* Califícanos en Google */
+.btn-resena{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin:26px auto 0;min-height:46px;padding:0 22px;border:1px solid var(--oro-claro);border-radius:999px;
+  color:var(--crema);text-decoration:none;font:600 .86rem/1 var(--sans);letter-spacing:.06em;background:rgba(201,164,92,.1);transition:background .2s}
+.btn-resena:hover{background:rgba(201,164,92,.22)}
+.btn-resena svg{width:17px;height:17px;fill:var(--oro-claro)}
+
+/* tiempo estimado */
+.espera{display:flex;align-items:center;justify-content:center;gap:8px;max-width:692px;margin:0 auto 8px;padding:0 14px;font:600 .84rem/1.35 var(--sans);color:var(--oliva);text-align:center}
+.espera[hidden]{display:none}
+.espera i{flex:none;width:8px;height:8px;border-radius:50%;background:#58c26a;box-shadow:0 0 0 3px rgba(88,194,106,.22);font-size:0}
+.espera--alta{color:#8d2a24}
+.espera--alta i{background:#d98a2b;box-shadow:0 0 0 3px rgba(217,138,43,.25)}
+
+/* mesa: sin portada, directo a la carta */
+body.modo-mesa .buscador{margin-top:calc(var(--estado-h,34px) + 14px)}
+.mesa-aviso{max-width:660px;margin:calc(var(--estado-h,34px) + 14px) 14px 0;padding:12px 14px;border:1px solid var(--oro);border-radius:14px;background:#fff8ec;font:500 .92rem/1.4 var(--sans);color:var(--tinta)}
+body.modo-mesa .mesa-aviso+span+.buscador{margin-top:12px}
+
+/* mesa: barra inferior del cliente (llamar al mozo · pedir la cuenta · lo pedido) */
+.mesa-acc{left:0;right:0;bottom:0;max-width:none;margin:0;gap:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:var(--crema-3);border-top:1px solid rgba(169,128,63,.55);box-shadow:0 -6px 18px rgba(74,21,25,.12)}
+body.con-carrito .mesa-acc{bottom:0}
+.mesa-acc .mesa-acc__b{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:56px;padding:6px 4px;
+  border:1px solid rgba(169,128,63,.6);border-radius:14px;background:#fff;color:var(--vino);box-shadow:none;font:700 .74rem/1.15 var(--sans);letter-spacing:.01em;text-align:center}
+.mesa-acc__b svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mesa-acc .mesa-acc__b--pri{background:var(--vino);border-color:var(--vino);color:var(--crema)}
+.mesa-acc .mesa-acc__b--pri svg{stroke:var(--oro-claro)}
+.mesa-acc .mesa-acc__b.ok{background:#e7f3e6;border-color:#58a465;color:#245c2e}
+.mesa-acc .mesa-acc__b:active{transform:scale(.97)}
+body.modo-mesa .barra-ped{bottom:calc(84px + env(safe-area-inset-bottom))}
+body.modo-mesa .gracias,body.modo-mesa.con-carrito .gracias{padding-bottom:180px}
+body.modo-mesa.con-carrito .gracias{padding-bottom:250px}
+
+/* mesa: para llevar */
+.llevar-tg{position:relative;display:flex;align-items:center;gap:12px;cursor:pointer}
+.llevar-tg input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.llevar-tg__ic{font-size:1.4rem;line-height:1}
+.llevar-tg__t{flex:1;display:flex;flex-direction:column;gap:2px}
+.llevar-tg__t b{font:700 .98rem/1.2 var(--sans);color:var(--vino)}
+.llevar-tg__t small{font:500 .8rem/1.3 var(--sans);color:var(--tinta-2)}
+.llevar-tg__sw{flex:none;position:relative;width:46px;height:28px;border-radius:999px;background:#d8ccb2;transition:background .2s}
+.llevar-tg__sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.llevar-tg:has(input:checked) .llevar-tg__sw{background:var(--vino)}
+.llevar-tg:has(input:checked) .llevar-tg__sw::after{transform:translateX(18px)}
+.llevar-tg:has(input:focus-visible){outline:2px solid var(--oro);outline-offset:2px}
+.llevar-chip{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;margin-top:6px;min-height:30px;padding:0 12px;border:1px solid rgba(169,128,63,.7);border-radius:999px;background:#fff;color:var(--tinta-2);font:600 .76rem/1 var(--sans)}
+.llevar-chip.on{background:var(--vino);border-color:var(--vino);color:var(--crema)}
+.linea__info{display:flex;flex-direction:column}
+.llevar-hora{margin:4px 0 6px;padding:12px;border:1px dashed var(--oro);border-radius:14px;background:#fff8ec}
+
+/* checkout: ¿para cuándo? (lo antes posible / programar) */
+.opciones.cuando .opcion{border-radius:12px;font:600 .95rem/1.25 var(--sans)}
+.prog__cuerpo[hidden]{display:none}
+.prog__cuerpo .campo-w{margin-top:10px}
+
+/* cobro: solo lo esencial */
+.cobro{border-radius:14px;background:#fffaf0}
+.cobro__qr{display:block;width:min(220px,70vw);height:auto;margin:6px auto 10px;border-radius:12px;background:#fff}
+.cobro__fila{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"e c" "v c";align-items:center;gap:2px 10px;padding:9px 0;border-top:1px solid rgba(169,128,63,.25)}
+.cobro__fila span{grid-area:e;font:600 .7rem/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-2)}
+.cobro__fila b{grid-area:v;min-width:0;font:700 1rem/1.3 var(--sans);color:var(--tinta);font-variant-numeric:tabular-nums;letter-spacing:.01em;overflow-wrap:anywhere}
+.cobro__fila .cobro__copiar{grid-area:c}
+.cobro__copiar{flex:none;min-height:34px;padding:0 14px;border:1px solid var(--vino);border-radius:999px;background:#fff;color:var(--vino);font:700 .76rem/1 var(--sans)}
+.cobro__monto{margin:0 0 8px;font:500 .92rem/1.4 var(--sans)}
+.cobro__subir{border-radius:12px}
+/* mesa: lo flotante queda por encima de la barra inferior y del carrito */
+body.modo-mesa .bq-fab{bottom:calc(84px + env(safe-area-inset-bottom,0px)) !important}
+body.modo-mesa.con-carrito .bq-fab{bottom:calc(156px + env(safe-area-inset-bottom,0px)) !important}
+body.modo-mesa:not(.sin-scroll) .toast{bottom:calc(158px + env(safe-area-inset-bottom));transform:translate(-50%,300px)}
+body.modo-mesa:not(.sin-scroll) .toast.on{transform:translate(-50%,0)}
+.espera span{text-wrap:balance;text-align:left}

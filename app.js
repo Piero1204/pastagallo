@@ -103,14 +103,33 @@
     if (hoy && ah.min >= minutos(hoy[0]) && ah.min < minutos(hoy[1])) {
       return { abierto: true, cierra: fmt12(hoy[1]) };
     }
+    /* "corto": versión breve para la barra superior (en 375 px no debe desbordarse) */
     if (hoy && ah.min < minutos(hoy[0])) {
-      return { abierto: false, cuando: t("hoyA") + fmt12(hoy[0]) };
+      return { abierto: false, cuando: t("hoyA") + fmt12(hoy[0]), corto: t("hoyCorto") + fmt12(hoy[0]), hoy: true, abre: fmt12(hoy[0]) };
     }
     for (var i = 1; i <= 7; i++) {
       var d = (ah.dia + i) % 7, r = C.horario.dias[d];
-      if (r) return { abierto: false, cuando: (i === 1 ? t("manana") : t("el")) + t("dias")[d] + t("aLas") + fmt12(r[0]) };
+      if (r) return { abierto: false, cuando: (i === 1 ? t("manana") : t("el")) + t("dias")[d] + t("aLas") + fmt12(r[0]),
+        corto: (i === 1 ? t("mananaCorto") : t("dias")[d]) + " " + fmt12(r[0]), abre: fmt12(r[0]) };
     }
-    return { abierto: false, cuando: t("pronto") };
+    return { abierto: false, cuando: t("pronto"), corto: t("pronto") };
+  }
+
+  /* ---------- horario de la tienda (Nostri Prodotti) ----------
+     Sale de CARTA.ext.comercio.s.tienda (hoja Horarios del panel). Si aún no está publicado, se usa el horario que fijó el local
+     (mar–sáb 10:00–23:00 · dom 16:00–23:00), solo para MOSTRARLO: la disponibilidad para pedir sigue la regla del servidor. */
+  var TIENDA_DEF = [{ d: [2, 3, 4, 5, 6], h: [["10:00", "23:00"]] }, { d: [0], h: [["16:00", "23:00"]] }];
+  function horarioTienda() {
+    var rt = C.ext && C.ext.comercio && C.ext.comercio.s && C.ext.comercio.s.tienda;
+    var regs = rt ? (Array.isArray(rt) ? rt : [rt]) : TIENDA_DEF;
+    return regs.filter(function (r) { return r && r.h && r.h.length; });
+  }
+  function tiendaAbiertaAhora() {
+    var ah = ahoraLugar(new Date());
+    return horarioTienda().some(function (r) {
+      if (r.d && r.d.length && r.d.indexOf(ah.dia) < 0) return false;
+      return r.h.some(function (x) { var a = minutos(x[0]), b = minutos(x[1]); if (b <= a) b += 1440; return ah.min >= a && ah.min < b; });
+    });
   }
 
   /* ---------- promociones con calendario (misma regla que el servidor) ---------- */
@@ -174,36 +193,43 @@
     if (COM && COM.barra && PED && PED.activo()) {   // QR de barra: sin horario ni "cerrado"; la persona ya está en el local
       estadoBarra.className = "estado abierto"; estadoBarra.textContent = "";
       estadoBarra.appendChild(h("i")); estadoBarra.appendChild(h("span", null, t("barraEstado")));
+      ajustarEstado();
+      if (!bienvenida) return;
       bienvenida.textContent = "";
       bienvenida.appendChild(h("h1", null, t("barraTitulo")));
       bienvenida.appendChild(h("p", null, t("barraTexto")));
       if (fabTxt) fabTxt.textContent = t("pedirAhora");
       return;
     }
-    estadoBarra.className = "estado " + (e.abierto ? "abierto" : "cerrado");
+    var esMesa = PED && PED.modo === "mesa";
+    var tiendaYa = !e.abierto && !esMesa && tiendaAbiertaAhora();
+    estadoBarra.className = "estado " + (e.abierto || tiendaYa ? "abierto" : "cerrado");
     estadoBarra.textContent = "";
     estadoBarra.appendChild(h("i"));
-    if (PED && PED.modo === "mesa" && PED.mesa) estadoBarra.appendChild(h("span", "estado__mesa", t("mesa") + PED.mesa));
+    if (esMesa && PED.mesa) estadoBarra.appendChild(h("span", "estado__mesa", t("mesa") + PED.mesa));
     if (e.abierto) {
       var s = h("span"); s.appendChild(document.createTextNode(t("abierto"))); s.appendChild(h("b", null, e.cierra));
       estadoBarra.appendChild(s);
+    } else if (tiendaYa) {   // restaurante cerrado pero la tienda (Nostri Prodotti) atiende
+      var s3 = h("span"); s3.appendChild(h("b", null, t("tiendaAbiertaEst")));
+      s3.appendChild(document.createTextNode(e.hoy ? t("restDesde", { h: e.abre }) : t("restDia", { c: e.corto })));
+      estadoBarra.appendChild(s3);
     } else {
-      var s2 = h("span"); s2.appendChild(document.createTextNode(t("cerrado"))); s2.appendChild(h("b", null, e.cuando));
+      var s2 = h("span"); s2.appendChild(document.createTextNode(t("cerrado"))); s2.appendChild(h("b", null, e.corto || e.cuando));
       /* pedidos programados: desde qué hora se puede dejar el pedido (sin explicar la ventana de atención) */
       var dp = PED && PED.modo === "delivery" && PED.aceptaAhora && PED.aceptaAhora() && PED.desdeProg ? PED.desdeProg() : "";
       if (dp) s2.appendChild(document.createTextNode(t("pedidosDesde", { h: dp })));
       estadoBarra.appendChild(s2);
     }
-    bienvenida.textContent = "";
+    ajustarEstado();
     var conCarrito = PED && PED.activo();
+    if (!bienvenida) return;   // mesa: sin portada, se entra directo a la carta
+    bienvenida.textContent = "";
     var titulo = t("bienvenido"), texto;
-    if (PED && PED.modo === "mesa") {
-      if (!PED.mesaValida()) texto = t("mesaSinQr");
-      else if (!e.abierto) { titulo = t("mesa") + PED.mesa; texto = t("mesaCerrado", { c: e.cuando }); }
-      else if (!conCarrito) { titulo = t("mesa") + PED.mesa; texto = t("mesaSinPedidos"); }
-      else { titulo = t("bienvenidoMesa") + PED.mesa; texto = t("mesaAbierto"); }
-    } else if (e.abierto) {
+    if (e.abierto) {
       texto = conCarrito ? t("abiertoCarrito", { h: e.cierra }) : t("abiertoSin", { h: e.cierra });
+    } else if (tiendaYa) {
+      texto = t("tiendaAbiertaTxt", { c: e.cuando }) + (conCarrito && PED.aceptaAhora() ? t("programar") : "");
     } else {
       texto = t("cerradoTxt", { c: e.cuando }) + (conCarrito && PED.aceptaAhora() ? t("programar") : t("recorre"));
     }
@@ -212,6 +238,12 @@
     var pedir = q("#btn-pedir");
     if (pedir && !conCarrito) pedir.lastChild.textContent = e.abierto ? t("realizarPedido") : t("escribenos");
     if (fabTxt) fabTxt.textContent = e.abierto ? t("pedirAhora") : t("consultasWa");
+  }
+
+  /* La barra superior puede ocupar 2 líneas en pantallas angostas: su alto real mueve la barra de secciones pegada debajo */
+  function ajustarEstado() {
+    if (!estadoBarra) return;
+    requestAnimationFrame(function () { document.documentElement.style.setProperty("--estado-h", (estadoBarra.offsetHeight || 34) + "px"); });
   }
 
   function botonIdioma(cls) {
@@ -366,7 +398,7 @@
     if (conChips) {
       var cw = h("div", "tam-chips"); cw.setAttribute("role", "radiogroup"); cw.setAttribute("aria-label", t("tamElige"));
       it.t.forEach(function (x) {
-        var c = h("button", "tam-chip" + (x[0] === tamSel ? " on" : ""), x[0]); c.type = "button";
+        var c = h("button", "tam-chip" + (x[0] === tamSel ? " on" : ""), I.tam(x[0])); c.type = "button";
         c.setAttribute("role", "radio"); c.setAttribute("aria-checked", x[0] === tamSel ? "true" : "false");
         c.addEventListener("click", function (ev) {
           ev.stopPropagation(); tamSel = x[0];
@@ -379,7 +411,7 @@
     } else if (it.t) {
       var tb = h("div", "tam");
       it.t.forEach(function (x) {
-        var c = h("div"); c.appendChild(h("span", null, x[0]));
+        var c = h("div"); c.appendChild(h("span", null, I.tam(x[0])));
         var ant = it.ta && it.ta.filter(function (y) { return y[0] === x[0]; })[0];
         if (ant && ant[1] > x[1]) {
           var pt = precioEl(ant[1]); pt.className += " precio--antes"; pt.title = t("antes"); c.appendChild(pt);
@@ -475,7 +507,6 @@
 
   function seccion(sec, idx) {
     var modo = PED ? PED.modo : "delivery";
-    if (sec.id === "tienda" && modo === "mesa") return null;   // los productos para llevar a casa no se piden desde la mesa
     var grupos = sec.grupos.filter(function (g) {
       g.items = (g.items || []).filter(function (i) {
         if (i.oculto || i._oculto) return false;
@@ -633,48 +664,37 @@
   }
 
   /* ---------- horario (derivado de los datos; sin "lunes cerrado") ---------- */
-  function hm12(hhmm) {   // "18:00" -> { t: "6:00", suf: "pm" }
-    var p = String(hhmm).split(":"), hh = +p[0] % 24;
-    return { t: (hh % 12 || 12) + ":" + p[1], suf: hh >= 12 ? "pm" : "am" };
-  }
-  function rango12(a, b) {   // "6:00 – 11:00 pm" / "10:00 am – 11:00 pm"
-    var x = hm12(a), y = hm12(b);
-    return (x.suf === y.suf ? x.t : x.t + " " + x.suf) + " \u2013 " + y.t + " " + y.suf;
-  }
-  function textoDiasCorto(dias) {   // [2,3,4,5,6] -> "mar–sáb"; [0] -> "dom"
-    var orden = [1, 2, 3, 4, 5, 6, 0], ab = t("dias3");
-    var l = orden.filter(function (d) { return dias.indexOf(d) >= 0; }), out = [], i = 0;
-    while (i < l.length) {
-      var j = i; while (j + 1 < l.length && orden.indexOf(l[j + 1]) === orden.indexOf(l[j]) + 1) j++;
-      out.push(j > i ? ab[l[i]] + "\u2013" + ab[l[j]] : ab[l[i]]); i = j + 1;
-    }
-    return out.join(", ");
+  /* Horario en dos tarjetas (restaurante y tienda), formato 24 h como lo escribe el local: "Martes a domingo" / "18:00 – 23:00". */
+  function rango24(a, b) { return a + " \u2013 " + (b === "00:00" || b === "24:00" ? "24:00" : b); }
+  function gruposDias(regsPorDia) {   // [{d:[...], r:[a,b]}] -> grupos de días seguidos con el mismo rango
+    var orden = [1, 2, 3, 4, 5, 6, 0], grupos = [];
+    orden.forEach(function (d) {
+      var r = regsPorDia[d]; if (!r) return;
+      var k = r[0] + "|" + r[1], g = grupos[grupos.length - 1];
+      if (g && g.k === k && orden.indexOf(g.dias[g.dias.length - 1]) === orden.indexOf(d) - 1) g.dias.push(d); else grupos.push({ k: k, dias: [d], r: r });
+    });
+    return grupos.map(function (g) {
+      var dt = g.dias.length === 1 ? t("dias")[g.dias[0]] : diasTexto(g.dias);
+      return { dias: dt.charAt(0).toUpperCase() + dt.slice(1), horas: rango24(g.r[0], g.r[1]) };
+    });
   }
   function bloqueHorario() {
-    var b = h("div"); b.appendChild(h("h3", null, t("horario")));
-    var lineas = [], hor = C.horario && C.horario.dias;
-    if (hor) {
-      var orden = [1, 2, 3, 4, 5, 6, 0], grupos = [];
-      orden.forEach(function (d) {
-        var r = hor[d]; if (!r) return;
-        var k = r[0] + "|" + r[1], g = grupos[grupos.length - 1];
-        if (g && g.k === k && orden.indexOf(g.dias[g.dias.length - 1]) === orden.indexOf(d) - 1) g.dias.push(d); else grupos.push({ k: k, dias: [d], r: r });
-      });
-      grupos.forEach(function (g) { var dt = diasTexto(g.dias); lineas.push(dt.charAt(0).toUpperCase() + dt.slice(1) + " \u00b7 " + rango12(g.r[0], g.r[1])); });
+    var b = h("div", "horario"); b.appendChild(h("h3", null, t("horario")));
+    var cards = h("div", "horario__cards");
+    function tarjetaH(etq, filas) {
+      var c = h("div", "horario__c"); c.appendChild(h("span", "horario__etq", etq));
+      filas.forEach(function (f) { c.appendChild(h("p", "horario__l", f)); });
+      cards.appendChild(c);
     }
-    if (!lineas.length) lineas.push(tx(N, "horarioTexto"));
-    lineas.forEach(function (x) { b.appendChild(h("p", null, x)); });
-    /* Nostri Prodotti (tienda): su horario sale de los datos estructurados del módulo comercio; si faltan, no se muestra */
-    var rt = C.ext && C.ext.comercio && C.ext.comercio.s && C.ext.comercio.s.tienda;
-    if (rt) {
-      var regs = Array.isArray(rt) ? rt : [rt], partes = [];
-      regs.forEach(function (r) {
-        if (!r || !r.h || !r.h.length) return;
-        var dt = r.d && r.d.length ? textoDiasCorto(r.d) : t("todosDias2");
-        partes.push(dt + " " + r.h.map(function (x) { return rango12(x[0], x[1]); }).join(", "));
-      });
-      if (partes.length) b.appendChild(h("p", "datos__tienda", t("tiendaTit") + " \u00b7 " + partes.join(" \u00b7 ")));
-    }
+    var rest = C.horario && C.horario.dias ? gruposDias(C.horario.dias) : [];
+    if (rest.length === 1) tarjetaH(t("horRest"), [rest[0].dias, rest[0].horas]);
+    else if (rest.length) tarjetaH(t("horRest"), rest.map(function (g) { return g.dias + " \u00b7 " + g.horas; }));
+    else tarjetaH(t("horRest"), [tx(N, "horarioTexto")]);
+    var porDia = {};
+    horarioTienda().forEach(function (r) { (r.d && r.d.length ? r.d : [0, 1, 2, 3, 4, 5, 6]).forEach(function (d) { if (!porDia[d]) porDia[d] = r.h[0]; }); });
+    var ti = gruposDias(porDia);
+    if (ti.length) tarjetaH(t("horTienda"), ti.map(function (g) { return g.dias + " \u00b7 " + g.horas; }));
+    b.appendChild(cards);
     return b;
   }
 
@@ -691,7 +711,6 @@
     function dato(t, x) { var b = h("div"); b.appendChild(h("h3", null, t)); b.appendChild(h("p", null, x)); return b; }
     d.appendChild(dato(t("donde"), N.direccion));
     d.appendChild(bloqueHorario());
-    d.appendChild(dato(t("reservas"), N.telefono));
     var rb = h("div"); rb.appendChild(h("h3", null, t("siguenos")));
     var rd = h("div", "redes");
     function red(t, u) { var a = h("a", null, t); a.href = u; a.target = "_blank"; a.rel = "noopener"; rd.appendChild(a); }
@@ -703,7 +722,15 @@
     var a = h("a", "btn btn--oro"); a.href = waUrl(); a.target = "_blank"; a.rel = "noopener";
     a.appendChild(waSvg()); a.appendChild(document.createTextNode(t("escribenos"))); i.appendChild(a);
     var lg = h("img", "logo-fin"); lg.src = "wordmark-crema.png"; lg.alt = N.nombre; i.appendChild(lg);
-    i.appendChild(h("div", "copia", N.desde + t("carino")));
+    /* Califícanos en Google: enlace de reseña publicado por el panel (Config resena_url); sin enlace no se muestra */
+    var rs = C.ext && C.ext.comercio && C.ext.comercio.resena;
+    if (rs && /^https:\/\//i.test(rs)) {
+      var gr = h("a", "btn-resena"); gr.href = rs; gr.target = "_blank"; gr.rel = "noopener";
+      gr.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z"/></svg>';
+      gr.appendChild(document.createTextNode(t("califica")));
+      i.appendChild(gr);
+    }
+    i.appendChild(h("div", "copia", N.desde));
     s.appendChild(i);
     return s;
   }
@@ -721,10 +748,15 @@
     ordenarSecciones().forEach(function (s, i) { var e = seccion(s, i); if (e) secs.push(e); });
 
     var vCarta = h("div"); vCarta.id = "vista-carta";
-    vCarta.appendChild(portada());
+    var enMesa = PED && PED.modo === "mesa";
+    /* Mesa: sin portada; el QR abre directo en la carta (la mesa se ve, discreta, en la barra superior) */
+    if (!enMesa) vCarta.appendChild(portada());
+    else if (!PED.mesaValida()) { var av = h("p", "mesa-aviso", t("mesaSinQr")); vCarta.appendChild(av); }
     var nav = navegacion();
     var anc = h("span"); anc.id = "carta-inicio"; anc.style.cssText = "display:block;position:relative;top:-42px"; vCarta.appendChild(anc);
-    vCarta.appendChild(buscadorEl); vCarta.appendChild(nav);
+    vCarta.appendChild(buscadorEl);
+    espera = h("p", "espera"); espera.setAttribute("role", "status"); espera.hidden = true; vCarta.appendChild(espera);
+    vCarta.appendChild(nav);
     secs.forEach(function (s) { vCarta.appendChild(s); });
     var cuerpoFinal = secs.length ? secs[secs.length - 1].querySelector(".sec__cuerpo") : null;
     if (hayAlergenos && cuerpoFinal) cuerpoFinal.appendChild(leyenda());
@@ -780,29 +812,121 @@
       var pt = new IntersectionObserver(function (es) {
         es.forEach(function (e) { fab.classList.toggle("ver", !e.isIntersecting); });
       });
-      pt.observe(q("#inicio"));
+      if (q("#inicio")) pt.observe(q("#inicio")); else fab.classList.add("ver");
     } else {
       document.querySelectorAll(".rev, .anim").forEach(function (x) { x.classList.add("ya"); });
       fab.classList.add("ver");
     }
   }
 
-  /* Orden de las secciones: lo disponible ahora va primero (lo decide comercio.js); la tienda "Nostri Prodotti" se coloca justo después de
-     Lasagne (ahí el cliente ya está eligiendo pasta fresca, y es el mejor momento para ofrecerle llevarla a casa), antes de Parrillas y las
-     bebidas, y siempre respetando la regla de horario (lo disponible ahora, primero). */
-  function ordenarSecciones() {
-    var lista = C.secciones.slice(), ti = -1;
-    lista.forEach(function (x, i) { if (x.id === "tienda") ti = i; });
-    if (ti >= 0) {
-      var tienda = lista.splice(ti, 1)[0], li = -1;
-      lista.forEach(function (x, i) { if (x.id === "lasagne") li = i; });
-      if (COM && COM.barra) lista.unshift(tienda);   // barra: Nostri Prodotti (para llevar) primero
-      else lista.splice(li >= 0 ? li + 1 : lista.length, 0, tienda);
-      if (COM && COM.avisoSec) {   // reparte otra vez: disponibles ahora primero, el resto después, cada grupo en su orden
-        var ok = function (x) { return !COM.avisoSec(x); };
-        lista = lista.filter(ok).concat(lista.filter(function (x) { return !ok(x); }));
-      }
+  /* ---------- tiempo estimado (carga de cocina) ----------
+     POST { ext:"carga", accion:"estado" } -> { ok, espera:{ delivery, recojo, mesa }, alta, mensaje }. Al cargar y cada 2 min.
+     Solo se muestra con la cocina atendiendo; si la acción falla o no existe, no se muestra nada. */
+  var espera = null;
+  window.PG_CARGA = null;
+  function canalEspera() {
+    if (PED && PED.modo === "mesa") return "mesa";
+    if (COM && COM.barra) return "recojo";
+    return "delivery";
+  }
+  function pintarEspera() {
+    if (!espera) return;
+    var c = window.PG_CARGA, m = c && c.espera ? Math.round(Number(c.espera[canalEspera()])) : 0;
+    var ver = m > 0 && estadoActual().abierto && PED && PED.activo();
+    espera.hidden = !ver; espera.textContent = "";
+    if (!ver) return;
+    espera.className = "espera" + (c.alta ? " espera--alta" : "");
+    espera.appendChild(h("i", null, c.alta ? "!" : ""));
+    espera.appendChild(h("span", null, t(c.alta ? "esperaAlta" : "esperaNormal", { m: m })));
+  }
+  function consultarCarga() {
+    var api = (C.pedidos || {}).api; if (!api || !window.fetch) return;
+    try {
+      fetch(api, { method: "POST", body: JSON.stringify({ ext: "carga", accion: "estado" }) })
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          if (!r || r.ok !== true || !r.espera || typeof r.espera !== "object") { window.PG_CARGA = null; pintarEspera(); return; }
+          window.PG_CARGA = { espera: r.espera, alta: r.alta === true };
+          pintarEspera();
+          document.dispatchEvent(new Event("pg-carga"));
+        }).catch(function () {});
+    } catch (e) {}
+  }
+
+  /* ---------- analítica propia (anónima) ----------
+     Eventos: visita, vista_seccion, vista_producto (≥50 % visible 1 s, una vez por producto y sesión), abrir_producto, agregar, checkout, pedido.
+     Se envían en lotes cada 20 s y al ocultar la página: { ext:"analitica", accion:"ev", sid, ev:[{ t, id, s, ts }] }. Sin datos personales. */
+  var AN = (function () {
+    var api = (C.pedidos || {}).api, cola = [], sid = "", vistos = {};
+    try { sid = sessionStorage.getItem("pg-sid") || ""; } catch (e) {}
+    if (!sid) { sid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).slice(0, 20); try { sessionStorage.setItem("pg-sid", sid); } catch (e) {} }
+    try { vistos = JSON.parse(sessionStorage.getItem("pg-an-v") || "{}") || {}; } catch (e) { vistos = {}; }
+    function ev(tipo, id, s) {
+      if (!api) return;
+      cola.push({ t: tipo, id: String(id || "").slice(0, 60), s: String(s || "").slice(0, 40), ts: Date.now() });
+      if (cola.length > 200) cola.splice(0, cola.length - 200);
     }
+    function una(tipo, id, s) {   // una sola vez por sesión
+      var k = tipo + ":" + id; if (vistos[k]) return; vistos[k] = 1;
+      try { sessionStorage.setItem("pg-an-v", JSON.stringify(vistos)); } catch (e) {}
+      ev(tipo, id, s);
+    }
+    function enviar(salida) {
+      if (!api || !cola.length) return;
+      var lote = cola.splice(0, 100), cuerpo = JSON.stringify({ ext: "analitica", accion: "ev", sid: sid, ev: lote });
+      try {
+        if (salida && navigator.sendBeacon && navigator.sendBeacon(api, cuerpo)) return;
+        fetch(api, { method: "POST", body: cuerpo, keepalive: true }).catch(function () {});
+      } catch (e) {}
+    }
+    if (api) {
+      setInterval(function () { enviar(false); }, 20000);
+      document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") enviar(true); });
+      window.addEventListener("pagehide", function () { enviar(true); });
+    }
+    return { ev: ev, una: una, enviar: enviar };
+  })();
+  window.PG_ANALITICA = AN;
+  function observarVistas() {
+    var modo = PED ? PED.modo : "delivery";
+    AN.una("visita", modo + (COM && COM.barra ? "-barra" : ""), "");
+    if (!("IntersectionObserver" in window)) return;
+    var timers = new WeakMap();
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        var el = e.target, id = el.id.replace(/^p-/, ""), s = el.closest(".sec") ? el.closest(".sec").id : "";
+        if (e.isIntersecting && e.intersectionRatio >= 0.5) {
+          if (!timers.get(el)) timers.set(el, setTimeout(function () { AN.una("vista_producto", id, s); io.unobserve(el); }, 1000));
+        } else if (timers.get(el)) { clearTimeout(timers.get(el)); timers.delete(el); }
+      });
+    }, { threshold: [0, 0.5] });
+    document.querySelectorAll("#vista-carta .it[id^='p-']").forEach(function (x) { io.observe(x); });
+    var ios = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { var id = e.target.parentNode.id; if (e.isIntersecting && id) { AN.una("vista_seccion", id, id); ios.unobserve(e.target); } });
+    }, { threshold: 0.5 });
+    document.querySelectorAll("#vista-carta .sec > .sec__cab").forEach(function (x) { ios.observe(x); });
+  }
+
+  /* Orden de las secciones (pedido de Piero, 22-nov):
+     - Bloque restaurante SIEMPRE junto y en este orden: Antipasti, Pizze, Pasta, Lasagne, Parrillas, Dolci, Caffetteria, Bevande (caffe), Aperitivi, Vini.
+     - Horario del restaurante: Promociones, Prodotti d'Italia, bloque, Nostri Prodotti (tienda) al final.
+     - Fuera de ese horario: Prodotti d'Italia, Nostri Prodotti, bloque (visible, con su "Disponible a partir de…"); promociones primero si
+       se pueden pedir ahora, si no van con el bloque (justo antes de Antipasti).
+     - Mesa: Prodotti d'Italia, bloque, tienda. Barra: tienda primero y lo demás igual. */
+  var BLOQUE = ["antipasti", "pizze", "pasta", "lasagne", "parrillas", "dolci", "caffetteria", "caffe", "aperitivi", "vini"];
+  function ordenarSecciones() {
+    var por = {}, otras = [];
+    C.secciones.forEach(function (x) { if (x.id === "promociones" || x.id === "italia" || x.id === "tienda" || BLOQUE.indexOf(x.id) >= 0) por[x.id] = x; else otras.push(x); });
+    var bloque = BLOQUE.filter(function (id) { return por[id]; }).map(function (id) { return por[id]; }).concat(otras);
+    var promo = por.promociones ? [por.promociones] : [], italia = por.italia ? [por.italia] : [], tienda = por.tienda ? [por.tienda] : [];
+    var abierto = estadoActual().abierto, lista;
+    if (PED && PED.modo === "mesa") lista = italia.concat(promo, bloque, tienda);
+    else if (abierto) lista = promo.concat(italia, bloque, tienda);
+    else {
+      var promoYa = promo.length && COM && COM.avisoSec ? !COM.avisoSec(promo[0]) : false;
+      lista = promoYa ? promo.concat(italia, tienda, bloque) : italia.concat(tienda, promo, bloque);
+    }
+    if (COM && COM.barra && tienda.length) lista = tienda.concat(lista.filter(function (x) { return x !== tienda[0]; }));   // barra: Nostri Prodotti primero
     return lista;
   }
 
@@ -860,6 +984,8 @@
     window.addEventListener("hashchange", function () { var id = location.hash.slice(1); if (id && id.indexOf("p-") !== 0) irSeccion(id); });
     entrarASeccion();
     abrirEnlace(); agotadosEnVivo();
+    observarVistas();
+    consultarCarga(); setInterval(consultarCarga, 120000); setInterval(pintarEspera, 60000);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
 })();
