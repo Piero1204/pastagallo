@@ -584,6 +584,18 @@
     return fw;
   }
 
+  /* Resumen compacto con foto de lo ya enviado (pantallas de "pedido recibido"): misma miniatura del carrito. */
+  function listaEnviada(items) {
+    var ul = h("ul", "enviado");
+    (items || []).forEach(function (l) {
+      var li = h("li", "enviado__li");
+      li.appendChild(miniatura(productos[l.id], "enviado"));
+      var tt = h("span", "enviado__t", l.cant + " × " + l.n + (l.tam ? " · " + l.tam : ""));
+      li.appendChild(tt); ul.appendChild(li);
+    });
+    return ul;
+  }
+
   /* "Llévate otro": un producto suelto cuyo pack de 2 (ej.: "Wafer Tre Marie × 2") cuesta menos que dos sueltos.
      Se detecta con los datos de la carta: pack.pa (precio de antes) = 2 × precio del suelto, y pack.p es el precio real del pack.
      El precio de la segunda unidad = pack.p − suelto.p. Sin ese descuento no se muestra nada. */
@@ -1238,6 +1250,7 @@
     var c = h("div", "hoja__cuerpo exito");
     c.appendChild(h("div", "exito__ic", "✓"));
     c.appendChild(h("h3", null, t("abriendoWa")));
+    c.appendChild(listaEnviada(carrito));
     c.appendChild(h("p", null, t("soloEnviar", { d: form.canal === "delivery" ? t("conDelivery") : "" })));
     c.appendChild(h("p", "hoja__ayuda", t("codigoPedido") + form.ref));
     var a = h("a", "link-wa", t("noAbrio")); a.href = url; a.target = "_blank"; a.rel = "noopener";
@@ -1272,6 +1285,7 @@
         c.appendChild(h("div", "exito__ic", "✓"));
         c.appendChild(h("h3", null, t("recibidoPago", { n: r.numero })));
         c.appendChild(h("p", null, t("recibidoPagoTxt")));
+        c.appendChild(listaEnviada(carrito));
         c.appendChild(h("p", "hoja__ayuda", t("codigoPedido") + form.ref));
         var a = h("a", "btn-ped btn-ped--wa", t("abrirWa")); a.href = url; a.target = "_blank"; a.rel = "noopener";
         c.appendChild(a);
@@ -1358,6 +1372,7 @@
     if (MODO === "mesa") {
       c.appendChild(h("h3", null, t("enviadoMesa", { n: numero })));
       c.appendChild(h("p", null, t("mozoConfirma") + soles(totalServidor)));
+      c.appendChild(listaEnviada(carrito));
       c.appendChild(boton(t("verCuenta"), "btn-ped btn-ped--linea", abrirCuenta));
       if (window.PG_COMERCIO) PG_COMERCIO.resena(c, h);   // comercio: botón de reseña (solo si hay enlace)
       c.appendChild(boton(t("volver"), "btn-ped", cerrarHoja));
@@ -1365,6 +1380,7 @@
       var url = mensajeWhatsapp(numero, totalServidor, detalle);
       c.appendChild(h("h3", null, soloWhatsapp ? t("ultimoPaso") : t("recibido", { n: numero })));
       c.appendChild(h("p", null, soloWhatsapp ? t("envianosWa") : t("confirmaWa")));
+      c.appendChild(listaEnviada(carrito));
       var a = h("a", "btn-ped btn-ped--wa", t("enviarWa")); a.href = url; a.target = "_blank"; a.rel = "noopener";
       c.appendChild(a);
       c.appendChild(h("p", "hoja__ayuda", t("respondemos", { d: form.canal === "delivery" ? t("conDelivery") : "" })));
@@ -1530,7 +1546,7 @@
   }
 
   /* ---------- repetir el último pedido (delivery) ---------- */
-  var repetirEl;
+  var repetirEl, repetirFw;
   function ultimoPedido() {
     var o = leerJson(CLAVE_ULTIMO);
     return o && Array.isArray(o.c) && o.c.length && Date.now() - o.t < 120 * 864e5 ? o : null;
@@ -1539,6 +1555,10 @@
     if (!repetirEl) return;
     var ver = MODO === "delivery" && !esBarra() && !carrito.length && !!ultimoPedido() && aceptaAhora();
     repetirEl.classList.toggle("on", ver);
+    if (ver && repetirFw) { // miniatura del primer producto del último pedido
+      var u = ultimoPedido(), l0 = u && u.c[0];
+      repetirFw.textContent = ""; repetirFw.appendChild(miniatura(l0 ? productos[l0.id] : null, "repetir").firstChild);
+    }
   }
   function repetirUltimo() {
     var o = ultimoPedido(); if (!o) return;
@@ -1602,6 +1622,7 @@
         var rb = boton("↺ " + t("repetir"), "repetir__b", repetirUltimo);
         var rx = boton("×", "repetir__x", function () { try { localStorage.removeItem(CLAVE_ULTIMO); } catch (e) {} pintarRepetir(); });
         rx.setAttribute("aria-label", t("repetirQuitar"));
+        repetirFw = h("span", "repetir__fw"); repetirEl.appendChild(repetirFw);
         repetirEl.appendChild(rb); repetirEl.appendChild(rx);
         document.body.appendChild(repetirEl);
       }

@@ -913,8 +913,11 @@
     function estilos() {
       var s = document.createElement("style");
       s.textContent =
-        ".bq-fab{position:fixed;right:14px;bottom:150px;z-index:47;display:flex;align-items:center;justify-content:center;width:46px;height:46px;padding:0;border-radius:50%;border:2px solid var(--vino,#4a1519);background:var(--oro-claro,#c9a45c);color:var(--vino,#4a1519);box-shadow:0 3px 10px rgba(0,0,0,.35);cursor:pointer}" +
-        ".bq-fab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}" +
+        ".bq-fab{position:fixed;right:12px;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:47;display:flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border-radius:50%;border:2px solid var(--vino,#4a1519);background:var(--oro-claro,#c9a45c);color:var(--vino,#4a1519);box-shadow:0 3px 10px rgba(0,0,0,.35);cursor:pointer;opacity:0;visibility:hidden;transform:scale(.8);transition:opacity .25s,transform .25s,visibility 0s .25s}" +
+        ".bq-fab.bq-ver{opacity:.95;visibility:visible;transform:none;transition-delay:0s}" +
+        "body:has(.capa.on) .bq-fab,body:has(.bq-capa) .bq-fab{opacity:0;visibility:hidden;pointer-events:none}" +
+        "@media (min-width:760px){.bq-fab{width:46px;height:46px;bottom:90px}}" +
+        ".bq-fab svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}" +
         ".bq-fab:focus-visible,.bq-b:focus-visible,.bq-x:focus-visible{outline:3px solid var(--oro-claro,#c9a45c);outline-offset:2px}" +
         ".bq-capa{position:fixed;inset:0;z-index:65;background:rgba(20,8,8,.62);display:flex;align-items:flex-end;justify-content:center}" +
         ".bq-hoja{background:var(--crema-3,#f7f1e3);color:var(--tinta,#2a1b17);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:14px 14px 0 0;font:16px/1.4 var(--sans,system-ui)}" +
@@ -971,6 +974,11 @@
         : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/></svg>';
       b.addEventListener("click", function () { abrir(""); });
       document.body.appendChild(b);
+      // se muestra solo al salir de la portada (#inicio), igual que el botón de WhatsApp; sin IntersectionObserver queda visible
+      var ini = document.getElementById("inicio");
+      if (ini && window.IntersectionObserver) {
+        new IntersectionObserver(function (es) { es.forEach(function (x) { b.classList.toggle("bq-ver", !x.isIntersecting); }); }).observe(ini);
+      } else b.classList.add("bq-ver");
     }
 
     /* ----- ventana ----- */
