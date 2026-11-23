@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T15:51:49-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T20:12:42-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -3637,7 +3637,6 @@ window.CARTA = {
          19
         ]
        ],
-       "foto": "fotos/pasta-ravioli-di-carne-1795062531153.jpg",
        "n_en": "Ravioli di Carne",
        "g_en": "beef ravioli",
        "d_en": "Fresh pasta filled with beef, ready to cook at home."
@@ -3657,7 +3656,6 @@ window.CARTA = {
          19
         ]
        ],
-       "foto": "fotos/pasta-ravioli-di-formaggio-1795062570951.jpg",
        "n_en": "Ravioli di Ricotta",
        "g_en": "ricotta cheese ravioli",
        "d_en": "Fresh pasta filled with cheese, ready to cook at home."
@@ -3676,7 +3674,6 @@ window.CARTA = {
          10
         ]
        ],
-       "foto": "fotos/pasta-fettuccine-1794449529303.jpg",
        "n_en": "Fettuccine",
        "d_en": "Fresh fettuccine, made daily."
       },
@@ -3714,6 +3711,7 @@ window.CARTA = {
          10
         ]
        ],
+       "foto": "fotos/tienda-spaghetti.jpg",
        "n_en": "Spaghetti",
        "d_en": "Fresh spaghetti, made daily."
       },
@@ -3731,6 +3729,7 @@ window.CARTA = {
          19
         ]
        ],
+       "foto": "fotos/tienda-tortellini.jpg",
        "n_en": "Tortellini",
        "d_en": "Fresh tortellini, ready to cook at home."
       },
@@ -3772,7 +3771,6 @@ window.CARTA = {
          19
         ]
        ],
-       "foto": "fotos/lasagne-lasagna-di-carne-1795062419715.jpg",
        "n_en": "Lasagna di Carne",
        "g_en": "beef lasagna",
        "d_en": "Baked beef lasagna, ready to heat."
@@ -3927,6 +3925,7 @@ window.CARTA = {
          9.5
         ]
        ],
+       "foto": "fotos/tienda-salsa-pesto.jpg",
        "n_en": "Pesto sauce",
        "d_en": "Pesto sauce for your pasta."
       },
@@ -3962,5 +3961,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-22T15:51:49-05:00"
+ "publicado": "2026-11-22T20:12:42-05:00"
 };
