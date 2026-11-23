@@ -1,11 +1,11 @@
 /* Service worker del panel del mozo: permite instalarlo como app y abrirlo aunque la señal falle un momento.
    Siempre intenta primero la red (precios y disponibilidad al día); solo usa la copia guardada si no hay conexión.
    Nunca toca los pedidos (van a script.google.com con POST). */
-var CACHE = "pg-mozo-v9";
+var CACHE = "pg-mozo-v11";
 self.addEventListener("install", function (e) {
   // cada archivo por separado: si uno falla, los demás igual se guardan (cajero.js = app de tienda, con su código de etiquetas)
   e.waitUntil(caches.open(CACHE).then(function (c) {
-    return Promise.all(["/mozo.css", "/mozo.js", "/cajero.js", "/tienda-codigos.js", "/caja.js", "/menu-data.js", "/mozo-192.png", "/tienda-192.png"].map(function (u) { return c.add(u).catch(function () {}); }));
+    return Promise.all(["/mozo.css", "/mozo.js", "/cajero.js", "/tienda-codigos.js", "/caja.js", "/busqueda.js", "/cocina.js", "/menu-data.js", "/mozo-192.png", "/tienda-192.png"].map(function (u) { return c.add(u).catch(function () {}); }));
   }).catch(function () {}));
   self.skipWaiting();
 });
@@ -25,7 +25,7 @@ self.addEventListener("fetch", function (e) {
   }
   // app del mozo y carta: abre al instante con la copia guardada y la renueva por detrás (la próxima vez sale la nueva)
   var ruta = new URL(r.url).pathname;
-  if (["/mozo.js", "/mozo.css", "/cajero.js", "/tienda-codigos.js", "/caja.js", "/menu-data.js"].indexOf(ruta) >= 0) {
+  if (["/mozo.js", "/mozo.css", "/cajero.js", "/tienda-codigos.js", "/caja.js", "/busqueda.js", "/cocina.js", "/menu-data.js"].indexOf(ruta) >= 0) {
     e.respondWith(caches.open(CACHE).then(function (c) {
       return c.match(r, { ignoreSearch: true }).then(function (hit) {
         var red = fetch(r).then(function (res) { if (res.ok) c.put(r, res.clone()); return res; });

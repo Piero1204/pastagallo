@@ -803,3 +803,14 @@ details.grupo-op--plegable.tarj{padding:14px;margin:12px 0 0;background:#fffaf0}
 body.sin-scroll .toast{bottom:auto;top:88px;transform:translate(-50%,-180px)}
 body.sin-scroll .toast.on{transform:translate(-50%,0)}
 .pie-fijo .resumen__aviso{margin:4px 0 0;font-size:.74rem;line-height:1.35}
+
+/* miniaturas de lo ya pedido: pantalla de pedido enviado y botón "Repetir mi último pedido" */
+.enviado{list-style:none;display:grid;gap:8px;margin:12px 0;text-align:left}
+.enviado__li{display:flex;align-items:center;gap:12px}
+.enviado__fw,.repetir__fw{flex:none;display:block;border-radius:10px;overflow:hidden;background:linear-gradient(160deg,#f8eed6,#ecdcb0)}
+.enviado__fw{width:48px;height:48px}
+.enviado__img,.repetir__img{display:block;width:100%;height:100%;object-fit:cover}
+.enviado__img--vacia,.repetir__img--vacia{object-fit:contain;padding:8px;opacity:.9}
+.enviado__t{font:600 .95rem/1.3 var(--sans);color:var(--tinta)}
+.repetir__fw{width:36px;height:36px;margin-left:6px;align-self:center}
+.repetir__fw + .repetir__b{padding-left:8px}
