@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-22T20:12:42-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-23T04:48:28-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -232,7 +232,9 @@ window.CARTA = {
   "mesaActivos": true,
   "recojo": true,
   "metodosPago": [
-   "Yape o Plin"
+   "Yape",
+   "Plin",
+   "Transferencia"
   ],
   "pagoObligatorio": false,
   "deliveryTarifas": {
@@ -389,7 +391,8 @@ window.CARTA = {
    "prep": 30
   },
   "metodosPagoMesa": [
-   "Yape o Plin",
+   "Yape",
+   "Plin",
    "Efectivo",
    "Tarjeta"
   ],
@@ -1412,31 +1415,31 @@ window.CARTA = {
        "id": "antipasti-affettato-misto",
        "n": "Affettato Misto",
        "g": "fiambres mixtos",
-       "d": "Una selección de embutidos y fiambres cortados finos, para picar sin apuro.",
+       "d": "Jamón, chorizo, tocino y salame, cortados finos para compartir.",
        "p": 25,
-       "foto": "https://images.unsplash.com/photo-1781714534211-3236a60d9ce4?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/antipasti-affettato-misto.jpg",
        "g_en": "mixed cold cuts",
-       "d_en": "A selection of thinly sliced cured meats and cold cuts, to enjoy at your own pace."
+       "d_en": "Ham, chorizo, bacon and salami, thinly sliced to share."
       },
       {
        "id": "antipasti-piqueo-allitaliana",
        "n": "Piqueo all’Italiana",
        "g": "piqueo a la italiana",
-       "d": "Nuestro piqueo de estilo italiano: variedad de bocados para compartir en la mesa.",
+       "d": "Jamón, chorizo, tocino y salame, con queso, alcachofa y aceitunas.",
        "p": 30,
-       "foto": "https://images.unsplash.com/photo-1637370988123-41bd9a6bcd48?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/antipasti-piqueo-allitaliana.jpg",
        "g_en": "Italian-style sharing platter",
-       "d_en": "Our Italian-style platter: a variety of bites to share at the table."
+       "d_en": "Ham, chorizo, bacon and salami, with cheese, artichoke and olives."
       },
       {
        "id": "antipasti-insalata-italiana",
        "n": "Insalata Italiana",
        "g": "ensalada italiana",
-       "d": "Una ensalada fresca para empezar ligero.",
+       "d": "Lechuga, queso, jamón, tomate y aceitunas.",
        "p": 20,
-       "foto": "https://images.unsplash.com/photo-1746211108786-ca20c8f80ecd?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/antipasti-insalata-italiana.jpg",
        "g_en": "Italian salad",
-       "d_en": "A fresh salad for a light start."
+       "d_en": "Lettuce, cheese, ham, tomato and olives."
       },
       {
        "id": "antipasti-insalata-caprese",
@@ -1455,27 +1458,27 @@ window.CARTA = {
        "id": "antipasti-frittata-di-cipolla",
        "n": "Frittata di Cipolla",
        "g": "tortilla de cebolla",
-       "d": "Tortilla casera de cebolla, sencilla y reconfortante.",
+       "d": "Huevo y cebolla, al estilo de casa.",
        "p": 15,
        "al": [
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1668283653825-37b80f055b05?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/antipasti-frittata-di-cipolla.jpg",
        "g_en": "onion omelette",
-       "d_en": "Homemade onion omelette, simple and comforting."
+       "d_en": "Egg and onion, home style."
       },
       {
        "id": "antipasti-frittata-mista",
        "n": "Frittata Mista",
        "g": "tortilla mixta",
-       "d": "Una tortilla mixta, más generosa y con más sabores.",
+       "d": "Jamón, chorizo, tocino, cebolla y huevo.",
        "p": 22,
        "al": [
         "huevo"
        ],
-       "foto": "https://images.unsplash.com/photo-1510693206972-df098062cb71?w=700&q=70&auto=format&fit=crop",
+       "foto": "fotos/antipasti-frittata-mista.jpg",
        "g_en": "mixed omelette",
-       "d_en": "A more generous mixed omelette with more flavours."
+       "d_en": "Ham, chorizo, bacon, onion and egg."
       },
       {
        "id": "antipasti-crespelle-agli-asparagi",
@@ -3616,7 +3619,7 @@ window.CARTA = {
    "pie": "",
    "alcohol": false,
    "delivery": true,
-   "mesa": false,
+   "mesa": true,
    "grupos": [
     {
      "titulo": "Pasta fresca",
@@ -3961,5 +3964,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-22T20:12:42-05:00"
+ "publicado": "2026-11-23T04:48:28-05:00"
 };
