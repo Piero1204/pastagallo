@@ -3,12 +3,12 @@
    o si la red tarda más de 4 s. Así cada cambio publicado se ve al instante (antes se servía primero la copia vieja).
    Al publicar una versión nueva de este archivo, toma el control de inmediato (skipWaiting + clients.claim) y la app se recarga sola una vez.
    Nunca toca los pedidos (van a script.google.com con POST). */
-var CACHE = "pg-mozo-v12";
-var APP = ["/mozo.js", "/mozo.css", "/cajero.js", "/tienda-codigos.js", "/caja.js", "/busqueda.js", "/cocina.js", "/menu-data.js"];
+var CACHE = "pg-mozo-v13";
+var APP = ["/mozo.js", "/mozo.css", "/local.js", "/local.css", "/cajero.js", "/tienda-codigos.js", "/caja.js", "/busqueda.js", "/cocina.js", "/menu-data.js"];
 self.addEventListener("install", function (e) {
   // cada archivo por separado: si uno falla, los demás igual se guardan
   e.waitUntil(caches.open(CACHE).then(function (c) {
-    return Promise.all(APP.concat(["/mozo-192.png", "/tienda-192.png"]).map(function (u) { return fetch(u, { cache: "no-cache" }).then(function (r) { if (r.ok) return c.put(u, r); }).catch(function () {}); }));
+    return Promise.all(APP.concat(["/mozo-192.png", "/tienda-192.png", "/local-192.png"]).map(function (u) { return fetch(u, { cache: "no-cache" }).then(function (r) { if (r.ok) return c.put(u, r); }).catch(function () {}); }));
   }).catch(function () {}));
   self.skipWaiting();
 });
@@ -32,8 +32,8 @@ self.addEventListener("fetch", function (e) {
   var r = e.request;
   if (r.method !== "GET" || new URL(r.url).origin !== location.origin) return;
   var ruta = new URL(r.url).pathname;
-  // fotos: primero la copia guardada (ahorra datos; cambian de nombre cuando cambian)
-  if (ruta.indexOf("/fotos/") === 0) {
+  // fotos y fuentes: primero la copia guardada (ahorra datos; cambian de nombre cuando cambian)
+  if (ruta.indexOf("/fotos/") === 0 || ruta.indexOf("/fuentes/") === 0) {
     e.respondWith(caches.match(r).then(function (hit) {
       return hit || fetch(r).then(function (res) { if (res.ok) { var c2 = res.clone(); caches.open(CACHE).then(function (c) { c.put(r, c2); }); } return res; });
     }));
