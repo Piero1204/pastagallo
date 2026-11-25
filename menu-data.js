@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-25T12:05:58-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-25T12:06:01-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -1066,7 +1066,7 @@ window.CARTA = {
    "id": "salsa-funghi-e-cardonada",
    "n": "Funghi",
    "extra": 8,
-   "agotado": true
+   "agotado": false
   },
   {
    "id": "salsa-carbonara",
@@ -2723,7 +2723,6 @@ window.CARTA = {
        "d": "Salsa bechamel con champiñones, ajo y perejil.",
        "extra": 8,
        "tipo": "salsa",
-       "agotado": true,
        "al": [
         "gluten",
         "lacteos"
@@ -3962,5 +3961,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-25T12:05:58-05:00"
+ "publicado": "2026-11-25T12:06:01-05:00"
 };
