@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-25T12:06:01-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-26T12:57:19-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -101,7 +101,7 @@ window.CARTA = {
      "h": [
       [
        "10:00",
-       "00:00"
+       "23:30"
       ]
      ]
     },
@@ -141,7 +141,7 @@ window.CARTA = {
      "h": [
       [
        "10:00",
-       "00:00"
+       "23:30"
       ]
      ]
     },
@@ -165,7 +165,7 @@ window.CARTA = {
      "h": [
       [
        "10:00",
-       "00:00"
+       "23:30"
       ]
      ]
     },
@@ -190,7 +190,7 @@ window.CARTA = {
       "h": [
        [
         "10:00",
-        "23:00"
+        "23:30"
        ]
       ],
       "d": [
@@ -205,7 +205,7 @@ window.CARTA = {
       "h": [
        [
         "16:00",
-        "23:00"
+        "23:30"
        ]
       ],
       "d": [
@@ -1180,7 +1180,7 @@ window.CARTA = {
         "gluten",
         "lacteos"
        ],
-       "foto": "fotos/ref-combo-per-due.jpg",
+       "foto": "fotos/promociones-combo-per-due-1795715834596.jpg",
        "canal": "delivery",
        "op": [
         "combo-pizza-mediana",
@@ -3961,5 +3961,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-25T12:06:01-05:00"
+ "publicado": "2026-11-26T12:57:19-05:00"
 };
