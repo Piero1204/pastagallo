@@ -380,7 +380,8 @@
     var tieneFoto = !!it.foto;
     var esTienda = !!(sec && sec.id === "tienda");
     /* selector de tamaño como chips: tienda, o cualquier producto cuyos tamaños son pesos (1 kg, 1/2 kg, 1/4 kg) */
-    var conChips = !!(it.t && it.t.length > 1 && (esTienda || it.t.every(function (x) { return /(^|\s)(kg|g|gr)\b/i.test(x[0]); })));
+    var pres = PED && PED.modoPres ? PED.modoPres(it, sec) : "";   // tienda: "paq" (un paquete de 500 g) o "peso" (salsas por 1/4 kg); sin chips
+    var conChips = !pres && !!(it.t && it.t.length > 1 && (esTienda || it.t.every(function (x) { return /(^|\s)(kg|g|gr)\b/i.test(x[0]); })));
     var conFw = tieneFoto || esTienda;
     a.className += conFw ? " fcon" : " it--sinfoto";
     var top = h("div", "it__top");
@@ -441,6 +442,11 @@
         cw.appendChild(c);
       });
       a.appendChild(cw);
+    } else if (pres) {
+      var tp = h("div", "tam"), dp = h("div");
+      dp.appendChild(h("span", null, pres === "paq" ? t("paquete500") : t("porKilo")));
+      dp.appendChild(precioEl(pres === "paq" ? it.t[0][1] : PED.precioKg(it))); tp.appendChild(dp);
+      a.appendChild(tp);
     } else if (it.t) {
       var tb = h("div", "tam");
       it.t.forEach(function (x) {

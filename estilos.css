@@ -1174,3 +1174,7 @@ body.modo-mesa .prog,body.modo-mesa .pago-ayuda{background:var(--m-card);color:v
   body.modo-mesa .mcab__logo{background:#2a1214}
   body.modo-mesa .btn-ped.ok,body.modo-mesa .mesa-acc .mesa-acc__b.ok{background:#1d3a22;border-color:#3f8a4c;color:#bfe8c5}
 }
+
+/* Tienda: paquete de 500 g / peso por 1/4 kg */
+.pres-info{margin:8px 0 0;font:700 .95rem var(--sans);color:var(--vino)}
+.stepper--peso output{min-width:64px}
