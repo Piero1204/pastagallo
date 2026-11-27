@@ -203,7 +203,7 @@
     return { abierto: false, texto: partes.join(" · ") || t("cerrado") + t("pronto") };
   }
 
-  var estadoBarra, bienvenida, buscadorEl;
+  var estadoBarra, bienvenida, buscadorEl, mesaEstado;
   /* La tienda ahora es "Nostri Prodotti": una sección más de la carta (id interno "tienda") */
   function tituloSec(s) { return s.id === "tienda" ? t("tiendaTit") : tx(s, "titulo"); }
   function subSec(s) { return s.id === "tienda" ? t("tiendaSub") : tx(s, "subtitulo"); }
@@ -237,6 +237,7 @@
     if (esMesa && PED.mesa) estadoBarra.appendChild(h("span", "estado__mesa", t("mesa") + PED.mesa));
     estadoBarra.appendChild(h("span", null, av.texto));
     ajustarEstado();
+    if (mesaEstado) { mesaEstado.className = "mcab__estado " + (av.abierto ? "abierto" : "cerrado"); mesaEstado.lastChild.textContent = av.texto; }
     var conCarrito = PED && PED.activo();
     if (!bienvenida) return;   // mesa: sin portada, se entra directo a la carta
     bienvenida.textContent = "";
@@ -306,6 +307,24 @@
       s.appendChild(bj);
     }
     return s;
+  }
+
+  /* ---------- mesa: cabecera compacta (local · Mesa N · estado) ----------
+     Reemplaza en la vista de mesa a la barra superior fija: se va con el scroll y deja pegadas solo las categorías. */
+  function cabeceraMesa() {
+    var c = h("header", "mcab"); c.id = "inicio";
+    var in_ = h("div", "mcab__in");
+    var g = h("img", "mcab__logo"); g.src = "gallo-oro.png"; g.alt = ""; g.width = 40; g.height = 40; in_.appendChild(g);
+    var tx_ = h("div", "mcab__t");
+    tx_.appendChild(h("h1", "mcab__n", N.nombre));
+    mesaEstado = h("p", "mcab__estado"); mesaEstado.setAttribute("role", "status");
+    mesaEstado.appendChild(h("i")); mesaEstado.appendChild(h("span"));
+    tx_.appendChild(mesaEstado);
+    in_.appendChild(tx_);
+    if (PED.mesa && PED.mesaValida()) in_.appendChild(h("span", "mcab__mesa", t("mesa") + PED.mesa));
+    in_.appendChild(botonIdioma("idioma mcab__idioma"));
+    c.appendChild(in_);
+    return c;
   }
 
   /* ---------- historia ---------- */
@@ -764,8 +783,12 @@
     var vCarta = h("div"); vCarta.id = "vista-carta";
     var enMesa = PED && PED.modo === "mesa";
     /* Mesa: sin portada; el QR abre directo en la carta (la mesa se ve, discreta, en la barra superior) */
+    var esq = q("#esq"); if (esq) esq.remove();   // mesa.html: esqueleto de carga mientras bajan los scripts
     if (!enMesa) vCarta.appendChild(portada());
-    else if (!PED.mesaValida()) { var av = h("p", "mesa-aviso", t("mesaSinQr")); vCarta.appendChild(av); }
+    else {
+      vCarta.appendChild(cabeceraMesa());
+      if (!PED.mesaValida()) { var av = h("p", "mesa-aviso", t("mesaSinQr")); vCarta.appendChild(av); }
+    }
     var nav = navegacion();
     var anc = h("span"); anc.id = "carta-inicio"; anc.style.cssText = "display:block;position:relative;top:-42px"; vCarta.appendChild(anc);
     vCarta.appendChild(buscadorEl);

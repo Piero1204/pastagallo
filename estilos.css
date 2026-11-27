@@ -894,3 +894,283 @@ body.modo-mesa.con-carrito .bq-fab{bottom:calc(156px + env(safe-area-inset-botto
 body.modo-mesa:not(.sin-scroll) .toast{bottom:calc(158px + env(safe-area-inset-bottom));transform:translate(-50%,300px)}
 body.modo-mesa:not(.sin-scroll) .toast.on{transform:translate(-50%,0)}
 .espera span{text-wrap:balance;text-align:left}
+
+/* =================== v9 (27-nov): MESA rediseñada tipo app de pedido en mesa ===================
+   Solo afecta a body.modo-mesa (QR de la mesa) y al esqueleto de carga de mesa.html / QR. La carta pública no cambia.
+   Cabecera compacta (local · Mesa N · estado), categorías pegadas con scroll-spy, tarjetas con foto y "+", ficha y carrito
+   como hojas inferiores, "¿Algo para tomar?", cuenta con botones grandes. Tipografía DM Sans (ya incluida) y títulos en
+   Cormorant; objetivos táctiles de 44 px; modo oscuro automático (prefers-color-scheme). */
+body.modo-mesa{
+  --m-bg:#f6f0e4; --m-card:#fffdf8; --m-elev:#f1e8d6; --m-txt:#24160f; --m-txt2:#6b5a50; --m-line:rgba(120,90,50,.2); --m-line2:rgba(120,90,50,.38);
+  --m-tit:#4a1519; --m-acc:#4a1519; --m-acc-t:#fff; --m-oro:#c9a45c; --m-sk:#e9dfcc; --m-sk2:#f5eee1; --m-sombra:0 1px 2px rgba(60,30,20,.06),0 4px 14px rgba(60,30,20,.05);
+  background:var(--m-bg);color:var(--m-txt);font-family:var(--sans);font-size:16px;line-height:1.45}
+@media (prefers-color-scheme:dark){
+  body.modo-mesa{
+    --m-bg:#141010; --m-card:#1f1917; --m-elev:#2a2220; --m-txt:#f2e9da; --m-txt2:#bcac9b; --m-line:rgba(201,164,92,.18); --m-line2:rgba(201,164,92,.36);
+    --m-tit:#ecca8c; --m-acc:#8e2f36; --m-acc-t:#fff; --m-sk:#2a2320; --m-sk2:#352c28; --m-sombra:0 1px 2px rgba(0,0,0,.4);
+    /* los colores de marca que se usan como TEXTO pasan a tonos claros; los fondos de marca se fijan abajo con --m-acc */
+    --vino:#ecca8c; --vino-2:#f2d7a4; --tinta:#f2e9da; --tinta-2:#bcac9b; --oliva:#c8cf9c; --crema-3:#1f1917; --crema-2:#2a2220;
+    color-scheme:dark}
+}
+
+/* cabecera compacta: se va con el scroll; la barra fija de arriba no se usa en mesa */
+body.modo-mesa .estado{display:none}
+.mcab{padding:calc(12px + env(safe-area-inset-top)) 16px 4px}
+.mcab__in{display:flex;align-items:center;gap:12px;max-width:720px;margin:0 auto}
+.mcab__logo{flex:none;width:44px;height:44px;padding:6px;border-radius:14px;background:#4a1519;object-fit:contain}
+.mcab__t{flex:1;min-width:0}
+.mcab__n{font:600 1.5rem/1.05 var(--serif);color:var(--m-tit);letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcab__estado{display:flex;align-items:center;gap:6px;margin-top:3px;font:500 .8rem/1.25 var(--sans);color:var(--m-txt2)}
+.mcab__estado i{flex:none;width:8px;height:8px;border-radius:50%;background:#8a8a8a}
+.mcab__estado.abierto i{background:#3fae55;box-shadow:0 0 0 3px rgba(63,174,85,.2)}
+.mcab__estado.cerrado i{background:#d66a62}
+.mcab__estado span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mcab__mesa{flex:none;display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:999px;background:var(--m-acc);color:var(--m-acc-t);font:700 .85rem/1 var(--sans);letter-spacing:.01em}
+body.modo-mesa .mcab__idioma{flex:none;width:44px;height:44px;min-width:0;padding:0;border:1px solid var(--m-line2);border-radius:50%;background:var(--m-card);color:var(--m-tit);font:700 .74rem/1 var(--sans);letter-spacing:.04em}
+body.modo-mesa .mesa-aviso{margin:8px 16px 0;background:var(--m-card);border-color:var(--m-line2);color:var(--m-txt)}
+
+/* buscador */
+body.modo-mesa .buscador,body.modo-mesa .mesa-aviso+span+.buscador{margin:10px auto 4px;padding:0 16px}
+body.modo-mesa .buscador input{height:48px;border:1px solid var(--m-line2);border-radius:14px;background:var(--m-card);color:var(--m-txt);box-shadow:var(--m-sombra)}
+body.modo-mesa .buscador input::placeholder{color:var(--m-txt2);opacity:1}
+body.modo-mesa .buscador input:focus{outline:2px solid var(--m-oro);outline-offset:0}
+body.modo-mesa .buscador__ic{left:30px;stroke:var(--m-txt2)}
+body.modo-mesa .buscador__x{right:20px;width:44px;height:44px;top:2px;color:var(--m-txt2)}
+body.modo-mesa.buscando .buscador{margin-top:10px}
+body.modo-mesa .espera{margin:6px auto 2px;font-size:.8rem;color:var(--m-txt2)}
+
+/* categorías: chips pegados arriba con scroll-spy */
+body.modo-mesa .nav{top:0;background:var(--m-bg);border-bottom:1px solid var(--m-line);box-shadow:0 6px 12px -10px rgba(40,20,10,.35)}
+body.modo-mesa .nav .idioma{display:none}
+body.modo-mesa .hamb{width:48px;height:56px;border-right:1px solid var(--m-line)}
+body.modo-mesa .hamb span{background:var(--m-txt)}
+body.modo-mesa .chips{gap:8px;padding:6px 12px}
+body.modo-mesa .chip{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--m-line2);border-radius:999px;background:var(--m-card);color:var(--m-txt);
+  font:600 .86rem/1 var(--sans);letter-spacing:0;text-transform:none;transition:background .25s,color .25s,border-color .25s,transform .2s}
+body.modo-mesa .chip.on{background:var(--m-acc);border-color:var(--m-acc);color:var(--m-acc-t)}
+body.modo-mesa .chip:active{transform:scale(.96)}
+body.modo-mesa .menu-sec{background:var(--m-bg)}
+body.modo-mesa .menu-sec a{color:var(--m-txt);text-transform:none;letter-spacing:0;font:600 .95rem/1.2 var(--sans);min-height:44px}
+body.modo-mesa .menu-sec a.on{background:var(--m-elev)}
+
+/* secciones: título simple a la izquierda en vez del bloque de color */
+body.modo-mesa .sec__cab{padding:26px 16px 6px;background:none;color:var(--m-txt);text-align:left;overflow:visible}
+body.modo-mesa .sec__cab::before,body.modo-mesa .sec__cab .m,body.modo-mesa .sec__cab .num,body.modo-mesa .sec__cab .orn{display:none}
+body.modo-mesa .sec__cab>div{max-width:720px;margin:0 auto}
+body.modo-mesa .sec__cab h2{margin:0;font:600 1.85rem/1.1 var(--serif);letter-spacing:.01em;text-transform:none;color:var(--m-tit)}
+.js body.modo-mesa .anim h2,.js body.modo-mesa .anim.ya h2{letter-spacing:.01em}
+body.modo-mesa .sec__cab .sub{margin-top:2px;font:500 .86rem/1.35 var(--sans);color:var(--m-txt2)}
+body.modo-mesa .sec__cab .intro{max-width:none;margin:6px 0 0;font:400 .86rem/1.4 var(--sans);font-style:normal;color:var(--m-txt2)}
+body.modo-mesa .sec__cab .intro--aviso{padding:10px 12px;border:1px solid var(--m-line2);border-radius:12px;background:var(--m-card);color:var(--m-txt);text-align:left}
+body.modo-mesa .sec__cab .hr-sec{color:var(--m-txt);border-color:var(--m-line2);background:var(--m-card)}
+body.modo-mesa .sec__cuerpo{padding:6px 12px 14px}
+body.modo-mesa .grupo+.grupo{margin-top:16px}
+body.modo-mesa .grupo__cab{margin:8px 4px 8px}
+body.modo-mesa .grupo__cab h3{font:700 .76rem/1.2 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--m-txt2)}
+body.modo-mesa .grupo__cab p{font:400 .84rem/1.35 var(--sans);font-style:normal;color:var(--m-txt2)}
+
+/* tarjetas: foto grande a la derecha, nombre, 2 líneas de descripción, precio claro y "+" directo */
+body.modo-mesa .it,body.modo-mesa .it:last-child{padding:12px;margin:0 0 10px;border:1px solid var(--m-line);border-radius:18px;background:var(--m-card);box-shadow:var(--m-sombra)}
+body.modo-mesa .it--clic:hover{background:var(--m-card)}
+body.modo-mesa .it--clic:active{transform:scale(.985)}
+body.modo-mesa .it.fcon{grid-template-columns:minmax(0,1fr) 120px;gap:0 12px}
+body.modo-mesa .it.fcon>.it__fw{grid-row:1/span 4}
+body.modo-mesa .it__fw{width:120px;height:120px;border-radius:14px}
+body.modo-mesa .it__top{gap:4px 8px;align-items:center}
+body.modo-mesa .it__n{font:700 1.04rem/1.25 var(--sans);color:var(--m-txt);letter-spacing:0}
+body.modo-mesa .it__sub{font:500 .8rem/1.3 var(--sans);font-style:normal;color:var(--m-txt2)}
+body.modo-mesa .it__g{margin-top:2px;font:500 .8rem/1.3 var(--sans);font-style:normal;color:var(--m-txt2)}
+body.modo-mesa .it__d{margin-top:4px;font:400 .87rem/1.4 var(--sans);color:var(--m-txt2)}
+body.modo-mesa .precio{font:700 1.02rem/1.1 var(--sans);color:var(--m-txt)}
+body.modo-mesa .it__top .precio,body.modo-mesa .it__sel .precio{font:700 1.02rem/1.1 var(--sans);color:var(--m-txt)}
+body.modo-mesa .precio small{margin-right:2px;font:inherit;font-size:.92em;vertical-align:baseline;letter-spacing:0;color:inherit}
+body.modo-mesa .precio--antes{color:var(--m-txt2);font-weight:500;opacity:.8}
+body.modo-mesa .pct{border-color:var(--m-tit);color:var(--m-tit);border-radius:6px}
+body.modo-mesa .incluye{font:400 .87rem/1.4 var(--sans);color:var(--m-txt2)}
+body.modo-mesa .tam{border:1px solid var(--m-line);border-radius:12px;background:var(--m-elev)}
+body.modo-mesa .tam>div+div{border-left-color:var(--m-line)}
+body.modo-mesa .tam>div>span:first-child{font:600 .7rem/1.1 var(--sans);letter-spacing:.02em;text-transform:none;color:var(--m-txt2)}
+body.modo-mesa .tam .precio{font-size:.98rem}
+body.modo-mesa .alg span{border-color:var(--m-line2);color:var(--m-txt2)}
+body.modo-mesa .tag{padding:4px 8px;border-radius:6px;font:700 .66rem/1 var(--sans);letter-spacing:.04em}
+body.modo-mesa .etq,body.modo-mesa .mas{border-radius:6px;font-family:var(--sans);letter-spacing:.02em;text-transform:none;color:var(--m-txt2);border-color:var(--m-line2);background:var(--m-elev)}
+body.modo-mesa .agotado{border-radius:6px;font-family:var(--sans);letter-spacing:.02em;text-transform:none}
+body.modo-mesa .hoy-tag{background:var(--m-acc);color:var(--m-acc-t);border-radius:6px}
+body.modo-mesa .tam-chip{min-height:44px;padding:0 14px;border-color:var(--m-line2);background:var(--m-card);color:var(--m-txt)}
+body.modo-mesa .tam-chip.on{background:var(--m-oro);border-color:var(--m-oro);color:#2b0f10}
+body.modo-mesa .agregar{width:44px;height:44px;right:6px;bottom:6px;background:var(--m-acc);color:var(--m-acc-t);box-shadow:0 3px 10px rgba(30,10,10,.35);transition:transform .15s}
+body.modo-mesa .agregar:hover{background:var(--m-acc)}
+body.modo-mesa .agregar:active{transform:scale(.9)}
+body.modo-mesa .it>.agregar{right:12px;bottom:12px}
+body.modo-mesa .it--sinfoto{padding-right:66px;min-height:76px}
+body.modo-mesa .it--fuera{background:var(--m-elev)}
+body.modo-mesa .promo-dia{border-radius:6px;font-family:var(--sans)}
+body.modo-mesa .promo-mas{color:var(--m-txt2);min-height:44px}
+body.modo-mesa .pie,body.modo-mesa .aviso18{font-family:var(--sans);letter-spacing:.04em;color:var(--m-txt2);border-color:var(--m-line2)}
+body.modo-mesa .leyenda{border-color:var(--m-line2);border-radius:16px;background:var(--m-card)}
+body.modo-mesa .vacio{font:400 1rem/1.4 var(--sans);color:var(--m-txt2)}
+/* foto cargando: brillo suave (esqueleto) detrás de la imagen */
+body.modo-mesa .it__fw:not(.it__fw--vacia),body.modo-mesa .sugiere__fw,body.modo-mesa .detalle__fw:not(.detalle__fw--vacia){background:linear-gradient(100deg,var(--m-sk) 30%,var(--m-sk2) 50%,var(--m-sk) 70%);background-size:300% 100%;animation:esqBrillo 1.4s linear infinite}
+body.modo-mesa .it__fw .foto{background:transparent}
+body.modo-mesa .it__fw--vacia,body.modo-mesa .detalle__fw--vacia,body.modo-mesa .linea__fw,body.modo-mesa .enviado__fw,body.modo-mesa .otro__fw{background:var(--m-elev)}
+@keyframes esqBrillo{from{background-position:100% 0}to{background-position:0 0}}
+
+/* historia y pie (mesa) */
+body.modo-mesa .historia{background:var(--m-bg)}
+body.modo-mesa .historia p{color:var(--m-txt);font-size:1.12rem}
+body.modo-mesa .historia h2{color:var(--m-tit)}
+body.modo-mesa .pagina .marco2{border-color:var(--m-line2)}
+
+/* barra inferior: acciones de la mesa + carrito "Ver pedido (N) · S/ total" encima */
+body.modo-mesa .mesa-acc{background:var(--m-bg);border-top:1px solid var(--m-line);box-shadow:0 -8px 18px -12px rgba(40,20,10,.35)}
+body.modo-mesa .mesa-acc .mesa-acc__b{min-height:56px;border:1px solid var(--m-line2);border-radius:16px;background:var(--m-card);color:var(--m-txt);font:700 .76rem/1.15 var(--sans);transition:transform .15s,background .2s}
+body.modo-mesa .mesa-acc .mesa-acc__b--pri{background:var(--m-acc);border-color:var(--m-acc);color:var(--m-acc-t)}
+body.modo-mesa .mesa-acc .mesa-acc__b--pri svg{stroke:var(--m-oro)}
+body.modo-mesa .barra-ped{left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom));min-height:56px;padding:0 18px;border:0;border-radius:18px;background:var(--m-acc);color:var(--m-acc-t);
+  font:700 1rem/1.2 var(--sans);box-shadow:0 10px 24px -6px rgba(40,10,10,.5)}
+body.modo-mesa .barra-ped span::before{content:"";display:inline-block;width:18px;height:18px;margin:0 8px -3px 0;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 7h12l-1 13H7z'/><path d='M9 7a3 3 0 0 1 6 0'/></svg>") center/contain no-repeat;
+  mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 7h12l-1 13H7z'/><path d='M9 7a3 3 0 0 1 6 0'/></svg>") center/contain no-repeat}
+body.modo-mesa .barra-ped strong{font:700 1.05rem/1 var(--sans);color:inherit}
+body.modo-mesa .toast{border:0;border-radius:14px;background:var(--m-txt);color:var(--m-bg);font:600 .88rem/1.3 var(--sans);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+
+/* hojas inferiores (ficha, carrito, cuenta) */
+body.modo-mesa .capa{background:rgba(15,8,6,.55)}
+body.modo-mesa .hoja{background:var(--m-bg);color:var(--m-txt);border-top:0;border-radius:24px 24px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.25)}
+body.modo-mesa .hoja__cab{padding:18px 16px 12px;background:var(--m-bg);color:var(--m-txt);border-bottom:1px solid var(--m-line)}
+body.modo-mesa .hoja__cab::before{content:"";position:absolute;top:7px;left:50%;width:40px;height:4px;margin-left:-20px;border-radius:4px;background:var(--m-line2)}
+body.modo-mesa .hoja__cab h2{font:700 1.12rem/1.25 var(--sans);color:var(--m-txt)}
+body.modo-mesa .hoja__x{width:44px;height:44px;border:1px solid var(--m-line2);border-radius:50%;background:var(--m-card);color:var(--m-txt);font-size:1.4rem}
+body.modo-mesa .hoja__cuerpo{padding:16px 16px 24px}
+body.modo-mesa .hoja.rehecha .hoja__cuerpo>*{animation:none}
+body.modo-mesa .hoja__desc{font:400 .95rem/1.45 var(--sans);font-style:normal;color:var(--m-txt2)}
+body.modo-mesa .hoja__sub{font:700 .76rem/1.2 var(--sans);letter-spacing:.06em;color:var(--m-txt2)}
+body.modo-mesa .hoja__ayuda{color:var(--m-txt2)}
+body.modo-mesa .tarj,body.modo-mesa details.grupo-op--plegable.tarj{border:1px solid var(--m-line);border-radius:16px;background:var(--m-card)}
+body.modo-mesa .detalle__fw{margin:0 -16px 14px;border-radius:0}
+body.modo-mesa .detalle__sub,body.modo-mesa .detalle__g{font:500 .92rem/1.35 var(--sans);font-style:normal;color:var(--m-txt2)}
+body.modo-mesa .detalle__aviso{border-radius:12px;background:var(--m-card);color:var(--m-txt)}
+body.modo-mesa .hoja .it__d,body.modo-mesa .hoja p{color:var(--m-txt)}
+body.modo-mesa .hoja .hoja__ayuda,body.modo-mesa .hoja .hoja__desc{color:var(--m-txt2)}
+body.modo-mesa .opcion{min-height:48px;border:1px solid var(--m-line2);border-radius:14px;background:var(--m-card);color:var(--m-txt)}
+body.modo-mesa .opcion:has(input:checked){border-color:var(--m-acc);background:var(--m-elev);box-shadow:inset 0 0 0 1px var(--m-acc)}
+body.modo-mesa .opcion input{accent-color:var(--m-acc)}
+body.modo-mesa .opcion__t{font:600 .95rem/1.25 var(--sans)}
+body.modo-mesa .opcion__p{color:var(--m-txt2)}
+body.modo-mesa .hoja--detalle .opcion{min-height:44px;background:var(--m-card);border-color:var(--m-line2)}
+body.modo-mesa .hoja--detalle .opcion:has(input:checked){background:var(--m-oro);border-color:var(--m-oro);color:#2b0f10}
+body.modo-mesa .seg{background:var(--m-elev)}
+body.modo-mesa .seg__o{min-height:48px}
+body.modo-mesa .seg__t{color:var(--m-txt)}
+body.modo-mesa .seg__o:has(input:checked){background:var(--m-acc)}
+body.modo-mesa .seg__o:has(input:checked) .seg__t{color:var(--m-acc-t)}
+body.modo-mesa .seg__o:has(input:checked) .seg__p{color:rgba(255,255,255,.8)}
+body.modo-mesa .campo{min-height:48px;border:1px solid var(--m-line2);border-radius:12px;background:var(--m-card);color:var(--m-txt)}
+body.modo-mesa .campo::placeholder{color:var(--m-txt2);opacity:.85}
+body.modo-mesa .campo:focus{outline:2px solid var(--m-oro);outline-offset:0}
+body.modo-mesa .campo-l{color:var(--m-txt2);letter-spacing:.04em}
+body.modo-mesa .stepper{border:1px solid var(--m-line2);background:var(--m-card)}
+body.modo-mesa .stepper button{width:44px;height:44px;color:var(--m-txt)}
+body.modo-mesa .stepper output{color:var(--m-txt)}
+body.modo-mesa .hoja--detalle .hoja__pie,body.modo-mesa .hoja__pie{background:var(--m-bg);border-top:1px solid var(--m-line);box-shadow:0 -8px 18px -12px rgba(40,20,10,.35)}
+body.modo-mesa .btn-ped{min-height:54px;border:1px solid var(--m-acc);border-radius:16px;background:var(--m-acc);color:var(--m-acc-t);font:700 1rem/1.2 var(--sans);letter-spacing:.01em;text-transform:none;transition:transform .15s,opacity .2s}
+body.modo-mesa .hoja--detalle .hoja__pie .btn-ped{border-radius:16px}
+body.modo-mesa .btn-ped--linea{background:var(--m-card);border-color:var(--m-line2);color:var(--m-txt)}
+body.modo-mesa .btn-ped.ok{background:#e7f3e6;border-color:#58a465;color:#245c2e}
+/* para llevar */
+body.modo-mesa .llevar-tg__t b{color:var(--m-txt)}
+body.modo-mesa .llevar-tg__t small{color:var(--m-txt2)}
+body.modo-mesa .llevar-tg__sw{background:var(--m-line2)}
+body.modo-mesa .llevar-tg:has(input:checked) .llevar-tg__sw{background:var(--m-acc)}
+body.modo-mesa .llevar-chip{min-height:40px;padding:0 14px;border-color:var(--m-line2);background:var(--m-card);color:var(--m-txt2)}
+body.modo-mesa .llevar-chip.on{background:var(--m-acc);border-color:var(--m-acc);color:var(--m-acc-t)}
+body.modo-mesa .llevar-hora{border-color:var(--m-line2);background:var(--m-card)}
+/* carrito */
+body.modo-mesa .linea{border:1px solid var(--m-line);border-radius:16px;background:var(--m-card)}
+body.modo-mesa .linea__info strong{font:700 .98rem/1.25 var(--sans);color:var(--m-txt)}
+body.modo-mesa .linea__info span{color:var(--m-txt2)}
+body.modo-mesa .linea__acc .linea__p{font:700 1rem var(--sans);color:var(--m-txt)}
+body.modo-mesa .linea .stepper button{width:44px;height:40px}
+body.modo-mesa .otro{background:var(--m-card);border-color:var(--m-oro)}
+body.modo-mesa .otro__t strong{color:var(--m-txt)}
+body.modo-mesa .otro__b{min-height:44px;background:var(--m-acc);color:var(--m-acc-t)}
+body.modo-mesa .pie-fijo{margin:16px -16px -24px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));background:var(--m-bg);border-top:1px solid var(--m-line)}
+body.modo-mesa .pie-fijo .resumen__t{font:700 1.1rem/1.3 var(--sans);color:var(--m-txt);border-top-color:var(--m-line2)}
+body.modo-mesa .pie-fijo .resumen__t span:last-child{font-size:1.15rem}
+body.modo-mesa .resumen,body.modo-mesa .cobro,body.modo-mesa .div__res{border-color:var(--m-line2);background:var(--m-card);color:var(--m-txt)}
+body.modo-mesa .cobro__copiar,body.modo-mesa .div__b,body.modo-mesa .div__chips button{min-height:44px;border-color:var(--m-line2);background:var(--m-card);color:var(--m-txt)}
+body.modo-mesa .div__b{width:44px;height:44px;border-radius:12px}
+body.modo-mesa .div__chips button{border-radius:10px}
+body.modo-mesa .div__chips button.on{background:var(--m-acc);border-color:var(--m-acc);color:var(--m-acc-t)}
+body.modo-mesa .div__lin{border-bottom-color:var(--m-line2)}
+/* "¿Algo para tomar?": 2 × 2 tarjetas de un toque */
+body.modo-mesa .sugiere{margin:20px 0 6px}
+body.modo-mesa .sugiere .hoja__sub{margin:0;font:700 1.12rem/1.2 var(--sans);letter-spacing:0;text-transform:none;color:var(--m-txt)}
+.sugiere__ayuda{margin:2px 0 10px;font:400 .84rem/1.35 var(--sans);color:var(--m-txt2,#6b5a50)}
+body.modo-mesa .sugiere__fila{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0;padding:0;overflow:visible}
+body.modo-mesa .sugiere__it{width:auto;max-width:none;min-height:44px;padding:0 0 10px;border:1px solid var(--m-line);border-radius:16px;background:var(--m-card);color:var(--m-txt);box-shadow:var(--m-sombra);transition:transform .15s}
+body.modo-mesa .sugiere__it:active{transform:scale(.96)}
+body.modo-mesa .sugiere__fw{height:96px}
+body.modo-mesa .sugiere__mas{width:36px;height:36px;background:var(--m-acc);color:var(--m-acc-t);font-size:1.4rem}
+body.modo-mesa .sugiere__n{font:600 .88rem/1.25 var(--sans);color:var(--m-txt)}
+body.modo-mesa .sugiere__p{font:700 .9rem/1.2 var(--sans);color:var(--m-txt)}
+/* cuenta de la mesa */
+body.modo-mesa .cuenta__ped{margin-bottom:10px;padding:12px 14px;border:1px solid var(--m-line);border-radius:16px;background:var(--m-card)}
+body.modo-mesa .cuenta__ped>strong{display:block;font:700 .78rem/1.2 var(--sans);letter-spacing:.04em;color:var(--m-txt2)}
+body.modo-mesa .cuenta__det{color:var(--m-txt)}
+.cuenta__lin{list-style:none;margin:6px 0 0}
+.cuenta__lin li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;border-top:1px dashed var(--m-line2,rgba(169,128,63,.4));font:500 .95rem/1.35 var(--sans)}
+.cuenta__lin li:first-child{border-top:0}
+.cuenta__t{min-width:0}
+.cuenta__t small{display:block;font-size:.8rem;color:var(--m-txt2,#6b5a50)}
+.cuenta__s{flex:none;font-weight:700;font-variant-numeric:tabular-nums}
+body.modo-mesa .total{margin-top:4px;padding:14px;border-radius:16px;background:var(--m-elev);font:700 .8rem var(--sans);letter-spacing:.04em;color:var(--m-txt)}
+body.modo-mesa .total strong{font:700 1.3rem var(--sans);color:var(--m-txt)}
+.cuenta__acc{display:grid;gap:10px;margin-top:14px}
+.cuenta__acc .btn-ped{margin-top:0;min-height:58px;font-size:1.02rem}
+.esq-cuenta{display:grid;gap:10px;padding:4px 0}
+.esq-fila{display:block;height:52px;border-radius:14px;background:linear-gradient(100deg,var(--m-sk,#e9dfcc) 30%,var(--m-sk2,#f5eee1) 50%,var(--m-sk,#e9dfcc) 70%);background-size:300% 100%;animation:esqBrillo 1.4s linear infinite}
+.esq-fila:nth-child(2){width:86%}.esq-fila:nth-child(4){height:64px}
+/* éxito */
+body.modo-mesa .exito h3{font:700 1.3rem/1.25 var(--sans);color:var(--m-txt)}
+body.modo-mesa .exito p{font:400 .95rem/1.45 var(--sans)}
+body.modo-mesa .enviado__t{color:var(--m-txt)}
+body.modo-mesa .aviso-copia{background:var(--m-txt);color:var(--m-bg);border:0;border-radius:12px}
+@media (min-width:760px){body.modo-mesa .hoja{border:1px solid var(--m-line);border-radius:24px}}
+@media (prefers-reduced-motion:reduce){
+  body.modo-mesa .it__fw,body.modo-mesa .sugiere__fw,body.modo-mesa .detalle__fw,.esq-fila,.esq span{animation:none!important}
+  body.modo-mesa .chip,body.modo-mesa .agregar,body.modo-mesa .sugiere__it{transition:none}
+}
+
+/* esqueleto de carga (mesa.html y QR): visible mientras bajan la carta y los scripts */
+.esq{position:fixed;inset:0;z-index:1;padding:calc(14px + env(safe-area-inset-top)) 16px 16px;background:#f6f0e4;overflow:hidden}
+.esq span{display:block;border-radius:12px;background:linear-gradient(100deg,#e9dfcc 30%,#f5eee1 50%,#e9dfcc 70%);background-size:300% 100%;animation:esqBrillo 1.4s linear infinite}
+.esq__cab{display:flex;align-items:center;gap:12px;max-width:720px;margin:0 auto}
+.esq .esq__c{flex:none;width:44px;height:44px;border-radius:14px}
+.esq__cab .esq__l{flex:1;height:30px;max-width:180px}
+.esq .esq__busca{max-width:688px;height:48px;margin:16px auto 10px;border-radius:14px}
+.esq__chips{display:flex;gap:8px;max-width:720px;margin:0 auto 18px}
+.esq__chips span{flex:none;width:96px;height:44px;border-radius:999px}
+.esq__it{position:relative;max-width:720px;height:144px;margin:0 auto 10px;padding:14px 146px 14px 14px;border-radius:18px;background:#fffdf8}
+.esq__it .esq__l{height:16px;margin-bottom:10px}
+.esq__it .esq__l--c{width:70%}
+.esq__it .esq__f{position:absolute;top:12px;right:12px;width:120px;height:120px;border-radius:14px}
+@media (prefers-color-scheme:dark){
+  .esq{background:#141010}
+  .esq span{background-image:linear-gradient(100deg,#2a2320 30%,#352c28 50%,#2a2320 70%)}
+  .esq__it{background:#1f1917}
+}
+/* mesa en modo oscuro: fondos de marca que no deben aclararse */
+html:has(>body.modo-mesa){background:#f6f0e4}
+body.modo-mesa .gracias{background:radial-gradient(110% 90% at 50% 0%,#5e1c22,#35100f 80%)}
+body.modo-mesa .chip--tienda{background:var(--m-acc);border-color:var(--m-acc);color:var(--m-acc-t)}
+body.modo-mesa .semana__d{background:var(--m-card);color:var(--m-txt);border-color:var(--m-line2)}
+body.modo-mesa .prog,body.modo-mesa .pago-ayuda{background:var(--m-card);color:var(--m-txt)}
+@media (prefers-color-scheme:dark){
+  html:has(>body.modo-mesa){background:#141010}
+  body.modo-mesa .agotado{color:#f39a90;border-color:#f39a90}
+  body.modo-mesa .hoja__err{color:#f39a90}
+  body.modo-mesa .ubic__estado--mal{color:#f39a90}
+  body.modo-mesa .mcab__logo{background:#2a1214}
+  body.modo-mesa .btn-ped.ok,body.modo-mesa .mesa-acc .mesa-acc__b.ok{background:#1d3a22;border-color:#3f8a4c;color:#bfe8c5}
+}
