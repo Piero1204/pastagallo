@@ -240,6 +240,7 @@
         ".cj-cats{position:sticky;top:8px;background:var(--papel,#faf6ec);border:1px solid var(--linea,#dccdb0);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:2px;max-height:70vh;overflow-y:auto}",
         ".cj-cats button{text-align:left;padding:12px;border-radius:10px;font-weight:700;font-size:15px}.cj-cats button.on{background:var(--vino,#4b5a24);color:#fff}",
         ".cj-prods .prod.sin .ft{background-color:var(--crema-2,#e6dac0)}",
+        ".cj-prods .prod.agot{opacity:.5;cursor:not-allowed}.cj-prods .prod .ag{color:#b6232a;font-weight:800;font-size:12px}",
         "@media(max-width:859px){.cj-carta{grid-template-columns:1fr}.cj-cats{position:sticky;top:0;z-index:5;flex-direction:row;overflow-x:auto;overflow-y:hidden;max-height:none;padding:8px;border-radius:0;margin:0 -10px 10px;border-left:0;border-right:0;scrollbar-width:none}.cj-cats button{flex:none;white-space:nowrap;background:#fff;border:1px solid var(--linea,#dccdb0);padding:10px 14px}.cj-cats button.on{border-color:var(--vino,#4b5a24)}}",
         ".cj-bus{display:flex;gap:8px;margin-bottom:10px}.cj-bus input{flex:1;height:50px;border-radius:12px;border:2px solid var(--linea,#dccdb0);padding:0 14px;font-size:17px;background:#fff}",
         ".cj-bus input:focus{outline:3px solid var(--oro-claro,#c9a45c)}.cj-bus button{width:54px;height:50px;border-radius:12px;background:var(--oro,#a9803f);color:#fff;font-size:22px}",
@@ -368,11 +369,11 @@
       cuerpo.appendChild(f);
       if (!S.prods.length) cuerpo.appendChild(h("p", "cj-vacio", "Todavía no hay productos de tienda. El administrador debe cargarlos en el panel (Tienda > Catálogo)."));
       var cats = h("nav", "cj-cats"), secs = {}, wrap = h("div", "cj-carta");
-      S.prods.forEach(function (p) { secs[p.seccion || ""] = 1; });
-      var orden = Object.keys(secs).sort(function (a, b) { return L.prioridad(a) - L.prioridad(b) || (tituloSec(a) < tituloSec(b) ? -1 : 1); });
+      S.prods.forEach(function (p) { var k = catDe(p), o = CAT_ORDEN.indexOf(k), pr = o >= 0 ? o : 10 + L.prioridad(p.seccion); secs[k] = secs[k] == null ? pr : Math.min(secs[k], pr); });
+      var orden = Object.keys(secs).sort(function (a, b) { return secs[a] - secs[b] || (a < b ? -1 : 1); });
       if (orden.length > 1) {
         [""].concat(orden).forEach(function (k) {
-          var b = btn(k ? tituloSec(k) : "Todo", k === S.cat ? "on" : "", function () { S.cat = k; Array.prototype.forEach.call(cats.children, function (x) { x.classList.toggle("on", x === b); }); pintarProds(); });
+          var b = btn(k || "Todo", k === S.cat ? "on" : "", function () { S.cat = k; Array.prototype.forEach.call(cats.children, function (x) { x.classList.toggle("on", x === b); }); pintarProds(); });
           cats.appendChild(b);
         });
         wrap.appendChild(cats);
@@ -381,10 +382,12 @@
       pintarProds();
     }
     function tituloSec(id) { return L.nombreSeccion(id) || (id || "Otros"); }
+    var CAT_ORDEN = ["Tienda", "Productos de Italia", "Dulces", "Bebidas", "Vinos"];
+    function catDe(p) { return String(p.cat || "").trim() || tituloSec(p.seccion); }   // categoría en español que manda el servidor (o la de la sección)
     function pintarProds() {
       if (!zonaProds) return;
       zonaProds.innerHTML = "";
-      var base = S.cat && !S.q ? S.prods.filter(function (p) { return p.seccion === S.cat; }) : S.prods;
+      var base = S.cat && !S.q ? S.prods.filter(function (p) { return catDe(p) === S.cat; }) : S.prods;
       var lista = L.buscar(base, S.q, 80);
       if (!S.q && !S.cat) lista = lista.slice().sort(function (a, b) { return L.prioridad(a.seccion) - L.prioridad(b.seccion); });
       if (!lista.length && S.prods.length) { zonaProds.appendChild(h("p", "cj-vacio", "No hay productos con \"" + S.q + "\".")); return; }
@@ -404,7 +407,8 @@
         else if (p.tam && p.tam.length > 1) tx.appendChild(h("span", "op", "elige tamaño"));
         tx.appendChild(h("span", "p", pm === "paq" ? L.soles(precioTam(p, "1/2 kg")) + " · paquete 500 g" : pm === "peso" ? L.soles(precioTam(p, "1/2 kg") * 2) + " / kg" : p.tam && p.tam.length ? "desde " + L.soles(Math.min.apply(null, p.tam.map(function (x) { return x[1]; }))) : L.soles(p.precio)));
         b.appendChild(tx);
-        b.addEventListener("click", function () { agregar(p); });
+        if (p.agotado) { b.classList.add("agot"); b.disabled = true; tx.appendChild(h("span", "ag", "No disponible")); }
+        else b.addEventListener("click", function () { agregar(p); });
         grid.appendChild(b);
       });
     }
@@ -576,8 +580,7 @@
       m.appendChild(h("small", "", u + (u === 1 ? " línea" : " líneas")));
       m.appendChild(doc.createTextNode(L.soles(L.totalCarro(S.carro))));
       tot.appendChild(m);
-      var cb = btn(S.cliente ? "👤 " + (S.cliente.nombre || S.cliente.empresa || S.cliente.celular) : "👤 Cliente", "cj-cli", abrirCliente);
-      tot.appendChild(cb);
+      if (!RESTR) tot.appendChild(btn(S.cliente ? "👤 " + (S.cliente.nombre || S.cliente.empresa || S.cliente.celular) : "👤 Cliente", "cj-cli", abrirCliente));
       if (u) tot.appendChild(btn("Vaciar", "", function () { if (root.confirm("¿Vaciar la venta?")) { S.carro = []; cambioCarro(); } }));
       var go = btn("Cobrar", "cj-go", abrirCobro); go.disabled = !u; tot.appendChild(go);
       carrito.appendChild(tot);
@@ -653,7 +656,7 @@
         err.textContent = !t.ok ? t.error : !v.ok ? v.error : "";
         return { t: t, total: total };
       }
-      cuerpoH.push(totalTxt, btnDesc, bloqueDesc, pag, cb, err);
+      cuerpoH.push(totalTxt); if (!RESTR) cuerpoH.push(btnDesc, bloqueDesc); cuerpoH.push(pag, cb, err);
       abrirHoja("Cobrar · " + L.soles(sub), cuerpoH, [btn("Volver", "", cerrarHoja), ok]);
       recalcular();
 
@@ -681,10 +684,10 @@
       var av = [], hayMal = false;
       (rs.comprobantes || []).forEach(function (c) {
         if (c && c.ok) av.push({ ok: true, texto: (c.tipo || "Comprobante") + " " + (c.numero || "") + " emitida" });
-        else { hayMal = true; av.push({ ok: false, texto: "No se pudo emitir el comprobante: " + ((c && c.error) || "error desconocido") + ". Puedes emitirlo desde el panel (🧾 Comprobantes)." }); }
+        else { hayMal = true; av.push({ ok: false, texto: "No se pudo emitir el comprobante: " + ((c && c.error) || "error desconocido") + ". La venta quedó guardada: puedes emitirlo en 🧾 Comprobantes." }); }
       });
-      if (rs.compError && !hayMal) { hayMal = true; av.push({ ok: false, texto: "No se pudo emitir el comprobante: " + rs.compError + ". Puedes emitirlo desde el panel (🧾 Comprobantes)." }); }
-      if (pidio && !av.length) av.push({ ok: false, texto: "No se recibió confirmación del comprobante. Puedes emitirlo desde el panel (🧾 Comprobantes)." });
+      if (rs.compError && !hayMal) { hayMal = true; av.push({ ok: false, texto: "No se pudo emitir el comprobante: " + rs.compError + ". La venta quedó guardada: puedes emitirlo en 🧾 Comprobantes." }); }
+      if (pidio && !av.length) av.push({ ok: false, texto: "No se recibió confirmación del comprobante. La venta quedó guardada: puedes emitirlo en 🧾 Comprobantes." });
       if (hayMal || (pidio && !av.length)) pitar();
       return av;
     }
