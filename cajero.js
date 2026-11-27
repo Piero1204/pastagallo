@@ -1,6 +1,7 @@
 /* Pasta Gallo · caja / mostrador (rol "cajero" del personal). La carga mozo.js cuando el equipo vinculado tiene rol cajero.
    Expone window.PG_APP_CAJERO.iniciar(ctx), con ctx = { api, token, mozo, contenedor, h, toast, salir, cfg }.
-   - Buscar por nombre / SKU / código de barras; lector USB (escribe y pulsa Enter) y cámara (BarcodeDetector, si el navegador lo trae).
+   - Misma interfaz que el mozo: categorías, buscador por nombre, grilla de productos con foto y carrito. Solo productos de tienda que no pasan por cocina
+     (secciones tienda, italia, dolci, caffetteria, caffe, vini, aperitivi). Sin QR, SKU ni código de barras en pantalla (la lógica de L.* se conserva, sin uso en la interfaz).
    - Productos por peso (kg, g, lt): se escribe el peso y se calcula. Carrito, descuento con motivo, pago mixto con vuelto.
    - Recibo para imprimir o compartir, historial del día (con anulación), entregas por recoger y cierre simple del día.
    El servidor recalcula TODO (precios, descuentos, pagos); lo que se ve aquí es solo una vista previa.
@@ -197,25 +198,28 @@
     function llamar(o) { o.ext = "tienda"; o.t = TOKEN; return ctx.llamarTienda ? ctx.llamarTienda(o) : api(o); }
 
     var S = { prods: [], metodos: ["Efectivo", "Yape", "Plin", "Tarjeta"], descMax: null, anularCajero: true, negocio: {}, q: "", vista: "vender",
-      carro: leer(K, []), cliente: leer("pg-cajero-cliente", null), cat: "", etq: {}, clientes: null, pend: null, recoger: [], enCocina: 0, hist: null, cargado: false, error: "" };
+      carro: leer(K, []), cliente: leer("pg-cajero-cliente", null), cat: "", clientes: null, pend: null, recoger: [], enCocina: 0, hist: null, cargado: false, error: "" };
     function guardarCarro() { guardar(K, S.carro); }
 
     /* ---------- estilos ---------- */
     if (!doc.getElementById("cj-css")) {
       var st = h("style"); st.id = "cj-css";
       st.textContent = [
+        ".cj,.cj-vel{--vino:#4b5a24;--vino-2:#5d6e2c;--rojo:#7c6a1f;--oro:#8a8a3a;--oro-claro:#b5b86a;--verde:#3f6b2b}",
         ".cj{min-height:100vh;min-height:100dvh;background:var(--crema,#efe6d3);color:var(--tinta,#2a1b17);padding-bottom:calc(210px + env(safe-area-inset-bottom))}",
         ".cj-top{position:sticky;top:0;z-index:20;background:var(--vino,#4a1519);color:var(--crema,#efe6d3);display:flex;align-items:center;gap:8px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top))}",
         ".cj-top b{flex:1;font-size:17px}.cj-top button{background:rgba(255,255,255,.14);border-radius:10px;padding:0 12px;height:42px;font-weight:700;color:inherit}",
         ".cj-tabs{display:flex;gap:6px;padding:8px 10px;background:var(--crema-2,#e6dac0)}.cj-tabs button{flex:1;height:46px;border-radius:10px;background:#fff;font-weight:800;border:2px solid transparent}",
-        ".cj-tabs button.on{background:var(--vino,#4a1519);color:#fff}.cj-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:10px;background:var(--rojo,#b6232a);color:#fff;font-size:12px;line-height:20px}",
+        ".cj-tabs button.on{background:var(--vino,#4a1519);color:#fff}.cj-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:10px;background:var(--vino-2,#5d6e2c);color:#fff;font-size:12px;line-height:20px}",
         ".cj-body{padding:10px;max-width:1100px;margin:0 auto}",
+        ".cj-carta{display:grid;grid-template-columns:170px 1fr;gap:10px;align-items:start}.cj-carta:has(.cj-cats:empty),.cj-carta:not(:has(.cj-cats)){grid-template-columns:1fr}",
+        ".cj-cats{position:sticky;top:8px;background:var(--papel,#faf6ec);border:1px solid var(--linea,#dccdb0);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:2px;max-height:70vh;overflow-y:auto}",
+        ".cj-cats button{text-align:left;padding:12px;border-radius:10px;font-weight:700;font-size:15px}.cj-cats button.on{background:var(--vino,#4b5a24);color:#fff}",
+        ".cj-prods .prod.sin .ft{background-color:var(--crema-2,#e6dac0)}",
+        "@media(max-width:859px){.cj-carta{grid-template-columns:1fr}.cj-cats{position:sticky;top:0;z-index:5;flex-direction:row;overflow-x:auto;overflow-y:hidden;max-height:none;padding:8px;border-radius:0;margin:0 -10px 10px;border-left:0;border-right:0;scrollbar-width:none}.cj-cats button{flex:none;white-space:nowrap;background:#fff;border:1px solid var(--linea,#dccdb0);padding:10px 14px}.cj-cats button.on{border-color:var(--vino,#4b5a24)}}",
         ".cj-bus{display:flex;gap:8px;margin-bottom:10px}.cj-bus input{flex:1;height:50px;border-radius:12px;border:2px solid var(--linea,#dccdb0);padding:0 14px;font-size:17px;background:#fff}",
         ".cj-bus input:focus{outline:3px solid var(--oro-claro,#c9a45c)}.cj-bus button{width:54px;height:50px;border-radius:12px;background:var(--oro,#a9803f);color:#fff;font-size:22px}",
         ".cj-hint{font-size:13px;color:var(--gris,#6f5f57);margin:-4px 0 10px}",
-        ".cj-prods{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}",
-        ".cj-p{background:#fff;border:1px solid var(--linea,#dccdb0);border-radius:12px;padding:10px;text-align:left;min-height:84px;display:flex;flex-direction:column;justify-content:space-between;gap:6px}",
-        ".cj-p:active{background:var(--crema-2,#e6dac0)}.cj-p b{font-size:15px;line-height:1.2}.cj-p span{font-size:13px;color:var(--gris,#6f5f57)}.cj-p em{font-style:normal;font-weight:800;color:var(--vino,#4a1519)}",
         ".cj-cart{position:fixed;left:0;right:0;bottom:0;z-index:25;background:#fff;border-top:3px solid var(--oro,#a9803f);padding:8px 10px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(0,0,0,.15)}",
         ".cj-lineas{max-height:30vh;overflow:auto;margin-bottom:6px}",
         ".cj-l{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1e8d6}.cj-l .t{flex:1;min-width:0}.cj-l .t b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
@@ -243,15 +247,10 @@
         ".cj-err{color:var(--rojo,#b6232a);font-weight:700;min-height:20px;margin-top:6px}",
         ".cj-rec{font:13px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;background:#fff;border:1px dashed var(--gris,#6f5f57);border-radius:8px;padding:12px;margin-bottom:6px;-webkit-user-select:text;user-select:text}",
         ".cj-video{width:100%;max-height:50vh;background:#000;border-radius:12px}",
-        ".cj-cats{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:2px}.cj-cats button{flex:none;height:40px;padding:0 14px;border-radius:999px;background:#fff;border:2px solid var(--linea,#dccdb0);font-weight:700}",
-        ".cj-cats button.on{background:var(--vino,#4a1519);color:#fff;border-color:var(--vino,#4a1519)}",
-        ".cj-p .ft{height:84px;margin:-10px -10px 0;border-radius:11px 11px 0 0;background:var(--crema-2,#e6dac0) center/cover no-repeat}.cj-p .ft.sin{background-size:46% auto;opacity:.5}",
         ".cj-cli{height:40px;padding:0 12px;border-radius:10px;background:var(--crema-2,#e6dac0);font-weight:700;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
         ".cj-chk{display:flex;align-items:center;gap:8px;padding:8px;background:#fff;border:1px solid var(--linea,#dccdb0);border-radius:10px;margin-bottom:6px}.cj-chk input[type=checkbox]{width:24px;height:24px;flex:none}.cj-chk .t{flex:1;min-width:0}.cj-chk input[type=number]{width:64px;height:40px;flex:none}",
         "@media(min-width:1000px){.cj.vende{padding-right:400px;padding-bottom:0}.cj.vende .cj-cart{left:auto;width:400px;top:62px;border-top:0;border-left:3px solid var(--oro,#a9803f);display:flex;flex-direction:column;padding-bottom:12px}.cj.vende .cj-lineas{max-height:none;flex:1}.cj-body{max-width:none}.cj-prods{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}}",
-        "#cj-print,#cj-etq{display:none}",
-        "#cj-etq .et{border:1px dashed #999;padding:2mm;break-inside:avoid;text-align:center;font:11px/1.2 sans-serif;color:#000}#cj-etq .et b{display:block;font-size:12px}#cj-etq .et svg{display:block;margin:1mm auto;max-width:100%}#cj-etq .et span{display:block}",
-        "@media print{body>#cj-etq{display:grid!important;grid-template-columns:repeat(3,1fr);gap:2mm;margin:0;width:auto}}",
+        "#cj-print{display:none}",
         "@media print{body>*{display:none!important}body>#cj-print{display:block!important;font:12px/1.3 monospace;white-space:pre-wrap;width:72mm;margin:0;color:#000}@page{margin:4mm}}"
       ].join("\n");
       doc.head.appendChild(st);
@@ -275,10 +274,13 @@
     function entrada(tipo, ph) { var i = h("input"); i.type = tipo || "text"; if (ph) i.placeholder = ph; return i; }
 
     /* ---------- carga de datos ---------- */
+    /* Solo productos de tienda que NO pasan por cocina. El servidor no manda un campo "cocina": se usa la sección del producto
+       (tienda, italia, dolci, bebidas = caffetteria/caffe/vini/aperitivi → L.prioridad < 2). Pasta, pizza, parrillas, etc. quedan fuera. */
+    function sinCocina(p) { return L.prioridad(p.seccion) < 2; }
     function cargar() {
       return llamar({ op: "productos" }).then(function (r) {
         if (!r.ok) { S.error = r.error || "No se pudo cargar."; return; }
-        S.prods = r.productos || []; S.metodos = r.metodos || S.metodos; S.descMax = r.descuentoMax; S.anularCajero = r.anularCajero !== false;
+        S.prods = (r.productos || []).filter(sinCocina); S.metodos = r.metodos || S.metodos; S.descMax = r.descuentoMax; S.anularCajero = r.anularCajero !== false;
         S.negocio = r.negocio || {}; S.cargado = true; S.error = "";
       }).catch(function (e) { S.error = "Sin conexión. " + (e && e.message ? e.message : ""); });
     }
@@ -310,7 +312,7 @@
       tabs.innerHTML = "";
       raiz.className = "cj" + (S.vista === "vender" ? " vende" : "") + (RESTR ? " restr" : "");
       if (RESTR) { S.vista = "vender"; tabs.style.display = "none"; return; }
-      [["vender", "Vender"], ["recoger", "Por recoger"], ["hoy", "Hoy"], ["clientes", "Clientes"], ["etiquetas", "Etiquetas"]].forEach(function (t) {
+      [["vender", "Vender"], ["recoger", "Por recoger"], ["hoy", "Hoy"], ["clientes", "Clientes"]].forEach(function (t) {
         var b = btn(t[1], t[0] === S.vista ? "on" : "", function () { S.vista = t[0]; pintar(); if (t[0] === "hoy") cargarHist().then(pintar); if (t[0] === "recoger") cargarRecoger().then(pintar); if (t[0] === "clientes") cargarClientes().then(pintar); });
         if (t[0] === "recoger" && S.recoger.length) b.appendChild(h("span", "cj-n", String(S.recoger.length)));
         tabs.appendChild(b);
@@ -327,23 +329,20 @@
       if (S.vista === "vender") { pintarVender(); pintarCarrito(); }
       else if (S.vista === "recoger") pintarRecoger();
       else if (S.vista === "clientes") pintarClientes();
-      else if (S.vista === "etiquetas") pintarEtiquetas();
       else pintarHoy();
     }
 
     /* ---------- vender: búsqueda y productos ---------- */
     var inBus = null, zonaProds = null;
-    var camaraOk = !!(root.BarcodeDetector && root.navigator && root.navigator.mediaDevices && root.navigator.mediaDevices.getUserMedia);
     function pintarVender() {
       var f = h("div", "cj-bus");
-      inBus = entrada("search", "Buscar producto, SKU o escanear código");
-      inBus.value = S.q; inBus.setAttribute("autocomplete", "off"); inBus.setAttribute("aria-label", "Buscar producto o escanear código");
+      inBus = entrada("search", "Buscar producto");
+      inBus.value = S.q; inBus.setAttribute("autocomplete", "off"); inBus.setAttribute("aria-label", "Buscar producto");
       inBus.addEventListener("input", function () { S.q = inBus.value; pintarProds(); });
       f.appendChild(inBus);
-      if (camaraOk) { var c = btn("📷", "", abrirCamara); c.setAttribute("aria-label", "Escanear con la cámara"); f.appendChild(c); }
       cuerpo.appendChild(f);
-      if (!S.prods.length) cuerpo.appendChild(h("p", "cj-vacio", "Todavía no hay productos para la tienda. El administrador debe marcarlos en el panel (Tienda > Catálogo)."));
-      var cats = h("div", "cj-cats"), secs = {};
+      if (!S.prods.length) cuerpo.appendChild(h("p", "cj-vacio", "Todavía no hay productos de tienda sin cocina. El administrador debe marcarlos en el panel (Tienda > Catálogo)."));
+      var cats = h("nav", "cj-cats"), secs = {}, wrap = h("div", "cj-carta");
       S.prods.forEach(function (p) { secs[p.seccion || ""] = 1; });
       var orden = Object.keys(secs).sort(function (a, b) { return L.prioridad(a) - L.prioridad(b) || (tituloSec(a) < tituloSec(b) ? -1 : 1); });
       if (orden.length > 1) {
@@ -351,11 +350,10 @@
           var b = btn(k ? tituloSec(k) : "Todo", k === S.cat ? "on" : "", function () { S.cat = k; Array.prototype.forEach.call(cats.children, function (x) { x.classList.toggle("on", x === b); }); pintarProds(); });
           cats.appendChild(b);
         });
-        cuerpo.appendChild(cats);
+        wrap.appendChild(cats);
       }
-      zonaProds = h("div", "cj-prods"); cuerpo.appendChild(zonaProds);
+      zonaProds = h("div", "cj-prods"); wrap.appendChild(zonaProds); cuerpo.appendChild(wrap);
       pintarProds();
-      cuerpo.insertBefore(h("p", "cj-hint", camaraOk ? "Busca, toca una tarjeta, escanea con la cámara (📷), con lector USB, o escribe el código y pulsa Enter." : "Lector USB: escanea el código y el producto se agrega solo. También puedes escribir el código y pulsar Enter."), zonaProds);
     }
     var fotoPorId = null;
     function fotoDe(id) {
@@ -373,18 +371,21 @@
       var lista = L.buscar(base, S.q, 80);
       if (!S.q && !S.cat) lista = lista.slice().sort(function (a, b) { return L.prioridad(a.seccion) - L.prioridad(b.seccion); });
       if (!lista.length && S.prods.length) { zonaProds.appendChild(h("p", "cj-vacio", "No hay productos con \"" + S.q + "\".")); return; }
+      var grid = h("div", "grid"); zonaProds.appendChild(grid);
       lista.forEach(function (p) {
-        var b = h("button", "cj-p"); b.type = "button";
+        var b = h("button", "prod"); b.type = "button";
         var ft = h("div", "ft"), fu = fotoDe(p.id);
         if (fu) { fu = String(fu); if (!/^(https?:|data:|\/)/.test(fu)) fu = "/" + fu; ft.style.backgroundImage = "url('" + fu.replace(/'/g, "%27") + "')"; }
-        else { ft.className = "ft sin"; ft.style.backgroundImage = "url('/gallo-oro.png')"; ft.style.backgroundRepeat = "no-repeat"; }
+        else { ft.className = "ft sin"; ft.style.backgroundImage = "url('/gallo-oro.png')"; ft.style.backgroundSize = "46% auto"; ft.style.backgroundRepeat = "no-repeat"; ft.style.opacity = ".5"; }
         b.appendChild(ft);
-        b.appendChild(h("b", "", p.nombre));
-        b.appendChild(h("span", "", (p.sku ? p.sku + " · " : "") + (p.unidad !== "unid" ? "por " + p.unidad : "")));
-        var pr = p.tam && p.tam.length ? "desde " + L.soles(Math.min.apply(null, p.tam.map(function (x) { return x[1]; }))) : L.soles(p.precio);
-        b.appendChild(h("em", "", pr));
+        var tx = h("div", "tx");
+        tx.appendChild(h("span", "n", p.nombre));
+        if (p.unidad !== "unid") tx.appendChild(h("span", "g", "por " + p.unidad));
+        if (p.tam && p.tam.length > 1) tx.appendChild(h("span", "op", "elige tamaño"));
+        tx.appendChild(h("span", "p", p.tam && p.tam.length ? "desde " + L.soles(Math.min.apply(null, p.tam.map(function (x) { return x[1]; }))) : L.soles(p.precio)));
+        b.appendChild(tx);
         b.addEventListener("click", function () { agregar(p); });
-        zonaProds.appendChild(b);
+        grid.appendChild(b);
       });
     }
 
@@ -437,57 +438,22 @@
     }
     function cambioCarro() { S.pend = null; guardarCarro(); if (S.vista === "vender") pintarCarrito(); }
 
-    /* ---------- códigos: lector USB, teclado y cámara ---------- */
-    function procesarCodigo(codigo) {
-      var p = L.porCodigo(S.prods, codigo);
-      if (!p) { pitar(); toast("No encontré el código " + codigo + ".", "mal"); return false; }
-      S.q = ""; if (inBus) inBus.value = "";
-      agregar(p); if (S.vista === "vender") pintarProds();
-      toast("✓ " + p.nombre, "ok");
-      return true;
-    }
-    var esc = L.escaner();
+    /* ---------- búsqueda: Enter agrega el producto si queda uno solo (sin lector de códigos ni cámara) ---------- */
     doc.addEventListener("keydown", function (e) {
-      if (!doc.body.contains(raiz) || S.vista !== "vender") return;
-      var t = e.target, enOtro = t && /^(input|textarea|select)$/i.test(t.tagName) && t !== inBus;
-      if (hojaAct || enOtro) { esc.reset(); return; }
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      var code = esc.feed(e.key, Date.now());
-      if (code) { e.preventDefault(); procesarCodigo(code); return; }
-      if (e.key === "Enter" && t === inBus) {
+      if (!doc.body.contains(raiz) || S.vista !== "vender" || hojaAct) return;
+      if (e.key === "Enter" && e.target === inBus) {
         e.preventDefault();
         var q = inBus.value.trim(); if (!q) return;
-        if (L.porCodigo(S.prods, q)) { procesarCodigo(q); return; }
         var r = L.buscar(S.prods, q, 2);
         if (r.length === 1) { S.q = ""; inBus.value = ""; agregar(r[0]); pintarProds(); } else if (!r.length) { pitar(); toast("No hay productos con \"" + q + "\".", "mal"); }
       }
     });
-    function abrirCamara() {
-      var video = h("video", "cj-video"); video.setAttribute("playsinline", ""); video.muted = true;
-      var info = h("p", "cj-hint", "Apunta al código de barras."), parar = false, stream = null;
-      function detener() { parar = true; try { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
-      abrirHoja("Escanear con la cámara", [video, info], [btn("Cerrar", "", cerrarHoja)], detener);
-      var det;
-      try { det = new root.BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"] }); } catch (e) { det = new root.BarcodeDetector(); }
-      root.navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false }).then(function (s) {
-        if (parar) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
-        stream = s; video.srcObject = s; video.play();
-        (function ciclo() {
-          if (parar) return;
-          det.detect(video).then(function (r) {
-            if (parar) return;
-            if (r && r.length && r[0].rawValue) { var c = r[0].rawValue; cerrarHoja(); procesarCodigo(c); return; }
-            setTimeout(ciclo, 250);
-          }).catch(function () { setTimeout(ciclo, 400); });
-        })();
-      }).catch(function () { info.textContent = "No se pudo abrir la cámara. Revisa el permiso del navegador o usa el lector USB."; });
-    }
 
     /* ---------- carrito ---------- */
     function pintarCarrito() {
       carrito.innerHTML = "";
       var box = h("div", "cj-lineas");
-      if (!S.carro.length) box.appendChild(h("p", "cj-vacio", "Escanea o busca un producto para empezar."));
+      if (!S.carro.length) box.appendChild(h("p", "cj-vacio", "Busca o toca un producto para empezar."));
       S.carro.forEach(function (l, i) {
         var f = h("div", "cj-l"), t = h("div", "t");
         t.appendChild(h("b", "", l.nombre + (l.tam ? " (" + l.tam + ")" : "")));
@@ -777,58 +743,6 @@
         });
         caja.appendChild(h("div", "cj-res ok", "Total de la mesa: " + L.soles(r.total)));
       }).catch(function () { caja.innerHTML = ""; caja.appendChild(h("p", "cj-vacio", "Sin conexión.")); });
-    }
-
-    /* ---------- etiquetas con código interno (QR o código de barras) ---------- */
-    function conLib(fn) {
-      if (root.PG_CODIGOS) { fn(); return; }
-      var sc = doc.createElement("script"); sc.src = "/tienda-codigos.js"; sc.onload = fn;
-      sc.onerror = function () { toast("No se pudo cargar el generador de códigos. Revisa la conexión.", "mal"); };
-      doc.head.appendChild(sc);
-    }
-    function pintarEtiquetas() {
-      cuerpo.appendChild(h("p", "cj-hint", "Marca los productos y las copias; al imprimir sale una hoja de etiquetas con el código interno (SKU, o el código de barras, o el identificador)."));
-      var tipo = h("select"); [["qr", "Código QR"], ["barras", "Código de barras (Code 128)"]].forEach(function (o) { var op = h("option", "", o[1]); op.value = o[0]; tipo.appendChild(op); });
-      tipo.style.cssText = "width:100%;height:46px;margin-bottom:8px;border-radius:10px;font-size:16px";
-      cuerpo.appendChild(tipo);
-      var bus = entrada("search", "Buscar producto"), lista = h("div"); bus.style.cssText = "width:100%;height:46px;margin-bottom:8px;border-radius:10px;border:2px solid var(--linea,#dccdb0);padding:0 12px";
-      cuerpo.appendChild(bus); cuerpo.appendChild(lista);
-      function dibujar() {
-        lista.innerHTML = "";
-        L.buscar(S.prods, bus.value, 200).forEach(function (p) {
-          var f = h("label", "cj-chk"), cb = h("input"), n = h("input"), t = h("div", "t");
-          cb.type = "checkbox"; cb.checked = !!S.etq[p.id]; n.type = "number"; n.min = "1"; n.max = "99"; n.value = S.etq[p.id] || 1; n.setAttribute("aria-label", "Copias");
-          cb.addEventListener("change", function () { if (cb.checked) S.etq[p.id] = Math.max(1, parseInt(n.value, 10) || 1); else delete S.etq[p.id]; });
-          n.addEventListener("input", function () { if (S.etq[p.id]) S.etq[p.id] = Math.max(1, Math.min(99, parseInt(n.value, 10) || 1)); });
-          t.appendChild(h("b", "", p.nombre)); t.appendChild(h("span", "cj-hint", L.codigoInterno(p)));
-          f.appendChild(cb); f.appendChild(t); f.appendChild(n); lista.appendChild(f);
-        });
-      }
-      bus.addEventListener("input", dibujar); dibujar();
-      var acc = h("div", "cj-acc");
-      acc.appendChild(btn("Marcar todos", "", function () { S.prods.forEach(function (p) { S.etq[p.id] = S.etq[p.id] || 1; }); dibujar(); }));
-      acc.appendChild(btn("🖨 Imprimir etiquetas", "ok", function () {
-        var ids = Object.keys(S.etq); if (!ids.length) { toast("Marca al menos un producto.", "mal"); return; }
-        conLib(function () { imprimirEtiquetas(ids, tipo.value); });
-      }));
-      cuerpo.appendChild(acc);
-    }
-    function imprimirEtiquetas(ids, tipo) {
-      var hoja = doc.getElementById("cj-etq") || doc.body.appendChild(h("div")); hoja.id = "cj-etq"; hoja.innerHTML = "";
-      ids.forEach(function (id) {
-        var p = S.prods.filter(function (x) { return x.id === id; })[0]; if (!p) return;
-        var cod = L.codigoInterno(p), svg;
-        try { svg = tipo === "qr" ? root.PG_CODIGOS.qrSvg(cod, { px: 110, margen: 2 }) : root.PG_CODIGOS.code128Svg(cod, { ancho: 170, alto: 44 }); } catch (e) { return; }
-        var pr = p.tam && p.tam.length ? "desde " + L.soles(Math.min.apply(null, p.tam.map(function (x) { return x[1]; }))) : L.soles(p.precio) + (p.unidad !== "unid" ? "/" + p.unidad : "");
-        for (var i = 0; i < (S.etq[id] || 1); i++) {
-          var e = h("div", "et"); e.appendChild(h("b", "", p.nombre));
-          var g = h("div"); g.innerHTML = svg; e.appendChild(g);   // svg generado por nosotros (solo números)
-          e.appendChild(h("span", "", cod)); e.appendChild(h("span", "", pr)); hoja.appendChild(e);
-        }
-      });
-      var limpiar = function () { root.removeEventListener("afterprint", limpiar); if (hoja.parentNode) hoja.parentNode.removeChild(hoja); };
-      root.addEventListener("afterprint", limpiar);
-      root.print();
     }
 
     /* ---------- arranque ---------- */

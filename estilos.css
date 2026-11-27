@@ -178,18 +178,12 @@ body.buscando .sec__cuerpo{padding-top:14px;padding-bottom:10px}
 .gracias .logo-fin{width:min(60vw,240px);margin:36px auto 0;opacity:.95}
 .copia{margin-top:30px;font:500 .72rem/1.6 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:#bda57a}
 
-/* ---------- botón flotante ---------- */
-.fab{position:fixed;right:14px;bottom:14px;z-index:45;display:flex;align-items:center;gap:9px;text-decoration:none;
-  background:var(--oro-claro);color:#2b0f10;font:700 .78rem/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;padding:0 18px;min-height:48px;
-  border:1px solid #7b5a24;box-shadow:0 6px 20px rgba(0,0,0,.35);transform:translateY(90px);transition:transform .3s}
-.fab.ver{transform:none}
-.fab svg{width:19px;height:19px;fill:currentColor}
 
 /* ---------- animación ---------- */
 .js .rev{opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease}
 .js .rev.ya{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}.js .rev{opacity:1;transform:none;transition:none}.bajar{animation:none}.fab{transition:none}
+  html{scroll-behavior:auto}.js .rev{opacity:1;transform:none;transition:none}.bajar{animation:none}
 }
 
 /* ---------- pantallas grandes ---------- */
@@ -205,7 +199,7 @@ body.buscando .sec__cuerpo{padding-top:14px;padding-bottom:10px}
   .chips{justify-content:center}
 }
 :focus-visible{outline:2px solid var(--oro-claro);outline-offset:2px}
-.fab:focus-visible,.btn:focus-visible{outline-color:#fff}
+.btn:focus-visible{outline-color:#fff}
 
 /* =================== PEDIDOS =================== */
 .estado__mesa{background:var(--oro-claro);color:#2b0f10;font-weight:700;padding:3px 8px;border-radius:2px;margin-right:2px}
@@ -214,7 +208,6 @@ body.buscando .sec__cuerpo{padding-top:14px;padding-bottom:10px}
 .agregar span{font-size:1.1rem;line-height:0;color:var(--oro-claro)}
 .agregar:hover{background:var(--vino-2)}
 .agotado{display:inline-block;margin-top:8px;font:700 .7rem/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:#8d2a24;border:1px dashed #8d2a24;padding:5px 8px}
-body.modo-mesa .fab,body.con-carrito .fab{display:none}
 body.con-carrito .gracias{padding-bottom:150px}
 .barra-ped{position:fixed;left:12px;right:12px;bottom:12px;z-index:46;display:flex;align-items:center;justify-content:space-between;gap:12px;
   min-height:56px;padding:0 20px;background:var(--vino);color:var(--crema);border:1px solid var(--oro-claro);box-shadow:0 8px 28px rgba(0,0,0,.4);

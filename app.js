@@ -174,7 +174,36 @@
     return ah;
   }
 
-  var estadoBarra, bienvenida, fab, fabTxt, buscadorEl;
+  /* ---------- aviso de horario (barra superior y bienvenida) ----------
+     Restaurante: C.horario.dias. Tienda: horarioTienda(). Siempre hora de Lima. No se anuncian ventanas extra tras el cierre. */
+  function proximaApertura(rangosDe) {
+    var ah = ahoraLugar(new Date());
+    for (var i = 0; i <= 7; i++) {
+      var d = (ah.dia + i) % 7, rs = rangosDe(d).slice().sort(function (a, b) { return minutos(a[0]) - minutos(b[0]); });
+      for (var k = 0; k < rs.length; k++) if (i > 0 || minutos(rs[k][0]) > ah.min) return { dias: i, dia: d, hora: rs[k][0] };
+    }
+    return null;
+  }
+  function cuandoTxt(p) {
+    var h12 = fmt12(p.hora);
+    return p.dias === 0 ? t("cuHoy", { h: h12 }) : p.dias === 1 ? t("cuManana", { h: h12 }) : t("cuDia", { d: t("dias")[p.dia], h: h12 });
+  }
+  function avisoHorario() {
+    var e = estadoActual(), tiendaYa = tiendaAbiertaAhora();
+    if (e.abierto) return { abierto: true, texto: t("avAbierto") };
+    var rp = proximaApertura(function (d) { var r = C.horario.dias[d]; return r ? [r] : []; });
+    var restTxt = rp ? t("avRestAbre", { c: cuandoTxt(rp) }) : "";
+    if (tiendaYa) return { abierto: true, tienda: true, texto: t("avTiendaAbierta") + (restTxt ? " · " + restTxt : "") };
+    var tp = proximaApertura(function (d) {
+      var o = []; horarioTienda().forEach(function (r) { if (!r.d || !r.d.length || r.d.indexOf(d) >= 0) r.h.forEach(function (x) { o.push(x); }); }); return o;
+    });
+    var partes = [];
+    if (tp) partes.push(t("avTiendaAbre", { c: cuandoTxt(tp) }));
+    if (rp) partes.push(tp && tp.dias === rp.dias && tp.dias > 0 ? t("avRestCorto", { c: cuandoTxt(rp).replace(/^(el [^ ]+|mañana|tomorrow|on [^ ]+) /, "") }) : restTxt);
+    return { abierto: false, texto: partes.join(" · ") || t("cerrado") + t("pronto") };
+  }
+
+  var estadoBarra, bienvenida, buscadorEl;
   /* La tienda ahora es "Nostri Prodotti": una sección más de la carta (id interno "tienda") */
   function tituloSec(s) { return s.id === "tienda" ? t("tiendaTit") : tx(s, "titulo"); }
   function subSec(s) { return s.id === "tienda" ? t("tiendaSub") : tx(s, "subtitulo"); }
@@ -198,29 +227,15 @@
       bienvenida.textContent = "";
       bienvenida.appendChild(h("h1", null, t("barraTitulo")));
       bienvenida.appendChild(h("p", null, t("barraTexto")));
-      if (fabTxt) fabTxt.textContent = t("pedirAhora");
       return;
     }
     var esMesa = PED && PED.modo === "mesa";
-    var tiendaYa = !e.abierto && !esMesa && tiendaAbiertaAhora();
-    estadoBarra.className = "estado " + (e.abierto || tiendaYa ? "abierto" : "cerrado");
+    var av = avisoHorario();
+    estadoBarra.className = "estado " + (av.abierto ? "abierto" : "cerrado");
     estadoBarra.textContent = "";
     estadoBarra.appendChild(h("i"));
     if (esMesa && PED.mesa) estadoBarra.appendChild(h("span", "estado__mesa", t("mesa") + PED.mesa));
-    if (e.abierto) {
-      var s = h("span"); s.appendChild(document.createTextNode(t("abierto"))); s.appendChild(h("b", null, e.cierra));
-      estadoBarra.appendChild(s);
-    } else if (tiendaYa) {   // restaurante cerrado pero la tienda (Nostri Prodotti) atiende
-      var s3 = h("span"); s3.appendChild(h("b", null, t("tiendaAbiertaEst")));
-      s3.appendChild(document.createTextNode(e.hoy ? t("restDesde", { h: e.abre }) : t("restDia", { c: e.corto })));
-      estadoBarra.appendChild(s3);
-    } else {
-      var s2 = h("span"); s2.appendChild(document.createTextNode(t("cerrado"))); s2.appendChild(h("b", null, e.corto || e.cuando));
-      /* pedidos programados: desde qué hora se puede dejar el pedido (sin explicar la ventana de atención) */
-      var dp = PED && PED.modo === "delivery" && PED.aceptaAhora && PED.aceptaAhora() && PED.desdeProg ? PED.desdeProg() : "";
-      if (dp) s2.appendChild(document.createTextNode(t("pedidosDesde", { h: dp })));
-      estadoBarra.appendChild(s2);
-    }
+    estadoBarra.appendChild(h("span", null, av.texto));
     ajustarEstado();
     var conCarrito = PED && PED.activo();
     if (!bienvenida) return;   // mesa: sin portada, se entra directo a la carta
@@ -228,16 +243,15 @@
     var titulo = t("bienvenido"), texto;
     if (e.abierto) {
       texto = conCarrito ? t("abiertoCarrito", { h: e.cierra }) : t("abiertoSin", { h: e.cierra });
-    } else if (tiendaYa) {
-      texto = t("tiendaAbiertaTxt", { c: e.cuando }) + (conCarrito && PED.aceptaAhora() ? t("programar") : "");
+    } else if (av.tienda) {
+      texto = av.texto + ". " + t("tiendaDesc") + (conCarrito && PED.aceptaAhora() ? t("programar") : "");
     } else {
-      texto = t("cerradoTxt", { c: e.cuando }) + (conCarrito && PED.aceptaAhora() ? t("programar") : t("recorre"));
+      texto = av.texto + ". " + (conCarrito && PED.aceptaAhora() ? t("programar") : t("recorre"));
     }
     bienvenida.appendChild(h("h1", null, titulo));
     bienvenida.appendChild(h("p", null, texto));
     var pedir = q("#btn-pedir");
     if (pedir && !conCarrito) pedir.lastChild.textContent = e.abierto ? t("realizarPedido") : t("escribenos");
-    if (fabTxt) fabTxt.textContent = e.abierto ? t("pedirAhora") : t("consultasWa");
   }
 
   /* La barra superior puede ocupar 2 líneas en pantallas angostas: su alto real mueve la barra de secciones pegada debajo */
@@ -765,11 +779,6 @@
     app.appendChild(vCarta);
     app.appendChild(gracias());
 
-    var f = h("a", "fab"); f.href = waUrl(); f.target = "_blank"; f.rel = "noopener";
-    f.appendChild(waSvg()); fabTxt = h("span", null, t("pedirAhora")); f.appendChild(fabTxt);
-    if (COM && COM.barra) f.style.display = "none";   // barra: nada de WhatsApp flotante, se pide aquí
-    document.body.appendChild(f); fab = f;
-
     pintarEstado();
     setInterval(pintarEstado, 60000);
 
@@ -784,7 +793,7 @@
       });
     });
 
-    /* chip activo + botón flotante */
+    /* chip activo */
     var chips = document.querySelectorAll(".chip");
     if ("IntersectionObserver" in window) {
       var io = new IntersectionObserver(function (es) {
@@ -808,14 +817,8 @@
         });
       }, { rootMargin: "0px 0px -6% 0px" });
       document.querySelectorAll(".rev, .anim").forEach(function (x) { rv.observe(x); });
-
-      var pt = new IntersectionObserver(function (es) {
-        es.forEach(function (e) { fab.classList.toggle("ver", !e.isIntersecting); });
-      });
-      if (q("#inicio")) pt.observe(q("#inicio")); else fab.classList.add("ver");
     } else {
       document.querySelectorAll(".rev, .anim").forEach(function (x) { x.classList.add("ya"); });
-      fab.classList.add("ver");
     }
   }
 

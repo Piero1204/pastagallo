@@ -14,9 +14,6 @@
   var app = document.getElementById("app");
   var K = { t: "pg-mozo-t", mozo: "pg-mozo", carros: "pg-mozo-carros", fotos: "pg-mozo-fotos", ultimo: "pg-mozo-ultimo", alertas: "pg-mozo-alertas", vistaM: "pg-mozo-vistam", filtro: "pg-mozo-filtro", mapa: "pg-mozo-mapa", div: "pg-mozo-div",
     pest: "pg-mozo-pest", mapaDel: "pg-mozo-mapadel", carrosDia: "pg-mozo-carros-dia", filtroT: "pg-mozo-filtrot" };
-  var YP = "Yape o Plin";
-  function unirMetodos(l) { var r = []; (l || []).forEach(function (m) { m = /^(yape|plin)$/i.test(m) ? YP : m; if (/^transf/i.test(m)) return; if (r.indexOf(m) < 0) r.push(m); }); return r; }
-  function cobroYP() { var c = (C.pedidos || {}).cobro || {}; return c[YP] || (c.Plin && (c.Plin.qr || c.Plin.numero) ? c.Plin : c.Yape) || null; }
 
   /* ---------- utilidades ---------- */
   function h(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
@@ -59,7 +56,7 @@
     document.documentElement.classList.add("tienda");
     document.title = "Pasta Gallo · Tienda";
     ponerLink("manifest", "/tienda.webmanifest"); ponerLink("apple-touch-icon", "/tienda-192.png");
-    ponerMeta("theme-color", "#24402f"); ponerMeta("apple-mobile-web-app-title", "PG Tienda");
+    ponerMeta("theme-color", "#4b5a24"); ponerMeta("apple-mobile-web-app-title", "PG Tienda");
   }
   /* Panel LOCAL (computadora del local): misma app con layout de escritorio (local.js + local.css) y su propio "PG Local" instalable */
   function aplicarMarcaLocal() {
@@ -80,7 +77,7 @@
   else if (/[?&]app=local\b/.test(location.search) || (leer("pg-mozo", null) || {}).rol === "local") aplicarMarcaLocal();
 
   /* ---------- estado ---------- */
-  var S = { t: leer(K.t, ""), mozo: leer(K.mozo, null), mesas: [], avisos: [], metodos: [YP, "Efectivo", "Tarjeta"],
+  var S = { t: leer(K.t, ""), mozo: leer(K.mozo, null), mesas: [], avisos: [], metodos: ["Yape", "Plin", "Efectivo", "Tarjeta"],
     horario: null, turno: null, v: "", desfase: 0, recibido: 0, vista: "mesas", mesa: null, cuenta: null, q: "", enviando: false,
     vistaM: leer(K.vistaM, "grid"), filtro: leer(K.filtro, "todas"), mapa: leer(K.mapa, false) === true,
     pest: leer(K.pest, ""), pestElegida: false, externos: [], metodosExt: null, diaIso: "", filtroT: leer(K.filtroT, "todo"), mapaDel: leer(K.mapaDel, false) === true };
@@ -172,16 +169,22 @@
     return !!s.delivery && canal !== "local" && canal !== "interno";
   }
   /* Cargos adicionales (caja, taper, corcho, roturas…): solo para el mozo, vienen del servidor en "estado".
-     No están en menu-data.js, así que nunca salen en la carta pública. Se guarda el último recibido. */
-  var K_CARGOS = "pg-mozo-cargos", CARGOS = [], CARGO = {};
+     No están en menu-data.js, así que nunca salen en la carta pública. Se guarda el último recibido.
+     Se muestran como la ÚLTIMA categoría de la carta (solo en mesa): SECS siempre termina con la sección "cargos" si hay cargos. */
+  /* Datos de cobro (número, titular y QR de Yape y de Plin): vienen en "estado" y las respuestas "igual" no los traen, así que se guarda el último. */
+  var K_COBRO = "pg-mozo-cobro", COBRO = leer(K_COBRO, {}) || {};
+  function urlPago(u) { u = String(u || ""); return !u ? "" : /^(https?:|data:)/.test(u) ? u : "https://pastagallo.pages.dev/" + u.replace(/^\//, ""); }
+  var K_CARGOS = "pg-mozo-cargos", CARGOS = [], CARGO = {}, SEC_CARGOS = { id: "cargos", titulo: "Cargos Adicionales" };
   function aplicarCargos(lista) {
     CARGOS = []; CARGO = {};
     (Array.isArray(lista) ? lista : []).forEach(function (x) {
       if (!x || !x.id || !x.n) return;
-      var it = { id: x.id, n: x.n, t: (x.t && x.t.length) ? x.t : null, p: x.p, _cargo: true };
+      var it = { id: x.id, n: x.n, t: (x.t && x.t.length) ? x.t : null, p: x.p, _cargo: true, _sec: SEC_CARGOS };
       if (!it.t && it.p == null) return;
       CARGOS.push(it); CARGO[it.id] = it;
     });
+    SECS = SECS.filter(function (s) { return s.id !== "cargos"; });
+    if (CARGOS.length) SECS.push({ id: "cargos", titulo: SEC_CARGOS.titulo, grupos: [{ titulo: "", items: CARGOS }], sec: SEC_CARGOS });
   }
   aplicarCargos(leer(K_CARGOS, []));
   function prodDe(id) { return PROD[id] || CARGO[id]; }
@@ -355,12 +358,13 @@
         S.externos = r.externos || []; if (r.metodosExt && r.metodosExt.length) S.metodosExt = r.metodosExt;
         if (!S.pestElegida) elegirPestInicial();
         aplicarPendientesSalon();
-        if (r.metodos && r.metodos.length) S.metodos = unirMetodos(r.metodos);
+        if (r.metodos && r.metodos.length) S.metodos = r.metodos;
         if (r.comprobantes) S.comprobantes = r.comprobantes;
+        if (r.cobro && typeof r.cobro === "object") { COBRO = r.cobro; guardar(K_COBRO, COBRO); }
         if (r.cargos) {
           var antes = JSON.stringify(CARGOS);
           aplicarCargos(r.cargos); guardar(K_CARGOS, r.cargos);
-          if (antes !== JSON.stringify(CARGOS) && document.querySelector(".prods") && !capa.classList.contains("on") && !S.q) pintarProductos();
+          if (antes !== JSON.stringify(CARGOS) && document.querySelector(".prods") && !capa.classList.contains("on") && !S.q) { pintarChipsSecs(); pintarProductos(); }
         }
         if (S.mesa) { var mm = mesaDe(S.mesa); S.cuenta = mm ? cuentaDeMesa(mm) : S.cuenta; }
         // copia local: al volver a abrir la app se ve el salón al instante (luego se actualiza)
@@ -419,39 +423,6 @@
       }
     });
     guardar(K.alertas, hechas);
-  }
-
-  /* ---------- Imprimir comanda (la cuenta completa de la mesa sale en la impresora del local) ----------
-     Va ANTES de cobrar: el botón grande es "Imprimir comanda"; después de imprimir, el principal pasa a ser "Cobrar".
-     Mientras se manda dice "Imprimiendo…" y queda bloqueado para no imprimir doble. */
-  var K_IMP = "pg-mozo-impresas", impresas = leer(K_IMP, {}), imprimiendoM = {};
-  function firmaCuenta() { return S.cuenta && S.cuenta.pedidos.length ? S.cuenta.pedidos.map(function (p) { return p.id || p.numero; }).join(",") + "|" + S.cuenta.total : ""; }
-  function comandaImpresa(mesa) {
-    if (S.avisos.some(function (a) { return String(a.mesa) === String(mesa) && a.motivo === "cuenta"; })) return true;
-    var f = firmaCuenta(); return !!f && impresas[mesa] === f;
-  }
-  function imprimirComanda(mesa) {
-    if (imprimiendoM[mesa]) return;
-    if (carro().length && !confirm("Hay platos sin enviar a cocina en esta mesa. ¿Imprimir la comanda igual? (no se incluyen)")) return;
-    var otra = comandaImpresa(mesa);
-    if (otra && !confirm("La comanda de la mesa " + mesa + " ya se mandó a imprimir. ¿Imprimirla otra vez?")) return;
-    imprimiendoM[mesa] = true; pintarOrden();
-    var firma = firmaCuenta();
-    api({ mz: "pedircuenta", t: S.t, mesa: mesa, otra: otra }).then(function (r) {
-      if (!r.ok) { toast(r.error || "No se pudo imprimir la comanda.", "mal"); return; }
-      impresas[mesa] = firma; guardar(K_IMP, impresas);
-      toast("🖨 Imprimiendo la comanda de la mesa " + mesa + " en el local", "ok");
-    }).catch(function () { toast("Sin conexión: no se imprimió. Vuelve a intentar.", "mal"); }).then(function () {
-      // unos segundos bloqueado para evitar el doble toque
-      setTimeout(function () { delete imprimiendoM[mesa]; pintarOrden(); }, 3000);
-      S.v = ""; sondear();
-    });
-  }
-  function botonImprimir(extra) {
-    var mesa = S.mesa;
-    if (imprimiendoM[mesa]) { var b = btn("🖨 Imprimiendo…", "btn imprimir " + (extra || "")); b.disabled = true; return b; }
-    if (comandaImpresa(mesa)) return btn("✓ Comanda impresa · reimprimir", "btn peq impresa " + (extra || ""), function () { imprimirComanda(mesa); });
-    return btn("🖨 Imprimir comanda", "btn imprimir " + (extra || ""), function () { imprimirComanda(mesa); });
   }
 
   /* =========================== PINTAR =========================== */
@@ -695,7 +666,7 @@
           c.appendChild(f);
         });
       }
-      c.appendChild(h("p", "vacio", "Las propinas por Yape o Plin y tarjeta te las paga el negocio; la de efectivo ya la tienes."));
+      c.appendChild(h("p", "vacio", "Las propinas por Yape, Plin y tarjeta te las paga el negocio; la de efectivo ya la tienes."));
     }).catch(function () { c.textContent = ""; c.appendChild(h("p", "err", "Sin conexión.")); });
   }
 
@@ -1011,11 +982,12 @@
   }
   /* ¿cuántas personas? (para el ticket por persona). fn(n) con n = 0 si se omite */
   function pedirPersonas(mesa, fn, conOmitir) {
-    var g = h("div", "mesasel");
-    for (var i = 1; i <= 12; i++) (function (n) { g.appendChild(btn(String(n), "", function () { cerrarModal(); fn(n); })); })(i);
-    var otro = btn("Más…", "", function () { var n = parseInt(prompt("¿Cuántas personas?", "14"), 10); if (n > 0 && n <= 60) { cerrarModal(); fn(n); } });
-    g.appendChild(otro);
-    abrirModal("👥 ¿Cuántas personas en la mesa " + mesa + "?", [g], conOmitir ? [btn("Omitir", "btn", function () { cerrarModal(); fn(0); })] : null);
+    var g = h("div", "mesasel"), mm = mesaDe(mesa), sillas = mm && Number(mm.sillas) > 0 ? Math.floor(Number(mm.sillas)) : 0;
+    // máximo = sillas de la mesa (si el servidor lo manda); si no, el de siempre (botones 1–12 y hasta 60 en "Más…")
+    var tope = sillas || 12, maxMas = sillas || 60;
+    for (var i = 1; i <= tope; i++) (function (n) { g.appendChild(btn(String(n), "", function () { cerrarModal(); fn(n); })); })(i);
+    if (!sillas) g.appendChild(btn("Más…", "", function () { var n = parseInt(prompt("¿Cuántas personas?", "14"), 10); if (n > 0 && n <= maxMas) { cerrarModal(); fn(n); } }));
+    abrirModal("👥 ¿Cuántas personas en la mesa " + mesa + "?" + (sillas ? " (máx. " + sillas + ")" : ""), [g], conOmitir ? [btn("Omitir", "btn", function () { cerrarModal(); fn(0); })] : null);
   }
   function guardarPersonas(mesa, n) {
     var m = mesaDe(mesa); if (m) { m.personas = n; if (m.estado === "libre") { m.estado = "sentada"; m.atiende = m.atiende || S.mozo; } }
@@ -1292,11 +1264,12 @@
     agregar(it, { tam: tam, salsa: l.salsa || "", ops: l.ops || {}, nota: l.nota || "", cant: l.cant || 1, mitad: l.mitad || "" });
     return true;
   }
+  function buscarCargos(q) { return CARGOS.filter(function (it) { return permitido(it) && norm(it.n + " Cargos Adicionales").indexOf(q) >= 0; }); }
   function buscarPlatos(q) {
     var res = null;
     if (motorBus) { try { res = motorBus.buscar(S.q, 40).map(function (r) { return PROD[r.id]; }).filter(permitido); } catch (e) { res = null; } }
-    if (res && res.length) return res;
-    return Object.keys(PROD).map(function (k) { return PROD[k]; }).filter(function (it) { return permitido(it) && norm(it.n + " " + (it.g || "") + " " + it._sec.titulo + " " + (SEC_ES[it._sec.id] || "")).indexOf(q) >= 0; });
+    if (res && res.length) return res.concat(buscarCargos(q));
+    return Object.keys(PROD).map(function (k) { return PROD[k]; }).filter(function (it) { return permitido(it) && norm(it.n + " " + (it.g || "") + " " + it._sec.titulo + " " + (SEC_ES[it._sec.id] || "")).indexOf(q) >= 0; }).concat(buscarCargos(q));
   }
 
   /* ---------- carta ---------- */
@@ -1304,14 +1277,19 @@
   function vistaCarta() {
     cargarBusqueda();
     var w = h("div", "carta"), secs = h("nav", "secs"), prods = h("section", "prods"), orden = h("aside", "orden");
-    secsVisibles().forEach(function (s) {
-      secs.appendChild(btn(s.titulo, "", function () { irSeccion(s.id); }));
-      secs.lastChild.dataset.s = s.id;
-    });
+    pintarChipsSecs(secs);
     w.appendChild(secs); w.appendChild(prods); w.appendChild(orden);
     setTimeout(function () { pintarProductos(); pintarOrden(); }, 0);
     var barra = h("div", "barra-ped"); barra.id = "barraPed"; w.appendChild(barra);
     return w;
+  }
+  function pintarChipsSecs(secs) {
+    secs = secs || document.querySelector(".secs"); if (!secs) return;
+    secs.textContent = "";
+    secsVisibles().forEach(function (s) {
+      secs.appendChild(btn(s.titulo, "", function () { irSeccion(s.id); }));
+      secs.lastChild.dataset.s = s.id;
+    });
   }
   function secsVisibles() { return SECS.filter(function (s) { return s.grupos.some(function (gr) { return gr.items.some(permitido); }); }); }
   function marcarSec(id) {
@@ -1364,12 +1342,6 @@
       prods.appendChild(sec);
       if (obs) obs.observe(sec);
     });
-    if (CARGOS.length && modoActual() === "mesa") {
-      var dc = h("details", "cargos"), sm = h("summary", null, "➕ Cargos Adicionales");
-      dc.appendChild(sm);
-      var gc = h("div", "grid"); CARGOS.forEach(function (it) { gc.appendChild(tarjeta(it)); }); dc.appendChild(gc);
-      prods.appendChild(dc);
-    }
   }
   function refrescarTarjeta(id) {
     document.querySelectorAll('.prod[data-id="' + id + '"]').forEach(function (b) {
@@ -1528,7 +1500,7 @@
     var w = h("div", "orden"), cab = h("div", "orden__cab"), m = mesaDe(S.mesa);
     cab.appendChild(h("h2", null, etiquetaMesa(S.mesa)));
     if (m) cab.appendChild(h("span", "orden__est e-" + estadoMesa(m), TXT_ESTADO[estadoMesa(m)] + (m.atiende ? " · 🤵 " + (m.atiende.id === yo() ? "tú" : m.atiende.nombre) : "")));
-    if (S.cuenta && S.cuenta.pedidos.length && comandaImpresa(S.mesa)) cab.appendChild(btn("💳 Cobrar", "btn azul peq", function () { cobrar(); }));
+    if (S.cuenta && S.cuenta.pedidos.length) cab.appendChild(btn("💳 Cobrar", "btn azul peq", function () { cobrar(); }));
     w.appendChild(cab);
     if (m && m.unidas && m.unidas.length) {
       var un = h("div", "unidas-aviso"); un.appendChild(h("span", null, "🔗 Cuenta unida con la mesa " + m.unidas.join(", ") + " (una sola cuenta)."));
@@ -1601,11 +1573,8 @@
       env.disabled = S.enviando || !cocina;
       pie.appendChild(env);
     } else if (S.cuenta && S.cuenta.pedidos.length) {
-      var yaImp = comandaImpresa(S.mesa);
-      pie.appendChild(h("div", "pasos", yaImp ? "Paso 2 de 2 · cobrar" : "Paso 1 de 2 · imprime la comanda y llévala a la mesa"));
-      pie.appendChild(botonImprimir());
       var sal = S.cuenta.saldo != null ? S.cuenta.saldo : S.cuenta.total;
-      pie.appendChild(btn((S.cuenta.pagado > 0.009 ? "💳 Cobrar saldo · " + soles(sal) : "💳 Cobrar mesa · " + soles(S.cuenta.total)), yaImp ? "btn azul" : "btn peq cobrar-luego", function () { cobrar(); }));
+      pie.appendChild(btn((S.cuenta.pagado > 0.009 ? "💳 Cobrar saldo · " + soles(sal) : "💳 Cobrar mesa · " + soles(S.cuenta.total)), "btn azul", function () { cobrar(); }));
       pie.appendChild(btn("✂ Dividir cuenta", "btn peq", dividirCuenta));
     }
     w.appendChild(pie);
@@ -1624,8 +1593,7 @@
       else if (esPseudo(S.mesa)) b.appendChild(btn(etiquetaMesa(S.mesa) + " · toca los productos", "btn cta", abrirPedidoCelular));
       else if (S.cuenta && S.cuenta.pedidos.length) {
         b.appendChild(btn("Cuenta · " + soles(S.cuenta.total), "btn cta", abrirPedidoCelular));
-        if (comandaImpresa(S.mesa)) b.appendChild(btn("💳 Cobrar", "btn azul", function () { cobrar(); }));
-        else b.appendChild(botonImprimir());
+        b.appendChild(btn("💳 Cobrar", "btn azul", function () { cobrar(); }));
       } else b.appendChild(btn(etiquetaMesa(S.mesa) + " · sin pedidos", "btn cta", abrirPedidoCelular));
     }
     if (modalPedido) { var m = capa.querySelector(".modal .orden"); if (m) m.replaceWith(contenidoOrden()); }
@@ -1682,11 +1650,9 @@
     if (!S.cuenta) { if (!reintento) cargarCuenta().then(function () { cobrar(sugerido, true, division, parte, luego); }); return; }
     if (!S.cuenta.pedidos.length) { toast("La mesa " + S.mesa + " no tiene cuenta abierta.", "mal"); return; }
     if (!reintento && carro().length && !confirm("Hay platos sin enviar a cocina en esta mesa. ¿Cobrar igual? (no se incluyen en la cuenta)")) return;
-    if (!reintento && !comandaImpresa(S.mesa) && !confirm("Todavía no imprimiste la comanda de la mesa " + S.mesa + ". ¿Cobrar igual?")) return;
     var total = S.cuenta.total, saldo = S.cuenta.saldo != null ? S.cuenta.saldo : total, pagadoAntes = S.cuenta.pagado || 0, metodos = S.metodos, cid = uid();
     var objetivo = parte ? Math.min(parte.monto, saldo) : saldo;   // lo que se cobra en esta ventana
     var inicial = metodos.filter(function (m) { return sugerido && norm(sugerido).indexOf(norm(m)) >= 0; })[0] || "";
-    if (!inicial && /yape|plin/i.test(sugerido || "") && metodos.indexOf(YP) >= 0) inicial = YP;
     var pagos = [{ metodo: inicial, monto: objetivo, propina: 0 }];
     var divOk = !parte && !pagadoAntes && division && division.length > 1 && Math.abs(division.reduce(function (a, x) { return a + x; }, 0) - total) < 0.05;
     if (divOk) pagos = division.map(function (x, i) { return { metodo: inicial, monto: i === division.length - 1 ? r2(total - division.slice(0, -1).reduce(function (a, y) { return a + y; }, 0)) : x, propina: 0 }; });
@@ -1712,16 +1678,15 @@
           w.appendChild(tt);
         }
         var em = p.metodo ? [p.metodo] : [], extra = h("div", "pago__extra");
-        w.appendChild(chips(metodos.map(function (m) { return { v: m, t: m, s: m === YP ? "⚡ recomendado" : "" }; }), false, em, function (v) { p.metodo = v[0]; err.textContent = ""; pintarExtra(); }));
+        w.appendChild(chips(metodos.map(function (m) { return { v: m, t: m }; }), false, em, function (v) { p.metodo = v[0]; err.textContent = ""; pintarExtra(); }));
         w.appendChild(extra);
-        // Yape o Plin: el cliente escanea el QR de Plin desde Yape o Plin. Efectivo: calcular el vuelto.
+        // Yape / Plin: sin QR en el panel del mozo. Efectivo: calcular el vuelto.
         function pintarExtra() {
           extra.textContent = "";
-          if (p.metodo === YP) {
-            var c = cobroYP();
-            if (c && c.qr) { var q = h("img", "qrpago"); q.src = /^(https?:|data:|\/)/.test(c.qr) ? c.qr : "/" + c.qr; q.alt = "QR Yape o Plin"; extra.appendChild(q); }
-            extra.appendChild(h("p", "vacio", (c && c.qr ? "Muestra este QR al cliente: lo puede escanear con Yape o con Plin." : "Falta subir el QR de Plin en el panel (Ajustes).") +
-              (c && c.numero ? " Número: " + c.numero + (c.titular ? " (" + c.titular + ")" : "") + "." : "") + " Registra el cobro cuando veas que llegó el pago."));
+          if (/^(yape|plin)$/i.test(p.metodo)) {
+            var dp = COBRO[/^yape$/i.test(p.metodo) ? "Yape" : "Plin"] || {};
+            if (!localModo && dp.qr) { var q = h("img", "qrpago"); q.src = urlPago(dp.qr); q.alt = "QR " + p.metodo; extra.appendChild(q); }   // el panel del local no muestra QR
+            extra.appendChild(h("p", "vacio", (!localModo && dp.qr ? "Muestra este QR al cliente. " : "") + "Registra el cobro cuando veas que llegó el pago."));
           } else if (/efectivo/i.test(p.metodo)) {
             var f = h("div", "fila"), inp = h("input", "campo"), out = h("b", "vuelto");
             inp.type = "number"; inp.inputMode = "decimal"; inp.placeholder = "Paga con… (opcional)";
@@ -2115,7 +2080,7 @@
   }
   /* cobro de un pedido sin mesa: uno o varios métodos (pago mixto) y propina por método */
   function cobrarExt(x) {
-    var metodos = S.metodosExt || [YP, "Efectivo", "Transferencia", "Tarjeta"], cid = uid(), pagos = [{ metodo: /efectivo|tarjeta|transf|yape|plin/i.test(x.pago || "") ? (metodos.filter(function (m) { return norm(x.pago).indexOf(norm(m).split(" ")[0]) >= 0; })[0] || "") : "", monto: x.aCobrar, propina: 0 }];
+    var metodos = S.metodosExt || ["Yape", "Plin", "Efectivo", "Transferencia", "Tarjeta"], cid = uid(), pagos = [{ metodo: /efectivo|tarjeta|transf|yape|plin/i.test(x.pago || "") ? (metodos.filter(function (m) { return norm(x.pago).indexOf(norm(m).split(" ")[0]) >= 0; })[0] || "") : "", monto: x.aCobrar, propina: 0 }];
     var zona = h("div", "metodos-c"), res = h("div", "tot"), err = h("p", "err"), ok;
     function suma() { return r2(pagos.reduce(function (a, p) { return a + (Number(p.monto) || 0); }, 0)); }
     function pintarP() {
@@ -2269,7 +2234,7 @@
       cuerpo.push(info);
       [fUbi, fZona, fCosto].forEach(function (x) { x.addEventListener("input", recalc); x.addEventListener("change", recalc); });
     }
-    var metodos = S.metodosExt || [YP, "Efectivo", "Transferencia", "Tarjeta"], pago = [""];
+    var metodos = S.metodosExt || ["Yape", "Plin", "Efectivo", "Transferencia", "Tarjeta"], pago = [""];
     cuerpo.push(h("div", "lbl", "Método de pago (opcional)"));
     cuerpo.push(chips([{ v: "", t: "Por definir" }].concat(metodos.map(function (m) { return { v: m, t: m }; })), false, pago, function () {}));
     var fNota = inp("Comentario (opcional)", "text", 200); cuerpo.push(campo("Comentario para cocina", fNota));
@@ -2406,8 +2371,8 @@
       entregarExtUI: entregarExtUI, detalleExt: detalleExt, tarjetaExt: tarjetaExt, cargarLeaflet: cargarLeaflet, escHtml: escHtml, mapsUrl: mapsUrl, mapaSalon: mapaSalon,
       medirMapa: medirMapa, vistaMesas: vistaMesas, botonMesa: botonMesa, estadoMesa: estadoMesa, mesasSalon: mesasSalon, porServir: porServir, entregar: entregar,
       PROD: PROD, SALSAS_TODAS: SALSAS_TODAS, nombreEs: nombreEs, tamEs: tamEs, cambiarAgotado: cambiarAgotado, ventanaAgotados: ventanaAgotados, segmento: segmento,
-      chips: chips, minDesde: minDesde, tsSalida: tsSalida, CLS_EST: CLS_EST, LL: LL, DL: DL, YP: YP, pitar: pitar, audio: audio, menuYo: menuYo, cobrar: cobrar,
-      imprimirComanda: imprimirComanda, esPseudo: esPseudo, mesaDe: mesaDe, legadoLlevar: legadoLlevar, K: K, instalar: { disponible: function () { return !!instalarEv; },
+      chips: chips, minDesde: minDesde, tsSalida: tsSalida, CLS_EST: CLS_EST, LL: LL, DL: DL, pitar: pitar, audio: audio, menuYo: menuYo, cobrar: cobrar,
+      esPseudo: esPseudo, mesaDe: mesaDe, legadoLlevar: legadoLlevar, K: K, instalar: { disponible: function () { return !!instalarEv; },
         pedir: function () { var e = instalarEv; if (!e) return Promise.resolve(false); e.prompt(); return e.userChoice.then(function (c) { instalarEv = null; return c && c.outcome === "accepted"; }); }, instalada: instalada } };
   }
   function cargarLocal() {
