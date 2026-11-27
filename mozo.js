@@ -2176,7 +2176,7 @@
   }
   /* cobro de un pedido sin mesa: uno o varios métodos (pago mixto) y propina por método */
   function cobrarExt(x) {
-    var metodos = S.metodosExt || ["Yape", "Plin", "Efectivo", "Transferencia", "Tarjeta"], cid = uid(), pagos = [{ metodo: /efectivo|tarjeta|transf|yape|plin/i.test(x.pago || "") ? (metodos.filter(function (m) { return norm(x.pago).indexOf(norm(m).split(" ")[0]) >= 0; })[0] || "") : "", monto: x.aCobrar, propina: 0 }];
+    var metodos = metodosCanal(x.canal), cid = uid(), pagos = [{ metodo: /efectivo|tarjeta|transf|yape|plin/i.test(x.pago || "") ? (metodos.filter(function (m) { return norm(x.pago).indexOf(norm(m).split(" ")[0]) >= 0; })[0] || "") : "", monto: x.aCobrar, propina: 0 }];
     var zona = h("div", "metodos-c"), res = h("div", "tot"), err = h("p", "err"), ok;
     function suma() { return r2(pagos.reduce(function (a, p) { return a + (Number(p.monto) || 0); }, 0)); }
     function pintarP() {
@@ -2301,6 +2301,26 @@
     if (cc < Number(tar.minimo || 0)) cc = Number(tar.minimo); if (Number(tar.maximo) > 0 && cc > Number(tar.maximo)) cc = Number(tar.maximo);
     return { ok: true, costo: fin(cc), zona: "", km: km };
   }
+  /* métodos de pago por canal: el delivery se paga por adelantado (sin efectivo ni tarjeta); el recojo, con todos */
+  var MET_DELIVERY = ["Yape", "Plin", "Transferencia"], MET_RECOJO = ["Efectivo", "Yape", "Plin", "Tarjeta", "Transferencia"];
+  function metodosCanal(canal) { return (canal === "delivery" ? MET_DELIVERY : MET_RECOJO).slice(); }
+  function rucValido(r) {
+    if (!/^(10|15|16|17|20)\d{9}$/.test(r)) return false;
+    var f = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2], s = 0;
+    for (var i = 0; i < 10; i++) s += Number(r.charAt(i)) * f[i];
+    var d = 11 - (s % 11); if (d === 10) d = 0; if (d === 11) d = 1;
+    return d === Number(r.charAt(10));
+  }
+  /** Mismas reglas que la web (pedido.js): factura = RUC válido; boleta = DNI (8) o RUC válido; nombre o razón social; correo válido. */
+  function validarCompExt(tipo, doc, razon, correo) {
+    if (!tipo) return "";
+    doc = String(doc || "").replace(/\D/g, "");
+    if (tipo === "Factura") { if (!rucValido(doc)) return "El RUC no es válido (11 dígitos, empieza con 10, 15, 16, 17 o 20)."; }
+    else if (!(doc.length === 8 || (doc.length === 11 && rucValido(doc)))) return "Para la boleta escribe el DNI (8 dígitos) o un RUC válido.";
+    if (String(razon || "").trim().length < 3) return tipo === "Factura" ? "Escribe la razón social." : "Escribe el nombre para la boleta.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(correo || "").trim())) return "Escribe un correo válido para enviar el comprobante.";
+    return "";
+  }
   var K_CLI = "pg-mozo-cliext";
   function formExterno(tipo) {
     var c = carro(); if (!c.length) { toast("Agrega al menos un producto.", "mal"); return; }
@@ -2330,9 +2350,22 @@
       cuerpo.push(info);
       [fUbi, fZona, fCosto].forEach(function (x) { x.addEventListener("input", recalc); x.addEventListener("change", recalc); });
     }
-    var metodos = S.metodosExt || ["Yape", "Plin", "Efectivo", "Transferencia", "Tarjeta"], pago = [""];
+    var metodos = metodosCanal(tipo), pago = [""];
     cuerpo.push(h("div", "lbl", "Método de pago (opcional)"));
     cuerpo.push(chips([{ v: "", t: "Por definir" }].concat(metodos.map(function (m) { return { v: m, t: m }; })), false, pago, function () {}));
+    // comprobante (igual que en la web): sin comprobante, boleta o factura con documento, nombre o razón social y correo
+    var comp = { tipo: "" }, fDoc = inp("", "text", 11), fRaz = inp("", "text", 120), fMail = inp("correo@ejemplo.com", "email", 120), zComp = h("div", "comp-z");
+    fDoc.inputMode = "numeric";
+    fDoc.addEventListener("input", function () { var v = fDoc.value.replace(/\D/g, "").slice(0, 11); if (v !== fDoc.value) fDoc.value = v; });
+    function pintarComp() {
+      zComp.textContent = ""; if (!comp.tipo) return;
+      var fac = comp.tipo === "Factura";
+      fDoc.placeholder = fac ? "RUC (11 dígitos)" : "DNI (8) o RUC (11)"; fRaz.placeholder = fac ? "Razón social" : "Nombre completo";
+      zComp.appendChild(campo(fac ? "RUC *" : "DNI o RUC *", fDoc)); zComp.appendChild(campo(fac ? "Razón social *" : "Nombre *", fRaz)); zComp.appendChild(campo("Correo *", fMail, "Ahí le llega el comprobante."));
+    }
+    cuerpo.push(h("div", "lbl", "Comprobante"));
+    var segC = segmento([["", "Sin comprobante"], ["Boleta", "Boleta"], ["Factura", "Factura"]], "", function (v) { comp.tipo = v; segC.querySelectorAll("button").forEach(function (b, i) { b.classList.toggle("on", ["", "Boleta", "Factura"][i] === v); }); if (v && !fRaz.value.trim() && v === "Boleta") fRaz.value = fNom.value.trim(); pintarComp(); });
+    segC.classList.add("comp-seg"); cuerpo.push(segC); cuerpo.push(zComp);
     var fNota = inp("Comentario (opcional)", "text", 200); cuerpo.push(campo("Comentario para cocina", fNota));
     cuerpo.push(tot); cuerpo.push(err);
     function costo() { if (!del) return 0; if (fCosto.value.trim() !== "") return Number(fCosto.value) || 0; return st.r && st.r.ok ? st.r.costo : 0; }
@@ -2364,8 +2397,10 @@
       if (st.prog && !/^\d{2}:\d{2}$/.test(fHora.value)) { err.textContent = "Elige la hora programada."; return; }
       if (del && fDir.value.trim().length < 5) { err.textContent = "Escribe la dirección de entrega."; fDir.focus(); return; }
       if (del && st.r && st.r.fuera && fCosto.value.trim() === "") { err.textContent = st.r.error + ": escribe un costo manual si igual lo llevan."; return; }
+      var eComp = validarCompExt(comp.tipo, fDoc.value, fRaz.value, fMail.value); if (eComp) { err.textContent = eComp; try { err.scrollIntoView({ block: "nearest" }); } catch (e) {} return; }
       var body = { mz: "externo", t: S.t, tipo: tipo, cid: cid, nombre: nom, telefono: cel, pago: pago[0] || "", programado: st.prog ? fHora.value : "", notas: fNota.value.trim(),
         items: c.map(function (l) { return { id: l.id, tam: l.tam, salsa: l.salsa, cant: l.cant, nota: l.nota, ops: l.ops || {}, mitad: l.mitad || "" }; }) };
+      if (comp.tipo) { body.comprobante = comp.tipo; body.doc = fDoc.value.replace(/\D/g, ""); body.razon = fRaz.value.trim(); body.correo = fMail.value.trim(); }
       if (del) {
         body.direccion = fDir.value.trim(); body.referencia = fRef.value.trim(); body.zona = fZona.value;
         if (st.c) { body.lat = st.c.lat; body.lng = st.c.lng; }
@@ -2467,7 +2502,7 @@
       medirMapa: medirMapa, vistaMesas: vistaMesas, botonMesa: botonMesa, estadoMesa: estadoMesa, mesasSalon: mesasSalon, porServir: porServir, entregar: entregar,
       PROD: PROD, SALSAS_TODAS: SALSAS_TODAS, nombreEs: nombreEs, tamEs: tamEs, cambiarAgotado: cambiarAgotado, ventanaAgotados: ventanaAgotados, segmento: segmento,
       chips: chips, minDesde: minDesde, tsSalida: tsSalida, CLS_EST: CLS_EST, LL: LL, DL: DL, pitar: pitar, audio: audio, menuYo: menuYo, cobrar: cobrar,
-      esPseudo: esPseudo, mesaDe: mesaDe, legadoLlevar: legadoLlevar, K: K, instalar: { disponible: function () { return !!instalarEv; },
+      esPseudo: esPseudo, mesaDe: mesaDe, legadoLlevar: legadoLlevar, K: K, metodosCanal: metodosCanal, rucValido: rucValido, validarCompExt: validarCompExt, instalar: { disponible: function () { return !!instalarEv; },
         pedir: function () { var e = instalarEv; if (!e) return Promise.resolve(false); e.prompt(); return e.userChoice.then(function (c) { instalarEv = null; return c && c.outcome === "accepted"; }); }, instalada: instalada } };
   }
   function cargarLocal() {

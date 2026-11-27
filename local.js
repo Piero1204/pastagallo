@@ -4,9 +4,12 @@
      «Todos»  tablero completo: indicadores del día, pedidos por estado con acciones rápidas, promoción del día, no disponibles,
               comprobantes por emitir, impresora, reparto, mapa del salón, mapa de delivery e historial del día.
      «Para llevar / Delivery»  pedidos en curso, repartidores y mapa.      «Salón»  plano y por servir.
-     «Comprobantes»  pendientes y cobrado sin comprobante → boleta/factura.   «Tienda»  vender y registrar compras (sin totales de caja).
+     «Cuentas»  lo cobrado del día (mesas, para llevar/delivery y tienda): cambiar pago, editar, eliminar/anular y recuperar.
+     «Comprobantes»  pendientes, cobrado sin comprobante y comprobante nuevo con líneas libres.
+     «Tienda»  vender (misma interfaz de la caja, en verde oliva) y registrar compras (sin totales de caja).
      «Clientes»  búsqueda por nombre o celular, historial y dirección para un delivery manual.
-   Atajos: / buscar · n nuevo pedido · 1-6 pestañas · Esc cerrar.  El servidor valida todo (ModLocal.gs: mz "l_…" solo para el rol local). */
+   Solo se piden al servidor los datos de la pestaña abierta; se refrescan solos con el sondeo barato del núcleo.
+   Atajos: / buscar · n nuevo pedido · 1-7 pestañas · Esc cerrar.  El servidor valida todo (ModLocal.gs: mz "l_…" solo para el rol local). */
 (function () {
   "use strict";
   var MZ = null, S = null, h = null, btn = null, soles = null;
@@ -15,6 +18,7 @@
     ["todos", "Todos", "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"],
     ["llevar", "Llevar y delivery", "M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"],
     ["salon", "Salón", "M4 9h16M6 9v9M18 9v9M8 5h8l2 4H6z"],
+    ["cuentas", "Cuentas", "M3 7h18v12H3zM3 11h18M7 15h4M16 4l2 3M8 4L6 7"],
     ["comp", "Comprobantes", "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h4"],
     ["tienda", "Tienda", "M4 9l1-5h14l1 5M4 9h16v11H4zM9 20v-6h6v6"],
     ["clientes", "Clientes", "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-5-6"]
@@ -25,6 +29,8 @@
   var COMP = null, pidiendoC = false;
   var CLI = { q: "", res: null, ficha: null, ts: 0, buscando: false };
   var AB = {};   // secciones desplegables abiertas (se recuerdan)
+  var TV = { lista: null, ts: 0, pidiendo: false };   // ventas de tienda de hoy (bloque «Tienda» de «Todos»)
+  var CU = { dia: "", datos: null, ts: 0, pidiendo: false, err: "" };   // pestaña «Cuentas»
 
   function svg(d, cls) {
     var ns = "http://www.w3.org/2000/svg", s = document.createElementNS(ns, "svg"), p = document.createElementNS(ns, "path");
@@ -36,6 +42,24 @@
   function haceTxt(ts) { var m = minDesde(ts); return m >= 60 ? Math.floor(m / 60) + " h " + (m % 60) + " min" : m + " min"; }
   function guardarAb() { MZ.guardar(K.abiertos, AB); }
   function diaLima() { return new Date(Date.now() + S.desfase - 5 * 3600000); }
+  function horaLima() { return diaLima().getUTCHours(); }
+  /* orden de los bloques por la hora de Lima: de 18:00 a 23:59 manda el restaurante; el resto del día, la tienda */
+  function ordenBloques() { return horaLima() >= 18 ? ["salon", "llevar", "tienda"] : ["tienda", "salon", "llevar"]; }
+  /* acciones nuevas del servidor: { ok, r } o { ok:false, error }. Devuelve r (o el objeto si no trae r). */
+  function accion(o) {
+    return llamar(o).then(function (x) {
+      if (!x || !x.ok) { var e = new Error((x && x.error) || "No se pudo."); e.srv = true; throw e; }
+      return x.r !== undefined ? x.r : x;
+    });
+  }
+  function errTxt(e) { return e && e.srv ? e.message : "Sin conexión: no se guardó. Intenta de nuevo."; }
+  /* {ok, r:{…}} → {ok, …} (para módulos que esperan la respuesta plana) */
+  function plano(x) {
+    if (!x || !x.ok || !x.r || typeof x.r !== "object" || Array.isArray(x.r)) return x;
+    var o = {}; Object.keys(x.r).forEach(function (k) { o[k] = x.r[k]; }); Object.keys(x).forEach(function (k) { if (k !== "r" && o[k] === undefined) o[k] = x[k]; });
+    o.ok = true; return o;
+  }
+  function trasCambio() { S.v = ""; MZ.sondear(); TV.ts = 0; CU.ts = 0; if (S.pest === "cuentas") pedirCuentas(true); if (S.pest === "todos") pedirTVentas(true); pedirTablero(true); }
 
   /* =========================== DATOS EXTRA (tablero) =========================== */
   function pedirTablero(forzar) {
@@ -58,6 +82,11 @@
   var vUltimo = "";
   function alSondear(r) {
     if (!r.igual || !T || Date.now() - tPedido > 30000 || S.v !== vUltimo) { vUltimo = S.v; pedirTablero(!r.igual); }
+    // solo la pestaña abierta pide sus datos extra (las demás se cargan al abrirlas)
+    if (S.vista !== "carta") {
+      if (S.pest === "todos") pedirTVentas(!r.igual && Date.now() - TV.ts > 8000);
+      if (S.pest === "cuentas" && CU.datos && (!CU.dia || CU.dia === CU.datos.hoy) && Date.now() - CU.ts > (r.igual ? 60000 : 12000)) pedirCuentas(true);
+    }
     alarmaNuevos();
   }
 
@@ -81,6 +110,8 @@
   function irTab(t) {
     S.pest = t; MZ.guardar(MZ.K.pest, t); S.vista = "mesas"; S.mesa = null;
     if (t === "comp") pedirComp();
+    if (t === "cuentas") pedirCuentas(!CU.datos || Date.now() - CU.ts > 10000);
+    if (t === "todos") pedirTVentas(false);
     MZ.pintar(); window.scrollTo(0, 0);
   }
   function cuentaTab(t) {
@@ -105,6 +136,7 @@
     var v = document.querySelector(".lc-riel"); if (v) v.remove();
     document.body.appendChild(riel());
     document.body.classList.toggle("lc-en-carta", S.vista === "carta" && !!S.mesa);
+    document.body.classList.toggle("lc-tab-tienda", S.vista !== "carta" && S.pest === "tienda");
   }
   /* barra superior: impresora + nuevo pedido */
   function top(t) {
@@ -142,6 +174,7 @@
     if (tab === "todos") vistaTodos(w);
     else if (tab === "llevar") vistaLlevar(w);
     else if (tab === "salon") vistaSalon(w);
+    else if (tab === "cuentas") vistaCuentas(w);
     else if (tab === "comp") vistaComp(w);
     else if (tab === "tienda") vistaTienda(w);
     else vistaClientes(w);
@@ -152,7 +185,8 @@
     if (tab === "todos") return dias[d.getUTCDay()].replace(/^./, function (c) { return c.toUpperCase(); }) + " " + d.getUTCDate() + " de " + meses[d.getUTCMonth()] + (S.horario && S.horario.abre ? " · cocina " + S.horario.abre + "–" + S.horario.cierra : "");
     if (tab === "llevar") return "Pedidos sin mesa: recojo en el local y delivery (web, teléfono y WhatsApp)";
     if (tab === "salon") return "Mesas en vivo, por servir y cuentas";
-    if (tab === "comp") return "Boletas y facturas por emitir";
+    if (tab === "cuentas") return "Lo cobrado del día: cambiar el pago, editar, eliminar o anular";
+    if (tab === "comp") return "Boletas y facturas por emitir y comprobantes nuevos";
     if (tab === "tienda") return "Venta de mostrador y compras · sin totales de caja";
     return "Busca por nombre o celular";
   }
@@ -162,14 +196,23 @@
       cab.appendChild(btn("🛵 Delivery", "btn peq lc-b vino", function () { MZ.nuevoExterno(MZ.DL); }));
     }
     if (tab === "salon") cab.appendChild(btn("🚫 No disponibles", "btn peq lc-b", ventanaNoDisp));
-    if (tab === "comp") cab.appendChild(btn("🔄 Actualizar", "btn peq lc-b", function () { pedirComp(true); }));
+    if (tab === "comp") cab.appendChild(btn("＋ Nuevo comprobante", "btn peq lc-b vino", function () { if (!COMP) { pedirComp(true); MZ.toast("Cargando comprobantes… vuelve a tocar en un momento.", "ok"); return; } formComp({ nuevo: true, tit: "Nuevo", total: 0, cli: {} }); }));
+    if (tab === "cuentas") {
+      var fe = h("input", "campo lc-fecha"); fe.type = "date"; fe.value = CU.dia || (CU.datos && CU.datos.dia) || diaLima().toISOString().slice(0, 10);
+      fe.setAttribute("aria-label", "Día"); fe.max = diaLima().toISOString().slice(0, 10);
+      fe.addEventListener("change", function () { CU.dia = fe.value === diaLima().toISOString().slice(0, 10) ? "" : fe.value; CU.datos = null; fe.blur(); pedirCuentas(true); MZ.pintar(); });
+      cab.appendChild(fe);
+      cab.appendChild(btn("🔄 Actualizar", "btn peq lc-b", function () { pedirCuentas(true); }));
+    }
   }
+  /* la pestaña se repinta SOLO si cambió lo que muestra (así escribir o vender no se interrumpe) */
   function firma() {
-    var tab = S.pest, min = Math.floor(Date.now() / 60000);
-    var base = [tab, S.vista, T ? T.recibido : 0, (S.avisos || []).length, S.horario && S.horario.cocina];
-    if (tab === "todos") return base.concat([S.v, JSON.stringify(AB), min, CARGA ? CARGA.min : "", firmaAgotados()]).join("|");
-    if (tab === "llevar") return base.concat([S.v, AB.mapaLl, min]).join("|");
+    var tab = S.pest, min = Math.floor(Date.now() / 60000), imp = T && T.imp, c = imp && imp.cola || {};
+    var base = [tab, S.vista, T ? [T.comp, imp ? imp.viva : "", c.pend, c.fall].join("/") : 0, (S.avisos || []).length, S.horario && S.horario.cocina];
+    if (tab === "todos") return base.concat([T ? T.recibido : 0, S.v, JSON.stringify(AB), min, CARGA ? CARGA.min : "", firmaAgotados(), TV.ts]).join("|");
+    if (tab === "llevar") return base.concat([T ? T.recibido : 0, S.v, AB.mapaLl, min]).join("|");
     if (tab === "salon") return base.concat([S.v, S.vistaM, min]).join("|");
+    if (tab === "cuentas") return base.concat([CU.ts, CU.dia, CU.err]).join("|");
     if (tab === "comp") return base.concat([COMP ? COMP.ts : 0]).join("|");
     if (tab === "tienda") return base.concat([S.tiendaSub || "", INS ? INS.ts : 0]).join("|");
     return base.concat([CLI.ts]).join("|");
@@ -205,10 +248,77 @@
   }
   function vistaTodos(w) {
     var acts = activos();
+    if (!TV.lista) pedirTVentas(false);
     w.appendChild(kpis(acts));
     var g = h("div", "lc-grid"), izq = h("div", "lc-main"), der = h("aside", "lc-aside");
-    // tablero de pedidos por estado (en orden de salida)
-    var board = h("section", "lc-board");
+    // bloques por canal, en el orden que toca a esta hora: salón, para llevar y delivery, tienda
+    var mesa = acts.filter(function (x) { return x.tipo === "mesa" || (x.tipo === "llevar" && !x.x); }), ext = acts.filter(function (x) { return !!x.x; });
+    ordenBloques().forEach(function (b) {
+      if (b === "salon") izq.appendChild(bloqueSalonTodos(mesa));
+      else if (b === "llevar") izq.appendChild(bloqueLlevarTodos(ext));
+      else izq.appendChild(bloqueTiendaTodos());
+    });
+    // desplegables: salón, mapa de delivery, historial
+    var mp = MZ.mapaSalon(); if (mp) { mp.classList.add("lc-plegable"); izq.appendChild(mp); }
+    izq.appendChild(mapaDelivery("mapaTodos", "🛵 Mapa de delivery del día"));
+    izq.appendChild(historial());
+    der.appendChild(cardPromo());
+    der.appendChild(cardNoDisp());
+    der.appendChild(cardComp());
+    der.appendChild(cardImpresora());
+    var rp = cardReparto(); if (rp) der.appendChild(rp);
+    g.appendChild(izq); g.appendChild(der); w.appendChild(g);
+  }
+  function cabBloque(ic, tit, n, extra) {
+    var c = h("div", "lc-blq__cab"); c.appendChild(h("h2", null, ic + " " + tit)); c.appendChild(h("span", "lc-n", String(n)));
+    c.appendChild(h("span", "esp")); if (extra) c.appendChild(extra); return c;
+  }
+  function bloqueSalonTodos(items) {
+    var s = h("section", "lc-blq lc-blq--salon"); s.dataset.bloque = "salon";
+    s.appendChild(cabBloque("🍽", "Salón", items.length, btn("Ver salón ›", "lc-link", function () { irTab("salon"); })));
+    var gr = h("div", "lc-blq__grid");
+    if (!items.length) gr.appendChild(h("p", "lc-col__vacio", "Ningún plato por servir en el salón."));
+    items.forEach(function (x) { gr.appendChild(tarjeta(x)); });
+    s.appendChild(gr); return s;
+  }
+  function bloqueTiendaTodos() {
+    var s = h("section", "lc-blq lc-blq--tienda"); s.dataset.bloque = "tienda";
+    var l = (TV.lista || []).filter(function (v) { return v.estado !== "Anulada"; }), tot = l.reduce(function (a, v) { return a + (Number(v.total) || 0); }, 0);
+    var nv = btn("＋ Venta", "lc-a ok", function () { S.tiendaSub = "vender"; MZ.guardar(K.tiendaSub, "vender"); irTab("tienda"); });
+    s.appendChild(cabBloque("🛍", "Tienda · hoy", l.length, nv));
+    if (!TV.lista) { s.appendChild(h("p", "lc-col__vacio", "Cargando ventas de tienda…")); return s; }
+    if (!l.length) { s.appendChild(h("p", "lc-col__vacio", "Todavía no hay ventas de tienda hoy.")); return s; }
+    var ul = h("div", "lc-tv");
+    l.slice().reverse().slice(0, 12).forEach(function (v) {
+      var f = h("div", "lc-tv__f");
+      f.appendChild(h("b", null, "N° " + (v.numero || v.id) + " · " + (v.hora || "")));
+      f.appendChild(h("span", null, txtLineas(v.lineas)));
+      f.appendChild(h("small", null, txtPagos(v.pagos) + (v.cajero ? " · " + v.cajero : "")));
+      f.appendChild(h("b", "lc-tv__m", soles(v.total)));
+      ul.appendChild(f);
+    });
+    s.appendChild(ul);
+    s.appendChild(h("p", "lc-nota", (l.length > 12 ? "Últimas 12 de " + l.length + " · " : "") + "Total de tienda hoy " + soles(tot) + " · el detalle está en 💰 Cuentas"));
+    return s;
+  }
+  function pedirTVentas(forzar) {
+    if (TV.pidiendo || !S.t) return; if (!forzar && TV.lista && Date.now() - TV.ts < 20000) return;
+    TV.pidiendo = true;
+    accion({ mz: "l_tventas" }).then(function (r) { TV.lista = Array.isArray(r) ? r : (r && (r.ventas || r.lista)) || []; TV.ts = Date.now(); MZ.refrescar(); })
+      .catch(function () { if (!TV.lista) { TV.lista = []; TV.ts = Date.now(); MZ.refrescar(); } }).then(function () { TV.pidiendo = false; });
+  }
+  function txtLineas(ls) {
+    return (ls || []).map(function (l) { return typeof l === "string" ? l : l.t || ((l.cant != null ? l.cant + " × " : "") + (l.nombre || l.n || l.descripcion || "") + (l.tam ? " " + l.tam : "")); }).join(" · ");
+  }
+  function txtPagos(ps) {
+    if (typeof ps === "string") return ps;
+    return (ps || []).map(function (p) { return typeof p === "string" ? p : (p.metodo || "") + (p.monto != null ? " " + soles(p.monto) : "") + (Number(p.propina) ? " (+ propina " + soles(p.propina) + ")" : ""); }).join(" + ");
+  }
+  /* para llevar y delivery: tablero por estado (en orden de salida) */
+  function bloqueLlevarTodos(acts) {
+    var s = h("section", "lc-blq lc-blq--llevar"); s.dataset.bloque = "llevar";
+    s.appendChild(cabBloque("🥡", "Para llevar y delivery", acts.length));
+    var board = h("div", "lc-board");
     ["nuevo", "cocina", "listo", "camino"].forEach(function (c) {
       var items = acts.filter(function (x) { return x.col === c; });
       if (c === "camino" && !items.length && !acts.some(function (x) { return x.tipo === "delivery"; })) return;
@@ -220,17 +330,8 @@
       board.appendChild(col);
     });
     board.classList.add("n" + board.childNodes.length);
-    izq.appendChild(board);
-    // desplegables: salón, mapa de delivery, historial
-    var mp = MZ.mapaSalon(); if (mp) { mp.classList.add("lc-plegable"); izq.appendChild(mp); }
-    izq.appendChild(mapaDelivery("mapaTodos", "🛵 Mapa de delivery del día"));
-    izq.appendChild(historial());
-    der.appendChild(cardPromo());
-    der.appendChild(cardNoDisp());
-    der.appendChild(cardComp());
-    der.appendChild(cardImpresora());
-    var rp = cardReparto(); if (rp) der.appendChild(rp);
-    g.appendChild(izq); g.appendChild(der); w.appendChild(g);
+    s.appendChild(board);
+    return s;
   }
   function kpis(acts) {
     var k = T && T.kpi, w = h("section", "lc-kpis");
@@ -289,6 +390,8 @@
     if (!e) {   // pedido de mesa
       a.appendChild(btn("Abrir mesa", "lc-a", function () { MZ.tocarMesa(x.m); }));
       if (x.estado === "Listo") a.appendChild(btn("✓ Servido", "lc-a ok", function () { MZ.entregar(x.p, "todo", true); }));
+      a.appendChild(btn("✎", "lc-a ic", function () { editarPedidoLocal(x.p.id, "Mesa " + x.m.mesa + " · #" + x.n); }, "Editar pedido"));
+      a.appendChild(btn("🗑", "lc-a ic", function () { eliminarPedido(x.p.id, "#" + x.n + " de la mesa " + x.m.mesa, x.total); }, "Eliminar pedido"));
       a.appendChild(btn("🖨", "lc-a ic", function () { reimprimir(x.p.id, ["cocina"]); }, "Reimprimir comanda de cocina"));
       return a;
     }
@@ -303,7 +406,10 @@
     if ((e.estado === "Listo" && e.canal !== "delivery") || e.estado === "En camino") a.appendChild(btn("✓ Entregado", "lc-a ok", function () { entregado(e); }));
     if (!e.pagado && e.pe !== "Por verificar") a.appendChild(btn("💳 Cobrar", "lc-a azul", function () { MZ.cobrarExt(e); }));
     if (e.canal === "delivery" && T && T.reparto && (T.reparto.repartidores || []).length && ["Entregado", "En camino"].indexOf(e.estado) === -1) a.appendChild(btn("Asignar", "lc-a", function () { asignar(e); }));
-    a.appendChild(btn("🖨", "lc-a ic", function () { reimprimir(e.id); }));
+    a.appendChild(btn("Pago", "lc-a", function () { cambiarPagoPedido({ numero: e.id, nro: e.n, canal: e.canal, nombre: e.nombre, pago: e.pago, total: e.aCobrar }); }, "Cambiar el método de pago"));
+    a.appendChild(btn("✎", "lc-a ic", function () { editarPedidoLocal(e.id, "#" + e.n + " " + e.nombre); }, "Editar pedido"));
+    a.appendChild(btn("🗑", "lc-a ic", function () { eliminarPedido(e.id, "#" + e.n + " de " + e.nombre, e.aCobrar); }, "Eliminar pedido"));
+    a.appendChild(btn("🖨", "lc-a ic", function () { reimprimir(e.id); }, "Reimprimir"));
     return a;
   }
   function btnIc(b, t) { b.title = t; b.setAttribute("aria-label", t); return b; }
@@ -634,17 +740,32 @@
     for (var dec = 2; dec <= 10; dec++) { var v = Number((precio / (1 + t)).toFixed(dec)); if (Math.round(cant * v * (1 + t) * 100 + 1e-6) === obj) return v.toFixed(dec); }
     return (precio / (1 + t)).toFixed(10);
   }
+  /* emitir (o registrar) una boleta o factura: de un pedido pendiente, de un cobro del día o NUEVA con líneas libres.
+     Las líneas se pueden traer de un pedido (n.º) o de una mesa con «Cargar líneas». */
   function formComp(o) {
     var su = (COMP && COMP.sunat) || { modo: "apagado" }, elec = (su.modo === "beta" || su.modo === "produccion") && COMP.emitir, tR = Number(su.tasaRestaurante) || 10.5;
-    var cli = o.cli || {}, L = [{ descripcion: "POR CONSUMO", cantidad: 1, precio: Number(o.total) || 0, tasa: tR }];
-    var cuerpo = h("div", "lc-fcomp"), err = h("p", "err"), lineasBox = h("div", "lc-lineas");
+    var cli = o.cli || {}, L = o.nuevo ? [{ descripcion: "", cantidad: 1, precio: 0, tasa: tR }] : [{ descripcion: "POR CONSUMO", cantidad: 1, precio: Number(o.total) || 0, tasa: tR }];
+    var cuerpo = h("div", "lc-fcomp"), err = h("p", "err"), lineasBox = h("div", "lc-lineas"), totEl = h("b", "lc-lin-tot");
     function campo(rot, el) { var w = h("label", "campo-l"); w.appendChild(h("span", null, rot)); w.appendChild(el); return w; }
-    function inp(v, ph, tipo) { var i = h("input", "campo"); i.value = v || ""; i.placeholder = ph || ""; if (tipo) i.type = tipo; return i; }
+    function inp(v, ph, tipo) { var i = h("input", "campo"); i.value = v == null ? "" : v; i.placeholder = ph || ""; if (tipo) i.type = tipo; return i; }
     var tipo = h("select", "campo"); [["Boleta", "Boleta de venta"], ["Factura", "Factura"]].forEach(function (x) { var op = h("option", null, x[1]); op.value = x[0]; tipo.appendChild(op); });
     tipo.value = o.tipo === "Factura" ? "Factura" : "Boleta";
-    var doc = inp(cli.doc, "DNI (8) o RUC (11)"), razon = inp(cli.razon || cli.nombre, "Nombre o razón social"), correo = inp(cli.correo, "correo@ejemplo.com", "email"), wa = inp(cli.telefono, "9 dígitos", "tel");
+    var doc = inp(cli.doc, "DNI (8) o RUC (11)"), razon = inp(cli.razon || cli.nombre, "Nombre o razón social"), dir = inp(cli.direccion, "Dirección (opcional)"), correo = inp(cli.correo, "correo@ejemplo.com", "email"), wa = inp(cli.telefono, "9 dígitos", "tel");
+    doc.inputMode = "numeric";
+    doc.addEventListener("input", function () { var v = doc.value.replace(/\D/g, "").slice(0, 11); if (v !== doc.value) doc.value = v; });
+    // cargar líneas de un pedido o de una mesa (sirve sobre todo para el comprobante nuevo)
+    if (o.nuevo) {
+      var refP = inp("", "N.º de pedido", "number"), refM = inp("", "Mesa"), bCar = btn("⤓ Cargar líneas", "lc-a", function () {
+        var ref = refP.value.trim() ? { numero: Number(refP.value) } : refM.value.trim() ? { mesa: refM.value.trim() } : null;
+        if (!ref) { err.textContent = "Escribe el número de pedido o la mesa."; return; }
+        err.textContent = ""; bCar.disabled = true; bCar.textContent = "Cargando…";
+        cargarDatos(ref, true).then(function (ok) { bCar.disabled = false; bCar.textContent = "⤓ Cargar líneas"; if (ok) o.pedido = ref.numero ? String(ref.numero) : "Mesa " + ref.mesa; });
+      });
+      var gc = h("div", "lc-cargar"); gc.appendChild(h("span", "lbl", "Traer de un pedido:")); gc.appendChild(refP); gc.appendChild(h("span", null, "o")); gc.appendChild(refM); gc.appendChild(bCar);
+      cuerpo.appendChild(gc);
+    }
     var g1 = h("div", "lc-f2"); g1.appendChild(campo("Tipo", tipo)); g1.appendChild(campo("DNI o RUC", doc)); cuerpo.appendChild(g1);
-    cuerpo.appendChild(campo("Nombre o razón social", razon));
+    var g0 = h("div", "lc-f2"); g0.appendChild(campo("Nombre o razón social", razon)); g0.appendChild(campo("Dirección", dir)); cuerpo.appendChild(g0);
     var g2 = h("div", "lc-f2"); g2.appendChild(campo("Correo (opcional)", correo)); g2.appendChild(campo("WhatsApp (opcional)", wa)); cuerpo.appendChild(g2);
     var serie, numero;
     if (!elec) {
@@ -653,44 +774,68 @@
       var g3 = h("div", "lc-f2"); g3.appendChild(campo("Serie (de SOL)", serie)); g3.appendChild(campo("Número", numero)); cuerpo.appendChild(g3);
       tipo.addEventListener("change", function () { var x = (COMP.series || []).filter(function (s2) { return s2.tipo === tipo.value; })[0] || {}; serie.value = x.serie || ""; numero.value = x.siguiente || ""; });
     }
-    cuerpo.appendChild(h("div", "lbl", "Detalle"));
+    cuerpo.appendChild(h("div", "lbl", "Detalle (precios con IGV)"));
     cuerpo.appendChild(lineasBox);
+    function total() { return MZ.r2(L.reduce(function (a, l) { return a + (l.cantidad || 0) * (l.precio || 0); }, 0)); }
+    function vu(l) { return "v.u. sin IGV " + (l.cantidad > 0 && l.precio > 0 ? valorUnit(l.cantidad, l.precio, l.tasa) : "—"); }
     function pintarL() {
       lineasBox.textContent = "";
-      var tot = 0;
+      var cab = h("div", "lc-lin lc-lin--cab"); ["Cant.", "Descripción", "Precio", "IGV", "", ""].forEach(function (t) { cab.appendChild(h("span", null, t)); }); lineasBox.appendChild(cab);
       L.forEach(function (l, i) {
-        var f = h("div", "lc-lin"), d = inp(l.descripcion, "Descripción"), c = inp(l.cantidad, "Cant.", "number"), p = inp(l.precio, "Precio", "number");
-        d.addEventListener("input", function () { l.descripcion = d.value; }); c.addEventListener("change", function () { l.cantidad = Number(c.value) || 0; pintarL(); }); p.addEventListener("change", function () { l.precio = Number(p.value) || 0; pintarL(); });
-        f.appendChild(c); f.appendChild(d); f.appendChild(p);
-        f.appendChild(h("small", null, "v.u. sin IGV " + (l.cantidad > 0 && l.precio > 0 ? valorUnit(l.cantidad, l.precio, l.tasa) : "—") + " · IGV " + l.tasa + "%"));
-        f.appendChild(btn("✕", "lc-a ic", function () { L.splice(i, 1); if (!L.length) L.push({ descripcion: "", cantidad: 1, precio: 0, tasa: tR }); pintarL(); }));
-        lineasBox.appendChild(f); tot += (l.cantidad || 0) * (l.precio || 0);
+        var f = h("div", "lc-lin"), d = inp(l.descripcion, "Descripción"), c = inp(l.cantidad, "Cant.", "number"), p = inp(l.precio || "", "Precio", "number"), sm = h("small", null, vu(l));
+        c.min = "0"; c.step = "1"; p.min = "0"; p.step = "0.10"; c.inputMode = "decimal"; p.inputMode = "decimal";
+        var t = h("select", "campo"); [10.5, 18].concat([10.5, 18].indexOf(Number(l.tasa)) < 0 ? [Number(l.tasa)] : []).forEach(function (x) { var op = h("option", null, String(x).replace(".", ",") + " %"); op.value = String(x); t.appendChild(op); }); t.value = String(l.tasa);
+        t.setAttribute("aria-label", "IGV");
+        function vivo() { sm.textContent = vu(l); totEl.textContent = "Total " + soles(total()); }
+        d.addEventListener("input", function () { l.descripcion = d.value; });
+        c.addEventListener("input", function () { l.cantidad = Number(c.value) || 0; vivo(); });
+        p.addEventListener("input", function () { l.precio = Number(p.value) || 0; vivo(); });
+        t.addEventListener("change", function () { l.tasa = Number(t.value); vivo(); });
+        d.classList.add("lc-lin__d"); c.classList.add("lc-lin__c"); p.classList.add("lc-lin__p"); t.classList.add("lc-lin__t");
+        f.appendChild(c); f.appendChild(d); f.appendChild(p); f.appendChild(t); f.appendChild(sm);
+        f.appendChild(btn("✕", "lc-a ic lc-lin__x", function () { L.splice(i, 1); if (!L.length) L.push({ descripcion: "", cantidad: 1, precio: 0, tasa: tR }); pintarL(); }, "Quitar línea"));
+        lineasBox.appendChild(f);
       });
       var pie = h("div", "lc-lin-pie");
-      pie.appendChild(btn("＋ Línea", "lc-a", function () { L.push({ descripcion: "", cantidad: 1, precio: 0, tasa: tR }); pintarL(); }));
-      pie.appendChild(btn("Todo en «POR CONSUMO»", "lc-a", function () { var t = L.reduce(function (a, l) { return a + (l.cantidad || 0) * (l.precio || 0); }, 0); L = [{ descripcion: "POR CONSUMO", cantidad: 1, precio: Math.round(t * 100) / 100, tasa: tR }]; pintarL(); }));
-      pie.appendChild(h("span", "esp")); pie.appendChild(h("b", null, "Total " + soles(tot)));
+      pie.appendChild(btn("＋ Línea", "lc-a", function () { L.push({ descripcion: "", cantidad: 1, precio: 0, tasa: tR }); pintarL(); var ds = lineasBox.querySelectorAll(".lc-lin__d"); if (ds.length) ds[ds.length - 1].focus(); }));
+      pie.appendChild(btn("Todo en «POR CONSUMO»", "lc-a", function () { L = [{ descripcion: "POR CONSUMO", cantidad: 1, precio: total(), tasa: tR }]; pintarL(); }));
+      pie.appendChild(h("span", "esp")); totEl.textContent = "Total " + soles(total()); pie.appendChild(totEl);
       lineasBox.appendChild(pie);
     }
     pintarL();
-    // detalle real del pedido o de la mesa (si el servidor tiene datosEmision)
-    if (COMP.datos && o.ref) llamar({ mz: "l_compdatos", ref: o.ref }).then(function (r) {
-      var d = r && r.ok && r.r; if (!d) return;
-      if (d.lineas && d.lineas.length) { L = d.lineas.map(function (l) { return { descripcion: l.descripcion, cantidad: Number(l.cantidad), precio: Number(l.precio), tasa: Number(l.tasa) || tR }; }); pintarL(); }
-      var c = d.cliente || {}; if (c.doc && !doc.value) doc.value = c.doc; if (c.razon && !razon.value) razon.value = c.razon; if (c.correo && !correo.value) correo.value = c.correo;
-    }).catch(function () {});
+    // detalle real del pedido o de la mesa (datosEmision del servidor)
+    function cargarDatos(ref, avisar) {
+      return llamar({ mz: "l_compdatos", ref: ref }).then(function (r) {
+        var d = r && r.ok && (r.r || r);
+        if (!d || !d.lineas || !d.lineas.length) { if (avisar) err.textContent = (r && r.error) || "Ese pedido no tiene líneas para el comprobante."; return false; }
+        L = d.lineas.map(function (l) { return { descripcion: l.descripcion, cantidad: Number(l.cantidad), precio: Number(l.precio), tasa: Number(l.tasa) || tR }; }); pintarL();
+        var c = d.cliente || {}; if (c.doc && !doc.value) doc.value = c.doc; if (c.razon && !razon.value) razon.value = c.razon; if (c.correo && !correo.value) correo.value = c.correo; if (c.direccion && !dir.value) dir.value = c.direccion;
+        if (c.tipo === "Factura" || c.tipo === "Boleta") tipo.value = c.tipo;
+        if (avisar) MZ.toast("Líneas cargadas (" + L.length + ")", "ok");
+        return true;
+      }).catch(function () { if (avisar) err.textContent = "Sin conexión: no se pudieron cargar las líneas."; return false; });
+    }
+    if (COMP.datos && o.ref) cargarDatos(o.ref, false);
     cuerpo.appendChild(err);
     function datos() {
-      return { tipo: tipo.value, doc: doc.value, razon: razon.value, correo: correo.value, whatsapp: wa.value, pedido: o.pedido, serie: serie ? serie.value : "", numero: numero ? numero.value : "",
-        items: L.filter(function (l) { return String(l.descripcion || "").trim() && l.cantidad > 0 && l.precio > 0; }),
+      return { tipo: tipo.value, doc: doc.value.replace(/\D/g, ""), razon: razon.value.trim(), direccion: dir.value.trim(), correo: correo.value.trim(), whatsapp: wa.value.replace(/\D/g, ""), pedido: o.pedido || "",
+        serie: serie ? serie.value : "", numero: numero ? numero.value : "",
+        items: L.filter(function (l) { return String(l.descripcion || "").trim() && l.cantidad > 0 && l.precio > 0; }).map(function (l) { return { descripcion: String(l.descripcion).trim(), cantidad: l.cantidad, precio: l.precio, tasa: l.tasa }; }),
         detalle: L.map(function (l) { return l.cantidad + " x " + String(l.descripcion).toUpperCase() + " · v.u. sin IGV " + valorUnit(l.cantidad, l.precio, l.tasa) + " · IGV " + l.tasa + "%"; }).join("\n") };
     }
     function validar(d) {
-      if (!d.items.length) return "Agrega al menos un producto con precio.";
-      var docN = String(d.doc).replace(/\D/g, "");
-      if (d.tipo === "Factura" && docN.length !== 11) return "Para factura escribe el RUC (11 dígitos).";
-      if (d.tipo === "Factura" && d.razon.trim().length < 3) return "Escribe la razón social.";
-      if (docN && docN.length !== 8 && docN.length !== 11) return "El DNI tiene 8 dígitos y el RUC 11.";
+      if (!d.items.length) return "Agrega al menos una línea con descripción, cantidad y precio.";
+      if (L.some(function (l) { return (l.cantidad > 0 || l.precio > 0) && !String(l.descripcion || "").trim(); })) return "Hay una línea sin descripción.";
+      var tot = d.items.reduce(function (a, l) { return a + l.cantidad * l.precio; }, 0);
+      if (d.tipo === "Factura") {
+        if (!/^\d{11}$/.test(d.doc) || ["10", "15", "16", "17", "20"].indexOf(d.doc.slice(0, 2)) < 0) return "Para factura escribe un RUC válido (11 dígitos, empieza con 10, 15, 16, 17 o 20).";
+        if (d.razon.length < 3) return "Escribe la razón social.";
+      } else {
+        if (d.doc && d.doc.length !== 8 && d.doc.length !== 11) return "El DNI tiene 8 dígitos y el RUC 11.";
+        if (!d.doc && tot >= 700) return "Desde S/ 700 la boleta lleva DNI.";
+      }
+      if (d.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.correo)) return "El correo no es válido.";
+      if (d.whatsapp && !/^9\d{8}$/.test(d.whatsapp.replace(/^51(?=9\d{8}$)/, ""))) return "El WhatsApp debe tener 9 dígitos y empezar con 9.";
       if (!elec && (!/^[A-Za-z0-9]{4}$/.test(d.serie) || !(Number(d.numero) > 0))) return "Escribe la serie (4 caracteres) y el número que te dio SOL.";
       return "";
     }
@@ -703,22 +848,278 @@
       var tot = d.items.reduce(function (a, l) { return a + l.cantidad * l.precio; }, 0);
       if (elec && !confirm("¿Emitir " + d.tipo.toUpperCase() + " por " + soles(tot) + "?" + (su.modo === "produccion" ? "\n\nSe envía a SUNAT y no se puede deshacer (solo anular con nota de crédito)." : ""))) return;
       ok.disabled = true; ok.textContent = elec ? "Enviando a SUNAT…" : "Guardando…";
+      if (elec) { delete d.serie; delete d.numero; }
       llamar({ mz: elec ? "l_emitir" : "l_registrar", datos: d }).then(function (r) {
         if (!r.ok) { ok.disabled = false; ok.textContent = "Reintentar"; err.textContent = r.error || "No se pudo."; return; }
         MZ.cerrarModal();
-        var c = r.comprobante || {};
-        MZ.toast("✓ " + (c.tipo || d.tipo) + " " + (c.codigo || "") + " " + (elec ? "emitida" : "registrada"), "ok");
-        if (r.html) imprimirHtml(r.html);
+        var x = r.r && typeof r.r === "object" ? r.r : r, c = x.comprobante || x;
+        MZ.toast("✓ " + (c.tipo || d.tipo) + " " + (c.codigo || c.numero || "") + " " + (elec ? "emitida" : "registrada"), "ok");
+        if (x.html) imprimirHtml(x.html);
         pedirComp(true); pedirTablero(true);
       }).catch(function () { ok.disabled = false; ok.textContent = "Reintentar"; err.textContent = "Sin conexión. Revisa antes de reintentar que no se haya emitido."; });
     });
     var pie = [btn("Cancelar", "btn", MZ.cerrarModal)]; if (!elec) pie.push(copiar); pie.push(ok);
-    var m = MZ.abrirModal((elec ? "Emitir " : "Registrar ") + "boleta / factura · " + o.tit, [cuerpo], pie); m.classList.add("lc-modal-ancho");
+    var m = MZ.abrirModal(o.nuevo ? "🧾 Nuevo comprobante" : (elec ? "Emitir " : "Registrar ") + "boleta / factura · " + o.tit, [cuerpo], pie); m.classList.add("lc-modal-ancho");
   }
   function imprimirHtml(html) {
     var fr = h("iframe"); fr.style.cssText = "position:fixed;width:0;height:0;border:0"; document.body.appendChild(fr);
     var d = fr.contentDocument; d.open(); d.write(html); d.close();
     setTimeout(function () { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) {} setTimeout(function () { fr.remove(); }, 3000); }, 300);
+  }
+
+  /* =========================== «CUENTAS» (lo cobrado del día) =========================== */
+  var MET_MESA = ["Efectivo", "Yape", "Plin", "Tarjeta"], MET_TIENDA = ["Efectivo", "Yape", "Plin", "Tarjeta"];
+  function metodosPedido(canal) { return MZ.metodosCanal ? MZ.metodosCanal(canal === "delivery" ? "delivery" : "recojo") : canal === "delivery" ? ["Yape", "Plin", "Transferencia"] : ["Efectivo", "Yape", "Plin", "Tarjeta", "Transferencia"]; }
+  function pedirCuentas(forzar) {
+    if (CU.pidiendo || !S.t) return; if (!forzar && CU.datos && Date.now() - CU.ts < 10000) return;
+    CU.pidiendo = true;
+    var dia = CU.dia;
+    accion({ mz: "l_cuentas", dia: dia }).then(function (r) { if (dia !== CU.dia) return; CU.datos = r || {}; CU.err = ""; CU.ts = Date.now(); })
+      .catch(function (e) { CU.err = errTxt(e).replace(/: no se guardó.*$/, "."); CU.ts = Date.now(); })
+      .then(function () { CU.pidiendo = false; MZ.refrescar(); });
+  }
+  function sumar(l, f) { return l.reduce(function (a, x) { return a + (Number(f(x)) || 0); }, 0); }
+  function vistaCuentas(w) {
+    if (!CU.datos) {
+      if (!CU.pidiendo) pedirCuentas(true);
+      w.appendChild(h("p", "vacio", CU.err ? CU.err : "Cargando las cuentas del día…"));
+      if (CU.err) w.appendChild(btn("Reintentar", "btn", function () { pedirCuentas(true); }));
+      return;
+    }
+    var d = CU.datos, esHoy = !d.hoy || d.dia === d.hoy;
+    if (!esHoy) w.appendChild(h("p", "lc-banda", "Estás viendo el " + fechaTxt(d.dia) + ". Para volver a hoy, elige la fecha de hoy."));
+    if (CU.err) w.appendChild(h("p", "lc-banda", "⚠ " + CU.err));
+    var mesas = d.cuentas || [], peds = d.pedidos || [], vts = d.ventas || [];
+    var pedOk = peds.filter(function (p) { return p.estado !== "Cancelado"; }), vtOk = vts.filter(function (v) { return v.estado !== "Anulada"; });
+    var g = h("div", "lc-cu");
+    ordenBloques().forEach(function (b) {
+      if (b === "salon") g.appendChild(bloqueCu("salon", "🍽 Mesas", sumar(mesas, function (c) { return c.consumo; }), mesas, filaMesa, "Ninguna mesa cobrada " + (esHoy ? "hoy" : "ese día") + "."));
+      else if (b === "llevar") g.appendChild(bloqueCu("llevar", "🥡 Para llevar y delivery", sumar(pedOk, function (p) { return p.total; }), pedOk, filaPedidoCu, "Ningún pedido para llevar ni delivery."));
+      else g.appendChild(bloqueCu("tienda", "🛍 Tienda", sumar(vtOk, function (v) { return v.total; }), vtOk, filaVenta, "Ninguna venta de tienda."));
+    });
+    var tot = sumar(mesas, function (c) { return c.consumo; }) + sumar(pedOk, function (p) { return p.total; }) + sumar(vtOk, function (v) { return v.total; });
+    var res = h("p", "lc-cu__tot"); res.appendChild(h("span", null, "Total del día (sin propinas)")); res.appendChild(h("b", null, soles(tot))); g.appendChild(res);
+    // eliminados y anulados (se ven atenuados; lo de la papelera se puede recuperar)
+    var pap = d.papelera || [], anul = vts.filter(function (v) { return v.estado === "Anulada"; }), canc = peds.filter(function (p) { return p.estado === "Cancelado"; });
+    var e = h("section", "lc-card lc-cu__blq lc-cu--elim"); e.dataset.bloque = "eliminados";
+    var ec = h("div", "lc-cu__cab"); ec.appendChild(h("h3", null, "🗑 Eliminados y anulados · " + (pap.length + anul.length + canc.length))); e.appendChild(ec);
+    if (!pap.length && !anul.length && !canc.length) e.appendChild(h("p", "lc-vacio", "Nada eliminado ni anulado."));
+    pap.forEach(function (x) {
+      var f = filaCu("🗑 " + (x.tipo || "Eliminado") + " · " + (x.fecha || ""), (x.resumen || "") + (x.quien ? " · eliminó " + x.quien : ""), null);
+      f.querySelector(".lc-cu__acc").appendChild(btn("↺ Recuperar", "lc-a ok", function () { recuperar(x); }));
+      e.appendChild(f);
+    });
+    anul.forEach(function (v) { e.appendChild(filaCu("🛍 Venta N° " + (v.numero || v.id) + " · " + (v.hora || "") + " · ANULADA", txtLineas(v.lineas) + (v.nota ? " · " + v.nota : ""), v.total)); });
+    canc.forEach(function (p) { e.appendChild(filaCu((p.canal === "delivery" ? "🛵" : "🥡") + " #" + (p.nro || p.numero) + " " + (p.nombre || "") + " · CANCELADO", txtLineas(p.lineas), p.total)); });
+    g.appendChild(e);
+    w.appendChild(g);
+  }
+  function fechaTxt(iso) { var p = String(iso || "").split("-"); return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : iso; }
+  function bloqueCu(clave, tit, total, lista, fila, vacio) {
+    var s = h("section", "lc-card lc-cu__blq"); s.dataset.bloque = clave;
+    var c = h("div", "lc-cu__cab"); c.appendChild(h("h3", null, tit + " · " + lista.length)); c.appendChild(h("span", "esp")); c.appendChild(h("b", "lc-cu__st", soles(total))); s.appendChild(c);
+    if (!lista.length) s.appendChild(h("p", "lc-vacio", vacio));
+    lista.forEach(function (x) { s.appendChild(fila(x)); });
+    return s;
+  }
+  function filaCu(tit, sub, monto) {
+    var f = h("div", "lc-cu__f"), t = h("div", "lc-cu__t");
+    t.appendChild(h("b", null, tit)); if (sub) t.appendChild(h("small", null, sub)); f.appendChild(t);
+    f.appendChild(h("b", "lc-cu__m", monto == null ? "" : soles(monto)));
+    f.appendChild(h("div", "lc-cu__acc"));
+    return f;
+  }
+  function filaMesa(c) {
+    var f = filaCu("🍽 Mesa " + c.mesa + " · " + (c.hora || ""), [c.mozo ? "🤵 " + c.mozo : "", c.personas ? "👥 " + c.personas : "", txtPagos(c.pagos)].filter(Boolean).join(" · "), c.consumo);
+    var a = f.querySelector(".lc-cu__acc");
+    a.appendChild(btn("💳 Cambiar pago", "lc-a", function () { cambiarPagoMesa(c); }));
+    a.appendChild(btn("🗑 Eliminar", "lc-a mal", function () { eliminarCobro(c); }));
+    return f;
+  }
+  function filaPedidoCu(p) {
+    var f = filaCu((p.canal === "delivery" ? "🛵 Delivery" : "🥡 Para llevar") + " #" + (p.nro || p.numero) + " · " + (p.nombre || "") + " · " + (p.hora || ""),
+      [txtLineas(p.lineas), (p.pago || "sin método") + (p.pagoEstado ? " (" + p.pagoEstado + ")" : ""), p.estado, p.comp ? "🧾 " + p.comp + (p.compEstado ? " " + p.compEstado : "") : ""].filter(Boolean).join(" · "), p.total);
+    var a = f.querySelector(".lc-cu__acc");
+    a.appendChild(btn("💳 Cambiar pago", "lc-a", function () { cambiarPagoPedido(p); }));
+    a.appendChild(btn("✎ Editar", "lc-a", function () { editarPedidoLocal(p.numero, "#" + (p.nro || p.numero) + " " + (p.nombre || "")); }));
+    a.appendChild(btn("🗑 Eliminar", "lc-a mal", function () { eliminarPedido(p.numero, "#" + (p.nro || p.numero) + " de " + (p.nombre || "cliente"), p.total); }));
+    return f;
+  }
+  function filaVenta(v) {
+    var f = filaCu("🛍 Venta N° " + (v.numero || v.id) + " · " + (v.hora || ""), [txtLineas(v.lineas), txtPagos(v.pagos), v.cajero ? "🧑 " + v.cajero : "", v.nota || ""].filter(Boolean).join(" · "), v.total);
+    var a = f.querySelector(".lc-cu__acc");
+    a.appendChild(btn("💳 Cambiar pago", "lc-a", function () { cambiarPagoVenta(v); }));
+    a.appendChild(btn("⊘ Anular", "lc-a mal", function () { anularVenta(v); }));
+    return f;
+  }
+  /* cambio de método: botones grandes, sin montos */
+  function elegirMetodo(titulo, nota, metodos, actual, enviar) {
+    var g = h("div", "lc-mets"), err = h("p", "err");
+    metodos.forEach(function (m) {
+      var b = btn(m, "lc-met" + (actual && String(actual).toLowerCase().indexOf(m.toLowerCase()) >= 0 ? " on" : ""), function () {
+        g.querySelectorAll("button").forEach(function (y) { y.disabled = true; }); b.classList.add("enviando"); err.textContent = "";
+        enviar(m).then(function () { MZ.cerrarModal(); MZ.toast("✓ Pago cambiado a " + m, "ok"); trasCambio(); })
+          .catch(function (e) { err.textContent = errTxt(e); g.querySelectorAll("button").forEach(function (y) { y.disabled = false; }); b.classList.remove("enviando"); });
+      });
+      g.appendChild(b);
+    });
+    MZ.abrirModal(titulo, [h("p", "vacio", nota), g, err], [btn("Cancelar", "btn", MZ.cerrarModal)]);
+  }
+  function cambiarPagoPedido(p) {
+    elegirMetodo("💳 Pago del pedido #" + (p.nro || p.numero) + " · " + soles(p.total), "Ahora: " + (p.pago || "sin método") + (p.canal === "delivery" ? ". El delivery se paga solo con Yape, Plin o transferencia." : ""),
+      metodosPedido(p.canal), p.pago, function (m) { return accion({ mz: "l_ppago", id: p.numero, metodo: m }); });
+  }
+  function cambiarPagoVenta(v) {
+    var mets = (CU.datos && CU.datos.metodosTienda && CU.datos.metodosTienda.length ? CU.datos.metodosTienda : MET_TIENDA);
+    elegirMetodo("💳 Pago de la venta N° " + (v.numero || v.id) + " · " + soles(v.total), "Ahora: " + (txtPagos(v.pagos) || "—"), mets, (v.pagos && v.pagos[0] && v.pagos[0].metodo) || "",
+      function (m) { return accion({ mz: "l_tpago", id: v.id, metodo: m }); });
+  }
+  function cambiarPagoMesa(c) {
+    var mets = (CU.datos && CU.datos.metodos && CU.datos.metodos.length ? CU.datos.metodos : MET_MESA), pagos = c.pagos || [];
+    function enviar(lista) { return accion({ mz: "l_cobro", cuenta: c.cuenta, datos: { pagos: lista, mozoId: c.mozo_id || "", personas: c.personas || 0 } }); }
+    if (pagos.length <= 1) {
+      var prop = pagos[0] ? Number(pagos[0].propina) || 0 : 0;
+      elegirMetodo("💳 Pago de la mesa " + c.mesa + " · " + soles(c.consumo), "Ahora: " + (txtPagos(pagos) || "—") + ". Se cambia el método; el monto y la propina quedan igual.", mets, pagos[0] && pagos[0].metodo,
+        function (m) { return enviar([{ metodo: m, monto: c.consumo, propina: prop }]); });
+      return;
+    }
+    // varios pagos: editor (deben sumar el consumo)
+    var L = pagos.map(function (p) { return { metodo: p.metodo, monto: Number(p.monto) || 0, propina: Number(p.propina) || 0 }; });
+    var zona = h("div", "lc-pagos"), res = h("div", "tot"), err = h("p", "err"), ok;
+    function suma() { return MZ.r2(sumar(L, function (p) { return p.monto; })); }
+    function resumen() {
+      var f = MZ.r2(c.consumo - suma());
+      res.textContent = Math.abs(f) > 0.009 ? (f > 0 ? "Falta " + soles(f) : "Sobra " + soles(-f)) : "✓ Cuadra: " + soles(c.consumo);
+      res.className = "tot" + (Math.abs(f) > 0.009 ? " mal" : "");
+      if (ok) ok.disabled = Math.abs(f) > 0.009 || L.some(function (p) { return !p.metodo; });
+    }
+    function pintarP() {
+      zona.textContent = "";
+      L.forEach(function (p, i) {
+        var w2 = h("div", "lc-pg"), cab = h("div", "lc-pg__cab"); cab.appendChild(h("b", null, "Pago " + (i + 1)));
+        cab.appendChild(h("span", "esp"));
+        if (L.length > 1) cab.appendChild(btn("Quitar", "lc-a", function () { L.splice(i, 1); pintarP(); }));
+        w2.appendChild(cab);
+        var g2 = h("div", "lc-mets chico");
+        mets.forEach(function (m) { g2.appendChild(btn(m, "lc-met" + (p.metodo === m ? " on" : ""), function () { p.metodo = m; g2.querySelectorAll("button").forEach(function (y) { y.classList.toggle("on", y.textContent === m); }); resumen(); })); });
+        w2.appendChild(g2);
+        var f2 = h("div", "lc-f2");
+        var mo = h("input", "campo"); mo.type = "number"; mo.step = "0.10"; mo.min = "0"; mo.inputMode = "decimal"; mo.value = p.monto; mo.addEventListener("input", function () { p.monto = Number(mo.value) || 0; resumen(); });
+        var pr = h("input", "campo"); pr.type = "number"; pr.step = "0.10"; pr.min = "0"; pr.inputMode = "decimal"; pr.value = p.propina || ""; pr.placeholder = "0"; pr.addEventListener("input", function () { p.propina = Number(pr.value) || 0; });
+        var l1 = h("label", "campo-l"); l1.appendChild(h("span", null, "Monto")); l1.appendChild(mo); f2.appendChild(l1);
+        var l2 = h("label", "campo-l"); l2.appendChild(h("span", null, "Propina")); l2.appendChild(pr); f2.appendChild(l2);
+        w2.appendChild(f2); zona.appendChild(w2);
+      });
+      zona.appendChild(btn("＋ Agregar otro pago", "lc-a", function () { var f = MZ.r2(c.consumo - suma()); L.push({ metodo: "", monto: f > 0 ? f : 0, propina: 0 }); pintarP(); }));
+      resumen();
+    }
+    ok = btn("Guardar pagos", "btn prim", function () {
+      ok.disabled = true; ok.textContent = "Guardando…"; err.textContent = "";
+      enviar(L.filter(function (p) { return p.monto > 0 || p.propina > 0; })).then(function () { MZ.cerrarModal(); MZ.toast("✓ Pagos de la mesa " + c.mesa + " actualizados", "ok"); trasCambio(); })
+        .catch(function (e) { ok.disabled = false; ok.textContent = "Guardar pagos"; err.textContent = errTxt(e); });
+    });
+    pintarP();
+    MZ.abrirModal("💳 Pagos de la mesa " + c.mesa + " · consumo " + soles(c.consumo), [h("p", "vacio", "Los pagos deben sumar el consumo. La propina va aparte."), zona, res, err], [btn("Cancelar", "btn", MZ.cerrarModal), ok]);
+  }
+  function eliminarCobro(c) {
+    if (!confirm("¿Eliminar el cobro de la mesa " + c.mesa + " (" + soles(c.consumo) + ", " + (c.hora || "") + ")?" + (c.reabrible ? "\n\nLa cuenta vuelve a quedar abierta para cobrarla de nuevo." : "") + "\n\nQueda en «Eliminados» y se puede recuperar.")) return;
+    accion({ mz: "l_elimcobro", cuenta: c.cuenta }).then(function () { MZ.toast("🗑 Cobro de la mesa " + c.mesa + " eliminado", "ok"); trasCambio(); }).catch(function (e) { MZ.toast(errTxt(e), "mal"); });
+  }
+  function eliminarPedido(id, txt, total) {
+    if (!confirm("¿Eliminar el pedido " + txt + (total != null ? " (" + soles(total) + ")" : "") + "?\n\nSe quita de cocina, de la caja y de los reportes. Queda en «Eliminados» de 💰 Cuentas y se puede recuperar.")) return;
+    accion({ mz: "l_elimped", id: id }).then(function () {
+      MZ.toast("🗑 Pedido " + txt + " eliminado", "ok");
+      S.externos = (S.externos || []).filter(function (x) { return x.id !== id; }); MZ.pintar(); trasCambio();
+    }).catch(function (e) { MZ.toast(errTxt(e), "mal"); });
+  }
+  function anularVenta(v) {
+    var mot = h("input", "campo"); mot.placeholder = "Motivo (obligatorio)"; mot.maxLength = 120;
+    var err = h("p", "err"), ok;
+    ok = btn("⊘ Anular venta", "btn rojo", function () {
+      if (mot.value.trim().length < 3) { err.textContent = "Escribe el motivo de la anulación."; mot.focus(); return; }
+      if (!confirm("¿Anular la venta N° " + (v.numero || v.id) + " por " + soles(v.total) + "? No se puede deshacer.")) return;
+      ok.disabled = true; ok.textContent = "Anulando…";
+      accion({ mz: "l_tanular", id: v.id, motivo: mot.value.trim() }).then(function () { MZ.cerrarModal(); MZ.toast("⊘ Venta N° " + (v.numero || v.id) + " anulada", "ok"); trasCambio(); })
+        .catch(function (e) { ok.disabled = false; ok.textContent = "⊘ Anular venta"; err.textContent = errTxt(e); });
+    });
+    MZ.abrirModal("⊘ Anular venta N° " + (v.numero || v.id) + " · " + soles(v.total), [h("p", "vacio", txtLineas(v.lineas) + " · " + txtPagos(v.pagos)), mot, err], [btn("Volver", "btn", MZ.cerrarModal), ok]);
+    setTimeout(function () { mot.focus(); }, 60);
+  }
+  function recuperar(x) {
+    if (!confirm("¿Recuperar «" + (x.resumen || x.tipo || "registro") + "»? Vuelve a quedar como antes de eliminarlo.")) return;
+    accion({ mz: "l_restaurar", id: x.id }).then(function () { MZ.toast("↺ Recuperado", "ok"); trasCambio(); }).catch(function (e) { MZ.toast(errTxt(e), "mal"); });
+  }
+  /* editar un pedido (mesa, para llevar o delivery): cantidades por línea (0 = quitar) y productos nuevos */
+  function editarPedidoLocal(id, titulo) {
+    MZ.abrirModal("✎ Editar pedido " + titulo, [h("p", "vacio", "Cargando el pedido…")], [btn("Cerrar", "btn", MZ.cerrarModal)]);
+    accion({ mz: "l_pedidoed", id: id }).then(function (r) {
+      r = r || {};
+      var E = (r.lineas || []).map(function (l) { var c = Number(l.cant != null ? l.cant : l.cantidad) || 0; return { t: l.t || l.e || ((l.n || l.nombre || l.descripcion || "") + (l.tam ? " " + l.tam : "")), cant: c, cant0: c, unit: Number(l.unit != null ? l.unit : l.precio) || 0, fija: !!(l.entregada || l.noEditable) }; });
+      var cat = (r.catalogo && r.catalogo.length ? r.catalogo : Object.keys(MZ.PROD).map(function (k) { return MZ.PROD[k]; })).map(function (c) {
+        var t = c.t || c.tam || []; if (!Array.isArray(t)) t = [];
+        return { id: c.id, n: c.nombre || MZ.nombreEs(c) || c.n || c.id, t: t, p: c.p != null ? c.p : c.precio, salsa: !!c.salsa, agotado: !!c.agotado, g: c.g || c.grupo || "" };
+      }).filter(function (c) { return c.id && !c.agotado; });
+      var N = [], cuerpo = h("div", "lc-ed"), bus = h("input", "campo"), res = h("div", "lc-ed__res"), tot = h("div", "tot"), err = h("p", "err"), ok;
+      bus.type = "search"; bus.placeholder = "＋ Agregar producto: escribe para buscar…"; bus.classList.add("lc-ed__bus");
+      var salsas = (MZ.SALSAS_TODAS || []).filter(function (x) { return !x.agotado; });
+      function estimado() { return MZ.r2(sumar(E, function (e) { return e.unit * e.cant; }) + sumar(N, function (n) { return n.unit * n.cant; })); }
+      function hayCambio() { return N.length || E.some(function (e) { return e.cant !== e.cant0; }); }
+      function pie() { tot.textContent = ""; tot.appendChild(h("span", null, "Total estimado")); tot.appendChild(h("span", null, soles(estimado()))); if (ok) { ok.disabled = !hayCambio(); } }
+      function step(o, min, fn) {
+        var st = h("div", "lc-st"), out = h("output", null, String(o.cant));
+        var m = btn("−", "", function () { if (o.cant > min) { o.cant--; fn(); } }); m.disabled = o.cant <= min; m.setAttribute("aria-label", "Uno menos");
+        st.appendChild(m); st.appendChild(out); st.appendChild(btn("+", "", function () { if (o.cant < 99) { o.cant++; fn(); } }));
+        return st;
+      }
+      function dibujar() {
+        cuerpo.textContent = "";
+        if (r.estado) cuerpo.appendChild(h("p", "vacio", "Estado: " + r.estado + ". Si cocina ya lo tiene, se le avisa del cambio."));
+        E.forEach(function (e) {
+          var f = h("div", "lc-ed__l" + (e.cant === 0 ? " fuera" : e.cant !== e.cant0 ? " cambio" : ""));
+          f.appendChild(h("span", "lc-ed__n", e.t + (e.cant === 0 ? " · se quita" : "")));
+          f.appendChild(h("b", null, soles(e.unit * e.cant)));
+          if (e.fija) f.appendChild(h("small", null, "ya entregada")); else f.appendChild(step(e, 0, dibujar));
+          cuerpo.appendChild(f);
+        });
+        N.forEach(function (n, i) {
+          var f = h("div", "lc-ed__l nuevo");
+          f.appendChild(h("span", "lc-ed__n", "＋ " + n.nombre));
+          f.appendChild(h("b", null, soles(n.unit * n.cant)));
+          f.appendChild(step(n, 1, dibujar));
+          var x = h("div", "lc-ed__op");
+          if (n.tams.length) { var sel = h("select", "campo"); n.tams.forEach(function (t) { var o = h("option", null, MZ.tamEs(t[0]) + " · " + soles(t[1])); o.value = t[0]; sel.appendChild(o); }); sel.value = n.tam; sel.addEventListener("change", function () { n.tam = sel.value; n.unit = (n.tams.filter(function (t) { return t[0] === n.tam; })[0] || [0, 0])[1]; dibujar(); }); x.appendChild(sel); }
+          if (n.pideSalsa && salsas.length) { var ss = h("select", "campo"); [{ id: "", n: "Salsa…" }].concat(salsas).forEach(function (sx) { var o = h("option", null, sx.id ? "Salsa " + (sx.n || sx.id) : sx.n); o.value = sx.id; ss.appendChild(o); }); ss.value = n.salsa; ss.addEventListener("change", function () { n.salsa = ss.value; }); x.appendChild(ss); }
+          var nt = h("input", "campo"); nt.placeholder = "Nota para cocina"; nt.maxLength = 120; nt.value = n.nota; nt.addEventListener("input", function () { n.nota = nt.value; }); x.appendChild(nt);
+          x.appendChild(btn("✕", "lc-a ic", function () { N.splice(i, 1); dibujar(); }, "Quitar"));
+          f.appendChild(x); cuerpo.appendChild(f);
+        });
+        pie();
+      }
+      function buscar() {
+        res.textContent = ""; var q = MZ.norm(bus.value).trim(); if (q.length < 2) return;
+        cat.filter(function (c) { return MZ.norm(c.n + " " + c.g).indexOf(q) >= 0; }).slice(0, 8).forEach(function (c) {
+          var pr = c.t.length ? c.t[0][1] : Number(c.p) || 0;
+          res.appendChild(btn(c.n + " · " + (c.t.length > 1 ? "desde " : "") + soles(pr), "lc-ed__r", function () {
+            N.push({ id: c.id, nombre: c.n, tams: c.t, tam: c.t.length ? c.t[0][0] : "", unit: pr, salsa: "", pideSalsa: c.salsa, cant: 1, nota: "" });
+            bus.value = ""; res.textContent = ""; dibujar();
+          }));
+        });
+        if (!res.childNodes.length) res.appendChild(h("p", "lc-vacio", "Sin productos con «" + bus.value + "»."));
+      }
+      bus.addEventListener("input", buscar);
+      ok = btn("Guardar cambios", "btn prim", function () {
+        if (N.some(function (n) { return n.pideSalsa && salsas.length && !n.salsa; })) { err.textContent = "Elige la salsa de los productos nuevos."; return; }
+        var quita = E.filter(function (e) { return e.cant === 0 && e.cant0 > 0; }).length;
+        if (quita && !confirm("Se quita" + (quita === 1 ? " 1 línea" : "n " + quita + " líneas") + " del pedido. ¿Guardar?")) return;
+        ok.disabled = true; ok.textContent = "Guardando…"; err.textContent = "";
+        accion({ mz: "l_editar", id: id, cambios: { cant: E.map(function (e) { return e.cant; }), nuevos: N.map(function (n) { return { id: n.id, tam: n.tam, salsa: n.salsa, cant: n.cant, nota: n.nota.trim(), ops: {} }; }) } })
+          .then(function () { MZ.cerrarModal(); MZ.toast("✎ Pedido " + titulo + " modificado", "ok"); trasCambio(); })
+          .catch(function (e) { ok.disabled = false; ok.textContent = "Guardar cambios"; err.textContent = errTxt(e); });
+      });
+      dibujar();
+      var m = MZ.abrirModal("✎ Editar pedido " + titulo, [cuerpo, bus, res, tot, err], [btn("Cancelar", "btn", MZ.cerrarModal), ok]); m.classList.add("lc-modal-ancho");
+      pie();
+    }).catch(function (e) { MZ.cerrarModal(); MZ.toast(e && e.srv ? e.message : "Sin conexión: no se pudo abrir el pedido.", "mal"); });
   }
 
   /* =========================== IMPRESIÓN (indicador, pendientes y respaldo por Chrome) =========================== */
@@ -787,13 +1188,35 @@
         var A = window.PG_APP_CAJERO;
         if (!A || !A.iniciar) { tiendaNodo.appendChild(h("p", "vacio", "No se pudo cargar la tienda.")); return; }
         tiendaApp = A.iniciar({ api: MZ.api, token: S.t, mozo: S.mozo, contenedor: tiendaNodo, h: h, toast: MZ.toast, salir: function () {}, cfg: MZ.C, restringido: true, instalar: MZ.instalar,
-          llamarTienda: function (o) { var b = {}; Object.keys(o).forEach(function (k) { if (k !== "ext") b[k] = o[k]; }); b.mz = "l_tienda"; b.t = S.t; return MZ.api(b); } });
+          llamarTienda: llamarTienda });
       };
       if (window.PG_APP_CAJERO) arrancar();
       else { var sc = document.createElement("script"); sc.src = "/cajero.js"; sc.onload = arrancar; sc.onerror = function () { tiendaNodo.appendChild(h("p", "vacio", "No se pudo cargar la tienda. Revisa la conexión.")); }; document.head.appendChild(sc); }
     }
     w.appendChild(tiendaNodo);
   }
+  /* la caja de tienda (cajero.js, modo restringido) habla con el servidor por aquí:
+     productos → mz l_tdatos (productos con foto y categoría en español, métodos y SUNAT); venta → mz l_tienda op venta.
+     Las respuestas {ok, r} se aplanan a lo que espera la caja. */
+  function llamarTienda(o) {
+    if (o.op === "productos") return llamar({ mz: "l_tdatos" }).then(function (x) {
+      x = plano(x); if (!x || !x.ok) return x || { ok: false, error: "No se pudo cargar la tienda." };
+      if (Array.isArray(x.r)) x.productos = x.r;
+      if (x.sunat) TSUNAT = x.sunat;
+      return x;
+    });
+    var b = {}; Object.keys(o).forEach(function (k) { if (k !== "ext") b[k] = o[k]; });
+    b.mz = "l_tienda"; b.t = S.t;
+    return MZ.api(b).then(function (x) {
+      x = plano(x);
+      if (x && x.ok && o.op === "venta") {
+        if (!x.venta && (x.id || x.numero)) x = { ok: true, venta: x, comprobantes: x.comprobantes, compError: x.compError, repetida: x.repetida };
+        TV.ts = 0; CU.ts = 0;   // la venta aparece en «Todos» y en «Cuentas» al abrirlas
+      }
+      return x;
+    });
+  }
+  var TSUNAT = null;
   function vistaCompra(w) {
     if (!INS) {
       INS = { ts: 0, insumos: [], proveedores: [], metodos: [] };
@@ -957,7 +1380,7 @@
       return;
     }
     if (e.key === "n" || e.key === "N") { e.preventDefault(); menuNuevo(); return; }
-    if (/^[1-6]$/.test(e.key) && S.vista !== "carta") { e.preventDefault(); irTab(TABS[+e.key - 1][0]); }
+    if (/^[1-7]$/.test(e.key) && S.vista !== "carta" && TABS[+e.key - 1]) { e.preventDefault(); irTab(TABS[+e.key - 1][0]); }
   });
 
   window.PG_LOCAL = {
