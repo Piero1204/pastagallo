@@ -423,3 +423,9 @@ select.campo{background:#fff}
 .modal__cuerpo{overflow-x:hidden}
 .chips{flex-wrap:wrap}
 .qrpago{width:220px;max-width:70%;margin:4px auto;border-radius:10px;border:1px solid var(--linea)}
+
+/* Tienda: paquete de 500 g / peso por 1/4 kg */
+.pres-info{margin:4px 0;font-weight:800;font-size:17px}
+.pres-nota{display:block;color:var(--gris,#6f5f57);font-size:13px;margin-bottom:6px}
+.step--peso output{min-width:64px}
+.linea .d small{display:block;color:var(--gris,#6f5f57);font-size:12px}

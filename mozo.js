@@ -209,10 +209,88 @@
     });
     return r2(base + extra);
   }
-  function precioTxt(it) { return it.t ? "desde " + soles(Math.min.apply(null, it.t.map(function (x) { return x[1]; }))) : soles(it.p); }
+  /* Tienda: presentaciones por paquete (solo "1/2 kg" = 500 g) o por peso en pasos de 1/4 kg (salsas con "1/2 kg" y "1/4 kg").
+     Se decide por las presentaciones del producto, no por su id; el resto sigue con chips de tamaño. Al servidor siempre van líneas {id, tam, cant}. */
+  function modoPres(it) {
+    if (!it || !it.t || !it._sec || it._sec.id !== "tienda") return "";
+    var ts = it.t.map(function (x) { return x[0]; }), m = ts.indexOf("1/2 kg") >= 0;
+    if (m && ts.length === 1) return "paq";
+    if (m && ts.indexOf("1/4 kg") >= 0 && ts.indexOf("1 kg") < 0) return "peso";
+    return "";
+  }
+  function precioTam(it, tam) { var x = it.t.filter(function (y) { return y[0] === tam; })[0]; return x ? x[1] : 0; }
+  function fmtKg(n) { return String(Math.round(n * 100) / 100).replace(".", ","); }
+  function fmtCuartos(q) { var e = Math.floor(q / 4), f = ["", "¼", "½", "¾"][q % 4]; return (e || !f ? String(e) : "") + f; }
+  function descPartes(q) { var m = Math.floor(q / 2), c = q % 2, r = []; if (m) r.push(m + " × ½"); if (c) r.push(c + " × ¼"); return r.join(" + "); }
+  function lineasPeso(it, q) {
+    var r = [], m = Math.floor(q / 2), c = q % 2;
+    if (m) r.push({ tam: "1/2 kg", cant: m, unit: precioTam(it, "1/2 kg") });
+    if (c) r.push({ tam: "1/4 kg", cant: c, unit: precioTam(it, "1/4 kg") });
+    return r;
+  }
+  function cuartosDe(ls) { return ls.reduce(function (a, l) { return a + l.cant * (l.tam === "1/2 kg" ? 2 : 1); }, 0); }
+  var NOTA_PESO = "Si no hay de ½, se entrega en ¼.";
+  function grupoPeso(l) {
+    var it = PROD[l.id];
+    return it && (l.tam === "1/2 kg" || l.tam === "1/4 kg") && modoPres(it) === "peso" ? [l.id, l.nota].join("|") : "";
+  }
+  /* líneas del carro agrupadas: las de un producto por peso (1/2 kg + 1/4 kg) se muestran como una sola */
+  function agrupar(c) {
+    var r = [], vistos = {};
+    c.forEach(function (l) {
+      var g = grupoPeso(l);
+      if (!g) { r.push({ l: l, ls: [l], g: "" }); return; }
+      if (vistos[g]) return; vistos[g] = 1;
+      r.push({ l: l, ls: c.filter(function (x) { return grupoPeso(x) === g; }), g: g });
+    });
+    return r;
+  }
+  function sufijoLinea(l, ls, grp) {
+    if (grp) return " · " + fmtCuartos(cuartosDe(ls)) + " kg (" + descPartes(cuartosDe(ls)) + ")";
+    if (l.tam === "1/2 kg" && modoPres(PROD[l.id]) === "paq") return " · " + l.cant + " × 500 g (" + fmtKg(l.cant * 0.5) + " kg)";
+    return l.tam ? " " + tamEs(l.tam) : "";
+  }
+  function fijarCuartos(c, ls, q) {
+    var base = ls[0], it = PROD[base.id], m = Math.floor(q / 2), r = q % 2;
+    function poner(tam, cant) {
+      var ex = ls.filter(function (x) { return x.tam === tam; })[0];
+      if (ex) { if (cant > 0) ex.cant = cant; else c.splice(c.indexOf(ex), 1); return; }
+      if (cant <= 0) return;
+      var nl = {}; Object.keys(base).forEach(function (k) { nl[k] = base[k]; });
+      nl.tam = tam; nl.cant = cant; nl.unit = precioTam(it, tam);
+      c.splice(c.indexOf(base) + 1, 0, nl);
+    }
+    poner("1/2 kg", m); poner("1/4 kg", r);
+  }
+  /* Stepper de la línea del carro (los dos lugares donde se arma: mesa y llevar/delivery). */
+  function stepLinea(c, l, ls, grp, refrescar) {
+    var st = h("div", "st"), out = h("output", null, grp ? fmtCuartos(cuartosDe(ls)) : String(l.cant));
+    st.appendChild(btn("−", "", function () {
+      if (grp) fijarCuartos(c, ls, cuartosDe(ls) - 1); else if (l.cant > 1) l.cant--; else c.splice(c.indexOf(l), 1);
+      guardarCarros(); refrescarTarjeta(l.id); refrescar();
+    }));
+    st.appendChild(out);
+    st.appendChild(btn("+", "", function () {
+      if (grp) { if (cuartosDe(ls) < 40) fijarCuartos(c, ls, cuartosDe(ls) + 1); } else if (l.cant < 30) l.cant++;
+      guardarCarros(); refrescarTarjeta(l.id); refrescar();
+    }));
+    return st;
+  }
+  function precioTxt(it) {
+    var pm = modoPres(it);
+    if (pm === "paq") return soles(precioTam(it, "1/2 kg")) + " · paquete 500 g";
+    if (pm === "peso") return soles(precioTam(it, "1/2 kg") * 2) + " / kg";
+    return it.t ? "desde " + soles(Math.min.apply(null, it.t.map(function (x) { return x[1]; }))) : soles(it.p);
+  }
   function cantDe(id) { return carro().reduce(function (a, l) { return a + (l.id === id ? l.cant : 0); }, 0); }
+  function cantTxt(it) {
+    var q = cantDe(it.id); if (!q) return "";
+    if (modoPres(it) === "peso") return fmtCuartos(cuartosDe(carro().filter(function (l) { return l.id === it.id; }))) + " kg";
+    if (modoPres(it) === "paq") return "×" + q + " · " + fmtKg(q * 0.5) + " kg";
+    return "×" + q;
+  }
   function totalCarro() { return r2(carro().reduce(function (a, l) { return a + l.unit * l.cant; }, 0)); }
-  function unidades() { return carro().reduce(function (a, l) { return a + l.cant; }, 0); }
+  function unidades() { return agrupar(carro()).reduce(function (a, g) { return a + (g.g ? 1 : g.l.cant); }, 0); }
 
   /* ---------- sonido y vibración ---------- */
   var ctx = null;
@@ -1309,10 +1387,10 @@
     tx.appendChild(h("span", "n", nes));
     if (nes !== it.n) tx.appendChild(h("span", "g", it.n)); else if (it.g) tx.appendChild(h("span", "g", it.g));
     if (it._sec && it._sec.id === "tienda") tx.appendChild(h("span", "tag-t", "Tienda · no va a cocina"));
-    if (conOpciones(it) && !no) tx.appendChild(h("span", "op", it.t ? "elige tamaño" : it.salsa ? "elige salsa" : "opciones"));
+    if (conOpciones(it) && !no) tx.appendChild(h("span", "op", modoPres(it) === "peso" ? "elige peso" : modoPres(it) === "paq" ? "elige paquetes" : it.t ? "elige tamaño" : it.salsa ? "elige salsa" : "opciones"));
     tx.appendChild(h("span", "p", no || precioTxt(it)));
     b.appendChild(tx);
-    var q = cantDe(it.id); if (q) b.appendChild(h("span", "q", "×" + q));
+    var q = cantTxt(it); if (q) b.appendChild(h("span", "q", q));
     b.dataset.id = it.id;
     return b;
   }
@@ -1345,8 +1423,8 @@
   }
   function refrescarTarjeta(id) {
     document.querySelectorAll('.prod[data-id="' + id + '"]').forEach(function (b) {
-      var q = b.querySelector(".q"), n = cantDe(id);
-      if (n) { if (!q) { q = h("span", "q"); b.appendChild(q); } q.textContent = "×" + n; } else if (q) q.remove();
+      var q = b.querySelector(".q"), n = cantTxt(prodDe(id) || { id: id });
+      if (n) { if (!q) { q = h("span", "q"); b.appendChild(q); } q.textContent = n; } else if (q) q.remove();
       b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash");
     });
   }
@@ -1383,9 +1461,16 @@
   function fichaOpciones(it, linea, alGuardar) {
     var sel = linea ? { tam: linea.tam, salsa: linea.salsa, ops: JSON.parse(JSON.stringify(linea.ops || {})), nota: linea.nota, cant: linea.cant, mitad: linea.mitad || "" }
       : { tam: it.t ? it.t[0][0] : "", salsa: "", ops: {}, nota: "", cant: 1, mitad: "" };
+    var pres = linea || alGuardar ? (alGuardar && modoPres(it) === "paq" ? "paq" : "") : modoPres(it);
+    if (pres) { sel.tam = "1/2 kg"; sel.cuartos = 2; }
+    var infoPres = h("p", "pres-info");
     var cuerpo = [], err = h("p", "err"), add, zonaSalsa = h("div");
     zonaSalsa.style.display = "flex"; zonaSalsa.style.flexDirection = "column"; zonaSalsa.style.gap = "12px";
-    function pintarBoton() { add.textContent = (linea ? "Guardar" : "Agregar") + " · " + soles(precioDe(it, sel) * sel.cant); err.textContent = ""; }
+    function totalSel() { return pres === "peso" ? lineasPeso(it, sel.cuartos).reduce(function (a, x) { return a + x.unit * x.cant; }, 0) : precioDe(it, sel) * sel.cant; }
+    function pintarBoton() {
+      add.textContent = (linea ? "Guardar" : "Agregar") + " · " + soles(totalSel()); err.textContent = "";
+      infoPres.textContent = pres === "paq" ? sel.cant + (sel.cant === 1 ? " paquete" : " paquetes") + " · " + fmtKg(sel.cant * 0.5) + " kg" : pres === "peso" ? fmtCuartos(sel.cuartos) + " kg (" + descPartes(sel.cuartos) + ")" : "";
+    }
     function bloque(gid) {
       var g = GRUPOS[gid], w = h("div"); w.style.display = "flex"; w.style.flexDirection = "column"; w.style.gap = "8px";
       w.appendChild(h("div", "lbl" + (g.req ? " req" : ""), g.n));
@@ -1393,7 +1478,11 @@
       w.appendChild(chips(g.ops.map(function (o) { return { v: o.n, t: o.n, s: o.p ? "+ " + soles(o.p) : "" }; }), g.tipo === "varias", eleg, function () { pintarBoton(); }));
       return w;
     }
-    if (it.t) {
+    if (pres) {
+      cuerpo.push(h("div", "lbl", pres === "paq" ? "Paquete de 500 g · " + soles(precioTam(it, "1/2 kg")) : "Peso (de ¼ en ¼ kg) · " + soles(precioTam(it, "1/2 kg") * 2) + " el kg"));
+      cuerpo.push(infoPres);
+      if (pres === "peso") cuerpo.push(h("small", "pres-nota", NOTA_PESO));
+    } else if (it.t) {
       cuerpo.push(h("div", "lbl", "Tamaño"));
       var et = [sel.tam];
       cuerpo.push(chips(it.t.map(function (x) { return { v: x[0], t: tamEs(x[0]), s: soles(x[1]) }; }), false, et, function (v) { sel.tam = v[0]; pintarMitad(); pintarBoton(); }));
@@ -1435,10 +1524,17 @@
     var nota = h("input", "campo"); nota.maxLength = 120; nota.placeholder = "Ej.: sin cebolla, bien cocido…"; nota.value = sel.nota || "";
     nota.addEventListener("input", function () { sel.nota = nota.value.trim(); });
     cuerpo.push(nota); cuerpo.push(err);
-    var step = h("div", "step"), out = h("output", null, String(sel.cant));
-    step.appendChild(btn("−", "", function () { if (sel.cant > 1) { sel.cant--; out.textContent = sel.cant; pintarBoton(); } }));
+    var step = h("div", "step"), out = h("output", null, pres === "peso" ? fmtCuartos(sel.cuartos) : String(sel.cant));
+    step.appendChild(btn("−", "", function () {
+      if (pres === "peso") { if (sel.cuartos > 1) { sel.cuartos--; out.textContent = fmtCuartos(sel.cuartos); pintarBoton(); } }
+      else if (sel.cant > 1) { sel.cant--; out.textContent = sel.cant; pintarBoton(); }
+    }));
     step.appendChild(out);
-    step.appendChild(btn("+", "", function () { if (sel.cant < 30) { sel.cant++; out.textContent = sel.cant; pintarBoton(); } }));
+    step.appendChild(btn("+", "", function () {
+      if (pres === "peso") { if (sel.cuartos < 40) { sel.cuartos++; out.textContent = fmtCuartos(sel.cuartos); pintarBoton(); } }
+      else if (sel.cant < 30) { sel.cant++; out.textContent = sel.cant; pintarBoton(); }
+    }));
+    if (pres === "peso") step.classList.add("step--peso");
     add = btn("", "btn prim", function () {
       if (it.salsa && !sel.salsa) { err.textContent = "Elige la salsa."; return; }
       var falta = gruposDe(it, sel.salsa).filter(function (g) { return GRUPOS[g].req && !(sel.ops[g] || []).length; })[0];
@@ -1451,7 +1547,8 @@
         if (i >= 0) c.splice(i, 1);
       }
       cerrarModal();
-      agregar(it, sel);
+      if (pres === "peso") lineasPeso(it, sel.cuartos).forEach(function (x) { agregar(it, { tam: x.tam, salsa: "", ops: {}, nota: sel.nota, cant: x.cant, mitad: "" }); });
+      else agregar(it, sel);
       if (volverAlPedido) abrirPedidoCelular();
     });
     pintarBoton();
@@ -1519,25 +1616,24 @@
     var lista = h("div", "orden__lista"), c = carro();
     if (!c.length) lista.appendChild(h("p", "vacio", "Toca los platos para agregarlos al pedido."));
     else lista.appendChild(h("div", "lbl", "Por enviar a cocina"));
-    c.forEach(function (l) {
+    agrupar(c).forEach(function (gr) {
+      var l = gr.l, ls = gr.ls, grp = gr.g;
       var it = prodDe(l.id), d = h("div", "linea"), tx = h("div", "d");
-      tx.appendChild(document.createTextNode((l.mitad && PROD[l.mitad] ? (nombreEs(it) || l.n) + " con " + nombreEs(PROD[l.mitad]) : (nombreEs(it) || l.n)) + (l.tam ? " " + tamEs(l.tam) : "")));
+      tx.appendChild(document.createTextNode((l.mitad && PROD[l.mitad] ? (nombreEs(it) || l.n) + " con " + nombreEs(PROD[l.mitad]) : (nombreEs(it) || l.n)) + sufijoLinea(l, ls, grp)));
+      if (grp) tx.appendChild(h("small", null, NOTA_PESO));
       var det = [];
       if (l.salsa && SALSA[l.salsa]) det.push("Salsa " + SALSA[l.salsa].n);
       Object.keys(l.ops || {}).forEach(function (g) { if ((l.ops[g] || []).length) det.push(l.ops[g].join(", ")); });
       if (det.length) tx.appendChild(h("small", null, det.join(" · ")));
       if (l.nota) tx.appendChild(h("em", null, "→ " + l.nota));
-      d.appendChild(tx); d.appendChild(h("span", "pr", soles(l.unit * l.cant)));
-      var st = h("div", "st"), out = h("output", null, String(l.cant));
-      st.appendChild(btn("−", "", function () { if (l.cant > 1) l.cant--; else c.splice(c.indexOf(l), 1); guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
-      st.appendChild(out);
-      st.appendChild(btn("+", "", function () { if (l.cant < 30) l.cant++; guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
-      st.appendChild(btn(conOpciones(it || {}) ? "✎ Cambiar" : "✎ Nota", "nota", function () {
-        if (it && conOpciones(it)) { fichaOpciones(it, l); return; }
+      d.appendChild(tx); d.appendChild(h("span", "pr", soles(ls.reduce(function (a, x) { return a + x.unit * x.cant; }, 0))));
+      var st = stepLinea(c, l, ls, grp, pintarOrden), conCambiar = conOpciones(it || {}) && !modoPres(it);
+      st.appendChild(btn(conCambiar ? "✎ Cambiar" : "✎ Nota", "nota", function () {
+        if (it && conCambiar) { fichaOpciones(it, l); return; }
         var n = prompt("Indicación para cocina:", l.nota || ""); if (n == null) return;
-        l.nota = n.trim().slice(0, 120); guardarCarros(); pintarOrden();
+        ls.forEach(function (x) { x.nota = n.trim().slice(0, 120); }); guardarCarros(); pintarOrden();
       }));
-      st.appendChild(btn("🗑", "x", function () { c.splice(c.indexOf(l), 1); guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
+      st.appendChild(btn("🗑", "x", function () { ls.forEach(function (x) { c.splice(c.indexOf(x), 1); }); guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
       d.appendChild(st);
       lista.appendChild(d);
     });
@@ -2297,16 +2393,15 @@
     cab.appendChild(h("h2", null, etiquetaMesa(S.mesa))); w.appendChild(cab);
     var lista = h("div", "orden__lista"), c = carro();
     lista.appendChild(h("p", "vacio", del ? "1) Toca los productos · 2) Continuar: datos del cliente, dirección y ubicación (el costo del delivery sale solo)." : "1) Toca los productos · 2) Continuar: nombre del cliente (y hora si es para más tarde). No ocupa mesa."));
-    c.forEach(function (l) {
+    agrupar(c).forEach(function (gr) {
+      var l = gr.l, ls = gr.ls, grp = gr.g;
       var it = prodDe(l.id), d = h("div", "linea"), tx = h("div", "d");
-      tx.appendChild(document.createTextNode((l.mitad && PROD[l.mitad] ? nombreEs(it) + " con " + nombreEs(PROD[l.mitad]) : nombreEs(it) || l.n) + (l.tam ? " " + tamEs(l.tam) : "")));
+      tx.appendChild(document.createTextNode((l.mitad && PROD[l.mitad] ? nombreEs(it) + " con " + nombreEs(PROD[l.mitad]) : nombreEs(it) || l.n) + sufijoLinea(l, ls, grp)));
+      if (grp) tx.appendChild(h("small", null, NOTA_PESO));
       if (l.nota) tx.appendChild(h("em", null, "→ " + l.nota));
-      d.appendChild(tx); d.appendChild(h("span", "pr", soles(l.unit * l.cant)));
-      var st = h("div", "st");
-      st.appendChild(btn("−", "", function () { if (l.cant > 1) l.cant--; else c.splice(c.indexOf(l), 1); guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
-      st.appendChild(h("output", null, String(l.cant)));
-      st.appendChild(btn("+", "", function () { if (l.cant < 30) l.cant++; guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
-      st.appendChild(btn("🗑", "x", function () { c.splice(c.indexOf(l), 1); guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
+      d.appendChild(tx); d.appendChild(h("span", "pr", soles(ls.reduce(function (a, x) { return a + x.unit * x.cant; }, 0))));
+      var st = stepLinea(c, l, ls, grp, pintarOrden);
+      st.appendChild(btn("🗑", "x", function () { ls.forEach(function (x) { c.splice(c.indexOf(x), 1); }); guardarCarros(); refrescarTarjeta(l.id); pintarOrden(); }));
       d.appendChild(st); lista.appendChild(d);
     });
     w.appendChild(lista);

@@ -241,6 +241,8 @@
         ".cj-hoja input,.cj-hoja select{width:100%;height:48px;border-radius:10px;border:2px solid var(--linea,#dccdb0);padding:0 12px;font-size:17px;background:#fff}",
         ".cj-acc{display:flex;gap:8px;margin-top:12px}.cj-acc button{flex:1;height:50px;border-radius:12px;font-weight:800;font-size:16px;background:var(--crema-2,#e6dac0)}",
         ".cj-acc .ok{background:var(--verde,#2f7a3a);color:#fff}.cj-acc .mal{background:var(--rojo,#b6232a);color:#fff}.cj-acc button:disabled{opacity:.4}",
+        ".cj-pstep{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0}.cj-pstep button{width:56px;height:56px;border-radius:14px;background:#fff;border:2px solid var(--linea,#dccdb0);font-size:26px;font-weight:800}.cj-pstep output{min-width:96px;text-align:center;font-size:24px;font-weight:800}",
+        ".cj-pinfo{text-align:center;font-weight:700;margin:4px 0}.cj-pnota{display:block;text-align:center;font-size:12px;color:var(--gris,#6f5f57);margin:2px 0 6px}.cj-l .t small{display:block;font-size:11px;color:var(--gris,#6f5f57)}",
         ".cj-chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.cj-chips button{height:44px;padding:0 16px;border-radius:999px;background:#fff;border:2px solid var(--linea,#dccdb0);font-weight:700}.cj-chips button.on{background:var(--vino,#4a1519);color:#fff;border-color:var(--vino,#4a1519)}",
         ".cj-pago{display:flex;align-items:center;gap:8px;margin-bottom:6px}.cj-pago span{width:78px;font-weight:700}.cj-pago input{flex:1}.cj-pago button{height:48px;padding:0 12px;border-radius:10px;background:var(--crema-2,#e6dac0);font-weight:700}",
         ".cj-res{padding:10px;border-radius:10px;font-weight:800;text-align:center;margin-top:8px;background:#fff;border:2px solid var(--linea,#dccdb0)}.cj-res.ok{border-color:var(--verde,#2f7a3a);color:var(--verde,#2f7a3a)}.cj-res.mal{border-color:var(--rojo,#b6232a);color:var(--rojo,#b6232a)}",
@@ -381,16 +383,83 @@
         var tx = h("div", "tx");
         tx.appendChild(h("span", "n", p.nombre));
         if (p.unidad !== "unid") tx.appendChild(h("span", "g", "por " + p.unidad));
-        if (p.tam && p.tam.length > 1) tx.appendChild(h("span", "op", "elige tamaño"));
-        tx.appendChild(h("span", "p", p.tam && p.tam.length ? "desde " + L.soles(Math.min.apply(null, p.tam.map(function (x) { return x[1]; }))) : L.soles(p.precio)));
+        var pm = modoPres(p);
+        if (pm === "paq") tx.appendChild(h("span", "op", "elige paquetes"));
+        else if (pm === "peso") tx.appendChild(h("span", "op", "elige peso"));
+        else if (p.tam && p.tam.length > 1) tx.appendChild(h("span", "op", "elige tamaño"));
+        tx.appendChild(h("span", "p", pm === "paq" ? L.soles(precioTam(p, "1/2 kg")) + " · paquete 500 g" : pm === "peso" ? L.soles(precioTam(p, "1/2 kg") * 2) + " / kg" : p.tam && p.tam.length ? "desde " + L.soles(Math.min.apply(null, p.tam.map(function (x) { return x[1]; }))) : L.soles(p.precio)));
         b.appendChild(tx);
         b.addEventListener("click", function () { agregar(p); });
         grid.appendChild(b);
       });
     }
 
+    /* ---------- presentaciones de la tienda: paquete de 500 g (solo "1/2 kg") o peso por 1/4 kg (salsas: "1/2 kg" + "1/4 kg") ----------
+       Se decide por las presentaciones del producto (no por su id). Al servidor siempre van líneas {id, tam, cant} con tam igual a una presentación. */
+    function modoPres(p) {
+      if (!p || p.seccion !== "tienda" || p.unidad !== "unid" || !p.tam || !p.tam.length) return "";
+      var ts = p.tam.map(function (x) { return x[0]; }), m = ts.indexOf("1/2 kg") >= 0;
+      if (m && ts.length === 1) return "paq";
+      if (m && ts.indexOf("1/4 kg") >= 0 && ts.indexOf("1 kg") < 0) return "peso";
+      return "";
+    }
+    function precioTam(p, tam) { var x = (p.tam || []).filter(function (y) { return y[0] === tam; })[0]; return x ? x[1] : 0; }
+    function fmtKg(n) { return String(Math.round(n * 100) / 100).replace(".", ","); }
+    function fmtCuartos(q) { var e = Math.floor(q / 4), f = ["", "¼", "½", "¾"][q % 4]; return (e || !f ? String(e) : "") + f; }
+    function descPartes(q) { var m = Math.floor(q / 2), c = q % 2, r = []; if (m) r.push(m + " × ½"); if (c) r.push(c + " × ¼"); return r.join(" + "); }
+    function cuartosDe(ls) { return ls.reduce(function (a, l) { return a + l.cant * (l.tam === "1/2 kg" ? 2 : 1); }, 0); }
+    var NOTA_PESO = "Si no hay de ½, se entrega en ¼.";
+    function prodDe(id) { return S.prods.filter(function (x) { return x.id === id; })[0]; }
+    function grupoPeso(l) { return (l.tam === "1/2 kg" || l.tam === "1/4 kg") && modoPres(prodDe(l.id)) === "peso" ? l.id : ""; }
+    function agrupar() {
+      var r = [], vistos = {};
+      S.carro.forEach(function (l) {
+        var g = grupoPeso(l);
+        if (!g) { r.push({ l: l, ls: [l], g: "" }); return; }
+        if (vistos[g]) return; vistos[g] = 1;
+        r.push({ l: l, ls: S.carro.filter(function (x) { return grupoPeso(x) === g; }), g: g });
+      });
+      return r;
+    }
+    function ponerLinea(p, tam, cant) {   // fija la cantidad de la línea (id, tam); 0 la quita
+      var ex = S.carro.filter(function (l) { return l.id === p.id && (l.tam || "") === tam; })[0];
+      if (ex) { if (cant > 0) ex.cant = cant; else S.carro.splice(S.carro.indexOf(ex), 1); return; }
+      if (cant > 0) S.carro.push({ id: p.id, nombre: p.nombre, sku: p.sku, unidad: p.unidad, unit: precioTam(p, tam), tam: tam, cant: cant });
+    }
+    function fijarCuartos(p, q) { ponerLinea(p, "1/2 kg", Math.floor(q / 2)); ponerLinea(p, "1/4 kg", q % 2); }
+    function pedirPres(p, modo) {
+      var q = modo === "paq" ? 1 : 2, info = h("div", "cj-pinfo"), out = h("output", "", ""), pr = h("div", "cj-res ok");
+      function pintar() {
+        out.textContent = modo === "paq" ? String(q) : fmtCuartos(q);
+        if (modo === "paq") { info.textContent = q + (q === 1 ? " paquete" : " paquetes") + " de 500 g · " + fmtKg(q * 0.5) + " kg"; pr.textContent = q + " × " + L.soles(precioTam(p, "1/2 kg")) + " = " + L.soles(L.subtotal(precioTam(p, "1/2 kg"), q)); }
+        else {
+          info.textContent = fmtCuartos(q) + " kg (" + descPartes(q) + ")";
+          pr.textContent = L.soles(L.r2((q % 2) * precioTam(p, "1/4 kg") + Math.floor(q / 2) * precioTam(p, "1/2 kg")));
+        }
+      }
+      var max = modo === "paq" ? 99 : 40;
+      var menos = btn("−", "", function () { if (q > 1) { q--; pintar(); } }), mas = btn("+", "", function () { if (q < max) { q++; pintar(); } });
+      menos.setAttribute("aria-label", "Quitar uno"); mas.setAttribute("aria-label", "Agregar uno");
+      var st = h("div", "cj-pstep"); st.appendChild(menos); st.appendChild(out); st.appendChild(mas);
+      var nodos = [h("div", "cj-pinfo", modo === "paq" ? "Paquete de 500 g · " + L.soles(precioTam(p, "1/2 kg")) : "Peso (de ¼ en ¼ kg) · " + L.soles(precioTam(p, "1/2 kg") * 2) + " el kg"), st, info, pr];
+      if (modo === "peso") nodos.push(h("span", "cj-pnota", NOTA_PESO));
+      var ok = btn("Agregar", "ok", function () {
+        cerrarHoja();
+        if (modo === "paq") { var ex = S.carro.filter(function (l) { return l.id === p.id && l.tam === "1/2 kg"; })[0]; ponerLinea(p, "1/2 kg", Math.min(99, (ex ? ex.cant : 0) + q)); }
+        else {
+          var ls = S.carro.filter(function (l) { return grupoPeso(l) === p.id; });
+          fijarCuartos(p, Math.min(40, cuartosDe(ls) + q));
+        }
+        cambioCarro();
+      });
+      abrirHoja(p.nombre + (modo === "paq" ? ": paquetes" : ": peso"), nodos, [btn("Cancelar", "", cerrarHoja), ok]);
+      pintar();
+    }
+
     /* ---------- agregar al carrito ---------- */
     function agregar(p, tam) {
+      var pm = !tam && modoPres(p);
+      if (pm) { pedirPres(p, pm); return; }
       if (p.tam && p.tam.length && !tam) {
         var chips = h("div", "cj-chips");
         p.tam.forEach(function (t) { chips.appendChild(btn(t[0] + " · " + L.soles(t[1]), "", function () { cerrarHoja(); agregar(p, t[0]); })); });
@@ -454,12 +523,28 @@
       carrito.innerHTML = "";
       var box = h("div", "cj-lineas");
       if (!S.carro.length) box.appendChild(h("p", "cj-vacio", "Busca o toca un producto para empezar."));
-      S.carro.forEach(function (l, i) {
-        var f = h("div", "cj-l"), t = h("div", "t");
-        t.appendChild(h("b", "", l.nombre + (l.tam ? " (" + l.tam + ")" : "")));
-        t.appendChild(h("span", "", L.fmtCant(l.cant, l.unidad) + " × " + L.soles(l.unit) + (l.unidad !== "unid" ? "/" + l.unidad : "")));
+      agrupar().forEach(function (gr) {
+        var l = gr.l, ls = gr.ls, grp = gr.g, i = S.carro.indexOf(l);
+        var f = h("div", "cj-l"), t = h("div", "t"), pm = modoPres(prodDe(l.id));
+        var sub = ls.reduce(function (a, x) { return a + L.subtotal(x.unit, x.cant); }, 0);
+        if (grp) {
+          t.appendChild(h("b", "", l.nombre + " · " + fmtCuartos(cuartosDe(ls)) + " kg (" + descPartes(cuartosDe(ls)) + ")"));
+          t.appendChild(h("span", "", L.soles(L.r2(sub))));
+          t.appendChild(h("small", "", NOTA_PESO));
+        } else if (pm === "paq" && l.tam === "1/2 kg") {
+          t.appendChild(h("b", "", l.nombre + " · " + l.cant + " × 500 g (" + fmtKg(l.cant * 0.5) + " kg)"));
+          t.appendChild(h("span", "", L.soles(l.unit) + " el paquete"));
+        } else {
+          t.appendChild(h("b", "", l.nombre + (l.tam ? " (" + l.tam + ")" : "")));
+          t.appendChild(h("span", "", L.fmtCant(l.cant, l.unidad) + " × " + L.soles(l.unit) + (l.unidad !== "unid" ? "/" + l.unidad : "")));
+        }
         f.appendChild(t);
-        if (l.unidad === "unid") {
+        if (grp) {
+          var gp = prodDe(l.id), q0 = cuartosDe(ls);
+          var gm = btn("−", "", function () { fijarCuartos(gp, q0 - 1); cambioCarro(); }); gm.setAttribute("aria-label", "Quitar ¼ kg");
+          var gmas = btn("+", "", function () { if (q0 < 40) fijarCuartos(gp, q0 + 1); cambioCarro(); }); gmas.setAttribute("aria-label", "Agregar ¼ kg");
+          f.appendChild(gm); f.appendChild(gmas);
+        } else if (l.unidad === "unid") {
           var menos = btn("−", "", function () { if (l.cant > 1) l.cant--; else S.carro.splice(i, 1); cambioCarro(); }); menos.setAttribute("aria-label", "Quitar uno");
           var mas = btn("+", "", function () { l.cant = Math.min(99, l.cant + 1); cambioCarro(); }); mas.setAttribute("aria-label", "Agregar uno");
           f.appendChild(menos); f.appendChild(mas);
@@ -467,12 +552,12 @@
           var pe = btn("⚖", "peso", function () { var p = S.prods.filter(function (x) { return x.id === l.id; })[0] || { id: l.id, nombre: l.nombre, unidad: l.unidad }; pedirPeso(p, l.tam, l.unit, l); });
           pe.setAttribute("aria-label", "Cambiar peso"); f.appendChild(pe);
         }
-        f.appendChild(h("div", "s", L.soles(L.subtotal(l.unit, l.cant))));
-        var x = btn("✕", "", function () { S.carro.splice(i, 1); cambioCarro(); }); x.setAttribute("aria-label", "Quitar de la venta"); f.appendChild(x);
+        f.appendChild(h("div", "s", L.soles(L.r2(sub))));
+        var x = btn("✕", "", function () { ls.forEach(function (y) { S.carro.splice(S.carro.indexOf(y), 1); }); cambioCarro(); }); x.setAttribute("aria-label", "Quitar de la venta"); f.appendChild(x);
         box.appendChild(f);
       });
       carrito.appendChild(box);
-      var tot = h("div", "cj-tot"), m = h("div", "m"), u = S.carro.length;
+      var tot = h("div", "cj-tot"), m = h("div", "m"), u = agrupar().length;
       m.appendChild(h("small", "", u + (u === 1 ? " línea" : " líneas")));
       m.appendChild(doc.createTextNode(L.soles(L.totalCarro(S.carro))));
       tot.appendChild(m);

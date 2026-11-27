@@ -760,6 +760,7 @@
       if (!p) { L.faltan.push("producto"); L.pedible = false; return L; }
       L.nombre = p.n; L.seccion = p.sec;
       var m = estado(p); if (m) { L.pedible = false; L.motivo = m; }
+      if (p.t && p.t.length === 1 && !L.tam) L.tam = p.t[0][0];   // una sola presentación (ej. paquete de 500 g de la tienda): no hay nada que elegir
       if (p.t && p.t.length) {
         var ok = p.t.some(function (x) { return x[0] === L.tam; });
         if (!ok) { L.tam = ""; L.faltan.push("tam"); }
