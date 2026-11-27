@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-27T08:48:15-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-27T12:20:49-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -3610,7 +3610,7 @@ window.CARTA = {
   },
   {
    "id": "tienda",
-   "titulo": "Tienda · Para llevar a casa",
+   "titulo": "Tienda",
    "subtitulo": "Pasta fresca y salsas por peso, listas para cocinar en casa.",
    "intro": "",
    "pie": "",
@@ -3624,7 +3624,7 @@ window.CARTA = {
      "items": [
       {
        "id": "tienda-ravioles-carne",
-       "n": "Ravioli di Carne",
+       "n": "Ravioles de carne",
        "g": "ravioles de carne",
        "d": "Pasta fresca rellena de carne, lista para cocinar en casa.",
        "t": [
@@ -3640,7 +3640,7 @@ window.CARTA = {
       },
       {
        "id": "tienda-ravioles-queso",
-       "n": "Ravioli di Ricotta",
+       "n": "Ravioles de ricota",
        "g": "ravioles de queso ricotta",
        "d": "Pasta fresca rellena de queso, lista para cocinar en casa.",
        "t": [
@@ -3656,7 +3656,7 @@ window.CARTA = {
       },
       {
        "id": "tienda-fettuccini",
-       "n": "Fettuccine",
+       "n": "Fetuccini",
        "d": "Fettuccine fresco, hecho cada día.",
        "t": [
         [
@@ -3670,7 +3670,7 @@ window.CARTA = {
       },
       {
        "id": "tienda-fettuccini-verde",
-       "n": "Fettuccine Verdi",
+       "n": "Fetuccini verde",
        "g": "fettuccine verde",
        "d": "Fettuccine verde fresco, con espinaca, hecho cada día.",
        "t": [
@@ -3714,7 +3714,7 @@ window.CARTA = {
       },
       {
        "id": "tienda-masa-lasagna",
-       "n": "Masa de lasagna",
+       "n": "Masa de lasaña",
        "d": "Láminas de masa fresca para armar tu lasagna.",
        "t": [
         [
@@ -3734,7 +3734,7 @@ window.CARTA = {
      "items": [
       {
        "id": "tienda-lasagna-carne",
-       "n": "Lasagna di Carne",
+       "n": "Lasaña de carne",
        "g": "lasagna de carne",
        "d": "Lasagna de carne al horno, lista para calentar.",
        "t": [
@@ -3747,13 +3747,14 @@ window.CARTA = {
          19
         ]
        ],
+       "foto": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/Lasagna_bolognese%2C_February_2012.jpg/960px-Lasagna_bolognese%2C_February_2012.jpg",
        "n_en": "Lasagna di Carne",
        "g_en": "beef lasagna",
        "d_en": "Baked beef lasagna, ready to heat."
       },
       {
        "id": "tienda-lasagna-espinaca",
-       "n": "Lasagna di Spinaci",
+       "n": "Lasaña de espinacas",
        "g": "lasagna de espinaca",
        "d": "Lasagna de espinaca al horno, lista para calentar.",
        "t": [
@@ -3762,13 +3763,14 @@ window.CARTA = {
          40
         ]
        ],
+       "foto": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a5/Food_%E8%8F%A0%E8%8F%9C%26%E7%91%9E%E5%8F%AF%E9%81%94%E8%B5%B7%E5%8F%B8%E5%8D%83%E5%B1%A4%E9%BA%B5%2C_Spinach_%26_Ricotta_Lasagna%2C_LONGTABLE%2C_%E5%8F%B0%E5%8C%97_%2815708119113%29.jpg/960px-Food_%E8%8F%A0%E8%8F%9C%26%E7%91%9E%E5%8F%AF%E9%81%94%E8%B5%B7%E5%8F%B8%E5%8D%83%E5%B1%A4%E9%BA%B5%2C_Spinach_%26_Ricotta_Lasagna%2C_LONGTABLE%2C_%E5%8F%B0%E5%8C%97_%2815708119113%29.jpg",
        "n_en": "Lasagna di Spinaci",
        "g_en": "spinach lasagna",
        "d_en": "Baked spinach lasagna, ready to heat."
       },
       {
        "id": "tienda-lasagna-champinones",
-       "n": "Lasagna ai Funghi",
+       "n": "Lasaña de champiñones",
        "g": "lasagna de champiñones",
        "d": "Lasagna de champiñones al horno, lista para calentar.",
        "t": [
@@ -3777,6 +3779,7 @@ window.CARTA = {
          44
         ]
        ],
+       "foto": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/Lasagne_ai_funghi.jpg/960px-Lasagne_ai_funghi.jpg",
        "n_en": "Lasagna ai Funghi",
        "g_en": "mushroom lasagna",
        "d_en": "Baked mushroom lasagna, ready to heat."
@@ -3789,7 +3792,7 @@ window.CARTA = {
      "items": [
       {
        "id": "tienda-salsa-carne",
-       "n": "Salsa Bolognese",
+       "n": "Salsa de carne",
        "g": "salsa de carne",
        "d": "Salsa de carne para tus pastas.",
        "t": [
@@ -3802,13 +3805,14 @@ window.CARTA = {
          9.5
         ]
        ],
+       "foto": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b4/Ragu.jpg/960px-Ragu.jpg",
        "n_en": "Salsa Bolognese",
        "g_en": "meat sauce",
        "d_en": "Meat sauce for your pasta."
       },
       {
        "id": "tienda-salsa-tomate",
-       "n": "Salsa Pomodoro",
+       "n": "Salsa de tomate",
        "g": "salsa de tomate",
        "d": "Salsa de tomate casera para tus pastas.",
        "t": [
@@ -3821,6 +3825,7 @@ window.CARTA = {
          9
         ]
        ],
+       "foto": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Tomato_sauce_by_S%C3%BCleyman.jpg/960px-Tomato_sauce_by_S%C3%BCleyman.jpg",
        "n_en": "Salsa Pomodoro",
        "g_en": "tomato sauce",
        "d_en": "Homemade tomato sauce for your pasta."
@@ -3839,12 +3844,13 @@ window.CARTA = {
          9.5
         ]
        ],
+       "foto": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/57/Chicken_fettuccine_alfredo.JPG/960px-Chicken_fettuccine_alfredo.JPG",
        "n_en": "Alfredo sauce",
        "d_en": "Creamy Alfredo sauce for your pasta."
       },
       {
        "id": "tienda-salsa-amatriciana",
-       "n": "Salsa Amatriciana",
+       "n": "Salsa amatriciana",
        "d": "Salsa Amatriciana para tus pastas.",
        "t": [
         [
@@ -3856,12 +3862,13 @@ window.CARTA = {
          12
         ]
        ],
+       "foto": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2e/Preparation_amatriciana.jpg/960px-Preparation_amatriciana.jpg",
        "n_en": "Amatriciana sauce",
        "d_en": "Amatriciana sauce for your pasta."
       },
       {
        "id": "tienda-salsa-pesto",
-       "n": "Salsa Pesto",
+       "n": "Salsa pesto",
        "d": "Salsa Pesto para tus pastas.",
        "t": [
         [
@@ -3879,7 +3886,7 @@ window.CARTA = {
       },
       {
        "id": "tienda-salsa-champinones",
-       "n": "Salsa Funghi",
+       "n": "Salsa de champiñones",
        "g": "salsa de champiñones",
        "d": "Salsa de champiñones para tus pastas.",
        "t": [
@@ -3892,6 +3899,7 @@ window.CARTA = {
          16
         ]
        ],
+       "foto": "https://upload.wikimedia.org/wikipedia/commons/d/db/Mush-shrimp_cream_sauce_step_2.jpg",
        "n_en": "Salsa Funghi",
        "g_en": "mushroom sauce",
        "d_en": "Mushroom sauce for your pasta."
@@ -3899,11 +3907,11 @@ window.CARTA = {
      ]
     }
    ],
-   "titulo_en": "Shop · To take home",
+   "titulo_en": "Shop",
    "subtitulo_en": "Fresh pasta and sauces by weight, ready to cook at home.",
    "intro_en": "",
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-27T08:48:15-05:00"
+ "publicado": "2026-11-27T12:20:49-05:00"
 };
