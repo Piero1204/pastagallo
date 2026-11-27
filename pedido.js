@@ -619,7 +619,7 @@
     var n = unidades();
     barra.classList.toggle("on", n > 0);
     document.body.classList.toggle("con-carrito", n > 0);
-    barraTxt.textContent = t("verPedido") + n;
+    barraTxt.textContent = MODO === "mesa" ? t("verPedidoMesa", { n: n }) : t("verPedido") + n;
     barraTot.textContent = soles(total());
     pintarRepetir();
     if (animar) { barra.classList.remove("pulso"); void barra.offsetWidth; barra.classList.add("pulso"); }
@@ -736,10 +736,11 @@
     c.appendChild(lista);
     pintarLista(); pintarOfertas();
     c.appendChild(ofertas);
-    var sug = sugerencias();
+    var sug = MODO === "mesa" ? sugerenciasMesa() : sugerencias();
     if (sug.length) {
       var sw = h("div", "sugiere");
-      sw.appendChild(h("h3", "hoja__sub", t("sugiereTit")));
+      sw.appendChild(h("h3", "hoja__sub", MODO === "mesa" ? t("sugiereMesa") : t("sugiereTit")));
+      if (MODO === "mesa") sw.appendChild(h("p", "sugiere__ayuda", t("sugiereMesaSub")));
       var fila = h("div", "sugiere__fila");
       sug.forEach(function (x) {
         var b = h("button", "sugiere__it"); b.type = "button";
@@ -751,6 +752,9 @@
         b.addEventListener("click", function () {
           if (tieneOpciones(x.it)) { cerrarHoja(); setTimeout(function () { abrirDetalle(x.it, x.sec, "", { volverCarrito: true }); }, 80); return; }
           agregar(x.it, { tam: "", salsa: "", cant: 1, nota: "", ops: {} }, x.it.p);
+          if (MODO === "mesa") {   // mesa: un toque, sin cerrar la hoja; se repinta en el mismo lugar
+            var y = hoja.scrollTop; abrirCarrito(); hoja.classList.add("rehecha"); hoja.scrollTop = y; aviso(t("agregadoX", { n: tx(x.it, "n") })); return;
+          }
           cerrarHoja(); setTimeout(abrirCarrito, 80);
         });
         fila.appendChild(b);
@@ -790,6 +794,31 @@
     }
     if (!enCarrito(function (l, s) { return s && s.id === "dolci"; })) { var po = primeroDe("dolci", ["dolci-tiramisu"]); if (po) r.push(po); }
     return r.slice(0, 3);
+  }
+
+  /* Mesa: "¿Algo para tomar?" — hasta 4 bebidas y postres que aún no están en el pedido (primero los que se agregan de un toque). */
+  function sugerenciasMesa() {
+    var ya = {}; carrito.forEach(function (l) { ya[l.id] = 1; });
+    var tieneDe = function (ids) { return carrito.some(function (l) { var s = seccionDe[l.id]; return s && ids.indexOf(s.id) >= 0; }); };
+    var de = function (secIds, pref) {
+      var r = [];
+      var ok = function (id) {
+        var it = productos[id], sec = seccionDe[id];
+        if (!it || !sec || ya[id] || it.tipo === "salsa" || !puedePedir(it, sec)) return;
+        if (window.PG_COMERCIO && PG_COMERCIO.fuera && PG_COMERCIO.fuera(it, sec)) return;
+        if (r.some(function (x) { return x.it.id === id; })) return;
+        r.push({ it: it, sec: sec });
+      };
+      pref.forEach(ok);
+      C.secciones.forEach(function (s) { if (secIds.indexOf(s.id) >= 0) s.grupos.forEach(function (g) { g.items.forEach(function (i) { ok(i.id); }); }); });
+      return r.sort(function (a, b) { return (tieneOpciones(a.it) ? 1 : 0) - (tieneOpciones(b.it) ? 1 : 0); });
+    };
+    var beb = tieneDe(["caffe", "aperitivi", "vini"]) ? [] : de(["caffe"], ["caffe-limonata", "caffe-maracuya", "caffe-bibita-gassata", "caffe-acqua"]);
+    var pos = tieneDe(["dolci"]) ? [] : de(["dolci"], ["dolci-tiramisu"]);
+    var r = beb.slice(0, 2).concat(pos.slice(0, 2));
+    if (r.length < 4) r = r.concat(beb.slice(2, 2 + 4 - r.length));
+    if (r.length < 4) r = r.concat(pos.slice(2, 2 + 4 - r.length));
+    return r.slice(0, 4);
   }
 
   function campo(nombre, etiqueta, tipo, opc) {
@@ -1541,25 +1570,49 @@
     r.pedidos.forEach(function (p) {
       var b = h("div", "cuenta__ped");
       b.appendChild(h("strong", null, "#" + p.numero + " · " + p.hora));
-      b.appendChild(h("pre", "cuenta__det", p.detalle));
+      var ls = (p.lineas || []).filter(function (l) { return l && l.t; });
+      if (MODO === "mesa" && ls.length) {   // mismo dato, en filas: producto a la izquierda, importe a la derecha
+        var ul = h("ul", "cuenta__lin");
+        ls.forEach(function (l) {
+          var li = h("li"), tt = h("span", "cuenta__t", l.t);
+          if (l.d) tt.appendChild(h("small", null, l.d));
+          li.appendChild(tt); if (l.s) li.appendChild(h("span", "cuenta__s", soles(l.s)));
+          ul.appendChild(li);
+        });
+        b.appendChild(ul);
+      } else b.appendChild(h("pre", "cuenta__det", p.detalle));
       c.appendChild(b);
     });
     var tl = h("div", "total"); tl.appendChild(h("span", null, t("cuentaTotal"))); tl.appendChild(h("strong", null, soles(r.total)));
     c.appendChild(tl);
     return true;
   }
+  /* esqueleto mientras carga la cuenta (filas grises que laten) */
+  function esqueletoCuenta() {
+    var w = h("div", "esq-cuenta"); w.setAttribute("aria-label", t("cargando")); w.setAttribute("role", "status");
+    for (var i = 0; i < 4; i++) w.appendChild(h("span", "esq-fila"));
+    return w;
+  }
+  /* botones grandes de la cuenta: pedir la cuenta (principal) y llamar al mozo */
+  function accionesCuenta(conCuenta) {
+    var w = h("div", "cuenta__acc");
+    if (conCuenta) w.appendChild(boton("🧾 " + t("pedirCuenta"), "btn-ped", abrirPedirCuenta));
+    var bm = h("button", "btn-ped btn-ped--linea"); bm.type = "button";
+    var sp = h("span", null, "🙋 " + t("llamarMozo")); bm.appendChild(sp);
+    bm.addEventListener("click", function () { llamarMozo(bm, sp); });
+    w.appendChild(bm);
+    return w;
+  }
   function abrirCuenta() {
     var c = h("div", "hoja__cuerpo");
-    var estado = h("p", "hoja__desc", t("cargando"));
-    c.appendChild(estado);
+    c.appendChild(esqueletoCuenta());
     abrirHoja(c, t("cuentaMesa") + " · " + t("mesa") + MESA);
-    if (!CFG.api) { estado.textContent = t("cuentaVacia"); return; }
+    if (!CFG.api) { c.textContent = ""; c.appendChild(h("p", "hoja__desc", t("cuentaVacia"))); return; }
     leerCuenta().then(function (r) {
       c.textContent = "";
-      if (pintarCuenta(c, r)) {
-        c.appendChild(h("p", "hoja__ayuda", t("cuentaNota")));
-        c.appendChild(boton("🧾 " + t("pedirCuenta"), "btn-ped", abrirPedirCuenta));
-      }
+      var hay = pintarCuenta(c, r);
+      if (hay) c.appendChild(h("p", "hoja__ayuda", t("cuentaNota")));
+      if (r && r.ok) c.appendChild(accionesCuenta(hay));
     }).catch(function () { c.textContent = ""; c.appendChild(h("p", "hoja__err", t("errCocina"))); });
   }
 
@@ -1583,7 +1636,7 @@
   }
   function abrirPedirCuenta() {
     var c = h("div", "hoja__cuerpo");
-    var resumen = h("div"); resumen.appendChild(h("p", "hoja__desc", t("cargando")));
+    var resumen = h("div"); resumen.appendChild(esqueletoCuenta());
     c.appendChild(resumen);
     var sel = { pago: "", comp: "" };
     var metodosMesa = CFG.metodosPagoMesa && CFG.metodosPagoMesa.length ? CFG.metodosPagoMesa : (CFG.metodosPago || []);

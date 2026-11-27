@@ -28,8 +28,8 @@
     var go = function () { document.body.innerHTML = '<p style="font:18px/1.5 Georgia,serif;padding:80px 24px;text-align:center;color:#4a1519">' + t + "</p>"; };
     if (document.body) go(); else document.addEventListener("DOMContentLoaded", go);
   }
-  function contenedor(tag) {
-    var poner = function () { var e = document.createElement(tag); e.id = "app"; document.body.appendChild(e); };
+  function contenedor(tag, html) {
+    var poner = function () { var e = document.createElement(tag); e.id = "app"; if (html) e.innerHTML = html; document.body.appendChild(e); };
     if (document.body) poner(); else document.addEventListener("DOMContentLoaded", poner);
   }
   if (mozo) {
@@ -56,7 +56,9 @@
   }
   /* mesa: primero se pregunta al servidor qué mesa es; recién entonces se carga la carta en modo mesa */
   document.title = "Pasta Gallo · Carta";
-  css("/estilos.css"); contenedor("main");
+  /* esqueleto de carga (app.js lo quita al pintar la carta) */
+  var L = '<span class="esq__l"></span><span class="esq__l esq__l--c"></span><span class="esq__f"></span>';
+  css("/estilos.css"); contenedor("main", '<div id="esq" class="esq" aria-hidden="true"><div class="esq__cab"><span class="esq__c"></span><span class="esq__l"></span></div><span class="esq__busca"></span><div class="esq__chips"><span></span><span></span><span></span><span></span></div><div class="esq__it">' + L + '</div><div class="esq__it">' + L + '</div><div class="esq__it">' + L + '</div></div>');
   document.addEventListener("DOMContentLoaded", function () {
     cadena(["/menu-data.js"], function () {
       var api = window.CARTA && CARTA.pedidos && CARTA.pedidos.api;
