@@ -24,6 +24,7 @@
   function guardar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function r2(n) { return Math.round(n * 100) / 100; }
   function uid() { return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function esqueleto(txt) { var w = h("div", "m-esq"); w.setAttribute("role", "status"); w.appendChild(h("p", null, txt)); for (var i = 0; i < 4; i++) w.appendChild(h("span")); return w; }
   var tT;
   function toast(t, tipo) {
     var x = document.querySelector(".toast") || document.body.appendChild(h("div", "toast"));
@@ -421,11 +422,21 @@
     return a.tipo === "listo" ? "Mesa " + m.mesa + ": pedido #" + a.numero + " listo hace " + a.min + " min sin entregar" : "Mesa " + m.mesa + ": " + a.min + " min sentados sin pedir";
   }
   function detenerSondeo() { clearTimeout(timer); timer = null; }
+  /* Nunca dos consultas a la vez: si se pide otra mientras una está en camino (una acción, volver a la app), se repite apenas termine
+     y la respuesta en camino se descarta si traía datos (podría ser anterior a la acción y deshacer en pantalla lo recién hecho). */
+  var sondeando = false, otraVez = false;
+  function hayActividad() {
+    return (S.avisos || []).length || (S.externos || []).some(function (x) { return !(x.estado === "Entregado" && x.pagado) && x.estado !== "Cancelado"; })
+      || (S.mesas || []).some(function (m) { return m.estado && m.estado !== "libre"; });
+  }
   function sondear() {
     detenerSondeo();
     if (!S.t) return;
+    if (sondeando) { otraVez = true; return; }
+    sondeando = true; otraVez = false;
     api({ mz: "estado", t: S.t, v: S.v }).then(function (r) {
       if (!r.ok) throw new Error(r.error);
+      if (otraVez && !r.igual) return;   // llegó tarde: se descarta y se vuelve a pedir enseguida (abajo)
       S.desfase = r.ahora - Date.now(); S.recibido = Date.now();
       S.horario = r.horario; S.mozo = r.mozo || S.mozo; S.turno = r.turno || S.turno;
       if (r.diaIso) { S.diaIso = r.diaIso; revisarDiaCarros(r.diaIso); }
@@ -433,7 +444,7 @@
       else {
         igualesSeguidos = 0;
         S.v = r.v; S.mesas = r.mesas || []; S.avisos = r.avisos || [];
-        S.externos = r.externos || []; if (r.metodosExt && r.metodosExt.length) S.metodosExt = r.metodosExt;
+        S.externos = r.externos || []; aplicarPendExt(); if (r.metodosExt && r.metodosExt.length) S.metodosExt = r.metodosExt;
         if (!S.pestElegida) elegirPestInicial();
         aplicarPendientesSalon();
         if (r.metodos && r.metodos.length) S.metodos = r.metodos;
@@ -455,9 +466,12 @@
       refrescar();
       if (salonAbierto) pintarSalonModal();
     }).catch(function (e) { if (S.t) toast("Sin conexión: reintentando…", "mal"); }).then(function () {
-      // cambios visibles en 5 s; si el salón lleva rato sin cambios, cada 8 s (al tocar algo vuelve a 5 s). En segundo plano no se consulta:
-      // al volver a la app (visibilitychange) se consulta al instante.
-      if (S.t && !document.hidden) timer = setTimeout(sondear, igualesSeguidos >= 6 && !capa.classList.contains("on") ? 8000 : 5000);
+      sondeando = false;
+      if (otraVez) { sondear(); return; }
+      // cambios visibles en 5 s; si el salón lleva rato sin cambios, cada 8 s (al tocar algo vuelve a 5 s); en reposo total
+      // (sin mesas ocupadas, sin pedidos en curso ni avisos) cada 15 s. En segundo plano no se consulta: al volver a la app
+      // (visibilitychange / focus) se consulta al instante.
+      if (S.t && !document.hidden) timer = setTimeout(sondear, igualesSeguidos < 6 || capa.classList.contains("on") ? 5000 : hayActividad() ? 8000 : 15000);
     });
   }
   document.addEventListener("visibilitychange", function () {
@@ -465,6 +479,7 @@
     if (S.t) { igualesSeguidos = 0; sondear(); mantenerPantalla(); }
     if (swReg) try { swReg.update(); } catch (e) {}
   });
+  window.addEventListener("focus", function () { if (S.t && !document.hidden && !sondeando && Date.now() - (S.recibido || 0) > 4000) { igualesSeguidos = 0; sondear(); } });
   document.addEventListener("pointerdown", function () { igualesSeguidos = 0; }, { passive: true });
 
   function minutosACierre() { return S.horario ? S.horario.cierraEn - (Date.now() - S.recibido) / 60000 : 0; }
@@ -524,7 +539,7 @@
     mantenerPantalla();
     pintar(); sondear();
   }
-  var modalPedido = false;
+  var modalPedido = false, tBus = 0;
   function pintar() {
     if (!S.t) return;
     var scrollProds = (document.querySelector(".prods") || {}).scrollTop, scrollWin = window.scrollY;
@@ -634,7 +649,7 @@
       t.appendChild(m);
       t.appendChild(btn("☰", "top__cats", menuCategorias));
       var bus = h("input", "top__bus"); bus.type = "search"; bus.placeholder = "Buscar plato…"; bus.value = S.q;
-      bus.addEventListener("input", function () { S.q = bus.value; pintarProductos(); });
+      bus.addEventListener("input", function () { S.q = bus.value; clearTimeout(tBus); tBus = setTimeout(pintarProductos, 120); });   // se filtra al dejar de teclear
       t.appendChild(bus);
     } else {
       t.appendChild(h("b", "top__marca", "🍝 Pasta Gallo")); t.appendChild(h("span", "esp"));
@@ -804,7 +819,7 @@
   function vistaMesas() {
     var w = h("div", "salon");
     var activas = mesasSalon();
-    if (!S.recibido) { w.appendChild(h("p", "vacio", "Cargando mesas…")); return w; }
+    if (!S.recibido) { w.appendChild(esqueleto("Cargando mesas…")); return w; }
     if (!activas.length) { w.appendChild(h("p", "vacio", "No hay mesas activas. Agrégalas en el panel principal → Mesas y QR.")); return w; }
     var solo = S.filtro === "mias" && variosMozos() && !esLocalRol();
     var ver = ordenarMesas(activas.filter(function (m) { return !solo || (duenio(m) && duenio(m).id === yo()) || (!duenio(m)); }));
@@ -2054,7 +2069,7 @@
   }
   function vistaPrincipal() {
     var w = h("div", "principal");
-    if (!S.recibido) { w.appendChild(h("p", "vacio", "Cargando…")); return w; }
+    if (!S.recibido) { w.appendChild(esqueleto("Cargando…")); return w; }
     if (!S.pestElegida) elegirPestInicial();
     var cont = document.createDocumentFragment();
     cont.appendChild(barraPest());
@@ -2167,16 +2182,45 @@
     return d;
   }
   function detalleExt(x) { var c = tarjetaExt(x); abrirModal((x.canal === "delivery" ? "🛵 Delivery #" : "🥡 Para llevar #") + x.n, [c]); }
+  /* Cambios hechos aquí que el servidor todavía no confirma (entregado, cobrado, estado): se mantienen sobre cada respuesta del sondeo
+     hasta que el servidor muestre lo mismo (o 60 s), así la pantalla no «salta» atrás mientras se guarda. */
+  var pendExt = {};
+  function marcarExt(x, cambios) {
+    var antes = {}; Object.keys(cambios).forEach(function (k) { antes[k] = x[k]; x[k] = cambios[k]; });
+    pendExt[x.id] = { c: cambios, hasta: Date.now() + 60000 };
+    return function revertir() {
+      delete pendExt[x.id];
+      (S.externos || []).filter(function (y) { return y === x || y.id === x.id; }).concat([x]).forEach(function (y) { Object.keys(antes).forEach(function (k) { y[k] = antes[k]; }); });
+    };
+  }
+  function aplicarPendExt() {
+    var ahora = Date.now();
+    (S.externos || []).forEach(function (x) {
+      var p = pendExt[x.id]; if (!p) return;
+      var igual = Object.keys(p.c).every(function (k) { return x[k] === p.c[k]; });
+      if (igual || ahora > p.hasta) { delete pendExt[x.id]; return; }
+      Object.keys(p.c).forEach(function (k) { x[k] = p.c[k]; });
+    });
+  }
   function entregarExtUI(x) {
     if (!x.pagado && !confirm("Este pedido todavía no está cobrado. ¿Marcarlo como entregado igual?")) return;
+    // al instante en pantalla; si el servidor no lo guarda, vuelve a su estado y se avisa
+    var revertir = marcarExt(x, { estado: "Entregado" });
+    cerrarModal(); toast("✓ Pedido #" + x.n + " entregado", "ok"); repintarTrasAccion();
     api({ mz: "entregarext", t: S.t, id: x.id }).then(function (r) {
-      if (!r.ok) { toast(r.error || "No se pudo marcar.", "mal"); return; }
-      x.estado = "Entregado"; toast("✓ Pedido #" + x.n + " entregado", "ok"); cerrarModal(); S.v = ""; sondear();
-    }).catch(function () { toast("Sin conexión.", "mal"); });
+      if (!r.ok) { revertir(); toast(r.error || "No se pudo marcar.", "mal"); repintarTrasAccion(); }
+      S.v = ""; sondear();
+    }).catch(function () { revertir(); toast("Sin conexión: no se marcó el pedido #" + x.n + " como entregado.", "mal"); repintarTrasAccion(); });
+  }
+  /* repinta la vista abierta tras un cambio local (sin esperar al servidor) */
+  function repintarTrasAccion() {
+    if (capa.classList.contains("on")) { S.redibujar = true; return; }
+    if (S.vista === "carta" && S.mesa) { pintarOrden(); return; }
+    ultimaFirmaPest = ""; pintar();
   }
   /* cobro de un pedido sin mesa: uno o varios métodos (pago mixto) y propina por método */
-  function cobrarExt(x) {
-    var metodos = metodosCanal(x.canal), cid = uid(), pagos = [{ metodo: /efectivo|tarjeta|transf|yape|plin/i.test(x.pago || "") ? (metodos.filter(function (m) { return norm(x.pago).indexOf(norm(m).split(" ")[0]) >= 0; })[0] || "") : "", monto: x.aCobrar, propina: 0 }];
+  function cobrarExt(x, previo) {
+    var metodos = metodosCanal(x.canal), cid = previo ? previo.cid : uid(), pagos = previo ? previo.pagos : [{ metodo: /efectivo|tarjeta|transf|yape|plin/i.test(x.pago || "") ? (metodos.filter(function (m) { return norm(x.pago).indexOf(norm(m).split(" ")[0]) >= 0; })[0] || "") : "", monto: x.aCobrar, propina: 0 }];
     var zona = h("div", "metodos-c"), res = h("div", "tot"), err = h("p", "err"), ok;
     function suma() { return r2(pagos.reduce(function (a, p) { return a + (Number(p.monto) || 0); }, 0)); }
     function pintarP() {
@@ -2201,11 +2245,18 @@
     ok = btn("✓ Registrar cobro", "btn azul", function () {
       if (pagos.some(function (p) { return !p.metodo && (Number(p.monto) || 0) > 0; })) { err.textContent = "Elige el método de cada pago."; return; }
       if (Math.abs(suma() - x.aCobrar) > 0.009) { err.textContent = "Los pagos deben sumar " + soles(x.aCobrar) + "."; return; }
-      ok.disabled = true; ok.textContent = "Registrando…";
+      // se ve cobrado al instante; si el servidor no lo registra, vuelve a «por cobrar» y se reabre el cobro con los mismos datos
+      // (mismo cid: reintentar nunca cobra dos veces)
+      var revertir = marcarExt(x, { pagado: true });
+      cerrarModal(); toast("✓ Cobrado " + soles(x.aCobrar) + " · pedido #" + x.n, "ok"); repintarTrasAccion();
+      var fallo = function (msg) {
+        revertir(); toast(msg, "mal"); repintarTrasAccion();
+        if (!capa.classList.contains("on")) { cobrarExt(x, { cid: cid, pagos: pagos }); var e2 = capa.querySelector(".err"); if (e2) e2.textContent = msg; }
+      };
       api({ mz: "cobrarext", t: S.t, id: x.id, cid: cid, pagos: pagos.filter(function (p) { return (Number(p.monto) || 0) > 0 || (Number(p.propina) || 0) > 0; }) }).then(function (r) {
-        if (!r.ok) { ok.disabled = false; ok.textContent = "✓ Registrar cobro"; err.textContent = r.error || "No se pudo cobrar."; return; }
-        x.pagado = true; cerrarModal(); toast("✓ Cobrado " + soles(x.aCobrar) + " · pedido #" + x.n, "ok"); S.v = ""; sondear(); if (S.vista === "mesas") pintar();
-      }).catch(function () { ok.disabled = false; ok.textContent = "✓ Registrar cobro"; err.textContent = "Sin conexión. Intenta de nuevo (no se cobrará dos veces)."; });
+        if (!r.ok) { fallo(r.error || "No se pudo cobrar el pedido #" + x.n + "."); return; }
+        S.v = ""; sondear();
+      }).catch(function () { fallo("Sin conexión: el cobro del pedido #" + x.n + " no se registró. Intenta de nuevo (no se cobrará dos veces)."); });
     });
     pintarP();
     abrirModal("💳 Cobrar · " + (x.canal === "delivery" ? "Delivery " : "Para llevar ") + x.nombre + " · " + soles(x.aCobrar), [zona, res, err], [btn("Cancelar", "btn", cerrarModal), ok]);
@@ -2496,9 +2547,9 @@
   }
   /* Panel LOCAL (rol local): se carga local.js (layout de escritorio y módulos extra) y recibe el núcleo de esta app; si no carga, queda el panel del mozo. */
   function interno() {
-    return { S: S, C: C, API: API, api: api, h: h, btn: btn, soles: soles, norm: norm, leer: leer, guardar: guardar, r2: r2, uid: uid, toast: toast, abrirModal: abrirModal, cerrarModal: cerrarModal,
+    return { S: S, C: C, API: API, api: api, h: h, btn: btn, esqueleto: esqueleto, soles: soles, norm: norm, leer: leer, guardar: guardar, r2: r2, uid: uid, toast: toast, abrirModal: abrirModal, cerrarModal: cerrarModal,
       capa: capa, pintar: pintar, refrescar: refrescar, sondear: sondear, abrirMesa: abrirMesa, nuevoExterno: nuevoExterno, tocarMesa: tocarMesa, cobrarExt: cobrarExt,
-      entregarExtUI: entregarExtUI, detalleExt: detalleExt, tarjetaExt: tarjetaExt, cargarLeaflet: cargarLeaflet, escHtml: escHtml, mapsUrl: mapsUrl, mapaSalon: mapaSalon,
+      entregarExtUI: entregarExtUI, detalleExt: detalleExt, marcarExt: marcarExt, repintarTrasAccion: repintarTrasAccion, tarjetaExt: tarjetaExt, cargarLeaflet: cargarLeaflet, escHtml: escHtml, mapsUrl: mapsUrl, mapaSalon: mapaSalon,
       medirMapa: medirMapa, vistaMesas: vistaMesas, botonMesa: botonMesa, estadoMesa: estadoMesa, mesasSalon: mesasSalon, porServir: porServir, entregar: entregar,
       PROD: PROD, SALSAS_TODAS: SALSAS_TODAS, nombreEs: nombreEs, tamEs: tamEs, cambiarAgotado: cambiarAgotado, ventanaAgotados: ventanaAgotados, segmento: segmento,
       chips: chips, minDesde: minDesde, tsSalida: tsSalida, CLS_EST: CLS_EST, LL: LL, DL: DL, pitar: pitar, audio: audio, menuYo: menuYo, cobrar: cobrar,

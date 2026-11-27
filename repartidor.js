@@ -72,14 +72,26 @@
     }
 
     /* ---------- sondeo ---------- */
-    var ultimoSondeo = 0;
+    /* una sola consulta a la vez (si se pide otra mientras va una, se repite al terminar) y se repinta solo si algo cambió */
+    var ultimoSondeo = 0, enVuelo = null, otraVez = false, firmaE = "";
     function sondear() {
-      ultimoSondeo = Date.now();
-      return api({ ext: "reparto", accion: "estado", t: ctx.token }).then(function (r) {
-        sinRed = false;
-        if (r && r.ok) { desfase = r.ahora - Date.now(); E = r; guardar(K_ESTADO, r); pintar(); sonar(r); }
+      if (enVuelo) { otraVez = true; return enVuelo; }
+      ultimoSondeo = Date.now(); otraVez = false;
+      enVuelo = api({ ext: "reparto", accion: "estado", t: ctx.token }).then(function (r) {
+        if (otraVez && r && r.ok) return;   // pudo salir antes de una acción: se descarta y se vuelve a pedir enseguida
+        var antes = sinRed; sinRed = false;
+        if (r && r.ok) {
+          desfase = r.ahora - Date.now(); E = r; guardar(K_ESTADO, r); sonar(r);
+          var f = JSON.stringify(r, function (k, v) { return k === "ahora" ? undefined : v; }) + "|" + cola.length;   // la cola: aviso «Enviando…»
+          if (f !== firmaE || antes) { firmaE = f; pintar(); }
+        }
         else if (r && r.error) ctx.toast(r.error, "mal");
-      }).catch(function () { sinRed = true; pintar(); });
+        else if (antes) pintar();
+      }).catch(function () { sinRed = true; pintar(); }).then(function () {
+        enVuelo = null;
+        if (otraVez) sondear();
+      });
+      return enVuelo;
     }
     function sonar(r) {   // vibración suave cuando llega una oferta nueva (no hay push: solo mientras la app está abierta)
       var f = (r.ofrecidos || []).map(function (x) { return x.numero; }).join(",");

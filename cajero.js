@@ -767,7 +767,7 @@
       k.appendChild(kpi("Plin", L.soles(t.plin))); k.appendChild(kpi("Tarjeta", L.soles(t.tarjeta)));
       if (t.anuladas) k.appendChild(kpi("Anuladas", String(t.anuladas)));
       cuerpo.appendChild(k);
-      var acc = h("div", "cj-acc"); acc.appendChild(btn("Actualizar", "", function () { cargarHist().then(pintar); })); acc.appendChild(btn("Cerrar el día", "ok", abrirCierre));
+      var acc = h("div", "cj-acc"); acc.appendChild(btn("Cerrar el día", "ok", abrirCierre));   // sin «Actualizar»: «Hoy» se refresca solo
       cuerpo.appendChild(acc);
       if (!S.hist.ventas.length) cuerpo.appendChild(h("p", "cj-vacio", "Todavía no hay ventas hoy."));
       S.hist.ventas.forEach(function (v) {
@@ -881,7 +881,16 @@
     /* ---------- arranque ---------- */
     pintar(); enviarSalidas();
     if (RESTR) { cargar().then(pintar); return { recargar: function () { return cargar().then(pintar); } }; }
-    cargar().then(function () { pintar(); return cargarRecoger(); });
-    setInterval(function () { if (doc.hidden || !doc.body.contains(raiz)) return; cargarRecoger(); }, 45000);
+    cargarRecoger(); cargar().then(pintar);   // productos y «por recoger» a la vez (antes uno tras otro)
+    /* refresco automático solo con la app a la vista: «Por recoger» siempre (es el aviso de la pestaña) y «Hoy» si está abierta.
+       «Hoy» se repinta solo si cambió algo y no hay una hoja abierta; al volver a la app se consulta al instante. */
+    var firmaHoy = "", ultimoAlDia = 0;
+    function alDia() {
+      if (doc.hidden || !doc.body.contains(raiz)) return;
+      ultimoAlDia = Date.now(); cargarRecoger();
+      if (S.vista === "hoy") cargarHist().then(function () { var f = JSON.stringify(S.hist || null); if (f !== firmaHoy && S.vista === "hoy" && !hojaAct) { firmaHoy = f; pintar(); } });
+    }
+    setInterval(alDia, 45000);
+    doc.addEventListener("visibilitychange", function () { if (!doc.hidden && Date.now() - ultimoAlDia > 10000) alDia(); });
   }
 })(typeof window !== "undefined" ? window : this);

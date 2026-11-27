@@ -1923,7 +1923,9 @@
         sq.onload = function () { if (window.PG_BUSQUEDA) window.PG_BUSQUEDA.iniciar({ carta: C, modo: MODO, dia: P.ahoraLugar(new Date()).dia, acepta: aceptaAhora,
           puedePedir: function (id) { return !!productos[id] && puedePedir(productos[id], seccionDe[id]); },
           agregar: function (l) { var it = productos[l.id], r = it && repreciar({ id: l.id, tam: l.tam || "", salsa: l.salsa || "", ops: l.ops || {}, mitad: l.mitad || "" }); if (!r) return false; agregar(it, { tam: r.tam, salsa: r.salsa, cant: l.cant, nota: l.nota || "", ops: r.ops, mitad: r.mitad }, r.unit); return true; } }); };
-        document.head.appendChild(sq);
+        // no compite con la carta ni con la foto de portada: se pide al terminar de cargar la página (o a los 4 s, lo que pase primero)
+        var puesto = false, poner = function () { if (puesto) return; puesto = true; document.head.appendChild(sq); };
+        if (document.readyState === "complete") poner(); else { window.addEventListener("load", function () { setTimeout(poner, 0); }, { once: true }); setTimeout(poner, 4000); }
       }
     }
   };
