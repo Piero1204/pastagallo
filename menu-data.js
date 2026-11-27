@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-26T12:57:19-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-27T08:48:15-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -225,7 +225,7 @@ window.CARTA = {
   }
  },
  "pedidos": {
-  "extraLlevarMin": 0,
+  "extraLlevarMin": 15,
   "api": "https://script.google.com/macros/s/AKfycbyR-cpNUiFhkrM7uOequH9O8ebYC6BSMQPhgf7Io63fx294K1oAoABz6R_8f1PNYWs0ew/exec",
   "activos": true,
   "fueraHorario": true,
@@ -3629,14 +3629,11 @@ window.CARTA = {
        "d": "Pasta fresca rellena de carne, lista para cocinar en casa.",
        "t": [
         [
-         "1 kg",
-         38
-        ],
-        [
          "1/2 kg",
          19
         ]
        ],
+       "foto": "fotos/tienda-ravioles-carne.jpg",
        "n_en": "Ravioli di Carne",
        "g_en": "beef ravioli",
        "d_en": "Fresh pasta filled with beef, ready to cook at home."
@@ -3648,14 +3645,11 @@ window.CARTA = {
        "d": "Pasta fresca rellena de queso, lista para cocinar en casa.",
        "t": [
         [
-         "1 kg",
-         38
-        ],
-        [
          "1/2 kg",
          19
         ]
        ],
+       "foto": "fotos/tienda-ravioles-queso.jpg",
        "n_en": "Ravioli di Ricotta",
        "g_en": "ricotta cheese ravioli",
        "d_en": "Fresh pasta filled with cheese, ready to cook at home."
@@ -3666,14 +3660,11 @@ window.CARTA = {
        "d": "Fettuccine fresco, hecho cada día.",
        "t": [
         [
-         "1 kg",
-         20
-        ],
-        [
          "1/2 kg",
          10
         ]
        ],
+       "foto": "fotos/tienda-fettuccini.jpg",
        "n_en": "Fettuccine",
        "d_en": "Fresh fettuccine, made daily."
       },
@@ -3684,15 +3675,11 @@ window.CARTA = {
        "d": "Fettuccine verde fresco, con espinaca, hecho cada día.",
        "t": [
         [
-         "1 kg",
-         20
-        ],
-        [
          "1/2 kg",
          10
         ]
        ],
-       "foto": "fotos/pasta-fettuccine-1794449529303.jpg",
+       "foto": "fotos/tienda-fettuccini-verde.jpg",
        "n_en": "Fettuccine Verdi",
        "g_en": "green fettuccine",
        "d_en": "Fresh green fettuccine, made with spinach, made daily."
@@ -3702,10 +3689,6 @@ window.CARTA = {
        "n": "Spaghetti",
        "d": "Spaghetti fresco, hecho cada día.",
        "t": [
-        [
-         "1 kg",
-         20
-        ],
         [
          "1/2 kg",
          10
@@ -3721,10 +3704,6 @@ window.CARTA = {
        "d": "Tortellini fresco, listo para cocinar en casa.",
        "t": [
         [
-         "1 kg",
-         38
-        ],
-        [
          "1/2 kg",
          19
         ]
@@ -3739,14 +3718,11 @@ window.CARTA = {
        "d": "Láminas de masa fresca para armar tu lasagna.",
        "t": [
         [
-         "1 kg",
-         20
-        ],
-        [
          "1/2 kg",
          10
         ]
        ],
+       "foto": "fotos/tienda-masa-lasagna.jpg",
        "n_en": "Lasagna sheets",
        "d_en": "Fresh pasta sheets to build your own lasagna."
       }
@@ -3784,10 +3760,6 @@ window.CARTA = {
         [
          "1 kg",
          40
-        ],
-        [
-         "1/2 kg",
-         20
         ]
        ],
        "n_en": "Lasagna di Spinaci",
@@ -3803,10 +3775,6 @@ window.CARTA = {
         [
          "1 kg",
          44
-        ],
-        [
-         "1/2 kg",
-         22
         ]
        ],
        "n_en": "Lasagna ai Funghi",
@@ -3825,10 +3793,6 @@ window.CARTA = {
        "g": "salsa de carne",
        "d": "Salsa de carne para tus pastas.",
        "t": [
-        [
-         "1 kg",
-         38
-        ],
         [
          "1/2 kg",
          19
@@ -3849,10 +3813,6 @@ window.CARTA = {
        "d": "Salsa de tomate casera para tus pastas.",
        "t": [
         [
-         "1 kg",
-         36
-        ],
-        [
          "1/2 kg",
          18
         ],
@@ -3871,10 +3831,6 @@ window.CARTA = {
        "d": "Salsa Alfredo cremada para tus pastas.",
        "t": [
         [
-         "1 kg",
-         38
-        ],
-        [
          "1/2 kg",
          19
         ],
@@ -3892,10 +3848,6 @@ window.CARTA = {
        "d": "Salsa Amatriciana para tus pastas.",
        "t": [
         [
-         "1 kg",
-         48
-        ],
-        [
          "1/2 kg",
          24
         ],
@@ -3912,10 +3864,6 @@ window.CARTA = {
        "n": "Salsa Pesto",
        "d": "Salsa Pesto para tus pastas.",
        "t": [
-        [
-         "1 kg",
-         38
-        ],
         [
          "1/2 kg",
          19
@@ -3935,10 +3883,6 @@ window.CARTA = {
        "g": "salsa de champiñones",
        "d": "Salsa de champiñones para tus pastas.",
        "t": [
-        [
-         "1 kg",
-         64
-        ],
         [
          "1/2 kg",
          32
@@ -3961,5 +3905,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-26T12:57:19-05:00"
+ "publicado": "2026-11-27T08:48:15-05:00"
 };
