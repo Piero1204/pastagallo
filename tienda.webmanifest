@@ -1,12 +1,12 @@
 {
   "name": "Pasta Gallo · Tienda",
   "short_name": "PG Tienda",
-  "description": "Caja y venta de tienda de Pasta Gallo: productos, escaneo de códigos, cobros y etiquetas.",
+  "description": "Caja y venta de tienda de Pasta Gallo: productos de tienda y cobros.",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#24402f",
-  "theme_color": "#24402f",
+  "background_color": "#4b5a24",
+  "theme_color": "#4b5a24",
   "icons": [
     { "src": "/tienda-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "/tienda-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }

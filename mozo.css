@@ -119,7 +119,6 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
 .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .cats button{min-height:64px;border-radius:12px;background:var(--papel);border:2px solid var(--linea);font-weight:800;font-size:16px;text-align:left;padding:10px 12px;color:var(--vino)}
 .cats button small{display:block;font-size:12px;color:var(--gris);font-weight:600}
-.qrpago{width:220px;max-width:70%;margin:4px auto;border-radius:10px;border:1px solid var(--linea)}
 .vuelto{white-space:nowrap;color:var(--verde)}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .kpi{background:var(--papel);border-radius:10px;padding:10px;text-align:center}.kpi b{display:block;font-size:20px;color:var(--vino)}.kpi span{font-size:12px;color:var(--gris)}
@@ -267,25 +266,13 @@ main{padding-top:calc(var(--top) + env(safe-area-inset-top) + var(--avisos,0px))
 .salon--modal .plano{margin:0}
 .mesa.actual{outline:3px solid var(--vino);outline-offset:2px}
 
-/* imprimir comanda antes de cobrar */
-.btn.imprimir{background:#d9480f;border-color:#d9480f;color:#fff;height:66px;font-size:20px;box-shadow:0 4px 14px rgba(217,72,15,.35);animation:latido 2.2s ease-in-out infinite}
-.btn.imprimir:disabled{opacity:1;background:#9a5a3c;border-color:#9a5a3c;animation:none}
 @keyframes latido{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
-.btn.impresa{background:#eef7f0;border-color:var(--verde);color:var(--verde)}
-.btn.cobrar-luego{opacity:.75}
-.pasos{font-size:13px;font-weight:800;color:var(--gris);text-transform:uppercase;letter-spacing:.03em;text-align:center}
 .cobro-h{align-items:center;gap:8px}.cobro-h .btn{height:36px;flex:0 0 auto}
 .metodos-c{display:flex;flex-direction:column;gap:10px;margin-top:10px}
-.barra-ped .btn.imprimir{height:54px;font-size:17px;flex:1.4}
 /* Cargos adicionales (solo mozo) */
-.cargos{margin:18px 0 8px;border:1px dashed var(--oro-claro);border-radius:12px;padding:0 10px}
-.cargos>summary{cursor:pointer;list-style:none;padding:12px 2px;font-size:15px;font-weight:800;color:var(--vino)}
-.cargos>summary::-webkit-details-marker{display:none}
-.cargos[open]>summary{border-bottom:1px solid var(--oro-claro);margin-bottom:10px}
-.cargos .grid{margin-bottom:10px}
 
 /* ---------- app de tienda: tema propio (verde) ---------- */
-html.tienda{--vino:#24402f;--vino-2:#2f5240}
+html.tienda{--vino:#4b5a24;--vino-2:#5d6e2c;--rojo:#7c6a1f;--oro:#8a8a3a;--oro-claro:#b5b86a;--verde:#3f6b2b}
 
 /* ---------- mapa del salón desplegable ---------- */
 .mapa{background:#fff;border-bottom:1px solid var(--linea)}
@@ -435,3 +422,4 @@ select.campo{background:#fff}
 .modal{max-width:min(640px,100vw)}
 .modal__cuerpo{overflow-x:hidden}
 .chips{flex-wrap:wrap}
+.qrpago{width:220px;max-width:70%;margin:4px auto;border-radius:10px;border:1px solid var(--linea)}
