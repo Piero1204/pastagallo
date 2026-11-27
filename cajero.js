@@ -1,8 +1,10 @@
 /* Pasta Gallo · caja / mostrador (rol "cajero" del personal). La carga mozo.js cuando el equipo vinculado tiene rol cajero.
    Expone window.PG_APP_CAJERO.iniciar(ctx), con ctx = { api, token, mozo, contenedor, h, toast, salir, cfg }.
-   - Misma interfaz que el mozo: categorías, buscador por nombre, grilla de productos con foto y carrito. Solo productos de tienda que no pasan por cocina
-     (secciones tienda, italia, dolci, caffetteria, caffe, vini, aperitivi). Sin QR, SKU ni código de barras en pantalla (la lógica de L.* se conserva, sin uso en la interfaz).
-   - Productos por peso (kg, g, lt): se escribe el peso y se calcula. Carrito, descuento con motivo, pago mixto con vuelto.
+   - Misma interfaz que el mozo: categorías, buscador por nombre, grilla de productos con foto y carrito. El servidor manda todos los productos de tienda
+     (secciones tienda, dolci, caffe, vini, italia). Sin QR, SKU ni código de barras en pantalla (la lógica de L.* se conserva, sin uso en la interfaz).
+   - Productos por peso (kg, g, lt): se escribe el peso y se calcula. Carrito, descuento con motivo.
+   - Cobro como en una mesa: se elige el método (Efectivo, Yape, Plin, Tarjeta), sin montos ni vuelto, y en el mismo paso el comprobante
+     (sin comprobante, boleta o factura). El servidor arma el pago y emite el comprobante.
    - Recibo para imprimir o compartir, historial del día (con anulación), entregas por recoger y cierre simple del día.
    El servidor recalcula TODO (precios, descuentos, pagos); lo que se ve aquí es solo una vista previa.
    Las funciones puras viven en PG_CAJERO_LIB (se prueban aparte). */
@@ -120,8 +122,30 @@
   /** Código interno que lleva la etiqueta de un producto: SKU, si no código de barras, si no su id. */
   L.codigoInterno = function (p) { return String(p.sku || p.barras || p.id || ""); };
   /** Orden de la tienda: primero lo de la sección tienda, luego lo que no depende de cocina, al final el resto. */
-  var SIN_COCINA = ["dolci", "italia", "caffetteria", "caffe", "vini", "aperitivi"];
-  L.prioridad = function (seccion) { return seccion === "tienda" ? 0 : SIN_COCINA.indexOf(seccion) >= 0 ? 1 : 2; };
+  var SECCIONES = ["tienda", "dolci", "caffe", "vini", "italia"], NOMBRE_SEC = { tienda: "Tienda", dolci: "Dulces", caffe: "Bebidas", vini: "Vinos", italia: "Productos de Italia" };
+  L.prioridad = function (seccion) { var i = SECCIONES.indexOf(seccion); return i >= 0 ? i : SECCIONES.length; };
+  L.nombreSeccion = function (seccion) { return NOMBRE_SEC[seccion] || ""; };
+  /** Foto de un producto: ruta relativa del sitio ("fotos/...") o URL https. Devuelve la URL absoluta o "". */
+  L.urlFoto = function (f) {
+    f = String(f || "").trim(); if (!f) return "";
+    if (/^https:\/\//i.test(f)) return f;
+    if (/^(http:|data:|javascript:)/i.test(f)) return "";
+    return "https://pastagallo.pages.dev/" + f.replace(/^\/+/, "");
+  };
+  /** Valida el comprobante de la venta. c = { tipo: "" | Boleta | Factura, doc, razon, correo }. Devuelve { ok, error }. */
+  L.validarComp = function (c, total) {
+    var doc = String(c.doc || "").replace(/\D/g, ""), mail = String(c.correo || "").trim();
+    if (!c.tipo) return { ok: true, error: "" };
+    if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return { ok: false, error: "El correo no es válido." };
+    if (c.tipo === "Factura") {
+      if (!/^\d{11}$/.test(doc) || ["10", "15", "16", "17", "20"].indexOf(doc.slice(0, 2)) < 0) return { ok: false, error: "El RUC debe tener 11 dígitos y empezar con 10, 15, 16, 17 o 20." };
+      if (String(c.razon || "").trim().length < 3) return { ok: false, error: "Escribe la razón social." };
+      return { ok: true, error: "" };
+    }
+    if (doc && !/^\d{8}$/.test(doc)) return { ok: false, error: "El DNI debe tener 8 dígitos." };
+    if (!doc && Number(total) >= 700) return { ok: false, error: "Desde S/ 700 la boleta lleva DNI (8 dígitos)." };
+    return { ok: true, error: "" };
+  };
 
   L.nuevoCid = function () {
     var a = "abcdefghijklmnopqrstuvwxyz0123456789", s = "v", i;
@@ -246,6 +270,8 @@
         ".cj-chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.cj-chips button{height:44px;padding:0 16px;border-radius:999px;background:#fff;border:2px solid var(--linea,#dccdb0);font-weight:700}.cj-chips button.on{background:var(--vino,#4a1519);color:#fff;border-color:var(--vino,#4a1519)}",
         ".cj-pago{display:flex;align-items:center;gap:8px;margin-bottom:6px}.cj-pago span{width:78px;font-weight:700}.cj-pago input{flex:1}.cj-pago button{height:48px;padding:0 12px;border-radius:10px;background:var(--crema-2,#e6dac0);font-weight:700}",
         ".cj-res{padding:10px;border-radius:10px;font-weight:800;text-align:center;margin-top:8px;background:#fff;border:2px solid var(--linea,#dccdb0)}.cj-res.ok{border-color:var(--verde,#2f7a3a);color:var(--verde,#2f7a3a)}.cj-res.mal{border-color:var(--rojo,#b6232a);color:var(--rojo,#b6232a)}",
+        ".cj-metodos{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}.cj-met{height:64px;border-radius:14px;background:#fff;border:2px solid var(--linea,#dccdb0);font-size:19px;font-weight:800}.cj-met.on{background:var(--vino,#4b5a24);border-color:var(--vino,#4b5a24);color:#fff}",
+        ".cj-aviso{padding:10px 12px;border-radius:10px;font-weight:700;margin-bottom:8px;border:2px solid}.cj-aviso.ok{border-color:var(--verde,#3f6b2b);color:var(--verde,#3f6b2b);background:#fff}.cj-aviso.mal{border-color:var(--rojo,#b6232a);color:#7a1a1f;background:#fdeceb}",
         ".cj-err{color:var(--rojo,#b6232a);font-weight:700;min-height:20px;margin-top:6px}",
         ".cj-rec{font:13px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;background:#fff;border:1px dashed var(--gris,#6f5f57);border-radius:8px;padding:12px;margin-bottom:6px;-webkit-user-select:text;user-select:text}",
         ".cj-video{width:100%;max-height:50vh;background:#000;border-radius:12px}",
@@ -276,13 +302,10 @@
     function entrada(tipo, ph) { var i = h("input"); i.type = tipo || "text"; if (ph) i.placeholder = ph; return i; }
 
     /* ---------- carga de datos ---------- */
-    /* Solo productos de tienda que NO pasan por cocina. El servidor no manda un campo "cocina": se usa la sección del producto
-       (tienda, italia, dolci, bebidas = caffetteria/caffe/vini/aperitivi → L.prioridad < 2). Pasta, pizza, parrillas, etc. quedan fuera. */
-    function sinCocina(p) { return L.prioridad(p.seccion) < 2; }
     function cargar() {
       return llamar({ op: "productos" }).then(function (r) {
         if (!r.ok) { S.error = r.error || "No se pudo cargar."; return; }
-        S.prods = (r.productos || []).filter(sinCocina); S.metodos = r.metodos || S.metodos; S.descMax = r.descuentoMax; S.anularCajero = r.anularCajero !== false;
+        S.prods = r.productos || []; S.metodos = r.metodos || S.metodos; S.descMax = r.descuentoMax; S.anularCajero = r.anularCajero !== false;
         S.negocio = r.negocio || {}; S.cargado = true; S.error = "";
       }).catch(function (e) { S.error = "Sin conexión. " + (e && e.message ? e.message : ""); });
     }
@@ -343,7 +366,7 @@
       inBus.addEventListener("input", function () { S.q = inBus.value; pintarProds(); });
       f.appendChild(inBus);
       cuerpo.appendChild(f);
-      if (!S.prods.length) cuerpo.appendChild(h("p", "cj-vacio", "Todavía no hay productos de tienda sin cocina. El administrador debe marcarlos en el panel (Tienda > Catálogo)."));
+      if (!S.prods.length) cuerpo.appendChild(h("p", "cj-vacio", "Todavía no hay productos de tienda. El administrador debe cargarlos en el panel (Tienda > Catálogo)."));
       var cats = h("nav", "cj-cats"), secs = {}, wrap = h("div", "cj-carta");
       S.prods.forEach(function (p) { secs[p.seccion || ""] = 1; });
       var orden = Object.keys(secs).sort(function (a, b) { return L.prioridad(a) - L.prioridad(b) || (tituloSec(a) < tituloSec(b) ? -1 : 1); });
@@ -357,15 +380,7 @@
       zonaProds = h("div", "cj-prods"); wrap.appendChild(zonaProds); cuerpo.appendChild(wrap);
       pintarProds();
     }
-    var fotoPorId = null;
-    function fotoDe(id) {
-      if (!fotoPorId) {
-        fotoPorId = {};
-        ((ctx.cfg && ctx.cfg.secciones) || []).forEach(function (s) { (s.grupos || []).forEach(function (g) { (g.items || []).forEach(function (it) { if (it.foto) fotoPorId[it.id] = it.foto; }); }); });
-      }
-      return fotoPorId[id] || "";
-    }
-    function tituloSec(id) { var r = ((ctx.cfg && ctx.cfg.secciones) || []).filter(function (s) { return s.id === id; })[0]; return r ? r.titulo : (id || "Otros"); }
+    function tituloSec(id) { return L.nombreSeccion(id) || (id || "Otros"); }
     function pintarProds() {
       if (!zonaProds) return;
       zonaProds.innerHTML = "";
@@ -376,8 +391,8 @@
       var grid = h("div", "grid"); zonaProds.appendChild(grid);
       lista.forEach(function (p) {
         var b = h("button", "prod"); b.type = "button";
-        var ft = h("div", "ft"), fu = fotoDe(p.id);
-        if (fu) { fu = String(fu); if (!/^(https?:|data:|\/)/.test(fu)) fu = "/" + fu; ft.style.backgroundImage = "url('" + fu.replace(/'/g, "%27") + "')"; }
+        var ft = h("div", "ft"), fu = L.urlFoto(p.foto);
+        if (fu) { ft.style.backgroundImage = "url('" + fu.replace(/'/g, "%27") + "')"; }
         else { ft.className = "ft sin"; ft.style.backgroundImage = "url('/gallo-oro.png')"; ft.style.backgroundSize = "46% auto"; ft.style.backgroundRepeat = "no-repeat"; ft.style.opacity = ".5"; }
         b.appendChild(ft);
         var tx = h("div", "tx");
@@ -568,10 +583,10 @@
       carrito.appendChild(tot);
     }
 
-    /* ---------- cobrar ---------- */
+    /* ---------- cobrar: método (4 botones) + comprobante en el mismo paso. Sin montos ni vuelto: el servidor calcula el total y arma el pago. ---------- */
     function abrirCobro() {
-      var sub = L.totalCarro(S.carro), dTipo = "", dVal = null, dMot = null;
-      var cuerpoH = [], inputs = {}, res = h("div", "cj-res"), err = h("div", "cj-err"), totalTxt = h("div", "cj-res ok");
+      var sub = L.totalCarro(S.carro), dTipo = "", dVal = null, dMot = null, metodo = "", compTipo = "";
+      var cuerpoH = [], err = h("div", "cj-err"), totalTxt = h("div", "cj-res ok");
       var ok = btn("Confirmar venta", "ok", enviar);
       var bloqueDesc = h("div"), btnDesc = btn("＋ Descuento", "", function () { mostrarDesc(true); btnDesc.remove(); });
       function mostrarDesc(foco) {
@@ -593,44 +608,60 @@
         if (d.ok && (dMot.value || "").trim().length < 3) return { ok: false, total: d.total, desc: d.desc, error: "Escribe el motivo del descuento.", d: d };
         return d;
       }
-      function pagosActuales() { var o = {}; S.metodos.forEach(function (m) { o[m] = Number(String(inputs[m].value).replace(",", ".")) || 0; }); return o; }
+      /* método de pago */
+      var pag = h("div"), grilla = h("div", "cj-metodos");
+      pag.appendChild(h("label", "", "Método de pago"));
+      S.metodos.forEach(function (m) {
+        var b = btn(m, "cj-met", function () { metodo = m; Array.prototype.forEach.call(grilla.children, function (x) { x.classList.toggle("on", x === b); }); recalcular(); });
+        b.setAttribute("aria-pressed", "false"); grilla.appendChild(b);
+      });
+      pag.appendChild(grilla);
+      /* comprobante */
+      var cb = h("div"), cChips = h("div", "cj-chips"), cForm = h("div");
+      cb.appendChild(h("label", "", "Comprobante"));
+      var fDoc = entrada("text"), fNom = entrada("text"), fDir = entrada("text"), fMail = entrada("email");
+      fDoc.setAttribute("inputmode", "numeric"); fDoc.setAttribute("autocomplete", "off"); fMail.setAttribute("autocomplete", "off");
+      fNom.setAttribute("maxlength", "120"); fDir.setAttribute("maxlength", "160");
+      [fDoc, fNom, fDir, fMail].forEach(function (i) { i.addEventListener("input", recalcular); });
+      fDoc.addEventListener("input", function () { var v = fDoc.value.replace(/\D/g, "").slice(0, compTipo === "Factura" ? 11 : 8); if (v !== fDoc.value) fDoc.value = v; });
+      [["", "Sin comprobante"], ["Boleta", "Boleta"], ["Factura", "Factura"]].forEach(function (t) {
+        var b = btn(t[1], t[0] === compTipo ? "on" : "", function () {
+          compTipo = t[0]; Array.prototype.forEach.call(cChips.children, function (x) { x.classList.toggle("on", x === b); });
+          pintarForm(); recalcular();
+        });
+        cChips.appendChild(b);
+      });
+      function pintarForm() {
+        cForm.innerHTML = ""; fDoc.value = fDoc.value.replace(/\D/g, "").slice(0, compTipo === "Factura" ? 11 : 8);
+        if (!compTipo) return;
+        var fact = compTipo === "Factura";
+        fDoc.placeholder = fact ? "11 dígitos" : "8 dígitos";
+        fNom.placeholder = fact ? "Nombre de la empresa" : "Nombre (opcional)"; fMail.placeholder = "correo@ejemplo.com (opcional)"; fDir.placeholder = "Dirección fiscal (opcional)";
+        cForm.appendChild(campo(fact ? "RUC" : "DNI" + (sub >= 700 ? " (obligatorio desde S/ 700)" : " (opcional)"), fDoc));
+        cForm.appendChild(campo(fact ? "Razón social" : "Nombre", fNom));
+        if (fact) cForm.appendChild(campo("Dirección", fDir));
+        cForm.appendChild(campo("Correo", fMail));
+      }
+      cb.appendChild(cChips); cb.appendChild(cForm);
+      function datosComp() { return { tipo: compTipo, doc: fDoc.value.replace(/\D/g, ""), razon: fNom.value.trim(), direccion: fDir.value.trim(), correo: fMail.value.trim() }; }
       function recalcular() {
         var t = totalActual();
         var total = t.ok ? t.total : (t.d && t.d.ok ? t.d.total : sub);
         totalTxt.textContent = "TOTAL " + L.soles(total) + (t.desc ? "  (descuento " + L.soles(t.desc) + ")" : "");
-        var c = L.cobro(total, pagosActuales());
-        var pagado = c.efectivo + c.noEfectivo;
-        res.className = "cj-res " + (c.ok ? "ok" : "mal");
-        res.textContent = c.ok ? (c.vuelto > 0 ? "Vuelto: " + L.soles(c.vuelto) : "Pago exacto") : (pagado ? c.error : "Indica cómo paga");
-        ok.disabled = !(t.ok && c.ok);
-        err.textContent = !t.ok ? t.error : "";
-        return { t: t, c: c, total: total };
+        var v = L.validarComp(datosComp(), total);
+        ok.disabled = !(t.ok && metodo && v.ok);
+        err.textContent = !t.ok ? t.error : !v.ok ? v.error : "";
+        return { t: t, total: total };
       }
-      cuerpoH.push(totalTxt, btnDesc, bloqueDesc);
-      var pag = h("div"); pag.appendChild(h("label", "", "Cómo paga"));
-      S.metodos.forEach(function (m) {
-        var f = h("div", "cj-pago"), i = entrada("text", "0.00"); i.setAttribute("inputmode", "decimal"); i.setAttribute("aria-label", m);
-        i.addEventListener("input", recalcular); inputs[m] = i;
-        f.appendChild(h("span", "", m)); f.appendChild(i);
-        f.appendChild(btn(m === "Efectivo" ? "Exacto" : "Todo", "", function () {
-          var otros = 0; S.metodos.forEach(function (o) { if (o !== m) otros += Number(String(inputs[o].value).replace(",", ".")) || 0; });
-          var t = totalActual(), total = t.ok ? t.total : (t.d && t.d.ok ? t.d.total : sub), falta = L.r2(total - otros);
-          inputs[m].value = falta > 0 ? falta.toFixed(2) : ""; recalcular();
-        }));
-        pag.appendChild(f);
-      });
-      cuerpoH.push(pag, res, err);
-      var tieneEf = S.metodos.indexOf("Efectivo") >= 0;
+      cuerpoH.push(totalTxt, btnDesc, bloqueDesc, pag, cb, err);
       abrirHoja("Cobrar · " + L.soles(sub), cuerpoH, [btn("Volver", "", cerrarHoja), ok]);
-      if (tieneEf) setTimeout(function () { inputs.Efectivo.focus(); }, 40);
       recalcular();
 
       function enviar() {
-        var r = recalcular(); if (ok.disabled) return;
-        var pagos = [], pa = pagosActuales();
-        Object.keys(pa).forEach(function (m) { if (pa[m] > 0) pagos.push({ metodo: m, monto: pa[m] }); });
-        var carga = { op: "venta", items: S.carro.map(function (l) { var o = { id: l.id, cant: l.cant }; if (l.tam) o.tam = l.tam; return o; }), pagos: pagos };
+        recalcular(); if (ok.disabled) return;
+        var carga = { op: "venta", items: S.carro.map(function (l) { var o = { id: l.id, cant: l.cant }; if (l.tam) o.tam = l.tam; return o; }), metodo: metodo };
         if (dTipo) carga.descuento = { tipo: dTipo, valor: dVal.value, motivo: dMot.value.trim() };
+        if (compTipo) carga.comp = datosComp();
         var snapCli = S.cliente, snapLin = S.carro.map(function (l) { return { id: l.id, nombre: l.nombre, unidad: l.unidad, tam: l.tam || "", cant: l.cant, kilos: L.kilosDe(l), subtotal: L.subtotal(l.unit, l.cant) }; });
         var firma = JSON.stringify(carga);
         if (!S.pend || S.pend.firma !== firma) S.pend = { firma: firma, cid: L.nuevoCid() };   // mismo contenido = mismo id: un reintento no duplica la venta
@@ -641,9 +672,21 @@
           if (snapCli) { rs.venta.cliente = snapCli; registrarSalida(carga.cid, rs.venta.id, snapCli, snapLin); }
           S.pend = null; S.carro = []; guardarCarro(); S.q = ""; S.cliente = null; guardar("pg-cajero-cliente", null);
           cerrarHoja(); if (rs.repetida) toast("Esa venta ya estaba registrada: no se duplicó.", "ok");
-          pintar(); verRecibo(rs.venta, true);
+          pintar(); verRecibo(rs.venta, true, avisosComp(rs, !!compTipo));
         }).catch(function () { ok.textContent = "Confirmar venta"; ok.disabled = false; err.textContent = "Sin conexión. Toca de nuevo \"Confirmar venta\": si la venta ya se guardó, no se duplica."; });
       }
+    }
+    /* Resultado del comprobante: [{ ok, texto }]. Si falla, la venta igual quedó guardada. */
+    function avisosComp(rs, pidio) {
+      var av = [], hayMal = false;
+      (rs.comprobantes || []).forEach(function (c) {
+        if (c && c.ok) av.push({ ok: true, texto: (c.tipo || "Comprobante") + " " + (c.numero || "") + " emitida" });
+        else { hayMal = true; av.push({ ok: false, texto: "No se pudo emitir el comprobante: " + ((c && c.error) || "error desconocido") + ". Puedes emitirlo desde el panel (🧾 Comprobantes)." }); }
+      });
+      if (rs.compError && !hayMal) { hayMal = true; av.push({ ok: false, texto: "No se pudo emitir el comprobante: " + rs.compError + ". Puedes emitirlo desde el panel (🧾 Comprobantes)." }); }
+      if (pidio && !av.length) av.push({ ok: false, texto: "No se recibió confirmación del comprobante. Puedes emitirlo desde el panel (🧾 Comprobantes)." });
+      if (hayMal || (pidio && !av.length)) pitar();
+      return av;
     }
 
     /* ---------- recibo ---------- */
@@ -660,14 +703,16 @@
     function copiar(texto) {
       try { root.navigator.clipboard.writeText(texto).then(function () { toast("Recibo copiado.", "ok"); }); } catch (e) { toast("No se pudo copiar.", "mal"); }
     }
-    function verRecibo(v, nueva) {
+    function verRecibo(v, nueva, avisos) {
       var texto = L.textoRecibo(v, S.negocio), pre = h("pre", "cj-rec", texto);
       var botones = [btn(nueva ? "Nueva venta" : "Cerrar", "ok", function () { cerrarHoja(); if (S.vista === "vender") setTimeout(function () { if (inBus) inBus.focus(); }, 50); })];
       var acc = h("div", "cj-acc");
       acc.appendChild(btn("🖨 Imprimir", "", function () { imprimir(texto); }));
       acc.appendChild(btn("Compartir", "", function () { compartir(texto); }));
       acc.appendChild(btn("Copiar", "", function () { copiar(texto); }));
-      var nodos = [pre, acc];
+      var nodos = [];
+      (avisos || []).forEach(function (a) { nodos.push(h("div", "cj-aviso " + (a.ok ? "ok" : "mal"), (a.ok ? "✓ " : "⚠ ") + a.texto)); });
+      nodos.push(pre, acc);
       if (!nueva && v.estado !== "Anulada") nodos.push(btn("Anular esta venta", "cj-del", function () { anularVenta(v); }));
       abrirHoja((nueva ? "✓ Venta registrada · " : "Venta ") + v.id, nodos, botones, function () { if (nueva && S.vista === "vender") pintarProds(); });
     }
