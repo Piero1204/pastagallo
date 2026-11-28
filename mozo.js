@@ -2371,12 +2371,15 @@
     var fDir, fRef, fUbi, fZona, fCosto, info = h("p", "del-info"), tot = h("div", "tot");
     if (del) {
       fDir = inp("Calle, número, urbanización", "text", 200); fRef = inp("Frente a…, color de la casa…", "text", 200);
-      fUbi = inp("Pega el enlace de Google Maps o -8.11, -79.02", "text", 400);
+      fUbi = inp("", "hidden");   // coordenadas "lat, lng": las pone «Calcular envío» (o la ficha del cliente); ya no se pega el enlace de Maps
+      var bCalc = btn("🔎 Calcular envío", "btn peq", function () { geocodificar(); });
+      var zCalc = h("div", "calc-envio"); zCalc.appendChild(bCalc); zCalc.appendChild(fUbi);
       fZona = h("select", "campo"); [["", "— por ubicación —"]].concat((((C.pedidos || {}).deliveryTarifas || {}).zonas || []).map(function (z) { return [z.nombre, z.nombre + " · " + soles(z.precio)]; }))
         .forEach(function (o) { var op = h("option", null, o[1]); op.value = o[0]; fZona.appendChild(op); });
       fCosto = inp("Solo si no hay ubicación o quieres otro costo", "number"); fCosto.inputMode = "decimal"; fCosto.step = "0.5"; fCosto.min = "0"; fCosto.max = "200";
       cuerpo.push(campo("Dirección *", fDir)); cuerpo.push(campo("Referencia", fRef));
-      cuerpo.push(campo("Ubicación", fUbi, "Con ubicación el costo sale solo (misma tarifa que la web)."));
+      cuerpo.push(campo("Envío", zCalc, "Busca la dirección en el mapa como la web y calcula el envío con la misma tarifa (redondeado hacia arriba)."));
+      fDir.addEventListener("input", function () { if (fUbi.value) { fUbi.value = ""; st.urb = ""; recalc(); } });   // la dirección cambió: hay que volver a calcular
       cuerpo.push(campo("Zona (opcional)", fZona)); cuerpo.push(campo("Costo de delivery manual (S/)", fCosto));
       cuerpo.push(info);
       [fUbi, fZona, fCosto].forEach(function (x) { x.addEventListener("input", recalc); x.addEventListener("change", recalc); });
@@ -2399,14 +2402,36 @@
     segC.classList.add("comp-seg"); cuerpo.push(segC); cuerpo.push(zComp);
     var fNota = inp("Comentario (opcional)", "text", 200); cuerpo.push(campo("Comentario para cocina", fNota));
     cuerpo.push(tot); cuerpo.push(err);
+    /* misma búsqueda que la web (Nominatim/OpenStreetMap, zona de Trujillo); si el número exacto no está, se reintenta solo con la calle */
+    function geocodificar() {
+      var dir = fDir.value.trim();
+      if (dir.length < 5) { info.textContent = "Escribe la dirección (calle, número y urbanización) y toca «Calcular envío»."; info.className = "del-info mal"; fDir.focus(); return; }
+      var sufijo = /trujillo/i.test(dir) ? "" : ", Trujillo, Perú", sinNum = dir.replace(/\b(n[°ºo.]*\s*)?\d+[a-zA-Z]?\b/gi, " ").replace(/\s{2,}/g, " ").trim();
+      var consultas = [dir + sufijo]; if (sinNum.length >= 4 && sinNum !== dir) consultas.push(sinNum + sufijo);
+      var b = zCalc.querySelector("button"); b.disabled = true; b.textContent = "Buscando…"; info.textContent = "Buscando la dirección en el mapa…"; info.className = "del-info";
+      function buscar(i) {
+        var url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&countrycodes=pe&accept-language=es&viewbox=-79.20,-7.95,-78.90,-8.25&q=" + encodeURIComponent(consultas[i]);
+        return fetch(url).then(function (r) { if (!r.ok) throw new Error("http"); return r.json(); }).then(function (arr) {
+          var r0 = arr && arr[0], la = r0 ? parseFloat(r0.lat) : NaN, lo = r0 ? parseFloat(r0.lon) : NaN;
+          if (isFinite(la) && isFinite(lo)) return { la: la, lo: lo, ad: r0.address || {} };
+          return i + 1 < consultas.length ? buscar(i + 1) : null;
+        });
+      }
+      buscar(0).then(function (r) {
+        b.disabled = false; b.textContent = "🔎 Calcular envío";
+        if (!r) { fUbi.value = ""; st.urb = ""; recalc(); info.textContent = "No encontré esa dirección en el mapa. Revisa calle y urbanización, o elige la zona o escribe el costo a mano."; info.className = "del-info mal"; return; }
+        var ad = r.ad; st.urb = ad.suburb || ad.neighbourhood || ad.quarter || ad.residential || ad.hamlet || ad.city_district || "";
+        fUbi.value = (Math.round(r.la * 1e6) / 1e6) + ", " + (Math.round(r.lo * 1e6) / 1e6); recalc();
+      }).catch(function () { b.disabled = false; b.textContent = "🔎 Calcular envío"; info.textContent = "Sin conexión con el mapa. Intenta de nuevo o escribe el costo a mano."; info.className = "del-info mal"; });
+    }
     function costo() { if (!del) return 0; if (fCosto.value.trim() !== "") return Number(fCosto.value) || 0; return st.r && st.r.ok ? st.r.costo : 0; }
     function recalc() {
       if (del) {
         st.c = coordsDeTexto(fUbi.value); st.r = costoDelivery(fZona.value, st.c);
         var man = fCosto.value.trim() !== "";
-        info.textContent = (st.c ? "📍 " + st.c.lat.toFixed(5) + ", " + st.c.lng.toFixed(5) + " · " : fUbi.value.trim() ? "⚠ No encontré coordenadas en ese texto (los enlaces cortos maps.app.goo.gl no las traen: ábrelo y copia las coordenadas). " : "") +
-          (st.r.ok ? "Delivery " + soles(st.r.costo) + (st.r.zona ? " (" + st.r.zona + ")" : "") + (st.r.km != null ? " · " + st.r.km.toFixed(1) + " km" : "") + (man ? " · se usará el costo manual" : "")
-            : st.r.falta ? (man ? "Costo manual " + soles(fCosto.value) : "Sin ubicación ni zona: no hay costo automático. Escribe el costo manual o déjalo para confirmar después.") : (st.r.error || "") + (man ? " · costo manual " + soles(fCosto.value) : ""));
+        var urb = (st.urb || st.r.zona || "—") + (st.urb && st.r.zona && st.r.zona !== st.urb ? " (zona " + st.r.zona + ")" : "");
+        info.textContent = (st.r.ok ? (st.c ? "Urbanización detectada: " + urb + " · " + soles(st.r.costo) : "Delivery " + soles(st.r.costo) + (st.r.zona ? " (" + st.r.zona + ")" : "")) + (st.r.km != null ? " · " + st.r.km.toFixed(1) + " km" : "") + (man ? " · se usará el costo manual (editable)" : " · si hace falta, escribe otro costo abajo")
+            : st.r.falta ? (man ? "Costo manual " + soles(fCosto.value) : "Escribe la dirección y toca «🔎 Calcular envío» (o elige la zona, o escribe el costo a mano).") : (st.r.error || "") + (man ? " · costo manual " + soles(fCosto.value) : ""));
         info.className = "del-info" + (st.r.fuera ? " mal" : "");
       }
       var cd = costo();
