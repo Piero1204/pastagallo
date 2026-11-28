@@ -1,4 +1,4 @@
-/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-27T12:20:49-05:00).
+/* ARCHIVO GENERADO desde el Google Sheets de Pasta Gallo (2026-11-28T13:38:18-05:00).
    No lo edites a mano: cambia los datos en el panel (se publica solo al guardar). */
 window.CARTA = {
  "negocio": {
@@ -38,7 +38,7 @@ window.CARTA = {
     "23:00"
    ],
    "5": [
-    "18:00",
+    "12:00",
     "23:00"
    ],
    "6": [
@@ -3626,7 +3626,7 @@ window.CARTA = {
        "id": "tienda-ravioles-carne",
        "n": "Ravioles de carne",
        "g": "ravioles de carne",
-       "d": "Pasta fresca rellena de carne, lista para cocinar en casa.",
+       "d": "Ravioles frescos rellenos de carne, los mismos que servimos en el restaurante. Listos para cocinar en casa en pocos minutos.",
        "t": [
         [
          "1/2 kg",
@@ -3642,7 +3642,7 @@ window.CARTA = {
        "id": "tienda-ravioles-queso",
        "n": "Ravioles de ricota",
        "g": "ravioles de queso ricotta",
-       "d": "Pasta fresca rellena de queso, lista para cocinar en casa.",
+       "d": "Ravioles frescos rellenos de ricotta, suaves y cremosos, hechos en nuestra fábrica. Listos para cocinar en casa en pocos minutos.",
        "t": [
         [
          "1/2 kg",
@@ -3657,7 +3657,7 @@ window.CARTA = {
       {
        "id": "tienda-fettuccini",
        "n": "Fetuccini",
-       "d": "Fettuccine fresco, hecho cada día.",
+       "d": "Cintas largas y planas de pasta fresca, hechas cada día en nuestra fábrica. Ideales para las salsas cremosas.",
        "t": [
         [
          "1/2 kg",
@@ -3672,7 +3672,7 @@ window.CARTA = {
        "id": "tienda-fettuccini-verde",
        "n": "Fetuccini verde",
        "g": "fettuccine verde",
-       "d": "Fettuccine verde fresco, con espinaca, hecho cada día.",
+       "d": "Cintas de pasta fresca verde, hechas con espinaca en nuestra fábrica. Ideales para las salsas cremosas.",
        "t": [
         [
          "1/2 kg",
@@ -3687,7 +3687,7 @@ window.CARTA = {
       {
        "id": "tienda-spaghetti",
        "n": "Spaghetti",
-       "d": "Spaghetti fresco, hecho cada día.",
+       "d": "El clásico entre los clásicos, en pasta fresca hecha cada día en nuestra fábrica.",
        "t": [
         [
          "1/2 kg",
@@ -3701,7 +3701,7 @@ window.CARTA = {
       {
        "id": "tienda-tortellini",
        "n": "Tortellini",
-       "d": "Tortellini fresco, listo para cocinar en casa.",
+       "d": "Pequeños anillos de pasta fresca rellenos de carne, tradición de Emilia-Romaña. Listos para cocinar en casa.",
        "t": [
         [
          "1/2 kg",
@@ -3715,7 +3715,7 @@ window.CARTA = {
       {
        "id": "tienda-masa-lasagna",
        "n": "Masa de lasaña",
-       "d": "Láminas de masa fresca para armar tu lasagna.",
+       "d": "Láminas de pasta fresca para armar en casa tu propia lasagna, como la preparamos nosotros.",
        "t": [
         [
          "1/2 kg",
@@ -3736,7 +3736,7 @@ window.CARTA = {
        "id": "tienda-lasagna-carne",
        "n": "Lasaña de carne",
        "g": "lasagna de carne",
-       "d": "Lasagna de carne al horno, lista para calentar.",
+       "d": "La clásica de siempre: capas de pasta y carne, lista para calentar y gratinar en el horno de casa.",
        "t": [
         [
          "1 kg",
@@ -3756,7 +3756,7 @@ window.CARTA = {
        "id": "tienda-lasagna-espinaca",
        "n": "Lasaña de espinacas",
        "g": "lasagna de espinaca",
-       "d": "Lasagna de espinaca al horno, lista para calentar.",
+       "d": "Capas de pasta y espinaca, lista para calentar y gratinar en el horno de casa.",
        "t": [
         [
          "1 kg",
@@ -3772,7 +3772,7 @@ window.CARTA = {
        "id": "tienda-lasagna-champinones",
        "n": "Lasaña de champiñones",
        "g": "lasagna de champiñones",
-       "d": "Lasagna de champiñones al horno, lista para calentar.",
+       "d": "Capas de pasta con champiñones, delicada y sabrosa, lista para calentar y gratinar en casa.",
        "t": [
         [
          "1 kg",
@@ -3794,7 +3794,7 @@ window.CARTA = {
        "id": "tienda-salsa-carne",
        "n": "Salsa de carne",
        "g": "salsa de carne",
-       "d": "Salsa de carne para tus pastas.",
+       "d": "Nuestra salsa de carne, sabrosa y contundente, lista para acompañar tus pastas.",
        "t": [
         [
          "1/2 kg",
@@ -3814,7 +3814,7 @@ window.CARTA = {
        "id": "tienda-salsa-tomate",
        "n": "Salsa de tomate",
        "g": "salsa de tomate",
-       "d": "Salsa de tomate casera para tus pastas.",
+       "d": "Salsa de tomate casera, sencilla y llena de sabor, lista para tus pastas.",
        "t": [
         [
          "1/2 kg",
@@ -3833,7 +3833,7 @@ window.CARTA = {
       {
        "id": "tienda-salsa-alfredo",
        "n": "Salsa Alfredo",
-       "d": "Salsa Alfredo cremada para tus pastas.",
+       "d": "Cremosa y suave, con mantequilla y queso parmesano. Lista para tus fettuccine.",
        "t": [
         [
          "1/2 kg",
@@ -3851,7 +3851,7 @@ window.CARTA = {
       {
        "id": "tienda-salsa-amatriciana",
        "n": "Salsa amatriciana",
-       "d": "Salsa Amatriciana para tus pastas.",
+       "d": "Salsa de tomate de tradición romana, intensa y con carácter, lista para tus pastas.",
        "t": [
         [
          "1/2 kg",
@@ -3869,7 +3869,7 @@ window.CARTA = {
       {
        "id": "tienda-salsa-pesto",
        "n": "Salsa pesto",
-       "d": "Salsa Pesto para tus pastas.",
+       "d": "Pesto de albahaca, fresco y aromático, listo para tus pastas.",
        "t": [
         [
          "1/2 kg",
@@ -3888,7 +3888,7 @@ window.CARTA = {
        "id": "tienda-salsa-champinones",
        "n": "Salsa de champiñones",
        "g": "salsa de champiñones",
-       "d": "Salsa de champiñones para tus pastas.",
+       "d": "Salsa de champiñones, delicada y sabrosa, lista para tus pastas.",
        "t": [
         [
          "1/2 kg",
@@ -3913,5 +3913,5 @@ window.CARTA = {
    "pie_en": ""
   }
  ],
- "publicado": "2026-11-27T12:20:49-05:00"
+ "publicado": "2026-11-28T13:38:18-05:00"
 };
