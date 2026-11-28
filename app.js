@@ -276,9 +276,8 @@
     s.appendChild(botonIdioma("idioma idioma--portada"));
     var in_ = h("div", "portada__in");
     in_.appendChild(h("div", "saludo", "Benvenuti"));
-    // ancho y alto propios (la hoja de estilos fija el ancho y height:auto): el espacio queda reservado antes de que llegue la imagen
-    var g = h("img", "gallo"); g.src = "gallo-oro.png"; g.alt = ""; g.width = 112; g.height = 76; g.setAttribute("fetchpriority", "high"); in_.appendChild(g);
-    var m = h("img", "marca"); m.src = "wordmark-crema.png"; m.alt = N.nombre; m.width = 731; m.height = 125; m.setAttribute("fetchpriority", "high"); in_.appendChild(m);
+    var g = h("img", "gallo"); g.src = "gallo-oro.png"; g.alt = ""; g.width = 112; in_.appendChild(g);
+    var m = h("img", "marca"); m.src = "wordmark-crema.png"; m.alt = N.nombre; in_.appendChild(m);
     in_.appendChild(h("div", "desde", N.desde));
     var tri = h("div", "tricolor"); tri.setAttribute("aria-hidden", "true");
     tri.appendChild(h("span")); tri.appendChild(h("span")); tri.appendChild(h("span")); in_.appendChild(tri);
