@@ -3,7 +3,7 @@
    mismos cobros, juntar/mover/dividir, para llevar y delivery) con layout de escritorio y módulos extra:
      «Todos»  tablero completo: indicadores del día, pedidos por estado con acciones rápidas, promoción del día, no disponibles,
               comprobantes por emitir, impresora, reparto, mapa del salón, mapa de delivery e historial del día.
-     «Para llevar / Delivery»  pedidos en curso, repartidores y mapa.      «Salón»  plano y por servir.
+     «Para llevar / Delivery»  pedidos en curso, repartidores y mapa.      «Salón»  mesas + panel de la mesa con todas las acciones (cobrar, cuenta, comprobante, editar, ajustar, reimprimir…).
      «Cuentas»  lo cobrado del día (mesas, para llevar/delivery y tienda): cambiar pago, editar, eliminar/anular y recuperar.
      «Comprobantes»  pendientes, cobrado sin comprobante y comprobante nuevo con líneas libres.
      «Tienda»  vender (misma interfaz de la caja, en verde oliva) y registrar compras (sin totales de caja).
@@ -85,6 +85,8 @@
     // solo la pestaña abierta pide sus datos extra (las demás se cargan al abrirlas)
     if (S.vista !== "carta") {
       if (S.pest === "todos") pedirTVentas(!r.igual && Date.now() - TV.ts > 8000);
+      if (S.pest === "salon" && DM.mesa && !r.igual && Date.now() - DM.ts > 3000) cargarMesa();
+      if (S.pest === "salon" && DM.cerradas && CU.datos && Date.now() - CU.ts > (r.igual ? 60000 : 12000)) pedirCuentas(true);
       if (S.pest === "cuentas" && CU.datos && (!CU.dia || CU.dia === CU.datos.hoy) && Date.now() - CU.ts > (r.igual ? 60000 : 12000)) pedirCuentas(true);
     }
     alarmaNuevos();
@@ -195,7 +197,7 @@
       cab.appendChild(btn("🥡 Para llevar", "btn peq lc-b", function () { MZ.nuevoExterno(MZ.LL); }));
       cab.appendChild(btn("🛵 Delivery", "btn peq lc-b vino", function () { MZ.nuevoExterno(MZ.DL); }));
     }
-    if (tab === "salon") cab.appendChild(btn("🚫 No disponibles", "btn peq lc-b", ventanaNoDisp));
+    if (tab === "salon") { cab.appendChild(btn("🧾 Cuentas cerradas de hoy", "btn peq lc-b vino", function () { DM.cerradas = !DM.cerradas; if (DM.cerradas) pedirCuentas(true); MZ.refrescar(); })); cab.appendChild(btn("🚫 No disponibles", "btn peq lc-b", ventanaNoDisp)); }
     if (tab === "comp") cab.appendChild(btn("＋ Nuevo comprobante", "btn peq lc-b vino", function () { if (!COMP) { pedirComp(true); MZ.toast("Cargando comprobantes… vuelve a tocar en un momento.", "ok"); return; } formComp({ nuevo: true, tit: "Nuevo", total: 0, cli: {} }); }));
     if (tab === "cuentas") {
       var fe = h("input", "campo lc-fecha"); fe.type = "date"; fe.value = CU.dia || (CU.datos && CU.datos.dia) || diaLima().toISOString().slice(0, 10);
@@ -211,7 +213,7 @@
     var base = [tab, S.vista, T ? [T.comp, imp ? imp.viva : "", c.pend, c.fall].join("/") : 0, (S.avisos || []).length, S.horario && S.horario.cocina];
     if (tab === "todos") return base.concat([T ? T.recibido : 0, S.v, JSON.stringify(AB), min, CARGA ? CARGA.min : "", firmaAgotados(), TV.ts]).join("|");
     if (tab === "llevar") return base.concat([T ? T.recibido : 0, S.v, AB.mapaLl, min]).join("|");
-    if (tab === "salon") return base.concat([S.v, S.vistaM, min]).join("|");
+    if (tab === "salon") return base.concat([S.v, S.vistaM, min, DM.mesa, DM.ts, DM.cerradas, DM.enCurso, DM.cerradas ? CU.ts : 0]).join("|");
     if (tab === "cuentas") return base.concat([CU.ts, CU.dia, CU.err]).join("|");
     if (tab === "comp") return base.concat([COMP ? COMP.ts : 0]).join("|");
     if (tab === "tienda") return base.concat([S.tiendaSub || "", INS ? INS.ts : 0]).join("|");
@@ -699,8 +701,268 @@
   }
 
   /* =========================== «SALÓN» =========================== */
+  /* =========================== «SALÓN» ===========================
+     Mapa/cuadrícula de mesas (la misma del mozo) + panel de la mesa elegida con TODAS las acciones del salón.
+     Sin acciones optimistas: cada botón se desactiva y dice «Guardando…» hasta que responde el servidor; luego se recarga el estado.
+     id de pedido = número INTERNO (campo id/numero del servidor), nunca el «#N» del día. */
+  var DM = { mesa: null, cuenta: null, err: "", ts: 0, pidiendo: false, cerradas: false, enCurso: 0 };
+  var ESTADOS_PED = ["Nuevo", "En preparación", "Listo", "Entregado"];
   function vistaSalon(w) {
-    var v = MZ.vistaMesas(); v.classList.add("lc-salon"); w.appendChild(v);
+    var g = h("div", "lc-sal");
+    var izq = h("div", "lc-sal__mapa"), v = MZ.vistaMesas(); v.classList.add("lc-salon"); izq.appendChild(v);
+    if (DM.mesa) { var b = izq.querySelector('.mesa[data-k="' + DM.mesa + '"]'); if (b) b.classList.add("actual"); }
+    g.appendChild(izq);
+    var der = h("aside", "lc-sal__det");
+    if (DM.cerradas) panelCerradas(der); else if (DM.mesa) panelMesa(der);
+    else { der.appendChild(h("h3", null, "Toca una mesa")); der.appendChild(h("p", "lc-vacio", "Aquí aparecen sus pedidos y todas las acciones: agregar, cobrar, imprimir la cuenta, comprobante, juntar, pasar, editar, ajustar precio, reimprimir…")); }
+    if (DM.enCurso && DM.mesa && !DM.cerradas) {
+      der.querySelectorAll(".lc-sal__acc button, .lc-sp__acc button").forEach(function (y) { y.disabled = true; });
+      der.insertBefore(h("p", "lc-banda prueba", "Guardando… espera la respuesta del servidor."), der.children[1] || null);
+    }
+    g.appendChild(der);
+    w.appendChild(g);
+  }
+  function tocarMesaLocal(m) {
+    if (m.unidaA) { var mp = MZ.mesaDe(m.unidaA); if (mp) m = mp; }
+    DM.mesa = String(m.mesa); DM.cerradas = false; DM.cuenta = null; DM.err = ""; DM.ts = Date.now();
+    if (S.pest !== "salon") irTab("salon"); else MZ.refrescar();
+    cargarMesa();
+    return true;
+  }
+  function cargarMesa() {
+    if (!DM.mesa || DM.pidiendo) return;
+    var mesa = DM.mesa; DM.pidiendo = true;
+    llamar({ mz: "cuenta", mesa: mesa }).then(function (r) {
+      if (mesa !== DM.mesa) return;
+      if (r && r.ok) { DM.cuenta = r; DM.err = ""; } else { DM.cuenta = DM.cuenta || { pedidos: [], total: 0 }; DM.err = (r && r.error) || ""; }
+    }).catch(function () { if (mesa === DM.mesa) DM.err = "Sin conexión: no se pudo leer la mesa."; })
+      .then(function () { DM.pidiendo = false; DM.ts = Date.now(); MZ.refrescar(); });
+  }
+  /* botón → acción del servidor. Sin optimismo: se desactiva y dice «Guardando…»; al responder bien se avisa y se recarga todo. */
+  function hacer(b, o, okTxt, luego) {
+    if (b) { if (b.disabled) return; b.disabled = true; b.dataset.t0 = b.textContent; b.textContent = "Guardando…"; }
+    DM.enCurso++;   // mientras haya una acción en curso, el panel se repinta con los botones desactivados (no se puede tocar dos veces)
+    function soltar() { DM.enCurso = Math.max(0, DM.enCurso - 1); if (b) { b.disabled = false; b.textContent = b.dataset.t0; } }
+    accion(o).then(function (r) {
+      soltar();
+      if (r && r.repetido) MZ.toast("Ese pedido ya se había registrado" + (r.numero ? " (#" + r.numero + ")" : "") + ": no se duplicó.", "ok");
+      else if (r && r.cancelado) MZ.toast("Pedido cancelado", "ok");
+      else if (okTxt) MZ.toast(typeof okTxt === "function" ? okTxt(r) : okTxt, "ok");
+      if (luego) luego(r);
+      trasCambio(); cargarMesa();
+    }).catch(function (e) { soltar(); MZ.toast(errTxt(e), "mal"); });
+  }
+  function ventanaBotones(titulo, nota, ops, alElegir) {   // ventana con botones grandes; ops = [{t, s?, v, on?}]
+    var g = h("div", "lc-mets"), err = h("p", "err");
+    ops.forEach(function (op) {
+      var b = btn("", "lc-met" + (op.on ? " on" : ""), function () { alElegir(op.v, b, g, err); });
+      b.appendChild(h("b", null, op.t)); if (op.s) b.appendChild(h("small", null, op.s));
+      g.appendChild(b);
+    });
+    MZ.abrirModal(titulo, [nota ? h("p", "vacio", nota) : null, g, err], [btn("Cancelar", "btn", MZ.cerrarModal)]);
+  }
+  /* acción desde una ventana de botones: bloquea todos los botones mientras espera; si sale bien, cierra la ventana */
+  function hacerEnVentana(b, g, err, o, okTxt) {
+    g.querySelectorAll("button").forEach(function (y) { y.disabled = true; }); b.classList.add("enviando"); err.textContent = "Guardando…";
+    accion(o).then(function (r) { MZ.cerrarModal(); MZ.toast(typeof okTxt === "function" ? okTxt(r) : okTxt, "ok"); trasCambio(); cargarMesa(); })
+      .catch(function (e) { err.textContent = errTxt(e); g.querySelectorAll("button").forEach(function (y) { y.disabled = false; }); b.classList.remove("enviando"); });
+  }
+  function panelMesa(der) {
+    var m = MZ.mesaDe(DM.mesa);
+    var cab = h("div", "lc-sal__cab");
+    cab.appendChild(h("h3", null, "🍽 Mesa " + DM.mesa));
+    cab.appendChild(h("span", "esp"));
+    cab.appendChild(btn("🔄", "lc-a ic", function () { cargarMesa(); }, "Actualizar la mesa"));
+    cab.appendChild(btn("✕", "lc-a ic", function () { DM.mesa = null; MZ.refrescar(); }, "Cerrar el detalle"));
+    der.appendChild(cab);
+    if (!m) { der.appendChild(h("p", "lc-vacio", "Esta mesa ya no está activa.")); return; }
+    var e = MZ.estadoMesa(m), cu = DM.cuenta, peds = cu ? cu.pedidos || [] : [];
+    var info = h("div", "lc-sal__info");
+    info.appendChild(h("span", "lc-chip e-" + e, (MZ.TXT_ESTADO && MZ.TXT_ESTADO[e]) || e));
+    if (m.estado !== "libre") info.appendChild(h("span", null, "⏱ " + haceTxt(m.ts)));
+    info.appendChild(h("span", null, "👥 " + (m.personas || "—") + (Number(m.sillas) > 0 ? " / " + m.sillas + " sillas" : "")));
+    info.appendChild(h("span", null, "🤵 " + (m.atiende ? m.atiende.nombre : "sin mozo")));
+    if (m.unidas && m.unidas.length) info.appendChild(h("span", null, "🔗 con mesa " + m.unidas.join(", ")));
+    der.appendChild(info);
+    var tot = cu ? Number(cu.total) || 0 : Number(m.total) || 0, pag = cu ? Number(cu.pagado) || 0 : Number(m.pagado) || 0, sal = cu && cu.saldo != null ? Number(cu.saldo) : MZ.r2(tot - pag);
+    var tt = h("div", "lc-sal__tot");
+    tt.appendChild(h("span", null, "Total")); tt.appendChild(h("b", null, soles(tot)));
+    if (pag > 0.009) { tt.appendChild(h("span", null, "Pagado")); tt.appendChild(h("b", null, soles(pag))); tt.appendChild(h("span", null, "Saldo")); tt.appendChild(h("b", "lc-sal__saldo", soles(sal))); }
+    der.appendChild(tt);
+    if (DM.err) der.appendChild(h("p", "lc-banda", "⚠ " + DM.err));
+    // ---------- acciones de la mesa ----------
+    var acc = h("div", "lc-sal__acc"), mesa = DM.mesa, conPed = peds.length > 0;
+    function a(txt, cls, fn, si) { if (si === false) return; acc.appendChild(btn(txt, "lc-sb" + (cls ? " " + cls : ""), fn)); }
+    a("🪑 Ocupar mesa", "ok", function () { elegirPersonas(m, "🪑 Ocupar la mesa " + mesa, function (n, b, g, err) { hacerEnVentana(b, g, err, { mz: "ocupar", mesa: mesa, personas: n, forzar: true }, "✓ Mesa " + mesa + " ocupada"); }); }, m.estado === "libre");
+    a("👥 Personas", "", function () { elegirPersonas(m, "👥 Personas en la mesa " + mesa, function (n, b, g, err) { hacerEnVentana(b, g, err, { mz: "personas", mesa: mesa, personas: n }, "✓ " + n + " personas en la mesa " + mesa); }); }, m.estado !== "libre");
+    a("➕ Agregar pedido", "vino", function () { MZ.abrirMesa(mesa); });
+    a("💳 Cobrar y cerrar", "ok", function () { MZ.abrirMesa(mesa, function () { MZ.cobrar(); }); }, conPed);
+    a("✂ Cobro parcial / dividir", "", function () { MZ.abrirMesa(mesa, function () { if (MZ.dividirCuenta) MZ.dividirCuenta(); else MZ.cobrar(); }); }, conPed);
+    var bCta; a("🖨 Imprimir cuenta", "", function () { imprimirCuenta(mesa, acc.querySelector(".lc-sb--cta")); }, conPed);
+    bCta = acc.lastChild; if (bCta && conPed) bCta.classList.add("lc-sb--cta");
+    a("🧾 Comprobante", "", function () { comprobanteMesa(mesa, tot); }, conPed);
+    a("🔗 Juntar mesas", "", function () { juntarMesas(m); }, !(m.pagos && m.pagos.length) && !(m.unidas && m.unidas.length));
+    a("✂ Separar mesas", "", function (ev) { if (!confirm("¿Separar la mesa " + mesa + " de la(s) mesa(s) " + m.unidas.join(", ") + "? Cada pedido vuelve a la mesa donde se tomó.")) return; hacer(ev.currentTarget, { mz: "separar", mesa: mesa }, "✂ Mesas separadas"); }, !!(m.unidas && m.unidas.length));
+    a("🤵 Pasar a otro mozo", "", function () { pasarMesa(m); }, m.estado !== "libre");
+    a("🆓 Liberar mesa", "mal", function (ev) { if (!confirm("¿Liberar la mesa " + mesa + "? (los clientes se fueron sin pedir)")) return; hacer(ev.currentTarget, { mz: "liberar", mesa: mesa }, "Mesa " + mesa + " libre"); }, m.estado !== "libre" && !conPed);
+    der.appendChild(acc);
+    // ---------- pedidos ----------
+    var lp = h("div", "lc-sal__peds");
+    lp.appendChild(h("h4", null, "Pedidos · " + peds.length));
+    if (!cu) lp.appendChild(h("p", "lc-vacio", DM.pidiendo ? "Cargando pedidos…" : "Sin datos de la mesa."));
+    else if (!peds.length) lp.appendChild(h("p", "lc-vacio", "La mesa todavía no tiene pedidos."));
+    peds.forEach(function (p) { lp.appendChild(tarjetaPedMesa(p)); });
+    der.appendChild(lp);
+  }
+  function tarjetaPedMesa(p) {
+    var id = p.id || p.numero, canc = p.estado === "Cancelado";
+    var d = h("div", "lc-sp" + (canc ? " canc" : "") + (p.estado === "Listo" ? " listo" : ""));
+    var c = h("div", "lc-sp__cab");
+    c.appendChild(h("b", null, "#" + (p.numero != null ? p.numero : id)));
+    c.appendChild(h("span", null, (p.hora || "") + (p.mozo ? " · 🤵 " + p.mozo : " · 📱 QR") + (p.de ? " · mesa " + p.de : "")));
+    c.appendChild(h("span", "esp"));
+    c.appendChild(h("span", "lc-chip e-" + MZ.norm(p.estado || "").replace(/\s/g, ""), p.estado || ""));
+    if (p.total != null) c.appendChild(h("b", "lc-sp__m", soles(p.total)));
+    d.appendChild(c);
+    var ls = h("div", "lc-sp__ls");
+    if (p.lineas && p.lineas.length) p.lineas.forEach(function (l, i) {
+      var hecho = (p.entregado || []).indexOf(i) >= 0, f = h("div", "lc-sp__l" + (hecho ? " ok" : ""));
+      f.appendChild(h("span", null, (hecho ? "✓ " : "") + (l.e || l.t || "")));
+      if (l.d) f.appendChild(h("small", null, l.d));
+      ls.appendChild(f);
+    });
+    else if (p.detalle) ls.appendChild(h("pre", null, String(p.detalle).replace(/ — S\/ [\d.]+/g, "")));
+    d.appendChild(ls);
+    if (canc) return d;
+    var acc = h("div", "lc-sp__acc"), tit = "#" + (p.numero != null ? p.numero : id) + " · mesa " + DM.mesa;
+    function a(txt, cls, fn) { acc.appendChild(btn(txt, "lc-a" + (cls ? " " + cls : ""), fn)); }
+    if (p.falta || (p.lineas && (p.entregado || []).length < p.lineas.length)) a("✓ Entregado", "ok", function (ev) {
+      hacer(ev.currentTarget, { mz: "entregar", id: id, lineas: (p.lineas || []).map(function (x, i) { return i; }), valor: true }, "✓ Pedido " + tit + " entregado");
+    });
+    a("✏️ Editar", "", function () { editarPedidoLocal(id, tit); });
+    a("🔀 Otra mesa", "", function () { moverPedido(p, id); });
+    a("🔁 Estado", "", function () { cambiarEstadoPed(p, id, tit); });
+    a("💲 Ajustar precio", "", function () { ajustarPrecio(p, id, tit); });
+    a("🍳 Reimprimir cocina", "", function (ev) { hacer(ev.currentTarget, { mz: "l_reimp", id: id, tipos: ["cocina"] }, function (r) { return r && r.viva === false ? "🖨 En cola: sale cuando la impresora del local esté conectada" : "🍳 Reimpreso en cocina"; }); });
+    a("🖨 Comanda", "", function (ev) { hacer(ev.currentTarget, { mz: "l_reimp", id: id, tipos: ["comanda"] }, function (r) { return r && r.viva === false ? "🖨 En cola: sale cuando la impresora del local esté conectada" : "🖨 Comanda enviada a la impresora"; }); });
+    a("✖ Cancelar", "mal", function (ev) { if (!confirm("¿Cancelar el pedido " + tit + "? Se avisa a cocina y deja de sumar en la cuenta.")) return; hacer(ev.currentTarget, { mz: "l_estado", id: id, estado: "Cancelado" }, "Pedido cancelado"); });
+    a("🗑 Eliminar", "mal", function (ev) {
+      if (!confirm("¿Eliminar el pedido " + tit + (p.total != null ? " (" + soles(p.total) + ")" : "") + "?\n\nSe quita de cocina, de la cuenta y de los reportes. Queda en «Eliminados» de 💰 Cuentas y se puede recuperar.")) return;
+      hacer(ev.currentTarget, { mz: "l_elimped", id: id }, "🗑 Pedido " + tit + " eliminado");
+    });
+    d.appendChild(acc);
+    return d;
+  }
+  function elegirPersonas(m, titulo, fn) {
+    var sillas = Number(m.sillas) > 0 ? Math.floor(Number(m.sillas)) : 12, ops = [];
+    for (var i = 1; i <= sillas; i++) ops.push({ t: String(i), v: i, on: Number(m.personas) === i });
+    ventanaBotones(titulo + (Number(m.sillas) > 0 ? " (máx. " + m.sillas + ")" : ""), "", ops, fn);
+  }
+  function pasarMesa(m) {
+    var mozos = (S.turno && S.turno.mozos) || [];
+    if (!mozos.length) { MZ.toast("Hoy no hay mozos de turno.", "mal"); return; }
+    ventanaBotones("🤵 Pasar la mesa " + m.mesa + " a…", "Ahora: " + (m.atiende ? m.atiende.nombre : "sin mozo"),
+      mozos.map(function (z) { return { t: "🤵 " + z.nombre, v: z, on: m.atiende && m.atiende.id === z.id }; }),
+      function (z, b, g, err) { hacerEnVentana(b, g, err, { mz: "pasar", mesa: m.mesa, a: z.id }, "Mesa " + m.mesa + " pasada a " + z.nombre); });
+  }
+  function juntarMesas(m) {
+    var cand = MZ.mesasSalon().filter(function (x) { return x.mesa !== m.mesa && !x.unidaA && !(x.unidas && x.unidas.length) && !(x.pagos && x.pagos.length); });
+    if (!cand.length) { MZ.toast("No hay otras mesas disponibles para unir.", "mal"); return; }
+    var el = [], g = h("div", "lc-mets"), err = h("p", "err"), ok;
+    cand.forEach(function (x) {
+      var b = btn("", "lc-met", function () { var i = el.indexOf(x.mesa); if (i >= 0) el.splice(i, 1); else el.push(x.mesa); b.classList.toggle("on", i < 0); ok.disabled = !el.length; ok.textContent = el.length ? "🔗 Juntar mesa " + el.join(", ") + " con la " + m.mesa : "Elige las mesas"; });
+      b.appendChild(h("b", null, "Mesa " + x.mesa)); b.appendChild(h("small", null, x.estado === "libre" ? "libre" : soles(x.total)));
+      g.appendChild(b);
+    });
+    ok = btn("Elige las mesas", "btn prim", function () {
+      ok.disabled = true; ok.textContent = "Guardando…"; err.textContent = "";
+      accion({ mz: "juntar", mesa: m.mesa, mesas: el }).then(function () { MZ.cerrarModal(); MZ.toast("🔗 Mesas unidas: una sola cuenta en la mesa " + m.mesa, "ok"); trasCambio(); cargarMesa(); })
+        .catch(function (e) { ok.disabled = false; ok.textContent = "Reintentar"; err.textContent = errTxt(e); });
+    });
+    ok.disabled = true;
+    MZ.abrirModal("🔗 Juntar mesas con la mesa " + m.mesa, [h("p", "vacio", "Las mesas que elijas pasan a una sola cuenta, la de la mesa " + m.mesa + ". Se pueden separar después."), g, err], [btn("Cancelar", "btn", MZ.cerrarModal), ok]);
+  }
+  function moverPedido(p, id) {
+    var actual = String(p.de || DM.mesa);
+    var ops = S.mesas.filter(function (x) { return x.activa && !x.unidaA && !x.llevar && String(x.mesa) !== actual; })
+      .map(function (x) { return { t: "Mesa " + x.mesa, s: x.estado === "libre" ? "libre" : soles(x.total), v: x.mesa }; });
+    if (!ops.length) { MZ.toast("No hay otra mesa activa.", "mal"); return; }
+    ventanaBotones("🔀 Pedido #" + (p.numero || id) + " · ¿a qué mesa pasa?", "Está en la mesa " + actual + ". Cocina recibe un aviso del cambio.", ops,
+      function (dest, b, g, err) { hacerEnVentana(b, g, err, { mz: "moverpedido", id: id, a: dest }, "🔀 Pedido #" + (p.numero || id) + " pasó a la mesa " + dest); });
+  }
+  function cambiarEstadoPed(p, id, tit) {
+    ventanaBotones("🔁 Estado del pedido " + tit, "Ahora: " + (p.estado || "—"), ESTADOS_PED.map(function (x) { return { t: x, v: x, on: x === p.estado }; }),
+      function (est, b, g, err) { hacerEnVentana(b, g, err, { mz: "l_estado", id: id, estado: est }, "✓ Pedido " + tit + ": " + est); });
+  }
+  var TIPOS_AJ = [["desc_pct", "Descuento %", "%"], ["desc_monto", "Descuento S/", "S/"], ["precio_final", "Precio final", "S/"], ["rec_monto", "Recargo S/", "S/"], ["rec_pct", "Recargo %", "%"], ["quitar", "Quitar ajuste", ""]];
+  function ajustarPrecio(p, id, tit) {
+    var tipo = "desc_pct", g = h("div", "lc-mets chico"), val = h("input", "campo"), mot = h("input", "campo"), err = h("p", "err"), ok, lv = h("label", "campo-l"), sv = h("span", null, "");
+    val.type = "number"; val.min = "0"; val.step = "0.10"; val.inputMode = "decimal"; mot.maxLength = 120; mot.placeholder = "Motivo (obligatorio)";
+    lv.appendChild(sv); lv.appendChild(val);
+    var lm = h("label", "campo-l"); lm.appendChild(h("span", null, "Motivo")); lm.appendChild(mot);
+    function pintarT() {
+      g.querySelectorAll("button").forEach(function (y) { y.classList.toggle("on", y.dataset.v === tipo); });
+      var t = TIPOS_AJ.filter(function (x) { return x[0] === tipo; })[0];
+      lv.style.display = tipo === "quitar" ? "none" : ""; sv.textContent = "Valor (" + t[2] + ")";
+      mot.placeholder = tipo === "quitar" ? "Motivo (opcional)" : "Motivo (obligatorio)";
+    }
+    TIPOS_AJ.forEach(function (t) { var b = btn(t[1], "lc-met", function () { tipo = t[0]; pintarT(); }); b.dataset.v = t[0]; g.appendChild(b); });
+    ok = btn("💲 Guardar ajuste", "btn prim", function () {
+      var v = Number(val.value), m = mot.value.trim();
+      if (tipo !== "quitar") {
+        if (!(v > 0)) { err.textContent = "Escribe un valor mayor que 0."; val.focus(); return; }
+        if (/pct$/.test(tipo) && v > 100) { err.textContent = "El porcentaje no puede pasar de 100."; return; }
+        if (m.length < 3) { err.textContent = "Escribe el motivo (mínimo 3 letras)."; mot.focus(); return; }
+      }
+      ok.disabled = true; ok.textContent = "Guardando…"; err.textContent = "";
+      accion({ mz: "l_ajustar", id: id, tipo: tipo, valor: tipo === "quitar" ? 0 : v, motivo: m }).then(function () { MZ.cerrarModal(); MZ.toast("💲 Precio del pedido " + tit + " ajustado", "ok"); trasCambio(); cargarMesa(); })
+        .catch(function (e) { ok.disabled = false; ok.textContent = "💲 Guardar ajuste"; err.textContent = errTxt(e); });
+    });
+    pintarT();
+    MZ.abrirModal("💲 Ajustar precio · " + tit + (p.total != null ? " · " + soles(p.total) : ""), [h("p", "vacio", "No se puede ajustar un pedido ya cobrado o entregado."), g, lv, lm, err], [btn("Cancelar", "btn", MZ.cerrarModal), ok]);
+  }
+  function imprimirCuenta(mesa, b) {
+    function enviar(otra) {
+      if (b) { b.disabled = true; b.dataset.t0 = b.dataset.t0 || b.textContent; b.textContent = "Guardando…"; }
+      llamar({ mz: "pedircuenta", mesa: mesa, otra: !!otra }).then(function (r) {
+        if (b) { b.disabled = false; b.textContent = b.dataset.t0; }
+        if (r && r.ok) { MZ.toast("🖨 Cuenta de la mesa " + mesa + " enviada a la impresora", "ok"); trasCambio(); cargarMesa(); return; }
+        if (!otra && confirm(((r && r.error) || "No se pudo imprimir la cuenta.") + "\n\n¿Reimprimir la cuenta de todas formas?")) enviar(true);
+        else if (otra) MZ.toast((r && r.error) || "No se pudo imprimir la cuenta.", "mal");
+      }).catch(function () { if (b) { b.disabled = false; b.textContent = b.dataset.t0; } MZ.toast("Sin conexión: no se imprimió.", "mal"); });
+    }
+    var m = MZ.mesaDe(mesa);
+    enviar(m && MZ.estadoMesa(m) === "cuenta");
+  }
+  function comprobanteMesa(mesa, total) {
+    function abrir() { formComp({ ref: { mesa: mesa }, tit: "Mesa " + mesa, total: total, pedido: "Mesa " + mesa, cli: {}, tipo: "Boleta" }); }
+    if (COMP) { abrir(); return; }
+    MZ.toast("Cargando datos de comprobantes…", "ok");
+    llamar({ mz: "l_comp" }).then(function (r) { if (!r || !r.ok) { MZ.toast((r && r.error) || "No se pudo leer.", "mal"); return; } COMP = r; COMP.ts = Date.now(); abrir(); })
+      .catch(function () { MZ.toast("Sin conexión.", "mal"); });
+  }
+  /* cuentas cerradas de hoy (mismo bloque que «Cuentas»): editar cobro, reabrir, eliminar y papelera */
+  function panelCerradas(der) {
+    var cab = h("div", "lc-sal__cab"); cab.appendChild(h("h3", null, "🧾 Cuentas cerradas de hoy")); cab.appendChild(h("span", "esp"));
+    cab.appendChild(btn("🔄", "lc-a ic", function () { pedirCuentas(true); }, "Actualizar"));
+    cab.appendChild(btn("✕", "lc-a ic", function () { DM.cerradas = false; MZ.refrescar(); }, "Cerrar"));
+    der.appendChild(cab);
+    if (CU.dia) { CU.dia = ""; CU.datos = null; }
+    if (!CU.datos) { if (!CU.pidiendo) pedirCuentas(true); der.appendChild(h("p", "lc-vacio", CU.err || "Cargando las cuentas…")); return; }
+    var l = CU.datos.cuentas || [];
+    var t = h("p", "lc-cu__tot"); t.appendChild(h("span", null, l.length + (l.length === 1 ? " mesa cobrada" : " mesas cobradas"))); t.appendChild(h("b", null, soles(sumar(l, function (c) { return c.consumo; })))); der.appendChild(t);
+    if (!l.length) der.appendChild(h("p", "lc-vacio", "Ninguna mesa cobrada hoy."));
+    l.forEach(function (c) { der.appendChild(filaMesa(c)); });
+    var pap = CU.datos.papelera || [];
+    if (pap.length) {
+      var e = h("div", "lc-cu--elim"); e.appendChild(h("h4", null, "🗑 Papelera · " + pap.length));
+      pap.forEach(function (x) { var f = filaCu("🗑 " + (x.tipo || "Eliminado") + " · " + (x.fecha || ""), (x.resumen || "") + (x.quien ? " · eliminó " + x.quien : ""), null); f.querySelector(".lc-cu__acc").appendChild(btn("↺ Recuperar", "lc-a ok", function () { recuperar(x); })); e.appendChild(f); });
+      der.appendChild(e);
+    }
+  }
+  function reabrirCuenta(c, b) {
+    if (!confirm("¿Reabrir la mesa " + c.mesa + "? El cobro de " + soles(c.consumo) + " se deshace y la cuenta vuelve a quedar abierta para cobrarla de nuevo.")) return;
+    hacer(b, { mz: "l_reabrir", cuenta: c.cuenta }, "↩ Mesa " + c.mesa + " reabierta", function () { CU.ts = 0; pedirCuentas(true); });
   }
 
   /* =========================== «COMPROBANTES» =========================== */
@@ -933,6 +1195,7 @@
     var f = filaCu("🍽 Mesa " + c.mesa + " · " + (c.hora || ""), [c.mozo ? "🤵 " + c.mozo : "", c.personas ? "👥 " + c.personas : "", txtPagos(c.pagos)].filter(Boolean).join(" · "), c.consumo);
     var a = f.querySelector(".lc-cu__acc");
     a.appendChild(btn("💳 Cambiar pago", "lc-a", function () { cambiarPagoMesa(c); }));
+    if (c.reabrible) a.appendChild(btn("↩ Reabrir mesa", "lc-a", function (ev) { reabrirCuenta(c, ev.currentTarget); }));
     a.appendChild(btn("🗑 Eliminar", "lc-a mal", function () { eliminarCobro(c); }));
     return f;
   }
@@ -1393,7 +1656,7 @@
       document.documentElement.classList.add("local");
       pedirTablero(true);
       setInterval(function () { if (!document.hidden) pedirTablero(false); }, 30000);
-      return { pintar: pintar, despues: despues, firma: firma, top: top, alSondear: alSondear, tabValida: tabValida, ayudaCliente: ayudaCliente };
+      return { pintar: pintar, despues: despues, firma: firma, top: top, alSondear: alSondear, tabValida: tabValida, ayudaCliente: ayudaCliente, tocarMesa: tocarMesaLocal };
     }
   };
 })();
