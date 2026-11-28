@@ -431,3 +431,6 @@ select.campo{background:#fff}
 .linea .d small{display:block;color:var(--gris,#6f5f57);font-size:12px}
 
 .reimp__acc{display:flex;gap:8px;flex-wrap:wrap}.reimp__acc .btn{flex:1 1 auto;min-height:40px}.reimp__acc .btn:disabled{opacity:.55}
+/* Caja de TIENDA: todo lo borgoña pasa a verde oliva (para distinguir tienda de restaurante) */
+html.tienda{--vino:#556b2f;--vino-2:#6b8439;--oro:#7d8a3e;--oro-claro:#a3b86c}
+html.tienda .av.otro{background:#6f7d45}
