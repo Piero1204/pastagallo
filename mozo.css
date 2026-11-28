@@ -429,10 +429,3 @@ select.campo{background:#fff}
 .pres-nota{display:block;color:var(--gris,#6f5f57);font-size:13px;margin-bottom:6px}
 .step--peso output{min-width:64px}
 .linea .d small{display:block;color:var(--gris,#6f5f57);font-size:12px}
-/* esqueleto de carga: solo la primera vez en un equipo (sin copia guardada); con copia se pinta lo último visto al instante */
-.m-esq{display:grid;gap:10px;padding:8px 0}
-.m-esq span{display:block;height:58px;border-radius:14px;background:linear-gradient(100deg,rgba(127,127,127,.12) 30%,rgba(127,127,127,.24) 50%,rgba(127,127,127,.12) 70%);background-size:300% 100%;animation:mEsq 1.4s linear infinite}
-.m-esq span:nth-child(2){width:88%}.m-esq span:nth-child(3){width:94%}
-.m-esq p{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-@keyframes mEsq{from{background-position:100% 0}to{background-position:0 0}}
-@media (prefers-reduced-motion:reduce){.m-esq span{animation:none}}

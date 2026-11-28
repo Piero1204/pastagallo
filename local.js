@@ -24,7 +24,7 @@
     ["clientes", "Clientes", "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-5-6"]
   ];
   var NOMBRE_TAB = {}; TABS.forEach(function (t) { NOMBRE_TAB[t[0]] = t[1]; });
-  var K = { abiertos: "pg-local-abiertos", respaldo: "pg-local-respaldo", vistos: "pg-local-vistos", tiendaSub: "pg-local-tiendasub", copia: "pg-local-copia" };
+  var K = { abiertos: "pg-local-abiertos", respaldo: "pg-local-respaldo", vistos: "pg-local-vistos", tiendaSub: "pg-local-tiendasub" };
   var T = null, pidiendoT = false, tPedido = 0, abierto = Date.now(), CARGA = null, cargaTs = 0;
   var COMP = null, pidiendoC = false;
   var CLI = { q: "", res: null, ficha: null, ts: 0, buscando: false };
@@ -69,7 +69,6 @@
     llamar({ mz: "l_tablero" }).then(function (r) {
       if (!r || !r.ok) return;
       T = r; T.recibido = Date.now();
-      guardarCopia();
       revisarImpresion();
       MZ.refrescar();
     }).catch(function () {}).then(function () { pidiendoT = false; });
@@ -80,19 +79,9 @@
         .then(function (r) { CARGA = r && r.ok ? r : null; }).catch(function () { CARGA = null; });
     }
   }
-  /* copia local del tablero y de las ventas de tienda del día: al abrir el panel se ven al instante (y se actualizan enseguida) */
-  function diaLocal() { return new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10); }
-  function guardarCopia() { MZ.guardar(K.copia, { ts: Date.now(), dia: diaLocal(), T: T, tv: TV.lista }); }
-  function usarCopia() {
-    var c = MZ.leer(K.copia, null);
-    if (!c || c.dia !== diaLocal() || Date.now() - c.ts > 6 * 3600000) return;
-    if (c.T && !T) { T = c.T; T.recibido = c.ts; }
-    if (c.tv && !TV.lista) TV.lista = c.tv;   // TV.ts = 0: se vuelve a pedir al pintar «Todos»
-  }
   var vUltimo = "";
   function alSondear(r) {
-    // con cambios se fuerza el tablero, salvo que se haya pedido hace menos de 4 s (al abrir salen juntos: no se repite)
-    if (!r.igual || !T || Date.now() - tPedido > 30000 || S.v !== vUltimo) { vUltimo = S.v; pedirTablero(!r.igual && Date.now() - tPedido > 4000); }
+    if (!r.igual || !T || Date.now() - tPedido > 30000 || S.v !== vUltimo) { vUltimo = S.v; pedirTablero(!r.igual); }
     // solo la pestaña abierta pide sus datos extra (las demás se cargan al abrirlas)
     if (S.vista !== "carta") {
       if (S.pest === "todos") pedirTVentas(!r.igual && Date.now() - TV.ts > 8000);
@@ -181,7 +170,7 @@
     cab.appendChild(h("span", "esp"));
     accionesCab(tab, cab);
     w.appendChild(cab);
-    if (!S.recibido) { w.appendChild(MZ.esqueleto ? MZ.esqueleto("Cargando el local…") : h("p", "vacio", "Cargando el local…")); main.appendChild(w); return; }
+    if (!S.recibido) { w.appendChild(h("p", "vacio", "Cargando el local…")); main.appendChild(w); return; }
     if (tab === "todos") vistaTodos(w);
     else if (tab === "llevar") vistaLlevar(w);
     else if (tab === "salon") vistaSalon(w);
@@ -212,7 +201,8 @@
       var fe = h("input", "campo lc-fecha"); fe.type = "date"; fe.value = CU.dia || (CU.datos && CU.datos.dia) || diaLima().toISOString().slice(0, 10);
       fe.setAttribute("aria-label", "Día"); fe.max = diaLima().toISOString().slice(0, 10);
       fe.addEventListener("change", function () { CU.dia = fe.value === diaLima().toISOString().slice(0, 10) ? "" : fe.value; CU.datos = null; fe.blur(); pedirCuentas(true); MZ.pintar(); });
-      cab.appendChild(fe);   // sin botón «Actualizar»: la pestaña abierta se refresca sola con el sondeo
+      cab.appendChild(fe);
+      cab.appendChild(btn("🔄 Actualizar", "btn peq lc-b", function () { pedirCuentas(true); }));
     }
   }
   /* la pestaña se repinta SOLO si cambió lo que muestra (así escribir o vender no se interrumpe) */
@@ -314,7 +304,7 @@
   function pedirTVentas(forzar) {
     if (TV.pidiendo || !S.t) return; if (!forzar && TV.lista && Date.now() - TV.ts < 20000) return;
     TV.pidiendo = true;
-    accion({ mz: "l_tventas" }).then(function (r) { TV.lista = Array.isArray(r) ? r : (r && (r.ventas || r.lista)) || []; TV.ts = Date.now(); guardarCopia(); MZ.refrescar(); })
+    accion({ mz: "l_tventas" }).then(function (r) { TV.lista = Array.isArray(r) ? r : (r && (r.ventas || r.lista)) || []; TV.ts = Date.now(); MZ.refrescar(); })
       .catch(function () { if (!TV.lista) { TV.lista = []; TV.ts = Date.now(); MZ.refrescar(); } }).then(function () { TV.pidiendo = false; });
   }
   function txtLineas(ls) {
@@ -426,18 +416,12 @@
   function estado(e, nuevo) {
     var antes = e.estado;
     if (nuevo === "Entregado" && !e.pagado && !confirm("El pedido #" + e.n + " todavía no está cobrado. ¿Marcarlo como entregado igual?")) return;
-    var revertir = marcar(e, { estado: nuevo }); MZ.pintar();
+    e.estado = nuevo; MZ.refrescar(); MZ.pintar();
     llamar({ mz: "l_estado", id: e.id, estado: nuevo, esperado: antes }).then(function (r) {
-      if (!r.ok) { revertir(); MZ.toast(r.error || "No se pudo cambiar.", "mal"); MZ.pintar(); }
+      if (!r.ok) { e.estado = antes; MZ.toast(r.error || "No se pudo cambiar.", "mal"); }
       else MZ.toast("#" + e.n + " → " + nuevo, "ok");
       S.v = ""; MZ.sondear();
-    }).catch(function () { revertir(); MZ.toast("Sin conexión: no se cambió.", "mal"); MZ.pintar(); });
-  }
-  /* cambio al instante en pantalla que el sondeo no deshace mientras el servidor lo guarda (núcleo: marcarExt) */
-  function marcar(e, cambios) {
-    if (MZ.marcarExt) return MZ.marcarExt(e, cambios);
-    var antes = {}; Object.keys(cambios).forEach(function (k) { antes[k] = e[k]; e[k] = cambios[k]; });
-    return function () { Object.keys(antes).forEach(function (k) { e[k] = antes[k]; }); };
+    }).catch(function () { e.estado = antes; MZ.toast("Sin conexión: no se cambió.", "mal"); MZ.pintar(); });
   }
   function entregado(e) { estado(e, "Entregado"); }
   function aceptar(e) {
@@ -446,11 +430,11 @@
   }
   function confirmarPago(e) {
     if (!confirm("¿Ya verificaste en " + (e.pago || "la app") + " que llegó " + soles(e.aCobrar) + " del pedido #" + e.n + " (" + e.nombre + ")?")) return;
-    var revertir = marcar(e, { pe: "Confirmado", pagado: true, estado: e.estado === "Nuevo" ? "Confirmado" : e.estado }); MZ.pintar();
     llamar({ mz: "l_pago", id: e.id }).then(function (r) {
-      if (!r.ok) { revertir(); MZ.toast(r.error || "No se pudo confirmar.", "mal"); MZ.pintar(); return; }
-      MZ.toast("✓ Pago confirmado · #" + e.n, "ok"); S.v = ""; MZ.sondear();
-    }).catch(function () { revertir(); MZ.toast("Sin conexión: no se confirmó el pago del #" + e.n + ".", "mal"); MZ.pintar(); });
+      if (!r.ok) { MZ.toast(r.error || "No se pudo confirmar.", "mal"); return; }
+      e.pe = "Confirmado"; e.pagado = true; if (e.estado === "Nuevo") e.estado = "Confirmado";
+      MZ.toast("✓ Pago confirmado · #" + e.n, "ok"); S.v = ""; MZ.sondear(); MZ.pintar();
+    }).catch(function () { MZ.toast("Sin conexión.", "mal"); });
   }
   function verCaptura(e) {
     var c = h("div", "lc-captura"); c.appendChild(h("p", "vacio", "Cargando la captura…"));
@@ -1407,9 +1391,7 @@
       AB = MZ.leer(K.abiertos, {}) || {};
       S.filtro = "todas";
       document.documentElement.classList.add("local");
-      usarCopia();
       pedirTablero(true);
-      if (!tabValida(S.pest) || S.pest === "todos") pedirTVentas(false);   // en paralelo con el primer sondeo (antes iba después)
       setInterval(function () { if (!document.hidden) pedirTablero(false); }, 30000);
       return { pintar: pintar, despues: despues, firma: firma, top: top, alSondear: alSondear, tabValida: tabValida, ayudaCliente: ayudaCliente };
     }
