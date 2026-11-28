@@ -276,6 +276,16 @@
     if (m && ts.indexOf("1/4 kg") >= 0 && ts.indexOf("1 kg") < 0) return "peso";
     return "";
   }
+  /* presentaciones de tienda en texto: "1/2 kg" → "500 g", "1 kg" → "1 kg" */
+  function kgDe(tam) {
+    var x = String(tam || "").trim().toLowerCase().replace(",", "."), m;
+    if ((m = x.match(/^(\d+)\/(\d+)\s*kg$/))) return +m[1] / +m[2];
+    if ((m = x.match(/^(\d+(?:\.\d+)?)\s*kg$/))) return +m[1];
+    if ((m = x.match(/^(\d+(?:\.\d+)?)\s*g$/))) return +m[1] / 1000;
+    return null;
+  }
+  function presTxt(tam) { var k = kgDe(tam); return k == null ? I.tam(tam) : k < 1 ? Math.round(k * 1000) + " g" : fmtKg(k) + " kg"; }
+  function tamDefTienda(it) { if (!it || !it.t || !it.t.length) return ""; var ts = it.t.map(function (x) { return x[0]; }); return ts.indexOf("1/2 kg") >= 0 && ts.indexOf("1 kg") < 0 ? "1/2 kg" : ts[0]; }
   function precioDeTam(it, tam) { var x = it.t.filter(function (y) { return y[0] === tam; })[0]; return x ? x[1] : null; }
   function precioKg(it) { var p2 = precioDeTam(it, "1/2 kg"); return p2 == null ? null : p2 * 2; }
   function fmtKg(n) { var v = String(Math.round(n * 100) / 100); return I.lang === "en" ? v : v.replace(".", ","); }
@@ -514,6 +524,9 @@
     }
 
     var pres = modoPres(it, sec);
+    /* tienda: elegir presentación (si hay 2) y la cantidad en paquetes o en kg */
+    var tiendaP = !!(sec && sec.id === "tienda" && it.t && it.t.length && it.t.every(function (x) { return kgDe(x[0]) != null; }));
+    if (tiendaP) { pres = ""; if (!tamPre) sel.tam = tamDefTienda(it); }
     var infoPres = h("p", "pres-info");
     function pintarPres() { infoPres.textContent = pres === "paq" ? paqTxt(sel.cant) : pres === "peso" ? t("pesoDesc", { a: fmtCuartos(sel.cuartos) + " kg", b: descPartes(sel.cuartos) }) : ""; }
     if (pres) {
@@ -526,6 +539,34 @@
       if (pres === "peso") tp.appendChild(h("p", "hoja__ayuda", t("pesoNota")));
       tp.appendChild(infoPres);
       c.appendChild(tp);
+    } else if (tiendaP) {
+      if (it.t.length > 1) {
+        var tpr = tarjeta(t("presentacion"));
+        tpr.appendChild(segmentos("tam", it.t.map(function (x) { return { valor: x[0], texto: presTxt(x[0]), extra: soles(x[1]), marcado: x[0] === sel.tam }; }),
+          function (v) { var kAnt = (kgDe(sel.tam) || 1) * sel.cant; sel.tam = v[0]; sel.cant = Math.max(1, Math.min(200, Math.round(kAnt / (kgDe(sel.tam) || 1)))); pintarCant(); pintar(); }));   // se mantiene el peso al cambiar de presentación
+        c.appendChild(tpr);
+      }
+      var tc = tarjeta(t("cantidad")), qOut = h("output"), kgIn = h("input", "campo campo--kg"), qInfo = h("p", "pres-info");
+      kgIn.type = "text"; kgIn.setAttribute("inputmode", "decimal"); kgIn.setAttribute("aria-label", t("pesoKg"));
+      var fq = h("div", "cant-kg"), stq = h("div", "stepper");
+      var qm = boton("−", "", function () { if (sel.cant > 1) { sel.cant--; pintarCant(); pintar(); } }), qp = boton("+", "", function () { if (sel.cant < 200) { sel.cant++; pintarCant(); pintar(); } });
+      qm.setAttribute("aria-label", t("quitarUno")); qp.setAttribute("aria-label", t("agregarUno"));
+      stq.appendChild(qm); stq.appendChild(qOut); stq.appendChild(qp);
+      var lk = h("label", "kg-l"); lk.appendChild(kgIn); lk.appendChild(h("span", null, "kg"));
+      fq.appendChild(stq); fq.appendChild(h("span", "cant-o", t("o"))); fq.appendChild(lk);
+      kgIn.addEventListener("change", function () {
+        var v = parseFloat(String(kgIn.value).replace(",", ".").replace(/[^\d.]/g, "")), k = kgDe(sel.tam) || 1;
+        if (v > 0) { sel.cant = Math.max(1, Math.min(200, Math.round(v / k))); } pintarCant(); pintar();
+      });
+      kgIn.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); kgIn.blur(); } });
+      tc.appendChild(fq); tc.appendChild(qInfo); c.appendChild(tc);
+      var pintarCant = function () {
+        var k = kgDe(sel.tam) || 0;
+        qOut.textContent = String(sel.cant);
+        if (document.activeElement !== kgIn) kgIn.value = fmtKg(sel.cant * k);
+        qInfo.textContent = sel.cant + " × " + presTxt(sel.tam) + " = " + fmtKg(sel.cant * k) + " kg";
+      };
+      pintarCant();
     } else if (it.t) {
       var tt = tarjeta(t("tamano"));
       tt.appendChild(segmentos("tam", it.t.map(function (x) { return { valor: x[0], texto: I.tam(x[0]), extra: soles(x[1]), marcado: x[0] === sel.tam }; }),
@@ -588,7 +629,7 @@
     c.appendChild(err);
     var pie = h("div", "hoja__pie");
     if (pres === "peso") pie.appendChild(stepper(2, 1, 40, function (v) { sel.cuartos = v; pintar(); }, fmtCuartos));
-    else pie.appendChild(stepper(1, 1, 20, function (v) { sel.cant = v; pintar(); }));
+    else if (!tiendaP) pie.appendChild(stepper(1, 1, 20, function (v) { sel.cant = v; pintar(); }));
     add = boton("", "btn-ped", function () {
       if (it.salsa && !sel.salsa) { err.textContent = t("eligeSalsaErr"); return; }
       var falta = gruposDe(it, sel.salsa).filter(function (g) { return GRUPOS[g].req && !(sel.ops[g] || []).length; })[0];
@@ -1857,7 +1898,7 @@
     mesaValida: mesaValida,
     desdeProg: function () { var v = ventanaPedido(); return v ? fmtHora(v.desde) : ""; },
     puedePedir: puedePedir,
-    modoPres: modoPres, precioKg: precioKg,
+    modoPres: modoPres, precioKg: precioKg, presTxt: presTxt, kgDe: kgDe, tamDefTienda: tamDefTienda,
     abrirDetalle: function (it, sec, tam, opts) { abrirDetalle(it, sec, tam, opts); },
     boton: function (it, sec, tamFn) {
       var b = h("button", "agregar"); b.type = "button";

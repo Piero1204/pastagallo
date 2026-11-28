@@ -381,7 +381,10 @@
     var esTienda = !!(sec && sec.id === "tienda");
     /* selector de tamaño como chips: tienda, o cualquier producto cuyos tamaños son pesos (1 kg, 1/2 kg, 1/4 kg) */
     var pres = PED && PED.modoPres ? PED.modoPres(it, sec) : "";   // tienda: "paq" (un paquete de 500 g) o "peso" (salsas por 1/4 kg); sin chips
-    var conChips = !pres && !!(it.t && it.t.length > 1 && (esTienda || it.t.every(function (x) { return /(^|\s)(kg|g|gr)\b/i.test(x[0]); })));
+    /* tienda: misma tarjeta que los demás platos: precio de la presentación por defecto y una línea «Presentación: 500 g» */
+    var tiendaP = esTienda && it.t && it.t.length && PED && PED.kgDe && it.t.every(function (x) { return PED.kgDe(x[0]) != null; });
+    if (tiendaP) pres = "";
+    var conChips = !pres && !tiendaP && !!(it.t && it.t.length > 1 && (esTienda || it.t.every(function (x) { return /(^|\s)(kg|g|gr)\b/i.test(x[0]); })));
     var conFw = tieneFoto || esTienda;
     a.className += conFw ? " fcon" : " it--sinfoto";
     var top = h("div", "it__top");
@@ -403,6 +406,13 @@
       cajaPrecio.appendChild(precioEl(x[1]));
     }
     if (conChips) { cajaPrecio = h("span", "it__sel"); pintarPrecioTam(); top.appendChild(cajaPrecio); }
+    if (tiendaP) {
+      var t0 = PED.tamDefTienda(it), x0 = it.t.filter(function (y) { return y[0] === t0; })[0] || it.t[0];
+      top.appendChild(h("span", "it__pts"));
+      var ant0 = it.ta && it.ta.filter(function (y) { return y[0] === x0[0]; })[0];
+      if (ant0 && ant0[1] > x0[1]) { var pa0 = precioEl(ant0[1]); pa0.className += " precio--antes"; pa0.title = t("antes"); top.appendChild(pa0); var pc0 = pctEl(ant0[1], x0[1]); if (pc0) top.appendChild(pc0); }
+      top.appendChild(precioEl(x0[1]));
+    }
     if (it.p != null && !it.t) {
       top.appendChild(h("span", "it__pts"));
       if (it.pa != null && it.pa > it.p) {
@@ -426,6 +436,10 @@
       var dp = diaDe(it._prox), ah = ahoraLugar(new Date());
       a.appendChild(h("p", "promo-prox", t("vuelve") + (it._prox === sumarDias(ah.fecha, 1) ? t("mananaCorto") : t("el") + t("dias")[dp])));
     }
+    if (tiendaP) {
+      var t1 = PED.tamDefTienda(it), orden = [t1].concat(it.t.map(function (x) { return x[0]; }).filter(function (x) { return x !== t1; }));
+      a.appendChild(h("p", "it__pres", t("presentacionDe", { p: orden.map(PED.presTxt).join(I.lang === "en" ? " or " : " o ") })));
+    }
     if (it.canal === "local") a.appendChild(h("span", "etq", t("soloLocal")));
     if (it.canal === "delivery" && !it.promo) a.appendChild(h("span", "etq", t("soloDelivery")));
     if (it.extra) a.appendChild(h("span", "mas", t("adicional") + dinero(it.extra)));
@@ -442,6 +456,8 @@
         cw.appendChild(c);
       });
       a.appendChild(cw);
+    } else if (tiendaP) {
+      /* nada más: el precio va arriba como en los demás platos */
     } else if (pres) {
       var tp = h("div", "tam"), dp = h("div");
       dp.appendChild(h("span", null, pres === "paq" ? t("paquete500") : t("porKilo")));
