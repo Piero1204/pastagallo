@@ -565,7 +565,8 @@
     var grupos = sec.grupos.filter(function (g) {
       g.items = (g.items || []).filter(function (i) {
         if (i.oculto || i._oculto) return false;
-        if (i.canal === "local" && modo !== "mesa") return false;
+        /* la carta web muestra TODO (pedido de Piero, 28-nov): lo que es solo para comer en el local sale con su etiqueta
+           y al abrirlo se explica (y se puede reservar mesa). En la mesa no se muestran los productos solo de delivery. */
         if (i.canal === "delivery" && modo === "mesa") return false;
         return true;
       });

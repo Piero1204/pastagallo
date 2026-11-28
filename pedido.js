@@ -200,6 +200,7 @@
     if (it.canal === "delivery" && MODO === "mesa") return t("soloDeliveryTxt");
     if (it.p == null && !(it.t && it.t.length)) return t("consulta");
     /* Nostri Prodotti (tienda) se puede pedir en todos los canales, también desde la mesa (para llevar a casa) */
+    if (activo() && MODO !== "mesa" && !sec.delivery && sec.id !== "tienda") return t("soloLocalTxt");   // secciones solo para el salón (cafetería, aperitivos…)
     if (!activo() || (MODO === "mesa" ? !(sec.mesa || sec.id === "tienda") : !sec.delivery)) return t("noPedible");
     return "";
   }
