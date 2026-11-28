@@ -1069,6 +1069,7 @@
   function tocarMesa(m) {
     if (S.alTocarMesa) { S.alTocarMesa(m, estadoMesa(m)); return; }   // app de tienda: solo mira la mesa
     if (salonAbierto) { salonAbierto = null; cerrarModal(); }
+    if (LOCAL && LOCAL.tocarMesa && S.vista !== "carta" && LOCAL.tocarMesa(m) !== false) return;   // panel local: detalle de la mesa con todas las acciones
     if (m.unidaA) { var mp = mesaDe(m.unidaA); if (mp) { tocarMesa(mp); return; } }
     var d = m.atiende;
     if (m.estado !== "libre" && d && d.id !== yo() && !esLocalRol()) {
@@ -2531,7 +2532,7 @@
       entregarExtUI: entregarExtUI, detalleExt: detalleExt, tarjetaExt: tarjetaExt, cargarLeaflet: cargarLeaflet, escHtml: escHtml, mapsUrl: mapsUrl, mapaSalon: mapaSalon,
       medirMapa: medirMapa, vistaMesas: vistaMesas, botonMesa: botonMesa, estadoMesa: estadoMesa, mesasSalon: mesasSalon, porServir: porServir, entregar: entregar,
       PROD: PROD, SALSAS_TODAS: SALSAS_TODAS, nombreEs: nombreEs, tamEs: tamEs, cambiarAgotado: cambiarAgotado, ventanaAgotados: ventanaAgotados, segmento: segmento,
-      chips: chips, minDesde: minDesde, tsSalida: tsSalida, CLS_EST: CLS_EST, LL: LL, DL: DL, pitar: pitar, audio: audio, menuYo: menuYo, cobrar: cobrar,
+      chips: chips, minDesde: minDesde, tsSalida: tsSalida, CLS_EST: CLS_EST, LL: LL, DL: DL, pitar: pitar, audio: audio, menuYo: menuYo, cobrar: cobrar, dividirCuenta: dividirCuenta, cargarCuenta: cargarCuenta, TXT_ESTADO: TXT_ESTADO,
       esPseudo: esPseudo, mesaDe: mesaDe, legadoLlevar: legadoLlevar, K: K, metodosCanal: metodosCanal, rucValido: rucValido, validarCompExt: validarCompExt, instalar: { disponible: function () { return !!instalarEv; },
         pedir: function () { var e = instalarEv; if (!e) return Promise.resolve(false); e.prompt(); return e.userChoice.then(function (c) { instalarEv = null; return c && c.outcome === "accepted"; }); }, instalada: instalada } };
   }
