@@ -429,3 +429,5 @@ select.campo{background:#fff}
 .pres-nota{display:block;color:var(--gris,#6f5f57);font-size:13px;margin-bottom:6px}
 .step--peso output{min-width:64px}
 .linea .d small{display:block;color:var(--gris,#6f5f57);font-size:12px}
+
+.reimp__acc{display:flex;gap:8px;flex-wrap:wrap}.reimp__acc .btn{flex:1 1 auto;min-height:40px}.reimp__acc .btn:disabled{opacity:.55}

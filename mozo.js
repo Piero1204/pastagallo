@@ -957,6 +957,28 @@
     items.forEach(function (x) { w.appendChild(tarjetaServir(x.m, x.p, true)); });
     return w;
   }
+  /* Reimpresión desde el panel del mozo (acción del servidor mz:"reimp"). id = número INTERNO del pedido (no el de «#N» del día).
+     "🖨 Imprimir comanda" = solo la comanda; "🔁 Reimprimir" = cocina por áreas + comanda (pide confirmar). Sin acciones optimistas: se espera al servidor. */
+  function reimpMozo(id, tipos, b0, n) {
+    var btns = b0.parentNode ? b0.parentNode.querySelectorAll("button.reimp") : [b0];
+    function fijar(v) { Array.prototype.forEach.call(btns, function (x) { x.disabled = v; }); }
+    fijar(true);
+    api({ mz: "reimp", t: S.t, id: id, tipos: tipos }).then(function (r) {
+      fijar(false);
+      if (!r || r.ok === false) { toast((r && r.error) || "No se pudo imprimir.", "mal"); return; }
+      toast("✓ Enviado a la impresora", "ok");
+    }).catch(function () { fijar(false); toast("Sin conexión: no se imprimió.", "mal"); });
+  }
+  function botonesReimp(id, n) {
+    var w = h("div", "reimp__acc"), b1, b2;
+    b1 = btn("🖨 Imprimir comanda", "btn peq reimp", function () { reimpMozo(id, ["comanda"], b1, n); });
+    b2 = btn("🔁 Reimprimir", "btn peq reimp", function () {
+      if (!confirm("¿Reimprimir el pedido #" + n + "? Saldrá de nuevo en cocina (por áreas) y la comanda.")) return;
+      reimpMozo(id, ["cocina", "comanda"], b2, n);
+    });
+    w.appendChild(b1); w.appendChild(b2);
+    return w;
+  }
   /* un pedido con sus líneas: tocar una línea = entregada (o deshacer) */
   function tarjetaServir(m, p, conMesa) {
     var ajena = conMesa && variosMozos() && !esMia(m);
@@ -983,6 +1005,7 @@
       ac.appendChild(btn("✎ Editar pedido", "btn peq", function () { editarPedido(p); }));
       d.appendChild(ac);
     }
+    if (p.id) d.appendChild(botonesReimp(p.id, p.numero));
     return d;
   }
   /* Entregas: se marcan AL INSTANTE en pantalla y se envían en cola al servidor (en orden y con reintentos).
@@ -1227,6 +1250,11 @@
         api({ mz: "editarpedido", t: S.t, id: r.id, cid: cid, lineas: E.map(function (e) { return { i: e.i, cant: e.cant, tam: e.tam, salsa: e.salsa, mitad: e.mitad, ops: e.ops, nota: e.nota }; }) }).then(function (x) {
           if (!x.ok) { toast(x.error || "No se pudo guardar.", "mal"); actualizarPie(); return; }
           cerrarModal();
+          if (x.cancelado) {
+            toast("Pedido cancelado", "ok");
+            if (x.cuenta && String(x.cuenta.mesa) === String(S.mesa)) { S.cuenta = x.cuenta; aplicarPendientes(S.cuenta.pedidos); pintarOrden(); }
+            S.v = ""; sondear(); return;
+          }
           if (x.sinCambios) { toast("Sin cambios.", "ok"); return; }
           toast("✎ Pedido #" + x.numero + " modificado (" + x.resumen + ")" + (x.impreso ? " · 🖨 cocina avisada" : " · ⚠ avisa a cocina: no se pudo imprimir"), x.impreso ? "ok" : "mal");
           if (x.cuenta && String(x.cuenta.mesa) === String(S.mesa)) { S.cuenta = x.cuenta; aplicarPendientes(S.cuenta.pedidos); pintarOrden(); }
@@ -1653,6 +1681,7 @@
         var d = h("div", "ped");
         d.appendChild(h("div", "m", "#" + p.numero + " · " + p.hora + " · " + (p.mozo ? "🤵 " + p.mozo : "📱 desde el QR") + " · " + p.estado));
         d.appendChild(h("pre", null, p.detalle.replace(/ — S\/ [\d.]+/g, "")));
+        if (p.id) d.appendChild(botonesReimp(p.id, p.numero));
         cu.appendChild(d);
       });
     } else cu.appendChild(h("p", "vacio", "La mesa todavía no tiene pedidos."));
@@ -1727,7 +1756,7 @@
         mm.porServir = r.cuenta.pedidos.reduce(function (a, q) { return a + (q.falta || 0); }, 0);
       }
       S.v = "";
-      toast("✓ Pedido #" + r.numero + " enviado a cocina (mesa " + mesa + ")", "ok");
+      toast(r.repetido ? "Este pedido ya se había registrado (#" + r.numero + ")" : "✓ Pedido #" + r.numero + " enviado a cocina (mesa " + mesa + ")", "ok");
       if (modalPedido) cerrarModal();
       pintar(); sondear();
     }).catch(function () {
@@ -2164,6 +2193,7 @@
     if (x.canal === "delivery") { var a = h("a", "btn peq", "🗺 Ruta"); a.href = mapsUrl(x); a.target = "_blank"; a.rel = "noopener"; acc.appendChild(a); }
     if (x.tel) { var t = h("a", "btn peq", "📞 Llamar"); t.href = "tel:" + x.tel; acc.appendChild(t); }
     d.appendChild(acc);
+    if (x.id) d.appendChild(botonesReimp(x.id, x.n));
     return d;
   }
   function detalleExt(x) { var c = tarjetaExt(x); abrirModal((x.canal === "delivery" ? "🛵 Delivery #" : "🥡 Para llevar #") + x.n, [c]); }
@@ -2412,8 +2442,8 @@
         var clave = S.mesa; carros[clave] = []; delete carros["_n" + clave]; guardarCarros();
         var g = leer(K_CLI, {}); g[tipo] = { prog: st.prog }; guardar(K_CLI, g);
         modalPedido = false; cerrarModal();
-        toast("✓ " + (del ? "Delivery" : "Para llevar") + " #" + r.numero + " registrado · " + soles(r.aCobrar != null ? r.aCobrar : r.total) + " (se imprime en el local)", "ok");
-        S.externos.push({ id: r.id, n: r.numero, hora: "ahora", ts: Date.now() + S.desfase, canal: del ? "delivery" : "recojo", nombre: nom, tel: cel, estado: "Confirmado", prog: body.programado,
+        toast(r.repetido ? "Este pedido ya se había registrado (#" + r.numero + ")" : "✓ " + (del ? "Delivery" : "Para llevar") + " #" + r.numero + " registrado · " + soles(r.aCobrar != null ? r.aCobrar : r.total) + " (se imprime en el local)", "ok");
+        if (!(r.repetido && S.externos.some(function (e) { return String(e.id) === String(r.id); }))) S.externos.push({ id: r.id, n: r.numero, hora: "ahora", ts: Date.now() + S.desfase, canal: del ? "delivery" : "recojo", nombre: nom, tel: cel, estado: "Confirmado", prog: body.programado,
           lat: body.lat == null ? null : body.lat, lng: body.lng == null ? null : body.lng, dir: body.direccion || "", ref: body.referencia || "", total: r.total, costo: r.costoDelivery, aCobrar: r.aCobrar != null ? r.aCobrar : r.total,
           mozo: S.mozo ? S.mozo.nombre : "", origen: "mozo", pago: body.pago, pagado: false, zona: "", lineas: c.map(function (l) { return { e: l.cant + " × " + nombreEs(prodDe(l.id)) + (l.tam ? " " + tamEs(l.tam) : "") }; }) });
         S.pest = "llevar"; guardar(K.pest, "llevar"); S.vista = "mesas"; S.mesa = null; S.v = ""; pintar(); window.scrollTo(0, 0); sondear();
