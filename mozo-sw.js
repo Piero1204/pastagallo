@@ -3,7 +3,7 @@
    o si la red tarda más de 4 s. Así cada cambio publicado se ve al instante (antes se servía primero la copia vieja).
    Al publicar una versión nueva de este archivo, toma el control de inmediato (skipWaiting + clients.claim) y la app se recarga sola una vez.
    Nunca toca los pedidos (van a script.google.com con POST). */
-var CACHE = "pg-mozo-v18";
+var CACHE = "pg-mozo-v19";
 var APP = ["/mozo.js", "/mozo.css", "/local.js", "/local.css", "/cajero.js", "/tienda-codigos.js", "/caja.js", "/busqueda.js", "/cocina.js", "/menu-data.js"];
 self.addEventListener("install", function (e) {
   // cada archivo por separado: si uno falla, los demás igual se guardan
