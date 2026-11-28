@@ -224,6 +224,15 @@
     var S = { prods: [], metodos: ["Efectivo", "Yape", "Plin", "Tarjeta"], descMax: null, anularCajero: true, negocio: {}, q: "", vista: "vender",
       carro: leer(K, []), cliente: leer("pg-cajero-cliente", null), cat: "", clientes: null, pend: null, recoger: [], enCocina: 0, hist: null, cargado: false, error: "" };
     function guardarCarro() { guardar(K, S.carro); }
+    /* última lista de productos guardada en este equipo: se muestra al instante al abrir y se refresca por detrás */
+    var K_PRODS = "pg-cajero-prods" + (RESTR ? "-local" : "");
+    S.cargando = false; S.cargaOk = false;
+    (function () {
+      var c = leer(K_PRODS, null);
+      if (c && Array.isArray(c.prods) && c.prods.length) {
+        S.prods = c.prods; S.metodos = c.metodos || S.metodos; S.descMax = c.descMax; S.anularCajero = c.anularCajero !== false; S.negocio = c.negocio || {}; S.cargado = true;
+      }
+    })();
 
     /* ---------- estilos ---------- */
     if (!doc.getElementById("cj-css")) {
@@ -259,6 +268,14 @@
         ".cj-row .t{flex:1;min-width:0}.cj-row .t span{display:block;font-size:12px;color:var(--gris,#6f5f57)}.cj-row.anulada{opacity:.55}.cj-row.anulada b{text-decoration:line-through}",
         ".cj-del{width:100%;height:48px;border-radius:12px;background:var(--rojo,#b6232a);color:#fff;font-weight:800;margin-top:6px}",
         ".cj-vacio{padding:30px;text-align:center;color:var(--gris,#6f5f57);font-style:italic}",
+        ".cj-error{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px}.cj-error small{color:var(--gris,#6f5f57)}",
+        ".cj-carga{padding:6px 10px}.cj-carga__t{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;font-weight:700;color:#556b2f}",
+        ".cj-spin{width:22px;height:22px;border-radius:50%;border:3px solid #dfe6cc;border-top-color:#556b2f;animation:cjgira .8s linear infinite}",
+        ".cj-esq{border-radius:14px;background:#fff;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:150px}",
+        ".cj-esq i{display:block;border-radius:8px;background:linear-gradient(90deg,#ece7da 25%,#f6f2e8 50%,#ece7da 75%);background-size:200% 100%;animation:cjbrillo 1.2s ease-in-out infinite}",
+        ".cj-esq .f{height:96px}.cj-esq .l{height:12px}.cj-esq .l.c{width:55%}",
+        "@keyframes cjgira{to{transform:rotate(360deg)}}@keyframes cjbrillo{0%{background-position:200% 0}100%{background-position:-200% 0}}",
+        "@media (prefers-reduced-motion:reduce){.cj-spin,.cj-esq i{animation:none}}",
         ".cj-vel{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}",
         ".cj-hoja{background:var(--papel,#faf6ec);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom))}",
         "@media(min-width:700px){.cj-vel{align-items:center}.cj-hoja{border-radius:18px}}",
@@ -304,12 +321,24 @@
 
     /* ---------- carga de datos ---------- */
     function cargar() {
+      S.cargando = true;
       return llamar({ op: "productos" }).then(function (r) {
-        if (!r.ok) { S.error = r.error || "No se pudo cargar."; return; }
+        if (!r || !r.ok) { S.error = (r && r.error) || "No se pudo cargar."; return; }
+        var antes = JSON.stringify([S.prods, S.metodos]);
         S.prods = r.productos || []; S.metodos = r.metodos || S.metodos; S.descMax = r.descuentoMax; S.anularCajero = r.anularCajero !== false;
-        S.negocio = r.negocio || {}; S.cargado = true; S.error = "";
-      }).catch(function (e) { S.error = "Sin conexión. " + (e && e.message ? e.message : ""); });
+        S.negocio = r.negocio || {}; S.cargado = true; S.cargaOk = true; S.error = "";
+        S.sinCambio = antes === JSON.stringify([S.prods, S.metodos]);
+        guardar(K_PRODS, { prods: S.prods, metodos: S.metodos, descMax: S.descMax, anularCajero: S.anularCajero, negocio: S.negocio, ts: Date.now() });
+      }).catch(function (e) { S.error = "Sin conexión. " + (e && e.message ? e.message : ""); })
+        .then(function () { S.cargando = false; });
     }
+    function trasCarga() {
+      if (S.sinCambio && S.prods.length && S.vista === "vender" && zonaProds && zonaProds.isConnected) { S.sinCambio = false; return; }   // lo mostrado (copia guardada) ya estaba al día
+      var foco = inBus && doc.activeElement === inBus, pos = foco ? inBus.selectionStart : 0;
+      pintar();
+      if (foco && inBus) { inBus.focus(); try { inBus.setSelectionRange(pos, pos); } catch (e) {} }
+    }
+    function reintentar() { S.error = ""; var p = cargar(); pintar(); return p.then(pintar); }
     function cargarRecoger() {
       return llamar({ op: "recoger" }).then(function (r) { if (r.ok) { S.recoger = r.pedidos || []; S.enCocina = r.enCocina || 0; pintarTabs(); } }).catch(function () {});
     }
@@ -347,9 +376,11 @@
     function pintar() {
       pintarTabs(); cuerpo.innerHTML = "";
       carrito.style.display = S.vista === "vender" ? "" : "none";
-      if (S.error && !S.cargado) {
-        cuerpo.appendChild(h("p", "cj-vacio", S.error));
-        cuerpo.appendChild(btn("Reintentar", "cj-go", function () { cargar().then(pintar); }));
+      if (S.error && !S.prods.length && !S.cargando) {   // la carga falló y no hay copia guardada
+        var er = h("div", "cj-error"); er.appendChild(h("p", "cj-vacio", "No se pudo cargar."));
+        if (S.error && !/^No se pudo cargar\.?$/.test(S.error)) er.appendChild(h("small", "", S.error));
+        er.appendChild(btn("Reintentar", "cj-go", reintentar));
+        cuerpo.appendChild(er);
         return;
       }
       if (S.vista === "vender") { pintarVender(); pintarCarrito(); }
@@ -367,7 +398,12 @@
       inBus.addEventListener("input", function () { S.q = inBus.value; pintarProds(); });
       f.appendChild(inBus);
       cuerpo.appendChild(f);
-      if (!S.prods.length) cuerpo.appendChild(h("p", "cj-vacio", "Todavía no hay productos de tienda. El administrador debe cargarlos en el panel (Tienda > Catálogo)."));
+      if (!S.prods.length) {
+        // «no hay productos» SOLO si una carga terminó bien y trajo 0; mientras carga, esqueletos
+        if (S.cargaOk && !S.cargando) cuerpo.appendChild(h("p", "cj-vacio", "No hay productos a la venta en este momento"));
+        else cuerpo.appendChild(esqueletos());
+        return;
+      }
       var cats = h("nav", "cj-cats"), secs = {}, wrap = h("div", "cj-carta");
       S.prods.forEach(function (p) { var k = catDe(p), o = CAT_ORDEN.indexOf(k), pr = o >= 0 ? o : 10 + L.prioridad(p.seccion); secs[k] = secs[k] == null ? pr : Math.min(secs[k], pr); });
       var orden = Object.keys(secs).sort(function (a, b) { return secs[a] - secs[b] || (a < b ? -1 : 1); });
@@ -380,6 +416,13 @@
       }
       zonaProds = h("div", "cj-prods"); wrap.appendChild(zonaProds); cuerpo.appendChild(wrap);
       pintarProds();
+    }
+    function esqueletos() {
+      var w = h("div", "cj-carga"); w.setAttribute("role", "status"); w.setAttribute("aria-live", "polite");
+      var t = h("p", "cj-carga__t"); t.appendChild(h("span", "cj-spin")); t.appendChild(doc.createTextNode("Cargando productos…")); w.appendChild(t);
+      var g = h("div", "grid");
+      for (var i = 0; i < 8; i++) { var c = h("div", "cj-esq"); c.appendChild(h("i", "f")); c.appendChild(h("i", "l")); c.appendChild(h("i", "l c")); g.appendChild(c); }
+      w.appendChild(g); return w;
     }
     function tituloSec(id) { return L.nombreSeccion(id) || (id || "Otros"); }
     var CAT_ORDEN = ["Tienda", "Productos de Italia", "Dulces", "Bebidas", "Vinos"];
@@ -880,8 +923,8 @@
 
     /* ---------- arranque ---------- */
     pintar(); enviarSalidas();
-    if (RESTR) { cargar().then(pintar); return { recargar: function () { return cargar().then(pintar); } }; }
-    cargar().then(function () { pintar(); return cargarRecoger(); });
+    if (RESTR) { var p0 = cargar(); pintar(); p0.then(trasCarga); return { recargar: function () { return cargar().then(pintar); } }; }
+    var p1 = cargar(); pintar(); p1.then(function () { trasCarga(); return cargarRecoger(); });
     setInterval(function () { if (doc.hidden || !doc.body.contains(raiz)) return; cargarRecoger(); }, 45000);
   }
 })(typeof window !== "undefined" ? window : this);
