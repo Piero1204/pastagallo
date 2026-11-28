@@ -224,13 +224,20 @@
     var S = { prods: [], metodos: ["Efectivo", "Yape", "Plin", "Tarjeta"], descMax: null, anularCajero: true, negocio: {}, q: "", vista: "vender",
       carro: leer(K, []), cliente: leer("pg-cajero-cliente", null), cat: "", clientes: null, pend: null, recoger: [], enCocina: 0, hist: null, cargado: false, error: "" };
     function guardarCarro() { guardar(K, S.carro); }
+    /* nombres de la tienda SIEMPRE en español en la caja (la web muestra los suyos) */
+    var NOMBRE_ES = { "tienda-ravioles-carne": "Ravioles de carne", "tienda-ravioles-queso": "Ravioles de queso", "tienda-fettuccini": "Fettuccine",
+      "tienda-fettuccini-verde": "Fettuccine verde", "tienda-spaghetti": "Espagueti", "tienda-tortellini": "Tortellini", "tienda-masa-lasagna": "Masa de lasaña",
+      "tienda-lasagna-carne": "Lasaña de carne", "tienda-lasagna-espinaca": "Lasaña de espinaca", "tienda-lasagna-champinones": "Lasaña de champiñones",
+      "tienda-salsa-carne": "Salsa de carne", "tienda-salsa-tomate": "Salsa de tomate", "tienda-salsa-alfredo": "Salsa Alfredo", "tienda-salsa-amatriciana": "Salsa amatriciana",
+      "tienda-salsa-pesto": "Salsa pesto", "tienda-salsa-champinones": "Salsa de champiñones" };
+    function enEspanol(lista) { (lista || []).forEach(function (p) { if (NOMBRE_ES[p.id]) p.nombre = NOMBRE_ES[p.id]; }); S.carro.forEach(function (l) { if (NOMBRE_ES[l.id]) l.nombre = NOMBRE_ES[l.id]; }); return lista; }
     /* última lista de productos guardada en este equipo: se muestra al instante al abrir y se refresca por detrás */
     var K_PRODS = "pg-cajero-prods" + (RESTR ? "-local" : "");
     S.cargando = false; S.cargaOk = false;
     (function () {
       var c = leer(K_PRODS, null);
       if (c && Array.isArray(c.prods) && c.prods.length) {
-        S.prods = c.prods; S.metodos = c.metodos || S.metodos; S.descMax = c.descMax; S.anularCajero = c.anularCajero !== false; S.negocio = c.negocio || {}; S.cargado = true;
+        S.prods = enEspanol(c.prods); S.metodos = c.metodos || S.metodos; S.descMax = c.descMax; S.anularCajero = c.anularCajero !== false; S.negocio = c.negocio || {}; S.cargado = true;
       }
     })();
 
@@ -260,6 +267,8 @@
         ".cj-l .t span{font-size:12px;color:var(--gris,#6f5f57)}.cj-l .s{font-weight:800;min-width:70px;text-align:right}",
         ".cj-l{flex-wrap:wrap}.cj-l .t{flex:1 1 100%}.cj-l .ed{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1}",
         ".cj-l .ed output{min-width:44px;text-align:center;font-weight:800;font-size:15px}",
+        ".cj-l .t b.pt{white-space:normal}.cj-l .pk{display:inline;width:auto;height:auto;padding:0 4px;border-radius:6px;background:transparent;border-bottom:2px dashed var(--vino,#4b5a24);font:inherit;font-size:15px;font-weight:800;color:var(--vino,#4b5a24);cursor:text}",
+        ".cj-l .pk-in{width:72px;height:32px;border-radius:8px;border:2px solid var(--vino,#4b5a24);padding:0 6px;font-size:15px;font-weight:800;text-align:right}.cj-l .pk-u{font-weight:800}",
         ".cj-l .pres{display:flex;gap:4px}.cj-l .pres button{width:auto;height:34px;padding:0 9px;font-size:13px;border:2px solid transparent}.cj-l .pres button.on{background:var(--vino,#4b5a24);color:#fff}",
         ".cj-l .kg{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--gris,#6f5f57)}.cj-l .kg input{width:64px;height:36px;border-radius:9px;border:1px solid var(--linea,#dccdb0);padding:0 8px;font-size:15px;font-weight:700;text-align:right}",
         ".cj-l button{width:38px;height:38px;border-radius:9px;background:var(--crema,#efe6d3);font-weight:800;font-size:18px}.cj-l button.peso{width:auto;padding:0 10px;font-size:14px}",
@@ -329,7 +338,7 @@
       return llamar({ op: "productos" }).then(function (r) {
         if (!r || !r.ok) { S.error = (r && r.error) || "No se pudo cargar."; return; }
         var antes = JSON.stringify([S.prods, S.metodos]);
-        S.prods = r.productos || []; S.metodos = r.metodos || S.metodos; S.descMax = r.descuentoMax; S.anularCajero = r.anularCajero !== false;
+        S.prods = enEspanol(r.productos || []); S.metodos = r.metodos || S.metodos; S.descMax = r.descuentoMax; S.anularCajero = r.anularCajero !== false;
         S.negocio = r.negocio || {}; S.cargado = true; S.cargaOk = true; S.error = "";
         S.sinCambio = antes === JSON.stringify([S.prods, S.metodos]);
         guardar(K_PRODS, { prods: S.prods, metodos: S.metodos, descMax: S.descMax, anularCajero: S.anularCajero, negocio: S.negocio, ts: Date.now() });
@@ -487,7 +496,7 @@
     function cuartosDe(ls) { return ls.reduce(function (a, l) { return a + l.cant * (l.tam === "1/2 kg" ? 2 : 1); }, 0); }
     var NOTA_PESO = "Si no hay de ½, se entrega en ¼.";
     function prodDe(id) { return S.prods.filter(function (x) { return x.id === id; })[0]; }
-    function grupoPeso(l) { return (l.tam === "1/2 kg" || l.tam === "1/4 kg") && modoPres(prodDe(l.id)) === "peso" ? l.id : ""; }
+    function grupoPeso(l) { return ""; }   // cada presentación es su propia línea (las salsas se eligen en la ventanita)
     function agrupar() {
       var r = [], vistos = {};
       S.carro.forEach(function (l) {
@@ -514,9 +523,34 @@
     /* ---------- agregar al carrito ---------- */
     /* tocar un producto lo AGREGA de frente (como en el mozo), con su presentación por defecto; todo se ajusta en el carrito */
     var enfocarKg = null;
+    /* salsas (½ kg y ¼ kg): ventanita como en el mozo para elegir la presentación y cuántas */
+    function elegirPresentacion(p) {
+      var tam = "1/2 kg", q = 1, chips = h("div", "cj-chips"), out = h("output"), res = h("div", "cj-res ok");
+      function pint() {
+        Array.prototype.forEach.call(chips.children, function (x) { x.classList.toggle("on", x.dataset.t === tam); });
+        out.textContent = String(q);
+        res.textContent = pesoTxt(q * (kgDe(tam) || 0)) + " de " + minus(p.nombre) + " · " + L.soles(L.subtotal(precioTam(p, tam), q));
+      }
+      p.tam.forEach(function (x) { var b = btn(presTxt(x[0]) + " · " + L.soles(x[1]), "", function () { tam = x[0]; pint(); }); b.dataset.t = x[0]; chips.appendChild(b); });
+      var st = h("div", "cj-pstep"); st.appendChild(btn("−", "", function () { if (q > 1) { q--; pint(); } })); st.appendChild(out); st.appendChild(btn("+", "", function () { if (q < 200) { q++; pint(); } }));
+      var ok = btn("Agregar", "ok", function () {
+        cerrarHoja();
+        var ex = S.carro.filter(function (l) { return l.id === p.id && l.tam === tam; })[0];
+        ponerLinea(p, tam, Math.min(999, (ex ? ex.cant : 0) + q)); cambioCarro();
+      });
+      abrirHoja(p.nombre + ": elige la presentación", [chips, st, res], [btn("Cancelar", "", cerrarHoja), ok]);
+      pint();
+    }
+    function minus(n) { n = String(n || ""); return /^(Salsa Alfredo)$/.test(n) ? "salsa Alfredo" : n.charAt(0).toLowerCase() + n.slice(1); }
+    /* peso para leer: 0,25 → ¼ kg · 0,5 → ½ kg · 1,5 → 1 ½ kg · 10 → 10 kg */
+    function pesoTxt(kg) {
+      var q = Math.round(kg * 4);
+      if (Math.abs(q / 4 - kg) < 1e-9) { var e = Math.floor(q / 4), f = ["", "¼", "½", "¾"][q % 4]; return (e ? e + (f ? " " : "") : "") + f + " kg"; }
+      return fmtKg(kg) + " kg";
+    }
     function agregar(p, tam) {
       var pm = !tam && modoPres(p);
-      if (pm === "peso") { var lsP = S.carro.filter(function (l) { return grupoPeso(l) === p.id; }), s4 = soloCuartos(p.id); fijarCuartos(p, cuartosDe(lsP) + (s4 ? 1 : 2), s4); cambioCarro(); return; }
+      if (pm === "peso") { elegirPresentacion(p); return; }
       if (!tam) tam = tamDefecto(p);
       var unit = p.precio;
       if (tam) unit = (p.tam.filter(function (t) { return t[0] === tam; })[0] || [0, 0])[1];
@@ -572,10 +606,20 @@
           [["1/2 kg", false], ["1/4 kg", true]].forEach(function (o) { pres.appendChild(btn(presTxt(o[0]), s4 === o[1] ? "on" : "", function () { if (s4 !== o[1]) { fijarCuartos(gp, q0, o[1]); cambioCarro(); } })); });
           ed.appendChild(pres);
           ed.appendChild(campoKg(q0 / 4, function (v) { fijarCuartos(gp, Math.max(1, Math.round(v * 4)), s4); cambioCarro(); }, "Peso total en kg"));
-        } else if (l.unidad === "unid" && l.tam && kgDe(l.tam)) {   // paquetes (pastas 500 g, lasagnas 1 kg / ½ kg)
-          var kgU = kgDe(l.tam);
-          t.appendChild(h("b", "", l.nombre));
-          t.appendChild(h("span", "", l.cant + (l.cant === 1 ? " paquete" : " paquetes") + " de " + presTxt(l.tam) + " · " + fmtKg(l.cant * kgU) + " kg · " + L.soles(l.unit) + " c/u"));
+        } else if (l.unidad === "unid" && l.tam && kgDe(l.tam)) {   // paquetes: primero el peso y luego el producto («1 kg de lasaña de carne»)
+          var kgU = kgDe(l.tam), tb = h("b", "pt");
+          var pk = h("button", "pk", pesoTxt(l.cant * kgU)); pk.type = "button"; pk.title = "Tocar para escribir el peso";
+          pk.addEventListener("click", function () {
+            var inp = h("input", "pk-in"); inp.type = "text"; inp.setAttribute("inputmode", "decimal"); inp.value = fmtKg(l.cant * kgU); inp.setAttribute("aria-label", "Peso total en kg");
+            var listo = false;
+            function fijar() { if (listo) return; listo = true; var v = leerKg(inp.value); if (v > 0) l.cant = Math.max(1, Math.min(999, Math.round(v / kgU))); cambioCarro(); }
+            inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); fijar(); } if (e.key === "Escape") { listo = true; cambioCarro(); } });
+            inp.addEventListener("blur", fijar);
+            pk.replaceWith(inp); var kgl = h("span", "pk-u", " kg"); inp.after(kgl); inp.focus(); inp.select();
+          });
+          tb.appendChild(pk); tb.appendChild(doc.createTextNode(" de " + minus(l.nombre)));
+          t.appendChild(tb);
+          t.appendChild(h("span", "", l.cant + (l.cant === 1 ? " paquete" : " paquetes") + " de " + presTxt(l.tam) + " · " + L.soles(l.unit) + " c/u"));
           ed.appendChild(paso("−", "Quitar un paquete", function () { if (l.cant > 1) l.cant--; else S.carro.splice(S.carro.indexOf(l), 1); cambioCarro(); }));
           ed.appendChild(h("output", "", String(l.cant)));
           ed.appendChild(paso("+", "Agregar un paquete", function () { l.cant = Math.min(999, l.cant + 1); cambioCarro(); }));
@@ -589,7 +633,6 @@
             })); });
             ed.appendChild(pr2);
           }
-          ed.appendChild(campoKg(l.cant * kgU, function (v) { l.cant = Math.max(1, Math.min(999, Math.round(v / kgU))); cambioCarro(); }, "Peso total en kg (" + presTxt(l.tam) + " por paquete)"));
         } else if (l.unidad === "unid") {
           t.appendChild(h("b", "", l.nombre + (l.tam ? " (" + l.tam + ")" : "")));
           t.appendChild(h("span", "", l.cant + " × " + L.soles(l.unit)));

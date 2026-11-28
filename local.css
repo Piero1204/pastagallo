@@ -362,3 +362,8 @@ html.local .lc-plegable .mapa__cuerpo .plano{max-width:980px;margin:0 auto 8px}
 .lc-det__l.ok{color:var(--gris);text-decoration:line-through}.lc-det__l.ok i{background:var(--verde);border-color:var(--verde)}
 .lc-det__lineas pre{white-space:pre-wrap;font:inherit;margin:0}
 .lc-det__pie{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px;border-top:1px solid var(--linea);position:sticky;bottom:0;background:#fff}
+/* Panel local en la pestaña TIENDA: todo lo borgoña pasa a verde oliva (cabecera, riel, botones, ventanas) */
+html.local body.lc-tab-tienda{--vino:#556b2f;--vino-2:#6b8439;--oro:#7d8a3e;--oro-claro:#a3b86c}
+html.local body.lc-tab-tienda .lc-riel{background:#4b5e28}
+html.local body.lc-tab-tienda .lc-cab h1{color:#556b2f}
+html.local body.lc-tab-tienda .av.otro{background:#6f7d45}
