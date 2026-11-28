@@ -338,3 +338,27 @@ html.local .lc-plegable .mapa__cuerpo .plano{max-width:980px;margin:0 auto 8px}
 .lc-met{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}.lc-met small{font-size:13px;font-weight:600;opacity:.75}
 @media (max-width:1100px){.lc-sal{grid-template-columns:1fr}.lc-sal__det{position:static;max-height:none}}
 .lc-sal__det .lc-cu__f{grid-template-columns:minmax(0,1fr) auto}.lc-sal__det .lc-cu__acc{grid-column:1/-1;justify-content:flex-start}
+/* panel de la mesa = detalleMesa del Salón de Apps Script (con botones más grandes para el local) */
+.lc-sal__det.lc-det{padding:0;gap:0}
+.lc-det__cab{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--linea)}
+.lc-det__cab h3{font:600 26px/1 var(--serif);color:var(--vino)}
+.lc-det__tot{font-size:19px;color:var(--tinta)}
+.lc-det__x{width:40px;height:40px;border-radius:50%;background:var(--papel);font-size:24px;line-height:1}
+.lc-det__cuerpo{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.lc-det__fila{display:flex;align-items:center;gap:10px}.lc-det__fila b{min-width:92px}.lc-det__fila select{flex:1;height:42px}
+.lc-det__olv{padding:8px 10px;border-radius:9px;background:#fff1d9;color:#8a5a00;font-weight:700}
+.lc-det__nota{font-size:14px;color:var(--gris)}
+.lc-det__aviso{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;background:#fbeaea;color:var(--rojo);font-weight:700;font-size:14px}.lc-det__aviso span{flex:1}
+.lc-det__aviso.cuenta{background:#efe7f8;color:var(--morado)}
+.lc-det__ped{border:1px solid var(--linea);border-radius:10px;padding:9px;display:flex;flex-direction:column;gap:6px;background:#fff}
+.lc-det__ped.canc{opacity:.5}
+.lc-det__pcab{display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:13px;color:var(--gris)}
+.lc-det__pcab>b{color:var(--vino);font-size:16px}
+.lc-det__pcab .lc-a.ic{width:34px;height:34px;font-size:15px}.lc-det__pcab .lc-a.mal{color:var(--rojo)}
+.lc-det__lineas{display:flex;flex-direction:column;gap:4px}
+.lc-det__l{display:grid;grid-template-columns:24px 1fr;gap:2px 8px;align-items:center;text-align:left;background:var(--crema-2,#e6dac0);border:0;border-radius:8px;padding:8px 9px;font-weight:600;font-size:15px;color:var(--tinta)}
+.lc-det__l i{width:22px;height:22px;border-radius:6px;border:2px solid var(--linea);background:#fff;font-style:normal;color:#fff;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center}
+.lc-det__l small{grid-column:2;color:var(--gris);font-size:12px;font-weight:500}
+.lc-det__l.ok{color:var(--gris);text-decoration:line-through}.lc-det__l.ok i{background:var(--verde);border-color:var(--verde)}
+.lc-det__lineas pre{white-space:pre-wrap;font:inherit;margin:0}
+.lc-det__pie{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px;border-top:1px solid var(--linea);position:sticky;bottom:0;background:#fff}
